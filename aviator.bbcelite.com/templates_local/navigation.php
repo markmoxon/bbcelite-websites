@@ -137,8 +137,8 @@
 					<li id="source_statistics"><a id="source_indexes_source_statistics" href="/source/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for Aviator</span> <span class="menuSummary">Instruction counts and other source code stats</span></a></li>
 
 					<li class="menuItemHeader showForMobile">All my websites</li>
-					<li id="tabMarkMoxon2" class="showForMobile otherSites"><a href="https://www.markmoxon.com"><span class="menuTitle">Mark Moxon's Software Archaeology</span></a></li>
-					<li id="tabElite2" class="showForMobile otherSites"><a href="https://www.bbcelite.com"><span class="menuTitle">Fully documented source code for Elite</span></a></li>
+					<li id="tabMarkMoxon2" class="showForMobile otherSites"><a href="https://www.bbcelite.com"><span class="menuTitle">Mark Moxon's Software Archaeology</span></a></li>
+					<li id="tabElite2" class="showForMobile otherSites"><a href="https://elite.bbcelite.com"><span class="menuTitle">Fully documented source code for Elite</span></a></li>
 					<li id="tabElite2" class="showForMobile otherSites"><a href="https://aviator.bbcelite.com"><span class="menuTitle">Fully documented source code for Aviator</span></a></li>
 					<li id="tabRevs2" class="showForMobile otherSites"><a href="https://revs.bbcelite.com"><span class="menuTitle">Fully documented source code for Revs</span></a></li>
 					<li id="tabLander2" class="showForMobile otherSites"><a href="https://lander.bbcelite.com"><span class="menuTitle">Fully documented source code for Lander</span></a></li>

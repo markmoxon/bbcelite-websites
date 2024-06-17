@@ -38,7 +38,7 @@ my @all_articles = ();
 
 $URL = 'https://' . $ENV{'SERVER_NAME'} . '/';
 
-$ROOT = '../../bbcelite.com/';
+$ROOT = '../../elite.bbcelite.com/';
 
 @FOLDERS =  ('6502sp/loader_1/subroutine/',
 			 '6502sp/loader_2/subroutine/',
