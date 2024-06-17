@@ -29,14 +29,17 @@
 							<li><a id="acornsoft_acorn_atom" href="/acornsoft/acorn_atom.html"><span class="menuTitle">Acorn Atom box screenshots</span> <span class="menuSummary">Recreated box screenshots for the Acorn Atom</span></a></li>
 						</ul>
 					</li>
-					<li class="menuItemHeader showForMobile">All my websites</li>
-					<li id="tabMarkMoxon2" class="showForMobile otherSites"><a href="https://www.bbcelite.com"><span class="menuTitle">Mark Moxon's Software Archaeology</span></a></li>
-					<li id="tabElite2" class="showForMobile otherSites"><a href="https://elite.bbcelite.com"><span class="menuTitle">Fully documented source code for Elite</span></a></li>
-					<li id="tabElite2" class="showForMobile otherSites"><a href="https://aviator.bbcelite.com"><span class="menuTitle">Fully documented source code for Aviator</span></a></li>
-					<li id="tabRevs2" class="showForMobile otherSites"><a href="https://revs.bbcelite.com"><span class="menuTitle">Fully documented source code for Revs</span></a></li>
-					<li id="tabLander2" class="showForMobile otherSites"><a href="https://lander.bbcelite.com"><span class="menuTitle">Fully documented source code for Lander</span></a></li>
-					<li id="tabMoxon2" class="showForMobile otherSites"><a href="https://www.moxon.net"><span class="menuTitle">Mark Moxon's Travel Writing</span></a></li>
-					<li id="tabLEJOG2" class="showForMobile otherSites"><a href="https://www.landsendjohnogroats.info"><span class="menuTitle">Walking Land's End to John o'Groats</span></a></li>
-					<li id="tabTubewalker2" class="showForMobile otherSites"><a href="https://www.tubewalker.com"><span class="menuTitle">Tubewalker: The Tube, on Foot</span></a></li>
+					<li class="menuItemHeader showForMobile">My software archaeology sites</li>
+					<li class="showForMobile otherSites"><a href="https://www.bbcelite.com"><span class="menuTitle">Mark Moxon's Software Archaeology</span></a></li>
+					<li class="showForMobile otherSites"><a href="https://elite.bbcelite.com"><span class="menuTitle">Elite on the BBC Micro and NES</span></a></li>
+					<li class="showForMobile otherSites"><a href="https://aviator.bbcelite.com"><span class="menuTitle">Aviator on the BBC Micro</span></a></li>
+					<li class="showForMobile otherSites"><a href="https://revs.bbcelite.com"><span class="menuTitle">Revs on the BBC Micro</span></a></li>
+					<li class="showForMobile otherSites"><a href="https://lander.bbcelite.com"><span class="menuTitle">Lander on the Acorn Archimedes</span></a></li>
+					<li class="menuItemHeader showForMobile">My writing sites</li>
+					<li class="showForMobile otherSites"><a href="https://www.moxon.net"><span class="menuTitle">Mark Moxon's Travel Writing</span></a></li>
+					<li class="showForMobile otherSites"><a href="https://www.landsendjohnogroats.info"><span class="menuTitle">Walking Land's End to John o'Groats</span></a></li>
+					<li class="showForMobile otherSites"><a href="https://www.tubewalker.com"><span class="menuTitle">Tubewalker: The Tube, on Foot</span></a></li>
+					<li class="menuItemHeader showForMobile">Contact details and more information</li>
+					<li class="showForMobile otherSites"><a href="https://www.markmoxon.com"><span class="menuTitle">Mark Moxon's Homepage</span></a></li>
 				</ul>
 			</nav>

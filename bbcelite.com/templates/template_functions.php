@@ -227,6 +227,8 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 				<p><a href="https://www.moxon.net">Mark Moxon's Travel Writing</a></p>
 				<p><a href="https://www.landsendjohnogroats.info">Walking Land's End to John o'Groats</a></p>
 				<p><a href="https://www.tubewalker.com">Tubewalker: The Tube, on Foot</a></p>
+				<p class="subheading">Contact details and more information</p>
+				<p><a href="https://www.markmoxon.com">Mark Moxon's Homepage</a></p>
 			</div>
 
 			<article>
