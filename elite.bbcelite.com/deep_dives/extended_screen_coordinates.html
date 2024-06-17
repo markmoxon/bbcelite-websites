@@ -1,0 +1,163 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "extended_screen_coordinates.html", "Extended screen coordinates", "Extended screen coordinates", "A deep dive into extended screen coordinates in BBC Micro Elite", "elite", "deep_dives_drawing_pixels", "extended_screen_coordinates");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_pixels_in_the_nes_version.html">Drawing pixels in the NES version</a><a class="next" rel="next" title="Next deep dive" href="drawing_text.html">Drawing text</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The extended 16-bit screen coordinate system behind the space view</h2>
+
+						<p>When simulating its universe of ships, stars and space stations, Elite uses large numbers - space is big, after all. The ship coordinates are stored as sign-magnitude numbers with 16 bits for the magnitudes, while the planet and sun coordinates go all the way up to 23-bit magnitudes (as they can be a lot further away from us than ships and stations).</p>
+
+						<p>To maintain accuracy when projecting these shapes onto the screen, Elite uses 16-bit screen coordinates for the calculations. The screen itself is only 256 pixels across, which fits into 8 bits, so this means during the projection, ships often project onto coordinates that are off-screen. For example, the planet below extends beyond the screen boundary, to the right of the screen and past the bottom of the dashboard, and the whole planet is stored in memory, even if it isn't shown on-screen:</p>
+
+						<img class="titleImage" src="/images/cassette/clipping.png" alt="A clipped planet BBC Micro Elite" />
+
+						<p>This is intentional, and happens all the time when you're speeding past enemy ships or slamming into the walls of a space station. Hammering the keyboard with a sudden pitch-and-roll manoeuvre brings ships into view that were otherwise minding their own business in the depths of space, but even though we couldn't see them, they were there all along.</p>
+
+						<p>The extended screen coordinate system is a key part of the simulation. The <a href="/cassette/main/subroutine/proj.html">PROJ</a> routine that projects space coordinates onto the screen produces 16-bit coordinates as a result of the projection, which then get clipped by the <a href="/cassette/main/subroutine/ll145_part_1_of_4.html">LL145</a> routine, but the way these 16-bit coordinates relate to the screen is delightfully simple. Let's take a look.</p>
+
+						<h2 class="articleSubheader">A wall of screens<br />
+													 -----------------</h2>
+
+						<p>First, let's consider a 256x256 screen (the space view in Elite is 256 pixels wide and 192 pixels high, but we'll come to that in a moment). The screen (x, y) coordinates would look like this, when expressed in hexadecimal:</p>
+
+<pre class="articleIndented">                        (&amp;00, &amp;00)      (&amp;FF, &amp;00)
+                               +----------+
+                               |          |
+                               |          |
+                               |          |
+                               +----------+
+                        (&amp;00, &amp;FF)      (&amp;FF, &amp;FF)
+</pre>
+
+						<p>These coordinates are 8-bit values, as the screen is only 256 pixels wide. In the extended coordinate system, there's an additional high byte. Let's set that high byte for our screen to 0, so in terms of 16-bit coordinates, we have the following coordinates:</p>
+
+<pre class="articleIndented">                     (&amp;0000, &amp;0000)    (&amp;00FF, &amp;0000)
+                               +----------+
+                               |          |
+                               |          |
+                               |          |
+                               +----------+
+                     (&amp;0000, &amp;00FF)    (&amp;00FF, &amp;00FF)
+</pre>
+
+						<p>Let's describe this screen, where the high byte of the x- and y-coordinates is &amp;00, like this:</p>
+
+<pre class="articleIndented">                               +----------+
+                               |          |
+                               | &amp;00, &amp;00 |
+                               |          |
+                               +----------+
+</pre>
+
+						<p>Now let's tack another 256x256 screen onto the right of this one. The screen x-coordinates of this new screen would have a high byte of 1 instead of 0, like this:</p>
+
+<pre class="articleIndented">                     (&amp;0100, &amp;0000)    (&amp;01FF, &amp;0000)
+                               +----------+
+                               |          |
+                               |          |
+                               |          |
+                               +----------+
+                     (&amp;0100, &amp;00FF)    (&amp;01FF, &amp;00FF)
+</pre>
+
+						<p>which we can also write like this:</p>
+
+<pre class="articleIndented">                               +----------+
+                               |          |
+                               | &amp;01, &amp;00 |
+                               |          |
+                               +----------+
+</pre>
+
+						<p>Putting the neighbours side by side, we get this:</p>
+
+<pre class="articleIndented">                         +----------+----------+
+                         |          |          |
+                         | &amp;00, &amp;00 | &amp;01, &amp;00 |
+                         |          |          |
+                         +----------+----------+
+</pre>
+
+						<p>We can also bolt another screen onto the bottom, like this:</p>
+
+<pre class="articleIndented">                         +----------+----------+
+                         |          |          |
+                         | &amp;00, &amp;00 | &amp;01, &amp;00 |
+                         |          |          |
+                         +----------+----------+
+                         |          |
+                         | &amp;00, &amp;01 |
+                         |          |
+                         +----------+
+</pre>
+
+						<p>and, if we consider the extended screen coordinates to be signed 16-bit values using two's complement, we can extend the screens in all directions, like this:</p>
+
+<pre class="articleIndented">  +----------+     +----------+----------+----------+     +----------+
+  |          |     |          |          |          |     |          |
+  | &amp;80, &amp;80 | ... | &amp;FF, &amp;80 | &amp;00, &amp;80 | &amp;01, &amp;80 | ... | &amp;7F, &amp;80 |
+  |          |     |          |          |          |     |          |
+  +----------+     +----------+----------+----------+     +----------+
+       :                :          :          :                :
+       :                :          :          :                :
+       :                :          :          :                :
+  +----------+     +----------+----------+----------+     +----------+
+  |          |     |          |          |          |     |          |
+  | &amp;80, &amp;FF | ... | &amp;FF, &amp;FF | &amp;00, &amp;FF | &amp;01, &amp;FF | ... | &amp;7F, &amp;FF |
+  |          |     |          |          |          |     |          |
+  +----------+     +----------+----------+----------+     +----------+
+  |          |     |          |          |          |     |          |
+  | &amp;80, &amp;00 | ... | &amp;FF, &amp;00 | &amp;00, &amp;00 | &amp;01, &amp;00 | ... | &amp;7F, &amp;00 |
+  |          |     |          |          |          |     |          |
+  +----------+     +----------+----------+----------+     +----------+
+  |          |     |          |          |          |     |          |
+  | &amp;80, &amp;01 | ... | &amp;FF, &amp;01 | &amp;00, &amp;01 | &amp;01, &amp;01 | ... | &amp;7F, &amp;01 |
+  |          |     |          |          |          |     |          |
+  +----------+     +----------+----------+----------+     +----------+
+       :                :          :          :                :
+       :                :          :          :                :
+       :                :          :          :                :
+  +----------+     +----------+----------+----------+     +----------+
+  |          |     |          |          |          |     |          |
+  | &amp;80, &amp;7F | ... | &amp;FF, &amp;7F | &amp;00, &amp;7F | &amp;01, &amp;7F | ... | &amp;7F, &amp;7F |
+  |          |     |          |          |          |     |          |
+  +----------+     +----------+----------+----------+     +----------+
+</pre>
+
+						<p>This is the extended coordinate system used in Elite. You can think of it as a bank of individual screens, where the entire view is projected onto all the screens, but the game just shows the screen in the middle to the player. The extended coordinates cover a 256x256 mesh of individual 256x256 screens, which is easily enough space to project 3D space coordinates onto the screen in the middle.</p>
+
+						<h2 class="articleSubheader">Checking whether a coordinate is on-screen<br />
+													 ------------------------------------------</h2>
+
+						<p>The clever part about all this is how quickly we can check whether a screen coordinate is visible in the space view, and how easy it is to get the actual screen coordinate we need for drawing. Given an extended screen coordinate, this is how we check whether it's on-screen:</p>
+
+						<ul>
+							<li>The first check is on the high byte. If either of the x- or y-coordinate's high bytes is non-zero, then the coordinate isn't in the &amp;00, &amp;00 screen in the above diagram, so it is definitely off-screen. If they are both zero, we move on to the next check.</li>
+
+							<li>If both high bytes are zero, then the second check is to make sure the coordinate is in the space view rather than the dashboard. This is a simple check whether the low byte of the y-coordinate is less than 192, as the space view is made up of the top 192 pixel rows. If it is less than 192, the coordinate is indeed in the space view, otherwise it's hidden by the dashboard.</li>
+
+							<li>If the coordinate is in the space view, then we can simply take the low bytes to get the screen coordinate for drawing.</li>
+						</ul>
+
+						<p>In this way Elite effectively projects its universe onto a huge, cinematic bank of screens, and then works out which parts of the projection appear in the space view using three quick comparisons against 0 and 192. It's elegant and fast, as so much of this game's code is.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_pixels_in_the_nes_version.html">Drawing pixels in the NES version</a><a class="next" rel="next" title="Next deep dive" href="drawing_text.html">Drawing text</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

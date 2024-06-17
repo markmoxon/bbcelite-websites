@@ -1,0 +1,250 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "6502sp_demo_mode.html", "The 6502 Second Processor demo mode", "The 6502 Second Processor demo mode", "A deep dive into the 6502 Second Processor demo mode in BBC Micro Elite", "elite", "deep_dives_6502sp_elite", "6502sp_demo_mode");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="6502sp_tube_communication.html">6502 Second Processor Tube communication</a><a class="next" rel="next" title="Next deep dive" href="the_tina_hook.html">The TINA hook</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">All about the <cite>Star Wars</cite>-esque scroll text in the Tube-based version of Elite</h2>
+
+						<p>The 6502 Second Processor has a unique demo mode that only appears in this version. It shows off the improved speed of the 3 MHz 65C02 processor that sits at the heart of the famous wedge-shaped expansion box, though as you can't escape from the demo once it has started, it can get a bit annoying for seasoned players. Still, it's a bit of fun, if only for the first few times you see it...</p>
+
+						<img class="titleImage" src="/images/6502sp/demo_logo.png" alt="The Elite logo in the 6502 Second Processor Elite demo" />
+
+						<p>The demo starts automatically if you leave the game idling at the title screen, or you can trigger it manually by pressing TAB. It is controlled by the <a href="/6502sp/main/subroutine/demon.html">DEMON</a> routine, which has the following stages:</p>
+
+						<ul>
+							<li>"ACORNSOFT PRESENTS" scrolls up the screen like the opening of <cite>Star Wars</cite></li>
+
+							<li>The Elite logo appears from behind the camera, moving forwards into view and tilted back so it appears on-edge, with the bottom of the logo pointing towards the camera</li>
+
+							<li>It then tilts forwards until it's fully vertical in front of the camera</li>
+
+							<li>A Cobra Mk III flies in slowly from behind the camera at the top of the screen</li>
+
+							<li>The Cobra fires its lasers at the logo, which explodes, and the Cobra flies on, in a clockwise roll, before pausing at the top of the screen</li>
+
+							<li>"BY IAN BELL AND DAVID BRABEN" scrolls up the screen</li>
+
+							<li>The camera speeds forward, the Cobra starts to fly again, pitching upwards as the camera overtakes it while it flies off the top of the screen</li>
+
+							<li>"THE GALAXY IS IN TURMOIL, THE NAVY FAR AWAY AS THE EMPIRE CRUMBLES" scrolls up the screen</li>
+
+							<li>An Adder appears in the middle of the screen and flies towards and past the camera, diving down and rolling clockwise just before it hits us</li>
+						</ul>
+
+						<img class="titleImage" src="/images/6502sp/scrolltext.png" alt="The scrolltext in the 6502 Second Processor Elite demo" />
+
+						<p>Interestingly, the game uses the existing spawning and ship-drawing routines to create the entire demo - even the scrolling text that rolls up the screen is made up of a set of lines in space that are displayed using the standard line-drawing buffer of the 6502 Second Processor version. Our Cobra Mk III is effectively a camera, speeding up, slowing down and panning when required, and the <a href="/6502sp/main/variable/ship_logo.html">Elite logo is stored as a ship</a>, with its own data block, vertices, faces and edges, just like every other ship. Perhaps that's why it slows down a bit as more text appears on-screen - there are lots more lines on-screen than in your average ship battle.</p>
+
+						<p>The <a href="drawing_ships.html">ship-drawing routines</a> are covered in plenty of detail elsewhere, so let's take a look at the scroll text in more detail.</p>
+
+						<h2 class="articleSubheader">Displaying the scroll text<br />
+													 --------------------------</h2>
+
+						<p>The scroll text is implemented by the <a href="/6502sp/main/subroutine/slide.html">SLIDE</a> routine. The first step is to write the scroll text onto a 2D canvas, laid out like this, starting with the first words in the top-left, as you would expect when writing on a piece of paper:</p>
+
+<pre class="articleIndented">  (0, 254)              (256, 254)
+          +------------+
+          |            |      ^
+          | On-screen  |      |
+          |            |      |  scroll direction
+          |............|      |
+   ^      :            :
+   |      :            :
+  BALI    : Off-screen :
+   |      :            :
+   V      :            :
+          +------------+
+    (0, 0)              (256, 0)
+</pre>
+
+						<p>The 2D letter-writing is done by the <a href="/6502sp/main/subroutine/gridset.html">GRIDSET</a> routine, which is explained in the next section.</p>
+
+						<p>Note that the y-axis is in the same direction as in the 3D space view, so the (0, 0) origin is in the bottom left, and y-coordinates get larger as you move up the canvas (and x increases towards the right, as you would expect).</p>
+
+						<p>BALI is a counter that goes from 254 to 2, and can be thought of as the y-coordinate of our eyes as we read through the scroll text from top to bottom, or, alternatively, how much of the canvas has yet to appear on-screen as the canvas scrolls into view.</p>
+
+						<p>Now take a point (X1, Y1) in the 2D scroll text canvas, like this:</p>
+
+<pre class="articleIndented">            X1
+          &lt;--->
+
+          +------------+
+          |            |
+          |    x       |
+          |            |      ^       ^
+          |            |      |       |
+          |            |      |       | Y1 - BALI
+          |            |      |       |
+          |............|      |       v
+   ^      :            :      |
+   |      :            :      | Y1
+  BALI    : Off-screen :      |
+   |      :            :      |
+   v      :            :      |
+          +------------+      v
+</pre>
+
+						<p>If Y1 &lt; BALI, the point is off the bottom of the screen, so let's assume that Y1 >= BALI. This means that the value of Y1 - BALI is 0 for points at the bottom of the visible section, and higher for points near the top.</p>
+
+						<p>We can project the point (X1, Y1) onto the <cite>Star Wars</cite> scroll text to get a 3D space coordinate (x, y, z), with each coordinate being calculated as follows:</p>
+
+<pre class="articleIndented">  x = (x_sign x_hi x_lo) = X1 - 128
+</pre>
+
+						<p>The x calculation moves the point (X1, Y1) to the left so the scroll text is in the centre, right in front of the camera (i.e. it shifts the x-coordinate range from 0-255 to -128 to +127).</p>
+
+						<pre class="articleIndented">  y = (y_sign y_hi y_lo) = (Y1 - BALI) - 128
+</pre>
+
+						<p>The y calculation moves the point (X1, Y1) down so that points at the bottom of the visible part of the canvas (those just appearing) will be at a space y-coordinate of -128, so the scroll text appears to come in from just below the bottom of the screen.</p>
+
+						<pre class="articleIndented">  z = (z_sign z_hi z_lo) = ((Y1 - BALI) * 4 div 256) + #D
+</pre>
+
+						<p>The z calculation tips the top of the 2D canvas away from the viewer by giving points higher up the canvas (i.e. those with higher y-coordinates) a higher z-coordinate, so the top of the canvas is further away (as the z-coordinate is into the screen). The #D configuration variable is the z-distance of the bottom of the visible part of the canvas as it scrolls into view. The scroll text then looks like a flat canvas disappearing into the distance because the z-coordinate is in a linear relationship with the y-coordinate (i.e. z = ky + d where k and d are constants).</p>
+
+						<p>We then project this space coordinate onto the screen for drawing, using the same process as when we draw ships. Couple this with some tables that we can use to store the projected lines, so they can be erased again later, and we can scroll the text in a <cite>Star Wars</cite> style by simply counting BALI from 254 down to 2, reprojecting the canvas and redrawing the scroll text with each new value.</p>
+
+						<h2 class="articleSubheader">Drawing letters on the scroll text<br />
+													 ----------------------------------</h2>
+
+						<p>As mentioned above, letters are drawn on the scroll text as if it were a flat 2D parchment, before any 3D transformations take place. The letter-writing is done in the <a href="/6502sp/main/subroutine/gridset.html">GRIDSET</a> routine, using letter shapes that are defined in the <a href="/6502sp/main/variable/ltdef.html">LTDEF</a> table, which contains line definitions for each of the characters we can use in the scroll text.</p>
+
+						<p>Characters in the scroll text are drawn using lines on a 3x6 grid like this:</p>
+
+<pre class="articleIndented">  .   .   .
+  .   .   .
+  .   .   .
+  .   .   .
+  .   .   .
+  .   .   .
+</pre>
+
+						<p>The spacing of the grid points is configured like this (in terms of space coordinates):</p>
+
+<pre class="articleIndented">  0           .   .   .
+  0.5 * WY    .   .   .
+  1.0 * WY    .   .   .
+  1.5 * WY    .   .   .
+  2.0 * WY    .   .   .
+  2.5 * WY    .   .   .
+
+              4   8   12
+</pre>
+
+						<p>so the vertical spacing is controlled by configuration variable WY. The default value of WY is 12, so the vertical grid spacing is 6, while the horizontal grid spacing is 4.</p>
+
+						<p>When drawing letters, only 12 of the 18 points can be used. They are numbered as follows:</p>
+
+<pre class="articleIndented">  0   1   2
+  .   .   .
+  3   4   5
+  .   .   .
+  6   7   8
+  9   A   B
+</pre>
+
+						<p>The x-coordinate of point n within the grid (relative to the top-left corner) is given by the n-th entry in the <a href="/6502sp/main/variable/nofx.html">NOFX</a> table, while the y-coordinate is given by the n-th entry in <a href="/6502sp/main/variable/nofy.html">NOFY</a>. So point 0 is at (NOFX+0, NOFX+0) = (4, 0), and point 8 is at (NOFX+8, NOFX+8) = (12, 2 * WY).</p>
+
+						<p>The LTDEF table contains definitions for all the letters and some punctuation characters. Each definition consists of 5 bytes, with each byte describing one line in the character's shape (bytes with value 0 are ignored, so each character consists of up to five lines but can contain fewer lines).</p>
+
+						<p>The low nibble of each byte is the starting point for that line segment, and the high nibble is the end point, so a value of &amp;28, for example, means "draw a line from point 8 to point 2".</p>
+
+						<p>Let's look at a few examples to make this clearer.</p>
+
+						<p>The definition in LTDEF for "A" is:</p>
+
+<pre class="articleIndented">  &amp;60, &amp;02, &amp;28, &amp;35, &amp;00
+</pre>
+
+						<p>This translates to the following:</p>
+
+<pre class="articleIndented">  &amp;60 = line from point 0 to point 6
+  &amp;02 = line from point 2 to point 0
+  &amp;28 = line from point 8 to point 2
+  &amp;35 = line from point 5 to point 3
+  &amp;00 = ignore
+</pre>
+
+						<p>which looks like this on the grid:</p>
+
+<pre class="articleIndented">  +-------+
+  |   .   |
+  +-------+
+  |   .   |
+  |   .   |
+  .   .   .
+</pre>
+
+						<p>The definition in LTDEF for "S" is:</p>
+
+<pre class="articleIndented">  &amp;20, &amp;03, &amp;35, &amp;58, &amp;86
+</pre>
+
+						<p>This translates to the following:</p>
+
+<pre class="articleIndented">  &amp;20 = line from point 0 to point 2
+  &amp;03 = line from point 3 to point 0
+  &amp;35 = line from point 5 to point 3
+  &amp;58 = line from point 8 to point 5
+  &amp;86 = line from point 6 to point 8
+</pre>
+
+						<p>which looks like this on the grid:</p>
+
+<pre class="articleIndented">  +-------+
+  |   .   .
+  +-------+
+  .   .   |
+  +-------+
+  .   .   .
+</pre>
+
+						<p>The definition in LTDEF for "," is:</p>
+
+<pre class="articleIndented">  &amp;63, &amp;34, &amp;47, &amp;76, &amp;97
+</pre>
+
+						<p>This translates to the following:</p>
+
+<pre class="articleIndented">  &amp;63 = line from point 3 to point 6
+  &amp;34 = line from point 4 to point 3
+  &amp;47 = line from point 7 to point 4
+  &amp;76 = line from point 6 to point 7
+  &amp;97 = line from point 7 to point 9
+</pre>
+
+						<p>which looks like this on the grid:</p>
+
+<pre class="articleIndented">  .   .   .
+  .   .   .
+  +---+   .
+  |   |   .
+  +---/   .
+  _.-´.   .
+</pre>
+
+						<p>Colons and semi-colons are shown as spaces (as their LTDEF definitions are all zeroes), so when a string like "TURMOIL,THE:NAVY" is displayed, the comma is shown as a comma, but the colon is shown as a space.</p>
+
+						<p>The scroll text has 16 characters per line, as the character width in #W2 is set to 16 by default, and the width of the whole scroll text is 256.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="6502sp_tube_communication.html">6502 Second Processor Tube communication</a><a class="next" rel="next" title="Next deep dive" href="the_tina_hook.html">The TINA hook</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

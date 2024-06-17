@@ -1,0 +1,140 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "landers_origins_on_the_arm1.html", "Lander's origins on the ARM1", "Lander's origins on the ARM1", "A deep dive into Lander's origins on the ARM1", "lander", "deep_dives_miscellaneous", "landers_origins_on_the_arm1");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="unused_code_in_lander.html">Unused code in Lander</a><a class="next" rel="next" title="Next page" href="hacking_the_landscape.html">Hacking the landscape</a></nav></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the creation of Lander on the ARM1 influenced the code</h2>
+
+						<p>Lander was the first game to be written for the ARM platform. Indeed, it was such an early game that it started life on the ARM1, which was only available as part of Acorn's ARM Evaluation System. Released in 1986, this was the world's first ARM-based development system, and its "cheese wedge" case houses an ARM1 processor in a second processor that you plug into the Tube interface in a BBC Micro or BBC Master, effectively using the BBC as an input and output device for the ARM1 processor in the external case.</p>
+
+						<p>Here's the ARM1 in all its glory, inside the Acorn ARM Evaluation System:</p>
+
+						<img class="titleImage photo" style="width: 400px" src="/images/deep_dives/arm1/640px-Acorn-ARM-Evaluation-System.jpg" alt="The ARM1 in the Acorn ARM Evaluation System" />
+
+						<p style="text-align: center"><i>(Photo by Peter Howkins, covered by <a href="https://creativecommons.org/licenses/by-sa/3.0/deed.en">CC BY-SA 3.0</a>)</i></p>
+
+						<p>Here's a quote from Retro Gamer's article about Lander and Zarch in issue 128, in which David Braben talks about his first experience with the ARM1:</p>
+
+						<blockquote class="articleIndented">
+							<p>"I first saw an ARM CPU - then it stood for 'Acorn Risc Machine' - in a 'second processor' unit," David recalls. "It [was] one of the very first ARM chips. Later I got one of the first CMOS 'second processor' units to play around with, and wrote a number of demos, then started Lander. At this point I got an A500 - an amazing machine with an incredible 4Mb of RAM. The availability of a prototype 32-bit machine was a great opportunity for me."</p>
+						</blockquote>
+
+						<p>And here's a quote from an interview with David Braben that appeared in Edge magazine:</p>
+
+						<blockquote class="articleIndented">
+							<p>The Archimedes was an entirely new machine. Centred on a custom designed 32-bit RISC processor, it clearly had power, but Braben would have to figure out how it worked as he went along. As it turned out, a lot of it didn't. "I was actually doing all the programming through the BBC because the machine was missing its operating system," he explains. "It didn't even have a disk drive, that's how basic it was."</p>
+							<p>Gallingly, the final machine promised features that would dramatically speed up 3D applications, but were missing from the machine Acorn supplied to Braben: "In the prototype version of the chip, the multiply operation just didn't work. It just wasn't there. It didn't exist."</p>
+						</blockquote>
+
+						<p>So Lander started life on an ARM1 hooked up to a BBC Micro, before moving on to an ARM2 in a prototype A500. Interestingly, the effects of this development history are visible in the game's code; as mentioned in the above quote, the ARM1 didn't have a multiply instruction. This was introduced into the ARM2, which was the chip that Braben would graduate to when Acorn lent him the ARM2-based A500 prototype, but by that stage he had presumably written all of the maths code, as there are no MUL or MLA instructions in Lander anywhere.</p>
+
+						<p>Instead, multiplication is done using an inline shift-and-add algorithm. Here's an example from the <a href="/source/main/subroutine/getdotproduct.html">GetDotProduct</a> routine:</p>
+
+<pre class="articleIndented">                                    \ We now calculate R3 = R4 * R5 using the
+                                    \ shift-and-add multiplication algorithm
+
+  EOR     R7, R4, R5                \ Set the sign of the result in R7
+
+  TEQ     R4, #0                    \ Set R4 = 4 * |R4|
+  RSBMI   R4, R4, #0
+  MOVS    R4, R4, LSL #2
+
+  TEQ     R5, #0                    \ Set R5 = 2 * |R5|
+  RSBMI   R5, R5, #0
+  MOV     R5, R5, LSL #1
+
+  AND     R4, R4, #&FE000000        \ Zero all but the top byte of R4,
+  ORR     R4, R4, #&01000000        \ ensuring that bit 0 of the top byte is
+                                    \ set so the value of the fractional
+                                    \ part is set to 0.5
+
+  MOV     R3, #0                    \ Set R3 = 0 to use for building the sum
+                                    \ in our shift-and-add multiplication
+                                    \ result
+
+ .dotp1
+
+  MOV     R5, R5, LSR #1            \ If bit 0 of R5 is set, add R5 to the
+  ADDCS   R3, R3, R5                \ result in R3, shifting R5 to the right
+
+  MOVS    R4, R4, LSL #1            \ Shift R4 left by one place
+
+  BNE     dotp1                     \ Loop back if R4 is non-zero
+
+  MOV     R3, R3, LSR #1            \ Set R3 = R3 / 2
+
+  TEQ     R7, #0                    \ Apply the sign from R7 to R3 to get the
+  RSBMI   R3, R3, #0                \ final result, so:
+                                    \
+                                    \   R3 = R4 * R5
+</pre>
+
+						<p>I suspect that this algorithm was included using a macro, as the code is identical every time a multiplication is required, apart from the registers that are used. So you would think it would have been worth replacing the macro with a MUL or MLA instruction when the ARM2 came along... but deadlines were tight, so the algorithm remains. (I believe Zarch is also devoid of multiplication instructions; if it ain't broke, don't fix it, I guess!).</p>
+
+						<p>For a discussion of this algorithm (albeit for 8-bit computers), see <a href="https://www.bbcelite.com/deep_dives/shift-and-add_multiplication.html">this deep dive in my Elite project</a>.</p>
+
+						<p>Another interesting point to note is that Lander doesn't use the ADR directive anywhere. This pseudo-instruction loads an address into a register in a PC-relative way, resulting in moveable code, but instead Lander uses vectors to store addresses. For example, the <a href="/source/main/variable/landscapeoffsetaddr.html">landscapeOffsetAddr</a> vector contains the address of the <a href="/source/main/variable/landscapeoffset.html">landscapeOffset</a> variable, so to fetch the address of the landscape offset table into R0, we can use the following:</p>
+
+<pre class="articleIndented">  LDR R0, landscapeOffsetAddr
+</pre>
+
+						<p>This has the advantage of always working, as the ADR directive is fairly fussy about which addresses it can encode. Back in the day, ARM programmers would typically roll their own ADRL functions to use instead of ADR, adding in logic that would support arbitrary addresses; here's the version I always used:</p>
+
+<pre class="articleIndented">   10 REM Subroutine to implement ADRL directive
+   20 :
+   30 :
+   40 DEF FNadr(reg,loc)
+   50 p%=P%
+   60 IF loc>p% THEN
+   70  [ OPT pass%
+   80    ADD reg,PC,#(loc-p%-8)MOD&amp;100
+   90    ADD reg,reg,#(loc-p%-8)DIV&amp;100&lt;&lt;8
+  100  ]
+  110 ELSE
+  120  [ OPT pass%
+  130    SUB reg,PC,#(p%+8-loc)MOD&amp;100
+  140    SUB reg,reg,#(p%+8-loc)DIV&amp;100&lt;&lt;8
+  150  ]
+  160 ENDIF
+  170 =""
+</pre>
+
+						<p>But Lander sidesteps the ADR approach altogether in favour of vectors, which is a much more 6502-influenced approach. It works, but it does make the code harder to relocate without building it from the source; not that this is an issue with Lander, but big projects that used vectors instead of ADRL would probably live to regret it.</p>
+
+						<p>Incidentally, Lander also fails to use the SBC and RBC instructions, and it doesn't need the ROR shift operator either. Given how incredibly simple the ARM1 instruction set is, this means the entire game is made up of a tiny handful of instructions. Here's a complete list of all the instructions used in Lander:</p>
+
+						<ul class="tightList">
+							<li>ADD, ADC</li>
+							<li>SUB, RSB</li>
+							<li>MOV, MVN</li>
+							<li>AND, ORR, EOR, BIC</li>
+							<li>CMP, CMN</li>
+							<li>TST, TEQ</li>
+							<li>LDR, STR</li>
+							<li>LDM, STM</li>
+							<li>B, BL, SWI</li>
+						</ul>
+
+						<p>That's all of them - just 21 different instructions! It truly is Reduced Instruction Set codebase, as befits the world's very first game for the ARM platform, and the world's only ever ARM1 game.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="unused_code_in_lander.html">Unused code in Lander</a><a class="next" rel="next" title="Next page" href="hacking_the_landscape.html">Hacking the landscape</a></nav></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

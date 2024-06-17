@@ -1,0 +1,124 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "detecting_alien_hits.html", "Detecting alien hits", "Detecting alien hits", "A deep dive into detecting alien hits in BBC Micro Aviator", "aviator", "deep_dives_the_theme", "detecting_alien_hits");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="adding_bullets_to_the_world.html">Adding bullets to the world</a><a class="next" rel="next" title="Next deep dive" href="explosions_and_turbulence.html">Explosions and turbulence</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The geometry behind aliens and their weak spots</h2>
+
+						<p>Aviator is a sophisticated flight simulator, known for its accurate and realistic physics, but it is still a game. It might feel slightly bolted-on, but if you fire your bullets while sitting on the runway, then you enable "The Theme", a game where you have to fight off wave after wave of hungry aliens, who are hell-bent on attacking the town Acornsville.</p>
+
+						<p>You, of course, are going to save the world... although - and I hate to break it to you - you aren't going to save the world, because the game will keep throwing wave after wave of increasingly fast-moving aliens at you, until either they reach the town, or you reach the end of the road. Still, you do have a trusty Spitfire with a gun mounted on each wing, so it's up to you to track down the invaders and do your thing.</p>
+
+						<p>The bullets are covered in the deep dive on <a href="adding_bullets_to_the_world.html">adding bullets to the world</a>, but equally important to the gunfire is the method by which the game works out whether we have hit an alien. In this deep dive, we take a look at just that.</p>
+
+						<h2 class="articleSubheader">The two stages of collision maths<br />
+													 ---------------------------------</h2>
+
+						<p>We can work out whether we have hit an alien with our bullets by breaking it into two stages. Both these stages are implemented by the <a href="/source/main/subroutine/checkifalienishit_part_1_of_2.html">CheckIfAlienIsHit</a> routine, so let's take a look at what's involved.</p>
+
+						<p>The first step is to calculate the alien's weak spot, which is a cube at the thicker end of the alien. To be honest, I'm not entirely sure if this is the front end or the back end, but I think it might be the front end, as this is the end where the, um, "tentacles" spring from when the alien starts to fly... though as the aliens in Aviator are simple tetrahedrons, this is all guesswork. Anyway, to hit the weak spot, aim for the blunt end rather than the sharp end.</p>
+
+						<p>The second step is to work out whether either of the two bullet trails pass through this weak spot at any point along the length of the bullet trail. If so, we have a hit, and that's Spitfire 1, Aliens 0.</p>
+
+						<p>Let's look at these two stages in turn.</p>
+
+						<h2 class="articleSubheader">The weak spot<br />
+													 -------------</h2>
+
+						<p>The first part of the CheckIfAlienIsHit routine calculates the alien's feeding stage, which determines the size of the alien, and therefore the size of the weak spot. The second part then calls the <a href="/source/main/subroutine/getalienweakspot.html">GetAlienWeakSpot</a> routine to work out the location and size of the alien's weak spot, given this information.</p>
+
+						<p>Take a feeding alien as an example - object 31, say. The object points for object 31 in the <a href="/source/main/variable/objectpoints.html">objectPoints</a> table look like this:</p>
+
+						<ul>
+							<li>Object 31: 182</li>
+							<li>Object 31: 183 -> 182</li>
+							<li>Object 31: 184 -> 182</li>
+							<li>Object 31: 185 -> 182</li>
+							<li>Object 31: 186 -> 182</li>
+						</ul>
+
+						<p>So point 182 is the object's anchor point, and the object consists of points 182 to 186 (see the deep dive on <a href="3d_objects.html">3D objects</a> for details on how objects are stored).</p>
+
+						<p>Looking up these point IDs in the <a href="/source/main/variable/linestartpointid.html">lineStartPointId</a> and <a href="/source/main/variable/lineendpointid.html">lineEndPointId</a> tables gives the following lines that make up the alien object:</p>
+
+						<ul>
+							<li>183 to 184</li>
+							<li>183 to 185</li>
+							<li>183 to 186</li>
+							<li>184 to 185</li>
+							<li>186 to 184</li>
+							<li>186 to 185</li>
+						</ul>
+
+						<p>and the object points have the following coordinates within the object, as given in the (<a href="/source/main/variable/xobjectpoint.html">xObjectPoint</a>, <a href="/source/main/variable/yobjectpoint.html">yObjectPoint</a>, <a href="/source/main/variable/zobjectpoint.html">zObjectPoint</a>) tables:</p>
+
+						<ul>
+							<li>Point ID 182 is ( 5, &nbsp;0,  &nbsp;5) with scale factor 2^8 = (1280, &nbsp;0, 1280)</li>
+							<li>Point ID 183 is ( 0, &nbsp;0,  &nbsp;3) with scale factor 2^2 = ( &nbsp;&nbsp;0, &nbsp;0, &nbsp;&nbsp;12)</li>
+							<li>Point ID 184 is ( 3, &nbsp;0,  &nbsp;0) with scale factor 2^2 = ( &nbsp;12, &nbsp;0, &nbsp;&nbsp;&nbsp;0)</li>
+							<li>Point ID 185 is (14, &nbsp;0, 14) with scale factor 2^2 = ( &nbsp;56, &nbsp;0, &nbsp;&nbsp;56)</li>
+							<li>Point ID 186 is ( 3, &nbsp;4,  &nbsp;3) with scale factor 2^2 = ( &nbsp;12, 16, &nbsp;&nbsp;12)</li>
+						</ul>
+
+						<p>Drawing an overhead view of the alien, it looks like this, where all the points are at ground level apart from point 186 in the middle of the alien, which is above ground at the apex of the pointed top of the alien:</p>
+
+<pre class="articleIndented">
+                                    185
+                                 .+ 
+                             . .´,
+                        . ´  .´ .
+                   . ´     .´  ,
+           183  +........+´   .    <--- 186
+                 `.      :   ,
+                   `.    :  .
+                     `.  : ,
+                       `.:.
+           182  +        +  184
+</pre>
+
+						<p>Point 182 has no lines attached to it and is used as the object anchor point, so the alien's visible shape consists of points 183 to 186.</p>
+
+						<p>All four of these points are attached to each other by lines. The alien is pointing towards the bottom-left, with its tail at point 185 and the tip of its highest point at point 186. Its blunt triangular "face" is made up of the triangle 183, 184 and 186, while its footprint on the ground is the triangle 183, 184 and 185.</p>
+
+						<p>We calculate the alien's weak spot as a point, and a size in each dimension.</p>
+
+						<ul>
+							<li>The point is at coordinate ((5 Q), 0, (5 Q)) within the object, where the value of Q varies depends on the size of the alien (as feeding aliens get larger). The above coordinates are based on the smallest feeding stage, in which case Q is set to 8, so (5 Q) is 1288, so this means the weak spot is at (1288, 0, 1288).</li>
+
+							<li>The size for the smallest feeding stage is x-size = 20, y-size = 15 and z-size = 20, which we can express as (20, 15, 20).</li>
+						</ul>
+
+						<p>In this case, then, if we hit the alien within a cube of size (20, 15, 20), anchored at its weak spot of (1288, 0, 1288), it explodes. In other words, if the bullets are within the cube between (1288, 0, 1288) and (1308, 15, 1308), we have hit the weak spot, which turns out to be a cube that covers the front end of the alien.</p>
+
+						<p>So it's perhaps no surprise that to kill an alien, you need to shoot your bullets into the alien's face, where its "tentacles" come from when it's finished feeding. Cthulhu would be proud.</p>
+
+						<h2 class="articleSubheader">Checking the whole bullet trail for hits<br />
+													 ----------------------------------------</h2>
+
+						<p>The CheckAlienWeakSpot routine checks whether a specific point in space is within the weak spot, but the bullets travel through the air, leaving a visible trail, so if all we did were to check the points at the start and end of each bullet trail for a hit, we could easily miss a valid kill.</p>
+
+						<p>To get around this, the <a href="/source/main/subroutine/gettrailvectorstep.html">GetTrailVectorStep</a> routine divides the vector of the bullet trail into 32 sections, or steps. The CheckIfAlienIsHit then starts at the back of the bullet trail and checks for a hit. If there is no hit, it adds this 1/32 vector to step along the trail vector to the next point, where it checks for a hit once again. If this is also a miss, it keeps stepping along the trail vector until it either finds a hit (in which case it stops checking), or it reaches the bullet at the head of the bullet trail, in which case we have a miss.</p>
+
+						<p>In this way we can check whether a bullet has already passed through the weak spot, and still record a hit. It might not make killing Aviator's aliens easier, but at least it makes it fairer.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="adding_bullets_to_the_world.html">Adding bullets to the world</a><a class="next" rel="next" title="Next deep dive" href="explosions_and_turbulence.html">Explosions and turbulence</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

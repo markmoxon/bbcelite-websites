@@ -1,0 +1,184 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "ship_blueprints_in_the_disc_version.html", "Ship blueprints in the disc version", "Ship blueprints in the disc version", "A deep dive into ship blueprints in the disc version of BBC Micro Elite", "elite", "deep_dives_ship_data", "ship_blueprints_in_the_disc_version");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="ship_blueprints.html">Ship blueprints</a><a class="next" rel="next" title="Next deep dive" href="ship_data_blocks.html">Ship data blocks</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the disc version loads its ship blueprints into memory</h2>
+
+						<p>When you launch from the space station in the disc version of BBC Micro Elite, there's an awful lot of disc activity - noticeably more than when you dock. This is because the flight code, once loaded, initiates a second load of the ship blueprints.</p>
+
+						<p>Unlike the 6502 Second Processor version, there is only room for around 12-13 ship blueprints at any one time, and because there are 32 different ship types in the disc version, with 29 distinct designs, a compromise has to be made. That compromise comes in the form of 16 files, called D.MOA through D.MOP, each of which contains 11-14 ship blueprints that can fit into memory at any one time. Here's the disc catalogue for the disc version, showing those files alongside the main game code binaries:</p>
+
+						<img class="titleImage lightBorder" src="/images/disc/disc_contents.png" alt="The contents of the disc for the BBC Micro disc version of Elite" />
+
+						<p>Here's a list of the files and what they contain:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>#</th><th>Ship<th><a href="/disc/all/elite_ships_a.html">A</a></th><th><a href="/disc/all/elite_ships_b.html">B</a></th><th><a href="/disc/all/elite_ships_c.html">C</a></th><th><a href="/disc/all/elite_ships_d.html">D</a></th><th><a href="/disc/all/elite_ships_e.html">E</a></th><th><a href="/disc/all/elite_ships_f.html">F</a></th><th><a href="/disc/all/elite_ships_g.html">G</a></th><th><a href="/disc/all/elite_ships_h.html">H</a></th><th><a href="/disc/all/elite_ships_i.html">I</a></th><th><a href="/disc/all/elite_ships_j.html">J</a></th><th><a href="/disc/all/elite_ships_k.html">K</a></th><th><a href="/disc/all/elite_ships_l.html">L</a></th><th><a href="/disc/all/elite_ships_m.html">M</a></th><th><a href="/disc/all/elite_ships_n.html">N</a></th><th><a href="/disc/all/elite_ships_o.html">O</a></th><th><a href="/disc/all/elite_ships_p.html">P</a></th><th><a href="/6502sp/all/elite_ships.html">S</a></th><th><a href="/cassette/all/elite_ships.html">T</a></th></tr>
+							<tr><td>1</td><td><a href="/6502sp/main/variable/ship_missile.html">Missile</a></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td></tr>
+							<tr><td>2</td><td><a href="/6502sp/main/variable/ship_coriolis.html">Coriolis</a></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td>*</td></tr>
+							<tr><td>"</td><td><a href="/6502sp/main/variable/ship_dodo.html">Dodo</a></td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td>*</td><td></td></tr>
+							<tr><td>3</td><td><a href="/6502sp/main/variable/ship_escape_pod.html">Escape pod</a></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td></tr>
+							<tr><td>4</td><td><a href="/6502sp/main/variable/ship_plate.html">Alloy plate</a></td><td>*</td><td>*</td><td></td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td>*</td><td></td><td></td><td></td><td></td><td>*</td><td>*</td><td>*</td><td></td></tr>
+							<tr><td>5</td><td><a href="/6502sp/main/variable/ship_canister.html">Canister</a></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td></tr>
+							<tr><td>6</td><td><a href="/6502sp/main/variable/ship_boulder.html">Boulder</a></td><td></td><td>*</td><td></td><td></td><td>*</td><td>*</td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td>*</td><td></td></tr>
+							<tr><td>7</td><td><a href="/6502sp/main/variable/ship_asteroid.html">Asteroid</a></td><td></td><td></td><td>*</td><td>*</td><td></td><td></td><td></td><td>*</td><td></td><td></td><td>*</td><td></td><td></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td></tr>
+							<tr><td>8</td><td><a href="/6502sp/main/variable/ship_splinter.html">Splinter</a></td><td></td><td></td><td>*</td><td>*</td><td></td><td></td><td></td><td>*</td><td></td><td></td><td>*</td><td></td><td></td><td>*</td><td>*</td><td>*</td><td>*</td><td></td></tr>
+							<tr><td>9</td><td><a href="/6502sp/main/variable/ship_shuttle.html">Shuttle</a></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>10</td><td><a href="/6502sp/main/variable/ship_transporter.html">Transporter</a></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>11</td><td><a href="/6502sp/main/variable/ship_cobra_mk_3.html">Cobra Mk III</a></td><td></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td></td><td></td><td></td><td>*</td><td>*</td><td></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td></tr>
+							<tr><td>12</td><td><a href="/6502sp/main/variable/ship_python.html">Python</a></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td>*</td><td>*</td></tr>
+							<tr><td>13</td><td><a href="/6502sp/main/variable/ship_boa.html">Boa</a></td><td></td><td></td><td>*</td><td></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>14</td><td><a href="/6502sp/main/variable/ship_anaconda.html">Anaconda</a></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>15</td><td><a href="/6502sp/main/variable/ship_rock_hermit.html">Rock hermit</a></td><td></td><td></td><td>*</td><td>*</td><td></td><td></td><td></td><td>*</td><td></td><td></td><td>*</td><td></td><td></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td></tr>
+							<tr><td>16</td><td><a href="/6502sp/main/variable/ship_viper.html">Viper</a></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td></tr>
+							<tr><td>17</td><td><a href="/6502sp/main/variable/ship_sidewinder.html">Sidewinder</a></td><td>*</td><td></td><td>*</td><td>*</td><td>*</td><td>*</td><td></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td></td><td>*</td><td>*</td><td>*</td></tr>
+							<tr><td>18</td><td><a href="/6502sp/main/variable/ship_mamba.html">Mamba</a></td><td>*</td><td>*</td><td></td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td>*</td><td></td><td>*</td><td>*</td><td></td><td>*</td><td></td><td>*</td><td>*</td></tr>
+							<tr><td>19</td><td><a href="/6502sp/main/variable/ship_krait.html">Krait</a></td><td>*</td><td>*</td><td>*</td><td></td><td>*</td><td></td><td>*</td><td>*</td><td>*</td><td>*</td><td></td><td></td><td>*</td><td>*</td><td>*</td><td>*</td><td>*</td><td></td></tr>
+							<tr><td>20</td><td><a href="/6502sp/main/variable/ship_adder.html">Adder</a></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td>*</td><td></td><td>*</td><td></td><td></td><td></td><td>*</td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>21</td><td><a href="/6502sp/main/variable/ship_gecko.html">Gecko</a></td><td></td><td></td><td></td><td>*</td><td>*</td><td>*</td><td></td><td></td><td></td><td>*</td><td>*</td><td></td><td>*</td><td>*</td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>22</td><td><a href="/6502sp/main/variable/ship_cobra_mk_1.html">Cobra Mk I</a></td><td></td><td></td><td></td><td>*</td><td>*</td><td></td><td></td><td></td><td></td><td>*</td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td><td>*</td><td></td></tr>
+							<tr><td>23</td><td><a href="/6502sp/main/variable/ship_worm.html">Worm</a></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>24</td><td><a href="/6502sp/main/variable/ship_cobra_mk_3_p.html">Cobra Mk III<sup> P</sup></a></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td>*</td><td>*</td><td></td><td></td><td>*</td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>25</td><td><a href="/6502sp/main/variable/ship_asp_mk_2.html">Asp Mk II</a></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td>*</td><td>*</td><td></td></tr>
+							<tr><td>26</td><td><a href="/6502sp/main/variable/ship_python_p.html">Python<sup> P</sup></a></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td>*</td><td></td></tr>
+							<tr><td>27</td><td><a href="/6502sp/main/variable/ship_fer_de_lance.html">Fer-de-lance</a></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>28</td><td><a href="/6502sp/main/variable/ship_moray.html">Moray</a></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>29</td><td><a href="/6502sp/main/variable/ship_thargoid.html">Thargoid</a></td><td></td><td></td><td>*</td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td>*</td></tr>
+							<tr><td>30</td><td><a href="/6502sp/main/variable/ship_thargon.html">Thargon</a></td><td></td><td></td><td>*</td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td>*</td></tr>
+							<tr><td>31</td><td><a href="/6502sp/main/variable/ship_constrictor.html">Constrictor</a></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>32</td><td><a href="/6502sp/main/variable/ship_logo.html">Elite logo</a></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td></tr>
+							<tr><td>33</td><td><a href="/6502sp/main/variable/ship_cougar.html">Cougar</a></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>*</td><td></td></tr>
+						</table>
+
+						<p>Notes:</p>
+
+						<ul>
+							<li>Column S lists the ships available in the 6502 Second Processor version (i.e. all of them).</li>
+
+							<li>Column T lists the ships available in the BBC Micro cassette version (though note that they have different ship type numbers to the other versions).</li>
+
+							<li>Only the BBC Micro disc version and Elite-A use ship files: all other versions store all ship blueprints in memory. Elite-A has its own set of ship files - see the deep dive on <a href="elite-a_ship_blueprints.html">ship blueprints in Elite-A</a> for details.</p>
+
+							<li>The Cougar is only present in the 6502 Second Processor and BBC Master versions, while the Elite logo is only present in the 6502 Second Processor version. In the BBC Master version, the Cougar closes up the gap and becomes blueprint 32.</li>
+
+							<li>The missile blueprint is always present in all versions (in the disc version, it lives above screen memory at location &amp;7F00).</li>
+
+							<li>In the disc version, rock hermits (ship type 15) use the Asteroid blueprint.</li>
+
+							<li>The two ships marked P are pirate versions of the Python and Cobra Mk III, which have their own blueprints with different attributes to the non-pirate versions.</li>
+						</ul>
+
+						<p>Given the table above, let's see how the disc version works out which one of these files to load when we launch from the station.</p>
+
+						<h2 class="articleSubheader">Choosing a file to load<br />
+													 -----------------------</h2>
+
+						<p>In most systems, the ship blueprints file that gets loaded is randomly chosen, but there are some rules around the range of files that can be picked, depending on the system we are in. The <a href="/disc/flight/subroutine/lomod.html">LOMOD</a> routine is the core loading routine, and it chooses a number between 0 and 15, converts that into a letter between A and P, and then loads the relevant blueprints file, from D.MOA to D.MOP.</p>
+
+						<p>Here are the rules for generating the number between 0 and 15:</p>
+
+						<ul>
+							<li>If we are in the Constrictor's system in mission 1 (Orarra in the first galaxy), we always choose 6 (for file D.MOG), as that's the only file that contains the Constrictor blueprint</li>
+
+							<li>We now construct a number, as follows:
+
+								<ul>
+									<li>Bit 0:
+
+										<ul>
+											<li>0 for systems with tech level 0-9 (so we always load the Coriolis station blueprint)</li>
+
+											<li>1 for systems with tech level 10-14 (so we always load the Dodo station blueprint)</li>
+										</ul>
+
+									</li>
+
+									<li>Bit 1:
+
+										<ul>
+											<li>0 for dangerous systems (anarchy, feudal, multi-government)</li>
+
+											<li>1 for all other, safer systems</li>
+										</ul>
+
+									</li>
+
+									<li>Bit 2: random</li>
+
+									<li>Bit 3: random</li>
+
+									<li>Bits 4-7: 0</li>
+								</ul>
+
+							</li>
+
+							<li>If mission 2 has started and we have picked up the plans, or we are in witchspace, we override this choice with D.MOC (low tech systems) or D.MOD (high tech systems), as these are the only two files containing Thargoids and Thargons</li>
+						</ul>
+
+						<p>This means that, outside of the mission and witchspace overrides:</p>
+
+						<ul>
+							<li>Low tech level systems load files A, C, E, G, I, K, M, O (which contain the Coriolis station)
+
+								<ul>
+									<li>Of which dangerous low tech systems load files A, E, I, M</li>
+
+									<li>Of which safer low tech systems load files C, G, K, O</li>
+								</ul>
+
+							</li>
+
+							<li>High tech level systems load files B, D, F, H, J, L, N, P (which contain the Dodo station)
+
+								<ul>
+									<li>Of which dangerous high tech systems load files B, F, J, N</li>
+
+									<li>Of which safer high tech systems load files D, H, L, P</li>
+								</ul>
+
+							</li>
+
+							<li>Dangerous system load files A, B, E, F, I, J, M, N
+
+								<ul>
+									<li>Of which dangerous low tech systems load files A, E, I, M</li>
+
+									<li>Of which dangerous high tech systems load files B, F, J, N</li>
+								</ul>
+
+							</li>
+
+							<li>Safer system load files C, D, G, H, K, L, O, P
+
+								<ul>
+									<li>Of which safer low tech systems load files C, G, K, O</li>
+
+									<li>Of which safer high tech systems load files D, H, L, P</li>
+								</ul>
+
+							</li>
+						</ul>
+
+						<p>So now you know what all that extra chunka-chunka is about when you hit the launch button in the disc version.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="ship_blueprints.html">Ship blueprints</a><a class="next" rel="next" title="Next deep dive" href="ship_data_blocks.html">Ship data blocks</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

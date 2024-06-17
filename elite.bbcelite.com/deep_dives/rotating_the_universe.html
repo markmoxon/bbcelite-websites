@@ -1,0 +1,87 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "rotating_the_universe.html", "Rotating the universe", "Rotating the universe", "A deep dive into rotating the universe in BBC Micro Elite", "elite", "deep_dives_moving_and_rotating_in_space", "rotating_the_universe");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="program_flow_of_the_ship-moving_routine.html">Program flow of the ship-moving routine</a><a class="next" rel="next" title="Next deep dive" href="orientation_vectors.html">Orientation vectors</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">What happens to the rest of the universe when we rotate our ship?</h2>
+
+						<p>When we rotate our ship with the keyboard or joystick, it turns out that it's a lot easier to rotate the whole universe around our Cobra, rather than rotating our ship and ending up having to include our orientation into every other calculation. Because there is no up or down in space, rotating the whole universe has the same effect, as everything is drawn from the perspective of our cockpit.</p>
+
+						<p>In other words, if we pitch or roll when fighting Thargoids near the sun, then the game will actually rotate the Thargoid mothership, the two Thargons, the sun and the off-screen planet, rather than rotating our own ship:</p>
+
+						<img class="titleImage" src="/images/6502sp/thargoids.png" alt="Thargoids and Thargons in the 6502 Second Processor version of Elite" />
+
+						<p><a href="/cassette/main/subroutine/mveit_part_5_of_9.html">Part 5 of the MVEIT routine</a> is responsible for performing this act of seeming omnipotence, and it does this by rotating the (x, y, z) coordinate of the ship we are processing, by the pitch and roll angles alpha (roll) and beta (pitch), so the ship moves as we pitch and roll.</p>
+
+						<p>It does this using the exact same rotation equations that MVS4 uses in part 7 to rotate the ship's orientation vectors (see the deep dive on <a href="pitching_and_rolling.html">pitching and rolling</a> for details of the maths behind the following). But just as with part 7, there is a twist, and yet again, the twist is all about Minsky.</p>
+
+						<p>The twist is that, this time, the pitch and roll calculations are done in a mixed-up order. In MVS4, we do the roll calculations first:</p>
+
+<pre class="articleIndented">  y = y - alpha * x
+  x = x + alpha * y
+</pre>
+
+						<p>and then we do the pitch calculations:</p>
+
+<pre class="articleIndented">  y = y - beta * z
+  z = z + beta * y
+</pre>
+
+						<p>and because we use the updated y in the x and z calculations, we get to enjoy a more accurate result because of the Minsky effect, like this:</p>
+
+<pre class="articleIndented">  x -&gt; x + alpha * (y - alpha * x)
+  y -&gt; y - alpha * x - beta * z
+  z -&gt; z + beta * (y - alpha * x - beta * z)
+</pre>
+
+						<p>The calculation used here is very similar, but we switch the order of the x and z calculations, by doing these two first:</p>
+
+<pre class="articleIndented">  y = y - alpha * x
+  z = z + beta * y
+</pre>
+
+						<p>and then these two:</p>
+
+<pre class="articleIndented">  y = y - beta * z
+  x = x + alpha * y
+</pre>
+
+						<p>The result is this really complex set of transformations:</p>
+
+<pre class="articleIndented">  x -&gt; x + alpha * (y - alpha * x - beta * (z + beta * (y - alpha * x)))
+  y -&gt; y - alpha * x - beta * (z + beta * (y - alpha * x))
+  z -&gt; z + beta * (y - alpha * x)
+</pre>
+
+						<p>This is a pretty hard-to-follow variation on the classic Minsky equations implemented in MVS4, but it still encapsulates the essence of the Minsky approach, which is to use the updated values when calculating. It's just that this time we use the updated values of both y and z in the calculation, and that leads to a different result.</p>
+
+						<p>We implement this variation like this, using K2 to store the updated value of Y as we progress through the above stages:</p>
+
+<pre class="articleIndented">  1. K2 = y - alpha * x
+  2. z = z + beta * K2
+  3. y = K2 - beta * z
+  4. x = x + alpha * y
+</pre>
+
+						<p>We also discard the low bytes from the angle multiplications, so all of the above multiplications get divided by 256. This effectively converts the values of alpha and beta from their stored value ranges of 0 to 31 and 0 to 8 in ALP1 and BET1 into the ranges 0 to 0.125 and 0 to 0.03125. These figures work well as small angles in radians, which is why we can apply the small angle approximation to them above.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="program_flow_of_the_ship-moving_routine.html">Program flow of the ship-moving routine</a><a class="next" rel="next" title="Next deep dive" href="orientation_vectors.html">Orientation vectors</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

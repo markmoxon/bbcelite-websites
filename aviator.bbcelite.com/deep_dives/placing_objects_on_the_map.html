@@ -1,0 +1,97 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "placing_objects_on_the_map.html", "Placing objects on the map", "Placing objects on the map", "A deep dive into placing objects on the map in BBC Micro Aviator", "aviator", "deep_dives_3d_geometry", "placing_objects_on_the_map");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="3d_objects.html">3D objects<a class="next" rel="next" title="Next deep dive" href="rotation_matrices.html">Rotation matrices</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Reconstructing the game's map from the data in the game code</h2>
+
+						<p>If you were lucky enough to be in the market for a flight simulator in the early 1980s, then Aviator came with a pretty hefty bundle of goodies in the box - a relatively unusual event in those early days of home computing, when most games came packaged with no more than a tiny cassette inlay card and a bit of fancy cover art. Sure, Elite came along a bit later and really went to town (heck, you could hardly close the box!), but Aviator had already paved the way, arriving with a very generous manual for the time, a separate poster showing the game keys, a leaflet of loading instructions, and - last but very definitely not least - a foldout map of Aviator's world, which is essential for anyone trying to navigate their way around.</p>
+
+						<p>Here's what my copy of the printed map looks like (complete with authentic, 35-year-old fold lines):</p>
+
+						<img class="titleImage themeLight" style="max-width: 90%; width: 600px; height: auto; border: 0" src="/images/map/map.jpg" alt="Printed map of Aviator's world" /><img class="titleImage themeDark" style="max-width: 90%; width: 600px; height: auto; border: 0" src="/images/map/map.jpg" alt="Printed map of Aviator's world" /><img class="titleImage themeElite" style="max-width: 90%; width: 600px; height: auto; border: 0" src="/images/map/map.jpg" alt="Printed map of Aviator's world" />
+
+						<p>This map is incredibly useful - not to mention, a great physical extra to bundle with the game - but how accurately does it match up with the 3D world in the game code? Let's take a look.</p>
+
+						<h2 class="articleSubheader">Object locations<br />
+													 ---------------</h2>
+
+						<p>The world of Aviator is <a href="lines_and_points.html">made up entirely of lines</a>, and these lines are grouped together to form objects. Some of these objects, such as aliens and bullets, are not always present in the world, but when they are they can move around. However, the bulk of the world is made up of static objects, such as bridges and towns, and they are always present and don't go anywhere.</p>
+
+						<p>As described in the deep dive on <a href="3d_objects.html">3D objects</a>, these static objects break down into four main groups:</p>
+
+						<ul>
+							<li>The main objects: Acornsville, the runway, the lake/river, and the suspension bridge</li>
+
+							<li>The trees, of which there are two types: trees like the one next to the runway, and another design</li>
+
+							<li>The hills, of which there are two types: large hills and small hills</li>
+
+							<li>Fields, each of which has its own unique size and shape</li>
+						</ul>
+
+						<p>All these objects have fixed locations on the map. To be more specific, an object's location is the location of that object's anchor point, and the lines in that object are stored as relative to the anchor point. The 3D world coordinates of these anchor points can be found in the (<a href="/source/main/variable/xobjecthi.html">xObjectHi</a> <a href="/source/main/variable/xobjectlo.html">xObjectLo</a>), (<a href="/source/main/variable/yobjecthi.html">yObjectHi</a> <a href="/source/main/variable/yobjectlo.html">yObjectLo</a>), (<a href="/source/main/variable/zobjecthi.html">zObjectHi</a> <a href="/source/main/variable/zobjectlo.html">zObjectLo</a>) tables, so it's relatively straightforward to pull these values out of the code and plot them on a map.</p>
+
+						<p>To start, here's a map showing the locations of the anchor points of the four main objects (the lake/river is made up of three objects):</p>
+
+						<img class="titleImage themeLight" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/objects_white.png" alt="Map of main objects in Aviator" /><img class="titleImage themeDark" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/objects_black.png" alt="Map of main objects in Aviator" /><img class="titleImage themeElite" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/objects_black.png" alt="Map of main objects in Aviator" />
+
+						<p>The map area covers coordinates in the range 0 to &amp;FFFF, or 0 to 65535. According to the manual, the map shows an area of approximately 15 miles across, so each square is approximately 1.875 miles across.</p>
+
+						<p>Next up are the anchor points of the trees. There are eight with the same design as the tree near the runway (object 6), and eight with a different design (object 7):</p>
+
+						<img class="titleImage themeLight" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/trees_white.png" alt="Map of trees in Aviator" /><img class="titleImage themeDark" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/trees_black.png" alt="Map of trees in Aviator" /><img class="titleImage themeElite" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/trees_black.png" alt="Map of trees in Aviator" />
+
+						<p>Now for the hills. There are four small hills (object 8) and four large hills (object 9):</p>
+
+						<img class="titleImage themeLight" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/hills_white.png" alt="Map of hills in Aviator" /><img class="titleImage themeDark" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/hills_black.png" alt="Map of hills in Aviator" /><img class="titleImage themeElite" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/hills_black.png" alt="Map of hills in Aviator" />
+
+						<p>And finally, there are 14 fields scattered around the world:</p>
+
+						<img class="titleImage themeLight" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/fields_white.png" alt="Map of fields in Aviator" /><img class="titleImage themeDark" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/fields_black.png" alt="Map of fields in Aviator" /><img class="titleImage themeElite" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/fields_black.png" alt="Map of fields in Aviator" />
+
+						<p>The fields are where the aliens get spawned at the start of the Theme, where they begin gorging themselves on crops, before sprouting tentacles and heading for the town of Acornsville in the bottom-left corner.</p>
+
+						<h2 class="articleSubheader">Comparing with the printed map<br />
+													 ------------------------------</h2>
+
+						<p>If we put all the objects onto one map, we get this comprehensive, if slightly crowded world:</p>
+
+						<img class="titleImage themeLight" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/all_white.png" alt="Map of Aviator's world" /><img class="titleImage themeDark" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/all_black.png" alt="Map of Aviator's world" /><img class="titleImage themeElite" style="max-width: 90%; width: 405px; height: auto;  border: 0" src="/images/map/all_black.png" alt="Map of Aviator's world" />
+
+						<p>So how does this compare with the printed map? Let's put them next to each other, cropped to the same map area (and, for those browsing in a dark theme, with the same colour scheme):</p>
+
+						<style>
+							.mapImage { display: inline-block; width: auto; height: 300px; margin: 1ch; }
+						</style>
+
+						<div style="text-align: center; margin: 3ch auto;"><img class="titleImage mapImage themeLight" style="border: 0" src="/images/map/map_grid_white.png" alt="Map of Aviator's world" /><img class="titleImage mapImage themeDark" style="border: 0" src="/images/map/map_grid_white.png" alt="Map of Aviator's world" /><img class="titleImage mapImage themeElite" style="border: 0" src="/images/map/map_grid_white.png" alt="Map of Aviator's world" /><img class="titleImage mapImage" style="border: 0" src="/images/map/map_grid.jpg" alt="Map of Aviator's world with grid" /></div>
+
+
+						<p>For the most part, this matches up reasonably well with the printed map that comes with the game, especially when you consider that the map generated from the source contains anchor points - so Acornsville, for example, is anchored in the bottom-left corner, but the actual town will be to the north and east of that anchor point (as is the case for all the objects), so the hand-drawn map isn't as far-off as it might appear.</p>
+
+						<p>There is one genuine discrepancy, though. In the printed map, there is an extra hill on the right edge of the map, to the northeast of the runway. This hill does not exist in the game, which is a bit of a mystery; perhaps it did exist at some point, when the printed map was drawn, but got removed later? After all, there are only four distinct hills in each of the two object groups in objects 8 and 9, but the code can support eight objects in each group, so the game could easily support an extra hill.</p>
+
+						<p>Unfortunately, the only other clue I've found is this scan of <a href="https://pbs.twimg.com/media/Eq1xsu5WMAQNfxf?format=jpg&name=medium">Geoff Crammond's original hand-drawn map</a>, from <a href="https://twitter.com/idesine/status/1345858640255836162">this Tweet</a>... but it doesn't quite stretch that far to the east, so the mystery of the missing hill will have to remain a mystery for a little longer.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="3d_objects.html">3D objects<a class="next" rel="next" title="Next deep dive" href="rotation_matrices.html">Rotation matrices</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

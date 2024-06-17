@@ -1,0 +1,109 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "hacking_the_landscape.html", "Hacking the landscape", "Hacking the landscape", "A deep dive into hacking the landscape in Archimedes Lander", "lander", "deep_dives_miscellaneous", "hacking_the_landscape");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="landers_origins_on_the_arm1.html">Lander's origins on the ARM1</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Hacking the Lander source to create huge landscapes on faster machines</h2>
+
+						<p>One of the great joys of analysing a codebase like Lander is when you reach the point when you think you might be able to hack the game. I've had great fun <a href="https://www.bbcelite.com/hacks/">hacking Elite</a> and <a href="https://revs.bbcelite.com/deep_dives/backporting_the_nurburgring_track.html">adding features to Revs</a>, and I'm glad to report that Lander is no exception.</p>
+
+						<p>It's not as if the gauntlet hadn't already been thrown down. If you take a look at the article that David Braben wrote in the November 1987 issue of The Micro User (and which I've dissected in the deep dive <a href="in_david_brabens_own_words.html">In David Braben's own words</a>), then you'll see there's this tantalising picture in there, complete with a jaunty editorial tilt:</p>
+
+						<img class="titleImage photo" style="width: 350px" src="/images/deep_dives/hacking/original_big_zarch.jpg" alt="An image of Zarch from The Micro User, November 1987" />
+
+						<p>This is Zarch, but with a big landscape. It looks great! It also seems to include the blue channel in the colour of the landscape tiles, so perhaps this is where the mysterious sixth instruction in <a href="/source/main/subroutine/getlandscapetilecolour.html">GetLandscapeTileColour</a> came into play (the AND R2, R4, #&amp;10)? It's very intriguing, and this is what David Braben had to say about it at the time:</p>
+
+						<blockquote class="articleIndented">
+							<p>With the display technique chosen, the frame rate dictated the approximate number of tiles which could be used and also the amount of scenery. The display looks much better if these are greatly increased - as the picture on this page shows - but sadly this reduces the frame rate to only one or two frames per second - a succession of stills.</p>
+						</blockquote>
+
+						<p>This has all passed into Zarch folklore, but astonishingly, it is now reality. Jon Abbott, the mastermind behind the amazing <a href="https://forums.jaspp.org.uk/forum/index.php">JASPP Archimedes Software Preservation Project</a>, has done some genuinely awe-inspiring work on optimising and enhancing Zarch, and the results are even more impressive than the above screenshot. If you want to go down a rabbit hole - and trust me, you do! - then I highly recommend this <a href="https://stardot.org.uk/forums/viewtopic.php?f=62&amp;t=10313">long but rewarding thread on Stardot</a>, as well as Jon's incredible video on YouTube of <a href="https://youtu.be/xrN2soK60bA">Zarch running with an extended landscape</a>. It is quite amazing.</p>
+
+						<p>So when I was analysing Lander, peeling back all the layers to reveal David Braben's wonderful code, I kept the magazine image and the optimised Zarch in mind. Could Lander possibly support a larger landscape too? The answer, excitingly, is yes.</p>
+
+						<h2 class="articleSubheader">BigLander<br />
+						                             ---------</h2>
+
+						<p>BigLander is a gently hacked version of the original Lander, to give the game a bigger landscape and update it to run on more modern RISC OS machines. It looks like this:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/deep_dives/hacking/big_lander_63_2.png" alt="BigLander with a landscape size of 63x63" />
+
+						<p>You can play BigLander in a number of ways:</p>
+
+						<ul>
+							<li>You can play it <a href="https://archi.medes.live/#ff=14400&amp;preset=a5000&amp;disc=https://lander.bbcelite.com/versions/big-lander/!BigLander.zip&amp;autoboot=desktop%20filer_run%20HostFS::HostFS.!BigLander">in your browser on Archimedes Live</a> (though it is pretty slow in this version as the fastest available machine is an A5000, but at least it gives you the idea).</li>
+
+							<li>You can also <a href="/versions/big-lander/!BigLander.zip">download a zip of BigLander</a> that is ready to be deployed into HostFS in an emulator, or into a real machine (though you may have to set filetypes manually for the latter). This version has a landscape size of 64 by 64 tiles.</li>
+
+							<li>BigLander can be built using the repository accompanying this website, in the <a href="https://github.com/markmoxon/archimedes-lander/tree/big-landscape">big-landscape branch</a>. If you want to play with different landscape sizes, this is the best option.</li>
+
+							<li>For comparison, you can also play <a href="https://archi.medes.live/#ff=14400&amp;disc=lander&amp;autoboot">the original Lander in your browser</a>.</p>
+
+							<li>If you want to see how far BigLander can be pushed, you can also <a href="/versions/big-lander/!BigLander.zip">download a zip of BigLander with a landscape size of 121 x 121 files</a>.</li>
+						</ul>
+
+						<p>The source code for BigLander is identical to that of Lander, but with a small number of modifications to extend the landscape and support RISC OS 3.5 and later. You can see these modifications by looking in the <a href="https://github.com/markmoxon/archimedes-lander/blob/big-landscape/1-source-files/main-sources/Lander.arm">main Lander.arm source file</a> and searching for "Mod:".</p>
+
+						<p>The default version of BigLander has a landscape size of 64 by 64 tiles, so TILES_X and TILES_Z are both 65 (see the next section for an explanation of these variables). It looks like this:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/deep_dives/hacking/big_lander_63.png" alt="BigLander with a landscape size of 63x63" />
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/deep_dives/hacking/big_lander_63_3.png" alt="BigLander with a landscape size of 63x63" />
+
+						<p>The biggest possible size seems to be 121 x 121 tiles, with TILES_X and TILES_Z both set to 122. It looks like this:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/deep_dives/hacking/big_lander_122.png" alt="BigLander with a landscape size of 122x122" />
+
+						<p>When you compare BigLander with the original version's 12 x 10 tiles, it's quite a difference:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/general/destroying_trees.png" alt="Destroying trees in Acorn Archimedes Lander" />
+
+						<p>You'll need a decent Archimedes to run BigLander - a Risc PC or Raspberry Pi makes a good choice - and it can be a bit too fast to play easily, but if you want to experiment with the best landscape size for your system, <a href="https://github.com/markmoxon/archimedes-lander/tree/big-landscape">check out the repository</a>, where you can also find instructions on getting BigLander working on your system.</p>
+
+						<h2 class="articleSubheader">Looking for the landscape<br />
+						                             -------------------------</h2>
+
+						<p>The key to creating BigLander was to look through the source code for any mentions of the landscape's tile dimensions. Luckily there is a pretty big clue in the <a href="/source/main/subroutine/drawlandscapeandbuffers_part_1_of_4.html">DrawLandscapeAndBuffers</a> routine, which steps through the landscape, row by row, one tile at time. The landscape dimensions are used as counters for the inner and outer loops of this process, so it wasn't hard to extract these values into the TILES_X and TILES_Z configuration variables.</p>
+
+						<p>Another vital piece of the puzzle is the tile size. Again, this wasn't hard to extract, this time from the object map. This routine places objects on tile corners in the map, and it does this by using the top byte of the x- and z-coordinates to get the tile number. This means that coordinate &amp;xx000000 points to tile &amp;xx, which means that each tile must be &amp;01000000 in size. And so I extracted this figure into the TILE_SIZE configuration variable, and slowly other constants revealed themselves as obvious multiples of this value... so LAUNCHPAD_SIZE turned out to be TILE_SIZE * 8, the SAFE_HEIGHT for our ship came in as TILE_SIZE * 3 / 2, and even the landscape offsets in LANDSCAPE_X and LANDSCAPE_Z turned out to be related to the tile size:</p>
+
+<pre class="articleIndented">  LANDSCAPE_X_WIDTH = TILE_SIZE * (TILES_X - 2)
+
+  LANDSCAPE_X = LANDSCAPE_X_WIDTH / 2
+
+  LANDSCAPE_Z_DEPTH = TILE_SIZE * (TILES_Z - 1)
+
+  LANDSCAPE_Z = LANDSCAPE_Z_DEPTH + (10 * TILE_SIZE)
+</pre>
+
+						<p>At this point changing the values of TILES_X and TILES_Z just made things crash, but as I worked through the code, spotting yet another value that must surely be related to the tile sizes and landscape dimensions, things slowly improved.</p>
+
+						<p>At one point the landscape started working with an extra tile or two in each direction, but crashed when I made it bigger; it turns out that quite a few of the variable tables depend on the number of tiles, in particular the corner stores that are used when drawing the landscape, and the graphics buffers that implement the depth sorting. The corner stores are dependent on the size of TILES_X (as we need to store all the corner coordinates for each tile row in the corner stores, so the longer the row, the larger the corner store), and the graphics buffers are dependent on TILES_Z (as we need a graphics buffer for each tile corner row, so the more rows we have, the more buffers we need in <a href="/source/main/variable/graphicsbuffers.html">graphicsBuffers</a> and <a href="/source/main/variable/graphicsbuffersend.html">graphicsBuffersEnd</a>). The solution was to build these tables with FOR loops, so they automatically grow with the number of tiles.</p>
+
+						<p>There was also the <a href="/source/main/variable/landscapeconfig.html">landscapeConfig</a> table, which doesn't really do much except store the width of each row, so this needed extending to cater for all our extra rows. And then there was the <a href="/source/main/subroutine/getlandscapetilecolour.html">GetLandscapeTileColour</a> routine, which is only designed to cope with tile rows 1 to 10, and returns white for higher row numbers (so at one point I had the landscape drawing correctly, but with almost all of it in white).</p>
+
+						<p>Eventually, though, I reached the point where ridiculous landscape sizes were working, but they were very slow on the Archimedes emulator I was using - Braben was right when he called it "a succession of stills". So I reached out the Stardot community, who helped me tweak some small parts of the code to make it run on all versions of RISC OS... and that's when BigLander was born.</p>
+
+						<p>I hope you enjoy it.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="landers_origins_on_the_arm1.html">Lander's origins on the ARM1</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

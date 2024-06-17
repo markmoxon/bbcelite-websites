@@ -1,0 +1,274 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "rotation_matrices.html", "Rotation matrices", "Rotation matrices", "A deep dive into rotation matrices in BBC Micro Aviator", "aviator", "deep_dives_3d_geometry", "rotation_matrices");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="placing_objects_on_the_map.html">Placing objects on the map</a><a class="next" rel="next" title="Next deep dive" href="rotating_and_translating_points_in_3d_space.html">Rotating and translating points in 3D space</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The four matrices that lie at the heart of Aviator's 3D model</h2>
+
+						<p>There are four matrices in Aviator that are absolutely core to the 3D geometry used to generate the view from the cockpit. These rotation matrices can be interpreted in a number of ways, but perhaps the easiest way to understand them is via different frames of reference.</p>
+
+						<p>Imagine we are sitting in our Spitfire, hurtling through the air in search of aliens to attack. Attached to our right wing is one of our guns. As we fly around, looping the loop and shooting under the suspension bridge, then as far as we're concerned, that gun stays exactly where it is: on our right wing. From our point of view as the pilot, the gun is stationary and doesn't move; it's always just to our right.</p>
+
+						<p>Now look at the same scene from the point of view of an observer on the ground. From their perspective, the gun on our right wing is flying all over the sky - it certainly isn't stationary, it's flying under bridges and attacking aliens and not sitting still for one moment.</p>
+
+						<p>The difference is one of perspective. From our perspective - with respect to our frame of reference - the gun is always just to our right, but from the observer's perspective - with respect to the outside world's frame of reference - the gun is flying all over the place. Rotation matrices give us a way of taking 3D coordinates and vectors, and mathematically moving them from one frame of reference to another.</p>
+
+						<h2 class="articleSubheader">Rotating and translating<br />
+													 ------------------------</h2>
+
+						<p>Generally, the full process for moving 3D point coordinates between frames of reference consists of both a rotation and a translation. In the case of the ground-based observer, the translation is between the observer's origin and the plane's origin, while the rotation is between the observer's coordinate axes and the plane's coordinate axes. See the deep dive on <a href="rotating_and_translating_points_in_3d_space.html">rotating and translating points in 3D space</a> for more about how this combination is calculated.</p>
+
+						<p>When moving vectors between frames of reference, such as the vectors that represent aerodynamic forces acting on the plane, or the velocity vectors for the bullets, the transformation only requires us to do the rotation part. See the deep dive on <a href="the_flight_model.html">the flight model</a> for examples of moving forces between frames of reference.</p>
+
+						<p>This deep dive concentrates on the maths behind the rotation aspect of these transformations. This, then, is what the four rotation matrices do:</p>
+
+						<ul>
+							<li>Matrix 1 transforms a coordinate from the outside world's frame of reference to the plane's frame of reference.</li>
+
+							<li>Matrix 2 does the reverse, and transforms a coordinate from the plane's frame of reference to the outside world's frame of reference.</li>
+
+							<li>Matrix 3 transforms a coordinate from the plane's frame of reference to the outside world's frame of reference, but only in the roll axis, not the pitch and yaw axes. This calculation is used in the flight model calculations.</li>
+
+							<li>Matrix 4 transforms a coordinate from the outside world's frame of reference to the plane's frame of reference, but only in the pitch and roll axes, not the yaw axis. We can use this matrix to transform the horizon line and gravity vector, as they aren't affected by yaw rotation, so using this matrix is a bit quicker than doing a full matrix 1 transformation.</li>
+						</ul>
+
+						<p>Let's look at how the four matrices are constructed.</p>
+
+						<h2 class="articleSubheader">Matrix 1<br />
+													 --------</h2>
+
+						<p>Matrix 1 is the main rotation matrix that implements the core frame of reference transformation in Aviator. Here are the details:</p>
+
+						<ul>
+							<li>Rotates a point or vector through the plane's pitch, roll and yaw</li>
+
+							<li>Rotates a point or vector from the outside world's frame of reference to the plane's frame of reference</li>
+
+							<li>Used in <a href="/source/main/subroutine/applyflightmodel_part_2_of_7.html">ApplyFlightModel (Part 2 of 7)</a>, <a href="/source/main/subroutine/processline_part_6_of_7.html">ProcessLine (Part 6 of 7)</a> and <a href="/source/main/subroutine/updateradarblip.html">UpdateRadarBlip</a></li>
+						</ul>
+
+						<p>When applied to a point, matrix 1 will rotate it around the origin by the orientation of the plane (i.e. by the plane's pitch, roll and yaw). If you imagine seeing a plane overhead and trying to visualise what the pilot might be seeing out of their cockpit, you might subconsciously turn your head and incline your neck to face in the same direction as the plane. That's essentially what this matrix does, by rotating the three axes from their orientation on the ground to their orientation on the plane.</p>
+
+						<p>The standard rotation matrices for rotating around the three individual axes are as follows:</p>
+
+						<ul>
+							<li>Pitch through angle a (rotate about x-axis):
+
+<pre class="articleIndented">  [ 1     0        0    ]
+  [ 0   cos(a)  -sin(a) ]
+  [ 0   sin(a)   cos(a) ]
+</pre>
+
+							</li>
+
+							<li>Yaw through angle b (rotate about y-axis):
+
+<pre class="articleIndented">  [  cos(b)   0   sin(b) ]
+  [    0      1     0    ]
+  [ -sin(b)   0   cos(b) ]
+</pre>
+
+							</li>
+
+							<li>Roll through angle c (rotate about z-axis):
+
+<pre class="articleIndented">  [  cos(c)   sin(c)    0 ]
+  [ -sin(c)   cos(c)    0 ]
+  [    0        0       1 ]
+</pre>
+
+    </li>
+						</ul>
+
+						<p>These are the matrices for a right-handed set of axes, but Aviator uses a left-handed set of axes, so we reflect the angles by subtracting them from 180 degrees. As sin(180 - X) = sin(X) and cos(180 - X) = -cos(X), we need to use the following matrices, which are the same except all the cos values are negated:</p>
+
+						<ul>
+							<li>Pitch through angle a (rotate about x-axis):
+
+<pre class="articleIndented">  [ 1     0        0    ]
+  [ 0  -cos(a)  -sin(a) ]
+  [ 0   sin(a)  -cos(a) ]
+</pre>
+
+							</li>
+
+							<li>Yaw through angle b (rotate about y-axis):
+
+<pre class="articleIndented">  [ -cos(b)   0   sin(b) ]
+  [    0      1     0    ]
+  [ -sin(b)   0  -cos(b) ]
+</pre>
+
+							</li>
+
+							<li>Roll through angle c (rotate about z-axis):
+
+<pre class="articleIndented">  [ -cos(c)   sin(c)    0 ]
+  [ -sin(c)  -cos(c)    0 ]
+  [    0        0       1 ]
+</pre>
+
+    </li>
+						</ul>
+
+						<p>(Incidentally, this latter matrix is transposed to create matrix 3 - see below for details.)</p>
+
+						<p>We can combine these three rotations into one transformation by multiplying the three matrices together. The order in which they are multiplied affects the final result, and Aviator calculates its transformation matrix as "roll then pitch then yaw", so that's what we calculate below.</p>
+
+						<p>In the following, sa is shorthand for sin(a), cb is shorthand for cos(b), and so on.</p>
+
+						<p>First, we multiply the roll and pitch matrices:</p>
+
+<pre class="articleIndented">  [ -cc   sc   0 ]   [ 1    0    0 ]   [ -cc   -ca * sc   -sa * sc ]
+  [ -sc  -cc   0 ] x [ 0  -ca  -sa ] = [ -sc    ca * cc    sa * cc ]
+  [   0    0   1 ]   [ 0   sa  -ca ]   [   0       sa        -ca   ]
+</pre>
+
+						<p>(Incidentally, we copy this interim result into matrix 4 - see below for details.)</p>
+
+						<p>We then multiply the result by the yaw matrix to get the final rotation matrix for rotating a point through the three angles:</p>
+
+<pre class="articleIndented">    [ -cc   -ca * sc   -sa * sc ]   [ -cb   0   sb ]
+    [ -sc    ca * cc    sa * cc ] x [   0   1    0 ]
+    [   0       sa        -ca   ]   [ -sb   0  -cb ]
+
+    [ (cb * cc) + (sa * sb * sc)   -ca * sc     (sa * cb * sc) - (sb * cc) ]
+  = [ (cb * sc) - (sa * sb * cc)    ca * cc    -(sa * cb * cc) - (sb * sc) ]
+    [           sb * ca                sa                 ca * cb          ]
+</pre>
+
+						<p>This is what we want our matrix to look like, so now let's look at how this is implemented in Aviator. As a first step, the <a href="/source/main/subroutine/projectaxisangle.html">ProjectAxisAngle</a> routine converts the rotation angles into the constituent parts by calculating the following variables, using the <a href="/source/main/subroutine/sine16bit.html">Sine16Bit</a> function for the trigonometry:</p>
+
+<pre class="articleIndented">  mx1 = -cos(a)
+  mx2 =  sin(a)
+
+  my1 = -cos(b)
+  my2 =  sin(b)
+
+  mz1 = -cos(c)
+  mz2 =  sin(c)
+</pre>
+
+						<p>If we substitute these values into the above matrix, we end up with the following:</p>
+
+<pre class="articleIndented">  [  (mx2 * my2 * mz2)     -mx1 * mz2      (mx2 * my1 * mz2) ]
+  [    + (my1 * mz1)                         - (my2 * mz1)   ]
+  [                                                          ]
+  [ -(mx2 * my2 * mz1)      mx1 * mz1     -(mx2 * my1 * mz1) ]
+  [    + (my1 * mz2)                         - (my2 * mz2)   ]
+  [                                                          ]
+  [     mx1 * my2              mx2            mx1 * my1      ]
+</pre>
+
+						<p>So this is how the matrix is calculated, piece by piece, until it is stored in matrix 1. See the <a href="/source/main/subroutine/setmatrices.html">SetMatrices</a> routine for all the gory details.</p>
+
+						<h2 class="articleSubheader">Matrix 2<br />
+													 --------</h2>
+
+						<p>Matrix 2 is the opposite transformation to matrix 1. Here are the details:</p>
+
+						<ul>
+							<li>Reverses the rotation in matrix 1</li>
+
+							<li>Rotates a point or vector from the plane's frame of reference to the outside world's frame of reference</li>
+
+							<li>Used in <a href="/source/main/subroutine/applyflightmodel_part_6_of_7.html">ApplyFlightModel (Part 6 of 7)</a> and <a href="/source/main/subroutine/fireguns.html">FireGuns</a></li>
+						</ul>
+
+						<p>Matrix 2 is the transpose of matrix 1. In other words, if matrix 1 looks like this:</p>
+
+<pre class="articleIndented">  [ m0 m1 m2 ]
+  [ m3 m4 m5 ]
+  [ m6 m7 m8 ]
+</pre>
+
+						<p>then matrix 2 looks like this:</p>
+
+<pre class="articleIndented">  [ m0 m3 m6 ]
+  [ m1 m4 m7 ]
+  [ m2 m5 m8 ]
+</pre>
+
+						<p>The transpose of a rotation matrix performs the reverse transformation, so when matrix 2 is applied to a point after matrix 1 has been applied, it will rotate it back to the original point. In practice, the transpose is used to take a point that's relative to the plane's orientation, and translate it so that it's relative to the outside world.</p>
+
+						<h2 class="articleSubheader">Matrix 3<br />
+													 --------</h2>
+
+						<p>Matrix 3 just rotates through the inverse of the plane's roll, i.e. around the z-axis. Here are the details:</p>
+
+						<ul>
+							<li>Rotates a point or vector through the inverse of the plane's roll angle</li>
+
+							<li>Used in <a href="/source/main/subroutine/applyflightmodel_part_6_of_7.html">ApplyFlightModel (Part 6 of 7)</a></li>
+						</ul>
+
+						<p>Matrix 3 is as follows:</p>
+
+<pre class="articleIndented">  [ -cos(c)  -sin(c)   0 ]
+  [  sin(c)  -cos(c)   0 ]
+  [    0        0      1 ]
+</pre>
+
+						<p>which is calculated like this:</p>
+
+<pre class="articleIndented">  [ mz1  -mz2   0 ]
+  [ mz2   mz1   0 ]
+  [  0     0    1 ]
+</pre>
+
+						<p>This matrix is the transpose of one of the three rotation matrices from the matrix 1 calculation above - the matrix that rolls through angle c (rotate about z-axis). This matrix therefore undoes that rotation, so it effectively rotates through an angle of -c.</p>
+
+						<p>The 0s and 1s in matrix 3 are hardcoded in memory, with the latter being stored as &amp;FFFE = %11111111 11111110, with the sign in bit 0.</p>
+
+						<h2 class="articleSubheader">Matrix 4<br />
+													 --------</h2>
+
+						<p>Matrix 4 is the same as matrix 1, except it doesn't rotate through the yaw angle. Here are the details:</p>
+
+						<ul>
+							<li>Rotates a point or vector through the plane's pitch and roll only (not the yaw)</li>
+
+							<li>For the horizon and gravity vectors only, this matrix rotates a point from the outside world's frame of reference to the plane's frame of reference (as rotating either of these vectors by yaw has no effect)</li>
+
+							<li>Used in <a href="/source/main/subroutine/applyflightmodel_part_1_of_7.html">ApplyFlightModel (Part 1 of 7)</a>, <a href="/source/main/subroutine/processhorizonline.html">ProcessHorizonLine</a> and <a href="/source/main/subroutine/artificialhorizon.html">ArtificialHorizon</a></li>
+						</ul>
+
+						<p>Matrix 4 is a copy of the interim result when calculating matrix 1, as follows:</p>
+
+<pre class="articleIndented">  [ -cos(c)       cos(a) * sin(c)      sin(a) * sin(c) ]
+  [  sin(c)       cos(a) * cos(c)      sin(a) * cos(c) ]
+  [    0               sin(a)              -cos(a)     ]
+</pre>
+
+						<p>which is calculated like this:</p>
+
+<pre class="articleIndented">  [ mz1     -mx1 * mz2      mx2 * mz2 ]
+  [ mz2      mx1 * mz1     -mx2 * mz1 ]
+  [  0          mx2            mx1    ]
+</pre>
+
+						<p>This is the rotation matrix for a "roll then pitch" rotation (i.e. without any yaw). This can be used in place of a matrix 1 rotation for vectors that are not affected by the yaw rotation - specifically, the gravity vector (which only has a value in the y-axis) and the horizon (which doesn't change if we yaw the outside world's frame of reference). In other words, this does the same job as matrix 1, but is a bit more efficient for these two special cases.</p>
+
+						<p>Incidentally, this last matrix is what Elite uses to rotate its points, because the Cobra Mk III doesn't have a yaw function - it only has pitch and roll. See the deep dive on <a href="https://www.bbcelite.com/deep_dives/pitching_and_rolling.html">pitching and rolling in Elite</a> for details.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="placing_objects_on_the_map.html">Placing objects on the map</a><a class="next" rel="next" title="Next deep dive" href="rotating_and_translating_points_in_3d_space.html">Rotating and translating points in 3D space</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

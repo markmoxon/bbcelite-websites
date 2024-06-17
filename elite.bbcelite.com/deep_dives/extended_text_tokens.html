@@ -1,0 +1,251 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "extended_text_tokens.html", "Extended text tokens", "Extended text tokens", "A deep dive into extended text tokens in BBC Micro Elite", "elite", "deep_dives_text", "extended_text_tokens");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="printing_text_tokens.html">Printing text tokens</a><a class="next" rel="next" title="Next deep dive" href="extended_system_descriptions.html">Extended system descriptions</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The extended text token system in the enhanced versions of Elite</h2>
+
+						<p>All versions of Elite use a clever text tokenisation system to store the game's text in an efficient manner - you can read all about it in the deep dive on <a href="printing_text_tokens.html">printing text tokens</a>. In addition to this system, the enhanced disc and 6502 Second Processor versions of Elite have two additional extended text token systems that provide a lot more text, supporting missions, disc access menus, extended system descriptions and more.</p>
+
+						<p>For example, here's the second briefing screen for <a href="the_constrictor_mission.html">the Constrictor mission</a>, which uses token 10 from the extended token table at <a href="/6502sp/main/variable/tkn1.html">TKN1</a>:</p>
+
+						<img class="titleImage" src="/images/missions/mission_1b.png" alt="The second briefing screen for the Constrictor mission in BBC Micro Elite" />
+
+						<p>The two extended text token systems are as follows:</p>
+
+						<ul>
+							<li>There are 256 recursive tokens in the <a href="/6502sp/main/variable/tkn1.html">TKN1</a> table that can be printed with the <a href="/6502sp/main/subroutine/detok.html">DETOK</a> routine. This is the bulk of the extended token system, and contains any game text that isn't already covered by the standard text tokens or the special extended descriptions in RUTOK.</li>
+
+							<li>There are 27 special extended system descriptions in the <a href="/6502sp/main/variable/rutok.html">RUTOK</a> table that can be printed with the <a href="/6502sp/main/subroutine/detok3.html">DETOK3</a> routine. These override the procedurally generated descriptions for a small group of systems, typically during the two missions when they are used to guide the player towards their mission briefings and goals (though there are some non-mission descriptions in there that provide some interesting Easter eggs for the player to find).</li>
+						</ul>
+
+						<p>To print an extended token, we simply put the token number into the accumulator and call either DETOK or DETOK3. It's a lot simpler than the encoding system we have to use with TT27 for the standard tokens, though under the hood, the extended token system is just as complicated...</p>
+
+						<h2 class="articleSubheader">Types of extended token<br />
+													 -----------------------</h2>
+
+						<p>Just like the standard text tokens, the tokens in the TKN1 and RUTOK tables are themselves composed of different types of token, though this complexity is hidden inside the routine that does the actual printing. This routine is known by two names, which are aliases of each other: <a href="/6502sp/main/subroutine/tt26.html">TT26</a>, which shares its name with the character printing routine in the BBC Micro cassette version, and DASC, which points to exactly the same routine. We'll talk about DASC here, as it's a slightly friendlier name.</p>
+
+						<p>Like the standard token system, with its control codes, two-letter tokens and recursive tokens, there are quite a few different types of extended token that DASC prints. They are:</p></p>
+
+						<ul>
+							<li>Jump tokens: Instead of printing, these tokens call the corresponding routine from the jump table at <a href="/6502sp/main/variable/jmtb.html">JMTB</a>. These can do anything from setting the letter case to rotating ships on screen while waiting for key presses.</li>
+
+							<li>Characters: These are standard ASCII characters, with the case determined by the extended token flags.</li>
+
+							<li>Random tokens: These are used to display the procedurally generated extended system descriptions, which use the random number generator to generate random sequences of tokens. This randomness can be controlled by seeding the random number generator before printing, which is how we ensure each system always has the same description.</li>
+
+							<li>Extended recursive tokens: These work in the same way as the recursive tokens from the standard text token system, allowing us to include tokens within tokens.</li>
+
+							<li>Extended two-letter tokens: These work in the same way as the two-letter tokens in the standard text token system, but with a larger range of two-letter sequences that extends the standard set, at the expense of dropping four of the original tokens.</li>
+						</ul>
+
+						<p>As with the standard token system, the type of token is determined by the character code that is stored in memory. So, in the same way that control codes in standard text tokens are in the range 0-13, jump tokens in the extended text tokens are in the range 1-31, and random tokens are in the range 91-128. Here's a breakdown of the code ranges:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Character</th><th>Macro</th><th>Process</th></tr>
+							<tr><td>1-31</td><td>EJMP</td><td>Call the corresponding JMTB routine</td></tr>
+							<tr><td>32-64</td><td>ECHR</td><td>Print numbers and punctuation with TT27</td></tr>
+							<tr><td>65-90</td><td>ECHR</td><td>Print letters A-Z in the correct case with DASC</td></tr>
+							<tr><td>91-128</td><td>ERND</td><td>Print an extended recursive token with DETOK, fetching the token number from the MTIN table (subtract 91 to get 0-37 then add random 0-4)</td></tr>
+							<tr><td>129-214</td><td>ETOK</td><td>Print an extended recursive token with DETOK</td></tr>
+							<tr><td>215-255</td><td>ETWO</td><td>Print an extended two-letter token from table TKN2 (subtract 215 to get 0-40)</td></tr>
+						</table>
+
+						<p>As with the standard text tokens, let's make things easier to follow by referring to the four token types like this, where n is the character code:</p>
+
+<pre class="articleIndented">  {n}           Jump token                n = 1 to 31
+  [n?]          Random token              n = 91 to 128
+  [n]           Recursive token           n = 129 to 215
+  &lt;n&gt;           Two-letter token          n = 215 to 255
+</pre>
+
+						<p>Also like the standard text tokens, the extended text tokens are stored in memory in an obfuscated manner, though this time they are EOR'd with the value of the VE configuration variable (&amp;57) rather than the EOR 35 that is used to hide the standard tokens. To make the source code easier to read, we use various macros to assemble the tokens into memory while retaining some level of human readability of the source code. For extended tokens, the names all start with an "E", and they are:</p>
+
+<pre class="articleIndented">  ECHR n          Insert ASCII character n        n = 32 to 99
+  EJMP n          Insert jump token n             n = 1 to 31
+  ERND n          Insert random token n           n = 91 to 128
+  ETOK n          Insert recursive token n        n = 129 to 215
+  ETWO 'x', 'x'   Insert two-letter token "xy"    "xy" is in the table below
+</pre>
+
+						<p>Let's look at each of these types in turn, but before we do, it's worth noting that as part of the extended token system, it's possible to switch from extended tokens back to standard text tokens, and then back again, all within one extended token (we do this using jump tokens 5 and 6). When standard tokens are enabled, the DASC routing does the following instead: </p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Character</th><th>Macro</th><th>Implementation</th></tr>
+							<tr><td>1-31</td><td>EJMP</td><td>Call the corresponding JMTB routine</td></tr>
+							<tr><td>32-255</td><td>RTOK</td><td>Print a standard text token with TT27</td></tr>
+						</table>
+
+						<p>This behaviour is controlled by bit 7 of the print flag in DTW3: if it is clear then extended tokens are enabled, and if it set then standard tokens are enabled.</p>
+
+						<p>Let's now take a look at the various types of token that make up the extended text token system.</p>
+
+						<h2 class="articleSubheader">Extended recursive tokens: [n]<br />
+													 ------------------------------</h2>
+
+						<p>Extended recursive tokens work in the same way as standard recursive tokens, in that tokens can contain other tokens. However, the range of extended tokens that can be included in other tokens is a bit smaller than in the standard system, where you can include all but three tokens recursively. There are 256 extended tokens in the TKN1 table that the DETOK routine can print, but only tokens in the range 129 to 215 can be included in other tokens.</p>
+
+						<p>Apart from this, recursive tokens expand in the same way as in the standard system, and tokens can contain tokens that contain other tokens, recursing as deep as you like.</p>
+
+						<h2 class="articleSubheader">Extended two-letter tokens: &lt;n&gt;<br />
+													 -------------------------------</h2>
+
+						<p>Also similar to the standard token system, the extended two-letter token system is based on the range of standard two-letter tokens from the table at <a href="/cassette/main/variable/qq16.html">QQ16</a>, but with an additional set of tokens, and four of the original tokens dropped. The full range of extended two-letter tokens is as follows:</p>
+
+<pre class="articleIndented">  215     {crlf}
+  216     AB
+  217     OU
+  218     SE
+  219     IT
+  220     IL
+  221     ET
+  222     ST
+  223     ON
+  224     LO
+  225     NU
+  226     TH
+  227     NO
+  228     AL
+  229     LE
+  230     XE
+  231     GE
+  232     ZA
+  233     CE
+  234     BI
+  235     SO
+  236     US
+  237     ES
+  238     AR
+  239     MA
+  240     IN
+  241     DI
+  242     RE
+  243     A?
+  244     ER
+  245     AT
+  246     EN
+  247     BE
+  248     RA
+  249     LA
+  250     VE
+  251     TI
+  252     ED
+  253     OR
+  254     QU
+  255     AN
+</pre>
+
+						<p>Tokens 215 to 227 are exclusive to the extended token system, while the standard tokens start at 228. They have token numbers that are 100 higher than the same tokens in the standard system, which is why the last four standard tokens are not available in the extended list, as they would have to have token numbers higher than 255.</p>
+
+						<p>The new two-letter tokens can be found in the table at <a href="/6502sp/main/variable/tkn2.html">TKN2</a>, which appears directly before the standard two-letter token table at QQ16. This means we can subtract 215 from the token number to get a number in the range 0-40, which acts as an index into the TKN2/QQ16 table when doubled (as each entry takes up two bytes).</p>
+
+						<h2 class="articleSubheader">Random tokens: [n?]<br />
+													 -------------------</h2>
+
+						<p>Random tokens are encoded with values in the range 91-128. When DASC is asked to print a random token in this range, it subtracts 91 from the token number to get a number in the range 0 to 37, and then it fetches the corresponding entry from the table at <a href="/6502sp/main/variable/mtin.html">MTIN</a>, adds a random number in the range 0-4 to this number, and calls DETOK to print that token.</p>
+
+						<p>The ERND macro, which we use to encode random tokens in the TKN1 and RUTOK tables, takes an argument between 0 and 37, which corresponds to the lookup value in MTIN.</p>
+
+						<p>Random tokens are used to generate the extended descriptions for each system. For example, the entry at position 13 in the MTIN table (counting from 0) is 66, so ERND 14 will expand into a random token in the range 66-70, i.e. one of "JUICE", "BRANDY", "WATER", "BREW" and "GARGLE BLASTERS".</p>
+
+						<h2 class="articleSubheader">Jump tokens: {n}<br />
+													 ----------------</h2>
+
+						<p>Jump tokens do exactly that - they call subroutines instead of being printed. The jump token is a very powerful token type, and implements all sorts of functionality, from drawing boxes and setting letter case, to justifying text and fetching input from the keyboard.</p>
+
+						<p>Jump tokens are in the range 1 to 31, though tokens 20 and 31 don't do anything. The best way to work out what each token does is to visit the relevant routine in the source. Here is a list of jump tokens, along with the subroutines that they call (the MT routines are listed in more detail below):</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Jump token</th><th>Shorthand in documentation</th><th>Routine</th></tr>
+							<tr><td>1</td><td>{all caps}</td><td><a href="/6502sp/main/subroutine/mt1.html">MT1</a></td></tr>
+							<tr><td>2</td><td>{sentence case}</td><td><a href="/6502sp/main/subroutine/mt2.html">MT2</a></td></tr>
+							<tr><td>3</td><td>{selected system name}</td><td><a href="/6502sp/main/subroutine/tt27.html">TT27</a></td></tr>
+							<tr><td>4</td><td>{commander name}</td><td><a href="/6502sp/main/subroutine/tt27.html">TT27</a></td></tr>
+							<tr><td>5</td><td>{extended tokens}</td><td><a href="/6502sp/main/subroutine/mt5.html">MT5</a></td></tr>
+							<tr><td>6</td><td>{standard tokens, sentence case}</td><td><a href="/6502sp/main/subroutine/mt6.html">MT6</a></td></tr>
+							<tr><td>7</td><td>{beep}</td><td><a href="/6502sp/main/subroutine/tt26.html">DASC</a></td></tr>
+							<tr><td>8</td><td>{tab 6}</td><td><a href="/6502sp/main/subroutine/mt8.html">MT8</a></td></tr>
+							<tr><td>9</td><td>{clear screen}</td><td><a href="/6502sp/main/subroutine/mt9.html">MT9</a></td></tr>
+							<tr><td>10</td><td>{lf}</td><td><a href="/6502sp/main/subroutine/tt26.html">DASC</a></td></tr>
+							<tr><td>11</td><td>{draw box around title}</td><td><a href="/6502sp/main/subroutine/nlin4.html">NLIN4</a></td></tr>
+							<tr><td>12</td><td>{cr}</td><td><a href="/6502sp/main/subroutine/tt26.html">DASC</a></td></tr>
+							<tr><td>13</td><td>{lower case}</td><td><a href="/6502sp/main/subroutine/mt13.html">MT13</a></td></tr>
+							<tr><td>14</td><td>{justify}</td><td><a href="/6502sp/main/subroutine/mt14.html">MT14</a></td></tr>
+							<tr><td>15</td><td>{left align}</td><td><a href="/6502sp/main/subroutine/mt15.html">MT15</a></td></tr>
+							<tr><td>16</td><td>{drive number}</td><td><a href="/6502sp/main/subroutine/mt16.html">MT16</a></td></tr>
+							<tr><td>17</td><td>{system name adjective}</td><td><a href="/6502sp/main/subroutine/mt17.html">MT17</a></td></tr>
+							<tr><td>18</td><td>{random 1-8 letter word}</td><td><a href="/6502sp/main/subroutine/mt18.html">MT18</a></td></tr>
+							<tr><td>19</td><td>{single cap}</td><td><a href="/6502sp/main/subroutine/mt19.html">MT19</a></td></tr>
+							<tr><td>20</td><td>Unused</td><td><a href="/6502sp/main/subroutine/tt26.html">DASC</a></td></tr>
+							<tr><td>21</td><td>{clear bottom of screen}</td><td><a href="/6502sp/main/subroutine/clyns.html">CLYNS</a></td></tr>
+							<tr><td>22</td><td>{display ship, wait for key press}</td><td><a href="/6502sp/main/subroutine/pause.html">PAUSE</a></td></tr>
+							<tr><td>23</td><td>{move to row 10, white, lower case}</td><td><a href="/6502sp/main/subroutine/mt23.html">MT23</a></td></tr>
+							<tr><td>24</td><td>{wait for key press}</td><td><a href="/6502sp/main/subroutine/pause2.html">PAUSE2</a></td></tr>
+							<tr><td>25</td><td>{incoming message screen, wait 2s}</td><td><a href="/6502sp/main/subroutine/bris.html">BRIS</a></td></tr>
+							<tr><td>26</td><td>{fetch line input from keyboard}</td><td><a href="/6502sp/main/subroutine/mt26.html">MT26</a></td></tr>
+							<tr><td>27</td><td>{mission captain's name}</td><td><a href="/6502sp/main/subroutine/mt27.html">MT27</a></td></tr>
+							<tr><td>28</td><td>{mission 1 location hint}</td><td><a href="/6502sp/main/subroutine/mt28.html">MT28</a></td></tr>
+							<tr><td>29</td><td>{move to row 6, white, lower case}</td><td><a href="/6502sp/main/subroutine/mt29.html">MT29</a></td></tr>
+							<tr><td>30</td><td>{white}</td><td><a href="/6502sp/main/subroutine/whitetext.html">WHITETEXT</a></td></tr>
+							<tr><td>31</td><td>Unused</td><td><a href="/6502sp/main/subroutine/tt26.html">DASC</a></td></tr>
+						</table>
+
+						<p>Here's a list of MT routines that implement the bulk of the jump token functionality. The number of the MT routine corresponds to the jump token that triggers that routine.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Routine</th><th>Function</th></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt1.html">MT1</a></td><td>Switch to ALL CAPS when printing extended tokens</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt2.html">MT2</a></td><td>Switch to Sentence Case when printing extended tokens</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt5.html">MT5</a></td><td>Switch to extended tokens</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt6.html">MT6</a></td><td>Switch to standard tokens in Sentence Case</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt8.html">MT8</a></td><td>Tab to column 6 and start a new word when printing extended tokens</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt9.html">MT9</a></td><td>Clear the screen and set the current view type to 1</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt13.html">MT13</a></td><td>Switch to lower case when printing extended tokens</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt14.html">MT14</a></td><td>Switch to justified text when printing extended tokens</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt15.html">MT15</a></td><td>Switch to left-aligned text when printing extended tokens</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt16.html">MT16</a></td><td>Print the character in variable DTW7</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt17.html">MT17</a></td><td>Print the selected system's adjective, e.g. Lavian for Lave</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt18.html">MT18</a></td><td>Print a random 1-8 letter word in Sentence Case</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt19.html">MT19</a></td><td>Capitalise the next letter</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt23.html">MT23</a></td><td>Move to row 10, switch to white text, and switch to lower case when printing extended tokens</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt26.html">MT26</a></td><td>Fetch a line of text from the keyboard</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt27.html">MT27</a></td><td>Print the captain's name during mission briefings</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt28.html">MT28</a></td><td>Print the location hint during the mission 1 briefing</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt29.html">MT29</a></td><td>Move to row 6, switch to white text, and switch to lower case when printing extended tokens</td></tr>
+						</table>
+
+						<p>The MT routines use a number of extended print flags to store the current text state. The best way to work out what each flag does is to read the relevant variable's header in the source. They are as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Location</th><th>Function</th><th>Set by</th></tr>
+							<tr><td><a href="/6502sp/main/variable/dtw1.html">DTW1</a></td><td>A mask for applying the lower case part of Sentence Case to extended text tokens</td><td>MT1, MT2, MT13</td></tr>
+							<tr><td><a href="/6502sp/main/variable/dtw2.html">DTW2</a></td><td>A flag that indicates whether we are currently printing a word</td><td>CLYNS, DASC, MT8, TTX66</td></tr>
+							<tr><td><a href="/6502sp/main/variable/dtw3.html">DTW3</a></td><td>A flag for switching between standard and extended text tokens</td><td>MT5, MT6</td></tr>
+							<tr><td><a href="/6502sp/main/variable/dtw4.html">DTW4</a></td><td>Flags that govern how justified extended text tokens are printed</td><td>MT14, MT15, MESS</td></tr>
+							<tr><td><a href="/6502sp/main/variable/dtw5.html">DTW5</a></td><td>The size of the justified text buffer at BUF</td><td>DASC, MESS, MT14, MT15, MT17</td></tr>
+							<tr><td><a href="/6502sp/main/variable/dtw6.html">DTW6</a></td><td>A flag to denote whether printing in lower case is enabled for extended text tokens</td><td>MT1, MT2, MT13</td></tr>
+							<tr><td><a href="/6502sp/main/subroutine/mt16.html">DTW7</a></td><td>Contains the character printed by MT16</td><td>CATS</td></tr>
+							<tr><td><a href="/6502sp/main/variable/dtw8.html">DTW8</a></td><td>A mask for capitalising the next letter in an extended text token</td><td>DASC, MT19</td></tr>
+						</table>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="printing_text_tokens.html">Printing text tokens</a><a class="next" rel="next" title="Next deep dive" href="extended_system_descriptions.html">Extended system descriptions</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

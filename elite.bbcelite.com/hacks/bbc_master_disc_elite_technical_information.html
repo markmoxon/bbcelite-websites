@@ -1,0 +1,39 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("hacks", "bbc_master_disc_elite_technical_information.html", "Technical information for BBC Master disc Elite", "Technical information for BBC Master disc Elite", "Details of how disc Elite was converted from the BBC Micro to the BBC Master", "elite", "hacks_bbc_master_disc_elite", "technical_information");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="bbc_master_disc_elite_downloads.html">Downloading BBC Master disc Elite</a><a class="next" rel="next" title="Next page" href="elite_over_econet.html">About Elite over Econet</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Details of how disc Elite was converted from the BBC Micro to the BBC Master</h2>
+
+						<img class="titleImage" src="/images/bbc_master_disc_elite/broken.png" alt="BBC Micro disc Elite breaking on a BBC Master" />
+
+						<p>The main problem when running the BBC Micro version on the BBC Master is that all the on-screen text is corrupted (see the screenshot above). This is because the text-printing routine in <a href="/disc/flight/subroutine/tt26.html">TT26</a> prints text on-screen by poking the individual pixels of characters directly into screen memory, and it fetches the pixel shapes of these characters from the definitions in the BBC Micro MOS (Machine Operating System) ROM at address &amp;C000.</p>
+
+						<p>In the BBC Master, however, these character definitions are not only at a different address in the MOS, but the MOS ROM is not paged into accessible memory when TT26 is called. This means that when the text-printing routine from the original Elite tries to fetch the character shapes, it grabs whatever happens to be in location &amp;C000 at the time and displays that instead, resulting in the mess you see above. &amp;C000 actually contains a copy of the disc catalogue from sectors 0 and 1, as this is the address of the HAZEL file system workspace, so what you're seeing is the result of poking the disc catalogue text directly into screen memory as pixels.</p>
+
+						<p>To fix this, all it takes is a small change to the text-printing routine to fetch the character definitions from address &amp;8900 rather than &amp;C000. We also need to add some ROM-switching code to ensure that the MOS ROM is switched into memory before we copy out the character data, which we can do pretty easily by setting bit 7 of ROMSEL at SHEILA &amp;30 (and in the RAM copy at &amp;F4), accessing the character definitions from the MOS, and clearing bit 7 of ROMSEL and &amp;F4 when we're done.</p>
+
+						<img class="titleImage" src="/images/bbc_master_disc_elite/fixed.png" alt="BBC Micro disc Elite working on a BBC Master" />
+
+						<p>If you want to see the code changes that implement the fix, then they're all in the GitHub repository for the BBC Micro disc version. You'll need to switch to the <a href="https://github.com/markmoxon/disc-elite-beebasm/tree/bbc-master">bbc-master branch</a>, and you can then search the <a href="https://github.com/markmoxon/disc-elite-beebasm/blob/bbc-master/1-source-files/main-sources/elite-source-docked.asm">elite-source-docked.asm</a> and <a href="https://github.com/markmoxon/disc-elite-beebasm/blob/bbc-master/1-source-files/main-sources/elite-source-flight.asm">elite-source-flight.asm</a> files for "Mod:". This will reveal all of the changes required to make the original version work on the BBC Master; there aren't many.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="bbc_master_disc_elite_downloads.html">Downloading BBC Master disc Elite</a><a class="next" rel="next" title="Next page" href="elite_over_econet.html">About Elite over Econet</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

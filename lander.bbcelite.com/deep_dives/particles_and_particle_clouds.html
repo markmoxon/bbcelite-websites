@@ -1,0 +1,218 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "particles_and_particle_clouds.html", "Particles and particle clouds", "Particles and particle clouds", "A deep dive into particles and particle clouds in Lander on the Acorn Archimedes", "lander", "deep_dives_objects_particles", "particles_and_particle_clouds");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="placing_objects_on_the_map.html">Placing objects on the map</a><a class="next" rel="next" title="Next page" href="flying_by_mouse.html">Flying by mouse</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The particles that make up sparks, splashes, explosions and exhaust plumes</h2>
+
+						<p>Lander is justifiably famous for its 3D scrolling landscape, with its luscious trees and colourful rockets and inviting gazebos... it really is a beautiful place to fly around, unleashing destruction. But on top of these solid 3D graphics is the particle system, which introduces the third dimension in a more subtle manner.</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/general/heading_off.png" alt="The ship heading into the distance in Acorn Archimedes Lander" />
+
+						<p>There are particles from the ship's exhaust; there are particles from impacts and explosions; there are particles that splash; there are particles that bounce; and there are particles that gently rise up from smouldering ruins, amongst others. Individually these particles might not look like much, but when they gather together in clouds, they're as much a part of the 3D world as the buildings and trees.</p>
+
+						<h2 class="articleSubheader">The particle data buffer<br />
+						                             ------------------------</h2>
+
+						<p>Lander supports up to 484 on-screen particles at any one time. Each of these particles has four important pieces of data associated with it:</p>
+
+						<ul>
+							<li>The particle's (x, y, z) coordinate defines where it is within the 3D world.</li>
+
+							<li>The particle's 3D velocity vector defines how the particle is currently moving through the world.</li>
+
+							<li>The particle's lifespan counter ticks down once on every iteration around the main loop, and when it reaches zero the particle disappears, so this defines how long the particle lasts.</li>
+
+							<li>The particle flags define the particle's behaviour (see below).</li>
+						</ul>
+
+						<p>This set of data is stored in blocks of eight words in the particle data buffer, with one block per particle. This buffer lives at location particleData, and each particle's block of data is laid out as follows:
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Word</th><th>Contents</th></tr>
+							<tr><td>#0</td><td>Particle x-coordinate</td></tr>
+							<tr><td>#1</td><td>Particle y-coordinate</td></tr>
+							<tr><td>#2</td><td>Particle z-coordinate</td></tr>
+							<tr><td>#3</td><td>Particle velocity (x-axis)</td></tr>
+							<tr><td>#4</td><td>Particle velocity (y-axis)</td></tr>
+							<tr><td>#5</td><td>Particle velocity (z-axis)</td></tr>
+							<tr><td>#6</td><td>Particle lifespan counter</td></tr>
+							<tr><td>#7</td><td>Particle flags</td></tr>
+						</table>
+
+						<p>Along with the particle data buffer, we have a couple of variables that help us keep track of the buffer contents. The particleCount variable contains the number of particles currently on-screen, and the particleEnd variable contains the address just past the end of the last bit of particle data in the buffer.</p>
+
+						<p>We can add a new particle to the buffer by calling the <a href="/source/main/subroutine/storeparticledata.html">StoreParticleData</a> routine, which simply takes the eight words of data for the new particle and appends them to the end of the buffer, before updating the buffer variables and adding a terminator to the buffer. The buffer is terminated by a null entry that has a value of zero in the last word (so if the particle flags are zero, we have reached the terminator).</p>
+
+						<p>We can delete a particle from the buffer by calling the <a href="/source/main/subroutine/deleteparticledata.html">DeleteParticleData</a> routine with the address of the particle to delete, in which case the last particle in the buffer is moved into the space left by the deleted particle, and the buffer variables are updated. This ensures that the buffer is always continuous and has no gaps.</p>
+
+						<p>The particle data buffer is a simple data structure, but the particle model is pretty sophisticated, not least because different particles can behave very differently. Let's look at the particle flags that control this behaviour.</p>
+
+						<h2 class="articleSubheader">Particle types and particle flags<br />
+						                             ---------------------------------</h2>
+
+						<p>All the individual particles in the particle data buffer are processed by the <a href="/source/main/subroutine/moveanddrawparticles_part_1_of_4.html">MoveAndDrawParticles</a> routine on every iteration around the main loop. We'll look at this process in more detail later, but essentially this routine works through the buffer and applies various rules to each particle according to that particle's flags.</p>
+
+                        <p>These are the particle flags that define each particle's behaviour, with the specified behaviour applying when that bit is set:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Bit</th><th>Meaning</th></tr>
+							<tr><td>#0-7</td><td>The particle colour as a VIDC colour byte</td><td></td></tr>
+							<tr><td>#16</td><td>Particle colour fades from white to red over the course of its lifespan</td></tr>
+							<tr><td>#17</td><td>The particle is a rock</td></tr>
+							<tr><td>#18</td><td>Create a splash on impact with the sea (i.e. add a cluster of spray particles to the buffer, with the number of particles configured by bit #23)</td></tr>
+							<tr><td>#19</td><td>Bounce on hitting the ground</td></tr>
+							<tr><td>#20</td><td>Apply gravity to the particle</td></tr>
+							<tr><td>#21</td><td>Particle can destroy objects on impact</td></tr>
+							<tr><td>#23</td><td>Splash size (65 spray particles when set, 4 spray particles when clear)</td></tr>
+							<tr><td>#24</td><td>Explode on hitting the ground (i.e. add a small explosion to the buffer), but only if bit #19 is also set</td></tr>
+						</table>
+
+						<p>Given this set of behavioural flags, the game creates all the different types of particles that we see on-screen. It's worth noting that the rocks that fall from the sky when your score reaches 800 are actually particles - their behaviour is defined by particle flags and they have entries in the particle data buffer. The only difference is that when rock particles are drawn, they use the <a href="/source/main/subroutine/drawobject_part_1_of_5.html">DrawObject</a> routine rather than the particle-drawing routines (we'll cover the drawing process in more detail below).</p>
+
+						<p>The different types of particle are as follows, along with the routines that add them to the particle data buffer and the particle flags that get set:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Type and creation routine</th><th>Particle flags</th><th style="text-align: center">Screenshot</th></tr>
+							<tr><td style="vertical-align: middle">Bullet particle<br /><br /><a href="/source/main/subroutine/addbulletparticletobuffer.html">AddBulletParticleToBuffer</a></td><td style="vertical-align: middle"><ul><li>Splash on impact with sea</li><li>Bounce on ground</li><li>Apply gravity to particle</li><li>Can destroy objects</li><li>Splash size is big</li><li>Explode on hitting ground</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 192px; margin: 1ch 0" src="/images/deep_dives/particles/bullet_particles.png" alt="Bullet particles in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Exhaust particle<br /><br /><a href="/source/main/subroutine/addexhaustparticletobuffer.html">AddExhaustParticleToBuffer</a></td><td style="vertical-align: middle"><ul><li>Colour fades from white to red</li><li>Splash on impact with sea</li><li>Bounce on ground</li><li>Apply gravity to particle</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 192px; margin: 1ch 0" src="/images/deep_dives/particles/exhaust_particles.png" alt="Exhaust particles in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Smoke particle<br /><br /><a href="/source/main/subroutine/addsmokeparticletobuffer.html">AddSmokeParticleToBuffer</a></td><td style="vertical-align: middle"><ul><li>Bounce on ground</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 192px; margin: 1ch 0" src="/images/deep_dives/particles/debris_and_smoke_particles.png" alt="Smoke particles in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Debris particle<br /><br /><a href="/source/main/subroutine/adddebrisparticletobuffer.html">AddDebrisParticleToBuffer</a></td><td style="vertical-align: middle"><ul><li>Splash on impact with sea</li><li>Bounce on ground</li><li>Apply gravity to particle</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 192px; margin: 1ch 0" src="/images/deep_dives/particles/debris_and_smoke_particles.png" alt="Debris particles in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Spark particle<br /><br /><a href="/source/main/subroutine/addsparkparticletobuffer.html">AddSparkParticleToBuffer</a></td><td style="vertical-align: middle"><ul><li>Colour fades from white to red</li><li>Splash on impact with sea</li><li>Bounce on ground</li><li>Apply gravity to particle</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 192px; margin: 1ch 0" src="/images/deep_dives/particles/spark_particles.png" alt="Spark particles in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Spray particle<br /><br /><a href="/source/main/subroutine/addsprayparticletobuffer.html">AddSprayParticleToBuffer</a></td><td style="vertical-align: middle"><ul><li>Apply gravity to particle</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 192px; margin: 1ch 0" src="/images/deep_dives/particles/spray_particles.png" alt="Spray particles in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Rock particle<br /><br /><a href="/source/main/subroutine/droparockfromthesky.html">DropARockFromTheSky</a></td><td style="vertical-align: middle"><ul><li>Particle is a rock</li><li>Splash on impact with sea</li><li>Bounce on ground</li><li>Apply gravity to particle</li><li>Can destroy objects</li><li>Splash size is big</li><li>Explode on hitting ground</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 192px; margin: 1ch 0" src="/images/deep_dives/particles/rock_particles.png" alt="Rock particles in Lander" /></td></tr>
+						</table>
+
+						<p>The particle flags control the ongoing behaviour of particles, but there's another important aspect of particle creation: the particle's initial state. The particle-creation routines linked to in the above table create the different types of particle, so that's where the particle flags get set, but these routines also set the particle's initial velocity, lifespan counter and colour, according to the particle type. (The particle's coordinates are passed to the relevant particle-creation routine, rather than being dependent on the type of particle being created.)</p>
+
+						<p>To help with this, there are three routines that create particles with specific types of velocity:</p>
+
+						<ul>
+							<li><a href="/source/main/subroutine/addstaticparticletobuffer.html">AddStaticParticleToBuffer</a> adds a particle with zero velocity, which is used when creating debris, rock, spark and spray particles</li>
+
+							<li><a href="/source/main/subroutine/addstaticparticletobuffer.html">AddStaticParticleToBuffer</a> adds a particle with zero sideways velocity (so it initially only moves up or down), which is used when creating smoke particles that rise up from explosions and the smoking remains of destroyed objects</li>
+
+							<li><a href="/source/main/subroutine/addmovingparticletobuffer.html">AddMovingParticleToBuffer</a> adds a particle with velocity in any direction, which is used when creating exhaust and bullet particles (which use initial velocity vectors that point out of the bottom and front of the ship respectively)</li>
+						</ul>
+
+						<p>On top of this initial velocity, the particle-creation routines add a random element to the particle's movements, so even if we spawn a static particle with zero velocity, the random element will still make it move around; there are no genuinely static particles in Lander. This random element is controlled by two parameters that are passed to the relevant particle-creation routine in registers R8 and R9:</p>
+
+						<ul>
+							<li>R8 is set to the magnitude of the random element that's added to the velocity, with a larger figure giving a smaller random element; the actual range is +/- 2^(32 - R8)</li>
+
+							<li>R9 is set to the magnitude of the random element that's added to the particle lifespan, with a larger figure giving a smaller random element; the actual range is 0 to 2^(32 - R9)</li>
+						</ul>
+
+						<p>These random elements are added to the initial state of the particle, so while they don't affect the ongoing movement of the particle (as that's defined by the particle flags), they do affect the starting point.</p>
+
+						<p>The different types of particle have the following initial states:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Type</th><th>Initial lifespan counter</th><th>Initial velocity vector</th><th>Random velocity range</th><th>Random lifespan range</th><th>Colour</th></tr>
+							<tr><td>Bullet</td><td>20</td><td>Ship nose vector</td><td>0</td><td>0</td><td>White</td></tr>
+							<tr><td>Exhaust</td><td>8</td><td>Ship roof vector</td><td>+/-&amp;400000</td><td>0 to 8</td><td>White fades to red</td></tr>
+							<tr><td>Smoke</td><td>15</td><td>Rising up by &amp;80000</td><td>+/-&amp;80000</td><td>0 to 128</td><td>Random grey</td></tr>
+							<tr><td>Debris</td><td>15</td><td>Static</td><td>+/-&amp;400000</td><td>0 to 64</td><td>Random purple brownish green</td></tr>
+							<tr><td>Spark</td><td>8</td><td>Static</td><td>+/-&amp;1000000</td><td>0 to 8</td><td>White fades to red</td></tr>
+							<tr><td>Spray</td><td>20</td><td>Static</td><td>+/-&amp;400000</td><td>0 to 64</td><td>Random blue</td></tr>
+							<tr><td>Rock</td><td>170</td><td>Static</td><td>+/-&amp;400000</td><td>0 to 32</td><td>Random purple brownish green</td></tr>
+						</table>
+
+						<p>So, to take one example, spray particles last for a reasonably long time, with a random white-blue colour and little initial movement, with the particles eventually settling into the sea surface as gravity takes effect:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/deep_dives/particles/splash.png" alt="A big splash in Acorn Archimedes Lander" />
+
+						<p>This combination of the initial state and the particle flags creates a very varied set of effects from a relatively simple set of rules.</p>
+
+						<h2 class="articleSubheader">Explosion clouds<br />
+						                             ----------------</h2>
+
+						<p>Clouds of particles are generated by creating lots of individual particles, each of them with a random element that sends them off in different directions and with different lifespan counters. The best example of a particle cloud is the explosion effect, which is a very familiar sight to anyone who has tried (and failed) to take off from the launchpad.</p>
+
+						<p>Explosion clouds are made up of clusters of particles. Each cluster contains four particles, comprising two spark particles, one debris particle and one smoke particle. 
+
+						<p>For example, here's a big explosion cloud that contains 50 clusters, which is created by the <a href="/source/main/subroutine/addshipexplosiontobuffer.html">AddShipExplosionToBuffer</a> routine when we crash. This produces an explosion cloud of 200 particles, comprising 100 spark particles, 50 debris particles and 50 smoke particles. It looks like this soon after the crash:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/deep_dives/particles/explosion.png" alt="Explosion particles in Acorn Archimedes Lander" />
+
+						<p>Initially the spark particles dominate the view, but they have a small initial lifespan counter of 8, which is half that of the smoke and debris particles, so the latter remain once the initial explosion burst has subsided:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/deep_dives/particles/debris_and_smoke.png" alt="Debris and smoke particles in Acorn Archimedes Lander" />
+
+						<p>The smoke particles are initialised as rising particles, so they gently drift upwards and don't fly out like the explosion particles, and the debris particles fall to the ground where they bounce around before disappearing.</p>
+
+						<p>That's a big explosion, but a small explosion gets shown when a bullet hits an object that has already been destroyed, or when a particle that is configured to explode when it hits the ground does just that. These explosions are added by the <a href="/source/main/subroutine/addsmallexplosiontobuffer.html">AddSmallExplosionToBuffer</a> routine, which creates an explosion cloud of just three clusters (so that's 12 particles). Meanwhile a medium cloud of 20 clusters (80 particles) is created by the <a href="/source/main/subroutine/processobjectdestruction.html">ProcessObjectDestruction</a> routine when we destroy an object.</p>
+
+						<h2 class="articleSubheader">Moving particles<br />
+						                             ----------------</h2>
+
+						<p>Now that we know how particles are stored and initialised, let's take a look at how particle movement is processed.</p>
+
+						<p>The <a href="/source/main/subroutine/moveanddrawparticles_part_1_of_4.html">MoveAndDrawParticles</a> routine takes care of both aspects. It loops through each particle in the particle data buffer, checks the particle's flags, and updates the particle's data depending on its state. The process goes like this:</p>
+
+						<ul>
+							<li>Decrement the particle lifespan counter, and if it reaches zero, delete the particle from the particle data buffer and move on to the next particle.</li>
+
+							<li>Add the particle's velocity vector to its coordinate.</li>
+
+							<li>If the particle's flags say that gravity should be applied (bit #20), add gravity to the y-axis element of the particle's velocity vector, so the particle accelerates towards the ground.</li>
+
+							<li>If the particle's flags say that the colour should fade from white to red (bit #16), call the <a href="/source/main/subroutine/setparticlecolourtofade.html">SetParticleColourToFade</a> routine to fade the particle colour according to the particle's age, and store the colour in the bottom byte of the particle flags.</li>
+
+							<li>Fetch the altitude of the landscape directly below the particle.</li>
+
+							<li>If the particle's flags say that it can destroy objects (bit #21), call <a href="/source/main/subroutine/processobjectdestruction.html">ProcessObjectDestruction</a> to check whether it is hitting an object, and if it is then destroy both the object and particle (see the deep dive on <a href="collisions_and_bullets.html">collisions and bullets</a> for details).</li>
+
+							<li>If the particle is below ground level, call <a href="/source/main/subroutine/bounceparticle.html">BounceParticle</a> to process the particle hitting either the sea or the ground, as follows:
+
+								<ul>
+									<li>If the particle is hitting the sea, call the <a href="/source/main/subroutine/splashparticleintosea.html">SplashParticleIntoSea</a> routine, which checks whether this particle's flags say it should create a splash (bit #18), and if the answer is yes, creates the number of spray particles defined in the flags (bit #23).</li>
+
+									<li>If the particle is not configured to bounce on hitting the ground (bit #19), delete the particle as it is now part of the landscape.</li>
+
+									<li>If the particle is configured to explode on hitting the ground (bit #24), delete the particle and replace it with a small explosion.</li>
+
+									<li>Otherwise bounce the particle off the ground by setting the particle's velocity vector to half of its previous speed, and in the opposite direction along the y-axis.</li>
+								</ul>
+
+							</li>
+
+							<li>Store the updated particle data in the buffer and move on to the next particle.</li>
+						</ul>
+
+						<p>Now that we've moved all the particles to their new positions, let's finish off by looking at how we draw the particles.</p>
+
+						<h2 class="articleSubheader">Drawing particles<br />
+						                             -----------------</h2>
+
+						<p>As with 3D objects, we draw particles into the graphics buffers, so they can be drawn at the correct depth to ensure everything overlaps correctly (see the deep dive on <a href="depth-sorting_with_the_graphics_buffers.html">depth-sorting with the graphics buffers</a> for details). The drawing is done by the MoveAndDrawParticles routine, whose first part already moved each particle, as described above. <a href="/source/main/subroutine/moveanddrawparticles_part_2_of_4.html">Part 2</a> calculates the camera-relative coordinates of the particle, which then get passed to <a href="/source/main/subroutine/moveanddrawparticles_part_3_of_4.html">part 3</a> if this is a rock particle, or to <a href="/source/main/subroutine/moveanddrawparticles_part_4_of_4.html">part 4</a> for all other particles.</p>
+
+						<p>The camera-relative coordinates of each particle are calculated by taking the 3D world coordinates of the particle and subtracting the camera position (see the deep dive on <a href="camera_and_landscape_offset.html">the camera and the landscape offset</a> for more about camera-relative coordinates). We then check whether the particle is within the bounds of the visible landscape, and if it isn't we skip drawing this particle and move on to the next particle in the buffer, so we only draw particles within the field of view.</p>
+
+						<p>If the particle flags say that this is a rock particle (bit #17), then we jump to part 3, where we check for collisions between the player and the rock, jumping to <a href="/source/main/subroutine/loselifefromparticleloop.html">LoseLifeFromParticleLoop</a> if there is a collision. If all is well, we call <a href="/source/main/subroutine/drawobject_part_1_of_5.html">DrawObject</a> to draw the rock and its shadow as a 3D object (see the deep dive on <a href="drawing_3d_objects.html">drawing 3D objects</a> for details). We then we loop back to process the next particle from the buffer.</p>
+
+						<p>If this isn't a rock particle, then we draw the particle and its shadow into the graphics buffers. We already fetched the altitude of the landscape beneath the particle in part 1, when we were working out whether the particle was hitting the ground, so we can draw the shadow particle at this y-coordinate, as it's at the right position for the particle's shadow on the landscape surface. We then draw the particle itself into the graphics buffers by calling the <a href="/source/main/subroutine/drawparticletobuffer.html">DrawParticleToBuffer</a> routine, and we draw the particle's black shadow with the <a href="/source/main/subroutine/drawparticleshadowtobuffer.html">DrawParticleShadowToBuffer</a> routine. See the deep dive on <a href="depth-sorting_with_the_graphics_buffers.html">depth-sorting with the graphics buffers</a> for details of how the graphics buffers work.</p>
+
+						<p>And that's how the particle system works in Lander.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="placing_objects_on_the_map.html">Placing objects on the map</a><a class="next" rel="next" title="Next page" href="flying_by_mouse.html">Flying by mouse</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

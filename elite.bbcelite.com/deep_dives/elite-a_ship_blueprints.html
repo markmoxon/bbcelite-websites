@@ -1,0 +1,167 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "elite-a_ship_blueprints.html", "Ship blueprints in Elite-A", "Ship blueprints in Elite-A", "A deep dive into ship blueprints in Elite-A", "elite", "deep_dives_elite-a", "ship_blueprints");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="elite-a_buying_and_flying_ships.html">Buying and flying ships in Elite-A</a><a class="next" rel="next" title="Next deep dive" href="elite-a_the_encyclopedia_galactica.html">The Encyclopedia Galactica</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The enhanced logic behind Elite-A's sophisticated ship blueprints system</h2>
+
+						<p>The disc version of BBC Micro Elite contains 29 distinct ship designs, spread across 31 different ship types (the designs for the Python and Cobra Mk III each appear twice, as both traders and pirates). Compared to the BBC Micro cassette version, with only 12 designs spread across 13 types, the disc version is a serious upgrade in terms of ship variety.</p>
+
+						<img class="titleImage" src="/images/elite-a/encyclopedia_bushmaster.png" alt="The Elite-A Encyclopedia Galactica entry for the Bushmaster" />
+
+						<p>Not to be outdone, Angus Duggan added nine more ship designs when he created Elite-A, giving a whopping 38 designs in total. Not only that, but he also redesigned the way that these different ship designs are managed. We're going to take a look at that new system here, but first, let's recap how the original versions of Elite support all these different types of ship.</p>
+
+						<h2 class="articleSubheader">Ship blueprints in the original Elite<br />
+													 -------------------------------------</h2>
+
+						<p>All versions of Elite use a system of ship blueprints to define each ship's characteristics. Blueprints cover flight characteristics such as the number of missiles or the ship's maximum speed, and they also contain the 3D ship model, stored as vertices, edges and faces. See the deep dive on <a href="ship_blueprints.html">ship blueprints</a> for details on ship blueprints and what they contain, and the deep dive on <a href="drawing_ships.html">drawing ships</a> for more information on 3D ship models.</p>
+
+						<p>The disc version introduces a large number of extra ships over the cassette version, each with a new blueprint, but in the unexpanded BBC Micro, there just isn't enough memory to load them all at the same time. So the disc version supports 16 different files, each containing a different set of ship blueprints. Only one ship blueprints file is loaded into memory at any one time, and a new one is loaded by the <a href="/disc/flight/subroutine/lomod.html">LOMOD</a> routine each time we launch from a space station or hyperspace into a new system. See the deep dive on <a href="ship_blueprints_in_the_disc_version.html">ship blueprints in the disc version</a> for details on how the disc version manages its ship blueprints.</p>
+
+						<p>In both cases, there is a table at location XX21 that links through to all the available blueprints. <a href="/cassette/main/variable/xx21.html">XX21 in the cassette version</a> has 13 entries linking to 12 different blueprints (the two XX21 entries for the Cobra Mk III share a blueprint between its incarnation as a trader and a pirate). XX21 in the disc version is included as part of each ship blueprint file, and although it always contains 31 entries, not all of these are populated, only those positions that have a corresponding blueprint in that file. So, for example, <a href="/disc/ship_blueprints_a/variable/xx21.html">XX21 in blueprints file A</a> has 12 populated positions, while <a href="/disc/ship_blueprints_c/variable/xx21.html">XX21 in blueprints file C</a> has 13 populated positions, with quite a different set of ships.</p>
+
+						<p>In all of these XX21 tables, each position is associated with a specific ship type. For example, position 1 is always the missile, position 5 is always the cargo canister, position 11 is always the Cobra Mk III, position 19 the Krait, and so on. Some position numbers even have configuration variables associated with them: for example, #MSL = 1 for the missile, #OIL = 5 for the cargo canister, #CYL = 11 for the Cobra, #KRA = 19 for the Krait, and so on. When we spawn a ship by calling the <a href="/disc/flight/subroutine/nwshp.html">NWSHP</a> routine, we pass the ship type as an argument in A. This corresponds with the relevant position in the XX21 table, so we call it with A = #CYL to spawn a Cobra Mk III, for example.</p>
+
+						<p>On top of this, the disc version introduces a new set of flags for each ship type - the NEWB flags - that contain advanced tactical data for each type. The default values of these flags live in each blueprint file in a table at location E%, so <a href="/disc/ship_blueprints_a/variable/e_per_cent.html">E% in blueprints file A</a> has 12 populated positions that correspond with the blueprints in that file, while <a href="/disc/ship_blueprints_c/variable/e_per_cent.html">E% in blueprints file C</a> has 13 populated positions. These flags determine whether a ship type is a trader, pirate, bounty hunter and so on, so we know that all Geckos are hostile pirates, for example. See the deep dive on <a href="advanced_tactics_with_the_newb_flags.html">advanced tactics with the NEWB flags</a> for more details on these flags.</p> 
+
+						<p>Now that we've covered the original versions, let's take a look at what Elite-A does differently.</p>
+
+						<h2 class="articleSubheader">Ship blueprints in Elite-A<br />
+													 --------------------------</h2>
+
+						<p>The biggest change in Elite-A is to break the relationship between positions in the XX21 table and ship types. For example, in the disc version of Elite, position 11 is always an innocent Cobra Mk III with an escape pod. In Elite-A, position 11 can contain a whole range of different ship types, including but not restricted to the Cobra Mk III - for example, position 11 contains a Monitor in <a href="/elite-a/ship_blueprints_a/variable/xx21.html">file A</a>, a Ghavial in <a href="/elite-a/ship_blueprints_b/variable/xx21.html">file B</a>, a Python in <a href="/elite-a/ship_blueprints_c/variable/xx21.html">file C</a>, a Boa in <a href="/elite-a/ship_blueprints_d/variable/xx21.html">file D</a>, and so on. As in disc Elite, some positions can be empty as well, though the core positions like the missile and space station are always populated.</p>
+
+						<p>Instead of tying ship types to blueprint positions, Elite-A allocates ship <i>behaviour</i> to blueprint positions, so positions 11 to 14 are all traders, positions 17 to 24 are all pirates, and so on. Some positions are still fixed to specific types, but that's only because there is only one type with that behaviour: position 1 is always the missile, and there's only one missile blueprint; position 3 is always the escape pod, and there's only one of those; position 16 is always the resident cop, which is always a Viper; and so on. Most positions, though, can contain a whole range of different blueprints, depending on that position's behaviour.</p>
+
+						<p>This is how ship positions in Elite-A are allocated:</p>
+
+						<ul>
+							<li>Position 1 is allocated to the missile. It is always populated with the missile blueprint.</li>
+
+							<li>Position 2 is allocated to the space station. It is always populated with either the Coriolis or Dodo blueprint.</li>
+
+							<li>Position 3 is allocated to the escape pod. It is always populated with the escape pod blueprint.</li>
+
+							<li>Positions 4 to 5 are allocated to cargo:
+
+								<ul>
+									<li>Position 4 is allocated to the alloy plate. It is not always populated, but when it is, it is populated with the alloy plate blueprint.</li>
+
+									<li>Position 5 is allocated to the cargo canister. It is always populated with the cargo canister blueprint.</li>
+								</ul>
+
+							</li>
+
+							<li>Positions 6-8 are allocated to mining, and are spawned in <a href="/elite-a/flight/subroutine/main_game_loop_part_2_of_6.html">part 2 of the main game loop</a>:
+
+								<ul>
+									<li>Position 6 is allocated to the boulder. It is not always populated, but when it is, it is populated with the boulder blueprint.</li>
+
+									<li>Position 7 is allocated to the asteroid. It is not always populated, but when it is, it is populated with the asteroid blueprint.</li>
+
+									<li>Position 8 is allocated to the splinter. It is not always populated, but when it is, it is populated with the splinter blueprint.</li>
+								</ul>
+
+							</li>
+
+							<li>Position 9 is allocated to the shuttle. It is not always populated, but when it is, it is populated with either the Shuttle or the Shuttle Mk II blueprint. Shuttles are spawned in <a href="/elite-a/flight/subroutine/tactics_part_2_of_7.html">part 2 of TACTICS</a>.</li>
+
+							<li>Position 10 is allocated to the transporter. It is not always populated, but when it is, it is populated with the Transporter blueprint. Transporters are spawned in <a href="/elite-a/flight/subroutine/tactics_part_2_of_7.html">part 2 of TACTICS</a>.</li>
+
+							<li>Positions 11-14 are allocated to traders. There is always at least one trader in each ship blueprints file. Traders are spawned in <a href="/elite-a/flight/subroutine/main_game_loop_part_1_of_6.html">part 1 of the main game loop</a>.</li>
+
+							<li>Positions 14-15 are allocated to a large/small ship pair, where the large ship can spawn instances of the small ship. These positions are not always populated, but when they are, the pair is either an Anaconda/Worm pair, or a Dragon/Sidewinder pair. Ship pairs are spawned in <a href="/elite-a/flight/subroutine/tactics_part_4_of_7.html">part 4 of TACTICS</a>.</li>
+
+							<li>Position 16 is allocated to the cop. It is always populated with the Viper blueprint. Cops are spawned in <a href="/elite-a/flight/subroutine/main_game_loop_part_3_of_6.html">part 3 of the main game loop</a> for deep space spawning, or in <a href="/elite-a/flight/subroutine/tactics_part_2_of_7.html">part 2 of TACTICS</a> for station defence.</li>
+
+							<li>Positions 17-24 are allocated to pirates. There are always at least three pirates in each ship blueprints file. Pirates are spawned in <a href="/elite-a/flight/subroutine/main_game_loop_part_4_of_6.html">part 4 of the main game loop</a>.</li>
+
+							<li>Positions 25-28 are allocated to bounty hunters. There is always at least one bounty hunter in each ship blueprints file. Bounty hunters are spawned in <a href="/elite-a/flight/subroutine/main_game_loop_part_4_of_6.html">part 4 of the main game loop</a>.</li>
+
+							<li>Positions 29-30 are allocated to Thargoids:
+
+								<ul>
+									<li>Position 29 is allocated to the Thargoid. It is only populated in ship files <a href="/elite-a/ship_blueprints_c/variable/xx21.html">C</a> and <a href="/elite-a/ship_blueprints_d/variable/xx21.html">D</a>, where it is populated with the Thargoid blueprint.</li>
+
+									<li>Position 30 is allocated to the Thargon. It is only populated in ship files <a href="/elite-a/ship_blueprints_c/variable/xx21.html">C</a> and <a href="/elite-a/ship_blueprints_d/variable/xx21.html">D</a>, where it is populated with the Thargon blueprint.</li>
+								</ul>
+
+							</li>
+
+							<li>Position 31 is allocated to the Constrictor. It is only populated in ship <a href="/elite-a/ship_blueprints_g/variable/xx21.html">file G</a>, where it is populated with the Constrictor blueprint.</li>
+						</ul>
+
+						<p>Having a range of different ship types in the different positions gives Elite-A a much bigger range of ships to choose from. For example, in <a href="/elite-a/ship_blueprints_j/variable/xx21.html">blueprint file J</a>, the range of pirate ships is quite impressive: Mamba, Sidewinder, Gecko, Bushmaster, Moray, Worm and Fer-de-Lance. In the same file, both the Fer-de-Lance and Moray can also be traders or bounty hunters, which is much more flexible than in the disc version, where only the Python and Cobra Mk III can have multiple roles.</p>
+
+						<p>There is one more change in the Elite-A ship blueprint system that's worth noting: blueprints for the same ship can vary between different blueprint files in terms of their bounty, maximum energy, laser power and number of missiles. In the original Elite-A source disc, these variations are randomly applied by the BASIC program that generates the ship blueprint files, so the files shipped with the released game represent just one snapshot of these random variations. To take one example, the standard Mamba as seen in <a href="/elite-a/ship_blueprints_f/variable/ship_mamba.html">blueprints file F</a> has a bounty of 150, a maximum energy of 80, and a laser power of 4. In <a href="/elite-a/ship_blueprints_w/variable/ship_mamba.html">blueprints file W</a>, however, the Mamba has a bounty of 350, a maximum energy of 81, and a laser power of 5, which adds a further level of variety to proceedings.</p>
+
+						<h2 class="articleSubheader">Loading ship blueprints in Elite-A<br />
+													 ----------------------------------</h2>
+
+						<p>Not only has the structure of the ship blueprint files changed in Elite-A, but so have the number of ship files and the logic for loading them. Elite-A has 23 ship blueprint files, named S.A to S.W, compared to the 16 files in the disc version, named D.MOA to D.MOP, and these are loaded by an updated version of the <a href="/elite-a/flight/subroutine/lomod.html">LOMOD</a> routine.</p>
+
+						<p>The extra logic that loads the additional blueprint files is a very simple twist on the existing routine. In the disc version, the LOMOD routine chooses a number from 0 to 15 to choose which file to load - see the deep dive on <a href="ship_blueprints_in_the_disc_version.html">ship blueprints in the disc version</a> for details of how it does this. Elite-A uses the same algorithm, but it adds the galaxy number in GCNT to the result. The galaxy number runs from 0 to 7, so this changes the number to be in the range 0 to 22, corresponding with the 23 blueprint files.</p>
+
+						<p>This means that in the first galaxy, when GCNT is 0, Elite-A loads ship files S.A to S.P in exactly the same way as Elite loads D.MOA to D.MOP. It also means that in the second galaxy, when GCNT is 1, it loads ship files S.B to S.Q, and so on up to the last galaxy, when GCNT is 7 and it chooses from ship files S.H to S.W. So the S.A file is only ever loaded in the first galaxy, S.B is only ever loaded in the first two galaxies, and so on.</p>
+
+						<p>This does have a couple of strange side-effects. In the official versions of Elite, Coriolis stations are the standard station type, and the more sophisticated Dodo stations only appear in systems with tech level 11 and above. In the disc version Elite, this is achieved by having the Coriolis station blueprint appear in blueprint files associated with even file numbers (i.e. A, C, E, G, I, K, M and O), while the Dodo blueprint appears in the odd-numbered files (i.e. B, D, F, H, J, L, N and P). However, Elite-A adds the galaxy number to the file number, so in galaxies where the internal galaxy number in GCNT is odd (i.e. in the second, fourth, sixth and eighth galaxies) this logic gets flipped around, so the Coriolis station appears in the systems with higher tech levels, and the Dodo appears in those with lower tech levels.</p>
+            
+						<p>It also means that Thargoids and Thargons, which appear in ship files C and D only, will never appear in normal space in the fifth, sixth, seventh or eighth galaxies. They do still appear in witchspace, though, as the code always loads a blueprint file containing Thargoids when mis-jumping.</p>
+
+						<h2 class="articleSubheader">Ship blueprints in the 6502 Second Processor version<br />
+													 ----------------------------------------------------</h2>
+
+						<p>Just like the official 6502 Second Processor version of Elite, the 6502 Second Processor version of Elite-A has enough memory to load all the ship blueprints into memory at one time. In the official version, this simply means that the game has a fully populated XX21 table, but because Elite-A has more ship blueprints than there are positions in the XX21 table, we need a new routine to work out which ships should be available at any one time.</p>
+
+						<p>The following process does just this, and is run every time we arrive in a new system or launch from the station, but instead of loading a ship blueprints file from disc, it populates the XX21 table with a new selection of ships each time. We start with a version of the <a href="/elite-a/parasite/variable/xx21.html">XX21 table</a> that has all the fixed positions already populated (i.e. those positions that only ever contain a specific ship). The <a href="/elite-a/parasite/subroutine/lomod.html">LOMOD</a> routine, which is different in the 6502 Second Processor version, then works through all the blank positions, filling them up according to a specific set of rules:</p>
+
+						<ul>
+							<li>First, we populate the space station in position 2 with a Dodo or Coriolis station, depending on the tech level (so the 6502 Second Processor version of Elite-A doesn't flip the station type every other galaxy, unlike the standard version).</li>
+
+							<li>Next, we work our way from position 9 to 28, skipping positions 15 and 16 (15 is the small ship which is dealt with separately, and 16 is the cop position, which is already populated by the Viper). We do this by setting up a loop to work through each position in turn, so let's call this position counter Y, which loops through positions 9-14 then 17-28. For each position Y, we do the following:
+
+								<ul>
+									<li>Pick a random number between 0 and the total number of different ship blueprints, and set this as the ship type we would like to try to install in this position. Let's call it X.</li>
+
+									<li>Check the <a href="/elite-a/parasite/variable/ship_bits.html">ship_bits table</a> to see if ship type X is allowed in this ship blueprint position. This table lists all allowed positions for each of the different blueprints in Elite-A, so the Cobra Mk III is allowed in positions 11-13 and 21-28, for example, while the Dragon is only allowed in position 14.</li>
+
+									<li>If the ship type we are trying to install is not allowed in this position, we jump back to the previous step to generate another random type X to try.</li>
+
+									<li>If we get here then this ship type is allowed in this position, so we now generate a random number in the range 0-255, and test it against the probability figure for this type, which we get from the first byte in the <a href="/elite-a/parasite/variable/ship_bytes.html">ship_bytes table</a>. This figure gives the probability (out of 256) of us being able to install this ship into a position in which it is allowed. So, if the figure is 100 (as it is for the Mamba and Sidewinder), then the chance of us being able to add this ship to a blueprint position is 100/256, or a 39% chance, while the much rarer Dragon has a value of 3, so its probability of being added is 3/256, or a 1.2% chance. This process makes some ships rarer than others.</li>
+
+									<li>If the random number is greater than the probability figure, we jump back to the previous step to generate another random type X to try.</li>
+
+									<li>If we get here then we are now OK to install the blueprint for ship type X into position Y. As part of this, we check the second byte in the <a href="/elite-a/parasite/variable/ship_bytes.html">ship_bytes table</a> to see if this ship type comes with an escape pod fitted, and if so, we set the relevant bit for this type in the default NEWB flag table at E%, so all spawned ships of this type have the correct escape pod setting.</li>
+
+									<li>If we just decided to add an Anaconda or a Dragon (which will only be the case for position 14, according to the ship_bits table), then we also add the relevant small ship into position 15, i.e. a Worm or Sidewinder respectively.</li>
+
+									<li>We now increment Y to point to the next position, and loop back up to populate it, until we have populated all the positions in the XX21 table.</li>
+								</ul>
+
+							</li>
+						</ul>
+
+						<p>There is one more thing to note. Every time we fail to install a blueprint and have another go - i.e. when a ship type is not allowed in a certain position, or our random number is greater than the probability figure - then a one-byte counter is decremented. If this counter counts 256 failures, then we give up on the current position and move on to the next one, setting the skipped position to empty, and resetting the counter. This means that positions can still be empty, particularly those that only allow a small number of ship types, and it also guarantees that the whole process takes a finite amount of time.</p>
+
+						<p>The above algorithm effectively does the same thing as the BASIC program that generates the 23 ship blueprint files supplied with the standard version. The main difference is that the 6502 Second Processor version generates a new set of blueprints every time we launch or arrive in a new system, while the standard version has to choose from 23 fixed examples of the same algorithm. On the other hand, the 6502 Second Processor version doesn't randomly alter the bounty, maximum energy, laser power and number of missiles, unlike the standard version. Even the variations have variations in Elite-A...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="elite-a_buying_and_flying_ships.html">Buying and flying ships in Elite-A</a><a class="next" rel="next" title="Next deep dive" href="elite-a_the_encyclopedia_galactica.html">The Encyclopedia Galactica</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

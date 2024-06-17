@@ -1,0 +1,369 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("about_site", "building_elite.html", "Building Elite from the source", "Building Elite from the source", "Details of how to build BBC Micro Elite from the source", "elite", "about_site", "building_elite");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="terminology_used_in_this_commentary.html">Terminology used in this commentary</a><a class="next" rel="next" title="Next page" href="useful_links.html">Useful links</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<p>If you would like to build a fully working version of Elite on a modern computer, from the exact same source code as on this site, then you will find everything you need in the <a href="#repositories">accompanying GitHub repositories</a>, including full instructions. These repositories replicate the original build process as closely as possible; here we take a look at how the source files are structured and how the build process works.</p>
+
+						<p>To keep things simple, let's concentrate on the build process for the BBC Micro cassette version. The BBC Micro disc, 6502 Second Processor, BBC Master and Elite-A versions have more files and produce more binaries, but the basic pipeline is essentially the same, while the Electron version has an identical build process to the cassette version and the NES version has its own unique pipeline.</p>
+
+						<p>(I am indebted to Kieran Connell for the following, who designed the modern build pipeline and wrote the original versions of the checksum and verify scripts as part of his epic <a href="https://github.com/kieranhj/elite-beebasm">elite-beebasm</a> project. Without his original project, none of this would have ever happened...)</p>
+
+						<h2 class="articleSubheader">The Elite build pipeline<br />
+						                             ------------------------</h2>
+
+						<p>The modern build process uses a multi-stage pipeline. This pipeline is based on the original build process from the source disc, but it uses the BeebAsm assembler and Python instead of BBC BASIC.</p>
+
+						<p>There are five main folders in each repository, which reflect the progress of the build process (the links will take you to the relevant folders on GitHub for the cassette version):</p>
+
+						<ul>
+							<li><a href="https://github.com/markmoxon/cassette-elite-beebasm/tree/main/1-source-files">1-source-files</a> contains all the different source files, such as the main assembler source files, image binaries, fonts, boot files and so on.</li>
+
+							<li><a href="https://github.com/markmoxon/cassette-elite-beebasm/tree/main/2-build-files">2-build-files</a> contains build-related scripts, such as the checksum, encryption and crc32 verification scripts.</li>
+
+							<li><a href="https://github.com/markmoxon/cassette-elite-beebasm/tree/main/3-assembled-output">3-assembled-output</a> contains the output from the assembly process, when the source files are assembled and the results processed by the build files.</li>
+
+							<li><a href="https://github.com/markmoxon/cassette-elite-beebasm/tree/main/4-reference-binaries">4-reference-binaries</a> contains the correct binaries for each variant, so we can verify that our assembled output matches the reference.</li>
+
+							<li><a href="https://github.com/markmoxon/cassette-elite-beebasm/tree/main/5-compiled-game-discs">5-compiled-game-discs</a> contains the final output of the build process: an SSD disc image that contains the compiled game and which can be run on real hardware or in an emulator.</li>
+						</ul>
+
+						<p>These folders are used in the multi-stage build process in the following manner: the 1-source-files are assembled, then encrypted and checksummed by the 2-build-files to create the 3-assembled-output, which is optionally verified against the 4-reference-binaries before being compiled into the final 5-compiled-game-discs.</p>
+
+						<p>This build process is configured via the project's <a href="https://github.com/markmoxon/cassette-elite-beebasm/blob/main/Makefile">Makefile</a>. Each version is subtly different, but the steps are the same in each case. For the cassette version, the specific build steps are as follows (the links will take you to the relevant source files on GitHub):</p>
+
+						<ol>
+							<li>Assemble the main game with <a href="https://github.com/markmoxon/cassette-elite-beebasm/blob/main/1-source-files/main-sources/elite-source.asm">elite-source.asm</a></li>
+              
+							<li>Concatenate the game code and assemble the header with <a href="https://github.com/markmoxon/cassette-elite-beebasm/blob/main/1-source-files/main-sources/elite-bcfs.asm">elite-bcfs.asm</a></li>
+
+							<li>Assemble the loader with <a href="https://github.com/markmoxon/cassette-elite-beebasm/blob/main/1-source-files/main-sources/elite-loader.asm">elite-loader.asm</a></li>
+
+							<li>Calculate checksums and add encryption with <a href="https://github.com/markmoxon/cassette-elite-beebasm/blob/main/2-build-files/elite-checksum.py">elite-checksum.py</a></li>
+
+							<li>Verify the assembled output with <a href="https://github.com/markmoxon/cassette-elite-beebasm/blob/main/2-build-files/crc32.py">crc32.py</a></li>
+
+							<li>Assemble a bootable disc image with <a href="https://github.com/markmoxon/cassette-elite-beebasm/blob/main/1-source-files/main-sources/elite-disc.asm">elite-disc.asm</a></li>
+						</ol>
+
+						<p>This process broadly mirrors the build system on the original source discs. The original source code is split across a number of separate BBC BASIC files, each of which assembles and saves a binary file (the game itself isn't written in BASIC - the source code just uses BBC BASIC's built-in assembler to produce the game). In the cassette version there are ten BASIC source files in all: one for the text tokens, another for the ship blueprints, seven for the main game (A-G), and one for the game's loader.</p>
+
+						<p>(For comparison, the 6502 Second Processor version has two separate loader files, the main parasite code is made up of Elite A through Elite J, and there's an additional I/O processor source that runs on the BBC Micro side of the Tube. the BBC Micro disc version, meanwhile, has three loaders, two main code files and 16 ship blueprint files; the BBC Master version has one loader and just two main files, one for the main game code and another for data; Elite-A has one loader, three main code files, two Tube code files, and 23 ship blueprint files; and NES Elite has no loader or blueprint files, but has eight ROM banks instead.)</p>
+
+						<p>The binary files produced by the BASIC sources are then concatenated and encrypted to give the finished game binaries. This is done by another BBC BASIC program - the "Big Code File" source - and the results are copied to the final game disc. Note that in the modern build process, only the cassette and 6502 Second Processor versions incorporate this BCFS approach, as those are the only two versions for which the original source discs exist. The other versions assemble each source file in one go, as this is trivial on modern machines, and adding the complexity of the BCFS approach seemed a bit pointless.</p>
+            
+						<p>The modern version of this build process uses BeebAsm instead of BBC BASIC, the encryption is done in Python, and the final product is an SSD disc image, but otherwise the approach is just like the original process. This disc image contains a fully playable version of Elite that you can load into an emulator like JSBeeb or BeebEm, or into a real BBC Micro or Acorn Electron using a device like a Gotek. The code produced is identical to the released version of the game.</p>
+
+						<p>Let's take a look at each of the pipeline stages in more detail.</p>
+
+						<h2 class="articleSubheader">1. Assemble the main game with elite-source.asm<br />
+						                             -----------------------------------------------</h2>
+
+						<p>BeebAsm loads elite-source.asm and creates the following files:</p>
+
+						<ul class="tightList">
+							<li>ELTA.bin</li>
+
+							<li>ELTB.bin</li>
+
+							<li>ELTC.bin</li>
+
+							<li>ELTD.bin</li>
+
+							<li>ELTE.bin</li>
+
+							<li>ELTF.bin</li>
+
+							<li>ELTG.bin</li>
+
+							<li>PYTHON.bin</li>
+
+							<li>SHIPS.bin</li>
+
+							<li>WORDS9.bin</li>
+						</ul>
+
+						<p>elite-source.asm contains the main source code for Elite. It is based on the original BASIC source files, converted to BeebAsm assembler syntax. In the original build, this is what happens:</p>
+
+						<ul class="tightList">
+							<li>ELITEA produces the ELTA binary</li>
+
+							<li>ELITEB produces the ELTB binary</li>
+
+							<li>ELITEC produces the ELTC binary</li>
+
+							<li>ELITED produces the ELTD binary</li>
+
+							<li>ELITEE produces the ELTE binary</li>
+
+							<li>ELITEF produces the ELTF binary</li>
+
+							<li>ELITEG produces the ELTG binary</li>
+
+							<li>DIALSHP contains the PYTHON binary</li>
+
+							<li>SHPPRTE produces the SHIPS binary</li>
+
+							<li>GENTOK produces the WORDS9 binary</li>
+						</ul>
+
+						<p>So the BeebAsm process mirrors the original compilation steps pretty closely.</p>
+
+						<h2 class="articleSubheader">2. Concatenate the game code and compile the header with elite-bcfs.asm<br />
+						                             -----------------------------------------------------------------------</h2>
+
+						<p>BeebAsm then loads elite-bcfs.asm, which reads the following files:</p>
+
+						<ul class="tightList">
+							<li>ELTA.bin</li>
+
+							<li>ELTB.bin</li>
+
+							<li>ELTC.bin</li>
+
+							<li>ELTD.bin</li>
+
+							<li>ELTE.bin</li>
+
+							<li>ELTF.bin</li>
+
+							<li>ELTG.bin</li>
+
+							<li>SHIPS.bin</li>
+						</ul>
+
+						<p>and creates the following:</p>
+
+						<ul class="tightList">
+							<li>ELTcode.unprot.bin</li>
+
+							<li>ELThead.bin</li>
+						</ul>
+
+						<p>elite-bcfs.asm is the BeebAsm version of the BASIC source file S.BCFS, which is responsible for creating the "Big Code File" - i.e. concatenating the ELTA to ELTG binaries plus the SHIPS data into a single executable called ELTcode.</p>
+
+						<p>There is also a simple checksum test added to the start of the ELTcode file, but at this stage the compiled code is not encrypted, which is why it has "unprot" in the name. The original BASIC files contain encryption code that can't be replicated in BeebAsm, so we do this using Python in step 4 below.</p>
+
+						<h2 class="articleSubheader">3. Assemble the loader with elite-loader.asm<br />
+						                             --------------------------------------------</h2>
+
+						<p>Next, BeebAsm loads elite-loader.asm, which reads the following files:</p>
+
+						<ul class="tightList">
+							<li>images/P.DIALS.bin</li>
+
+							<li>images/P.ELITE.bin</li>
+
+							<li>images/P.A-SOFT.bin</li>
+
+							<li>images/P.(C)ASFT.bin</li>
+
+							<li>WORDS9.bin</li>
+
+							<li>PYTHON.bin</li>
+						</ul>
+
+						<p>and creates the following:</p>
+
+						<ul class="tightList">
+							<li>ELITE.unprot.bin</li>
+						</ul>
+
+						<p>This is the BeebAsm version of the BASIC source file ELITES, which creates the executable Elite loader ELITE. This is responsible for displaying the title screen and planet, loading the dashboard image, setting up interrupt routines, configuring a number of operating system settings, relocating code to lower memory (below PAGE), and finally loading and running the main game.</p>
+
+						<p>The loader incorporates four image binaries from the images folder that, together with the code to draw the Saturn backdrop, make up the loading screen. It also incorporates the WORDS9 and PYTHON data files that contain the game's text and the Python ship blueprint.</p>
+
+						<p>There are also a number of checksum and protection routines that EOR the code and data with other parts of memory in an attempt to obfuscate and protect the game from tampering. This can't be done in BeebAsm, so we do this using Python in the next step.</p>
+
+						<h2 class="articleSubheader">4. Calculate checksums and add encryption with elite-checksum.py<br />
+						                             ----------------------------------------------------------------</h2>
+
+						<p>Next, the pipeline runs the Python script elite-checksum.py, which reads the following files:</p>
+
+						<ul class="tightList">
+							<li>ELTA.bin</li>
+
+							<li>ELTB.bin</li>
+
+							<li>ELTC.bin</li>
+
+							<li>ELTD.bin</li>
+
+							<li>ELTE.bin</li>
+
+							<li>ELTF.bin</li>
+
+							<li>ELTG.bin</li>
+
+							<li>ELThead.bin</li>
+
+							<li>SHIPS.bin</li>
+
+							<li>ELITE.unprot.bin</li>
+						</ul>
+
+						<p>and creates the following:</p>
+
+						<ul class="tightList">
+							<li>ELTcode.bin</li>
+
+							<li>ELITE.bin</li>
+						</ul>
+
+						<p>There are a number of checksum and simple EOR encryption routines that form part of the cassette version's build process. These were trivial to interleave with the assembly process in the original BASIC source files, but they've been converted into Python so they can run on modern machines (as not too many modern computers support BBC BASIC out of the box). Kieran Connell is the genius behind all this Python magic, so many thanks to him for cracking the code for the cassette version (which inspired me to do the same for the other versions).</p>
+
+						<p>The cassette version's Python script has two parts. The first part generates an encrypted version of the ELTcode binary, based on the code in the original BASIC source program S.BCFS, as follows:</p>
+
+						<ul class="tightList">
+							<li>Concatenate all the compiled binaries</li>
+
+							<li>Compute the checksum for the commander data</li>
+
+							<li>Poke the checksum value into the binary</li>
+
+							<li>Compute the checksum for all the game code except the header</li>
+
+							<li>Poke the checksum value into the binary</li>
+
+							<li>Encrypt all the game code except the header using a cycling EOR value (0-255)</li>
+
+							<li>Compute the final checksum for the game code</li>
+
+							<li>Output the encrypted ELTcode binary</li>
+						</ul>
+
+						<p>The second part implements the checksum and encryption functions from the original BASIC source program ELITES, to generate an encrypted ELITE binary as follows:</p>
+
+						<ul class="tightList">
+							<li>Reverse the bytes for a block of code that is placed on the stack</li>
+
+							<li>Compute the checksum for MAINSUM</li>
+
+							<li>Poke the checksum value into the binary</li>
+
+							<li>Compute the checksum for CHECKbyt</li>
+
+							<li>Poke the checksum value into the binary</li>
+
+							<li>Encrypt a block of code by EOR'ing with the code to be placed on the stack</li>
+
+							<li>Encrypt the code destined for lower RAM by EOR'ing with the loader boot code</li>
+
+							<li>Encrypt binary data (dashboard etc.) by EOR'ing with the loader boot code</li>
+
+							<li>Output the encrypted ELITE binary</li>
+						</ul>
+
+						<p>At the end of all this we have two encrypted binaries, one for the loader and another for the main game.</p>
+
+						<h2 class="articleSubheader">5. Verify the assembled output with crc32.py<br />
+						                             --------------------------------------------</h2>
+
+						<p>By default the crc32.py script is run on the results, which compares the assembled output with the binaries from the original build process. This enables us to confirm that our output is correct.</p>
+
+						<p>The verification output for the cassette version is as follows:</p>
+
+<pre class="articleIndented">  [--originals--]  [---output----]
+  Checksum   Size  Checksum   Size  Match  Filename
+  -----------------------------------------------------------
+  a88ca82b   5426  a88ca82b   5426   Yes   ELITE.bin
+  f40816ec   5426  f40816ec   5426   Yes   ELITE.unprot.bin
+  0f1ad255   2228  0f1ad255   2228   Yes   ELTA.bin
+  e725760a   2600  e725760a   2600   Yes   ELTB.bin
+  97e338e8   2735  97e338e8   2735   Yes   ELTC.bin
+  322b174c   2882  322b174c   2882   Yes   ELTD.bin
+  29f7b8cb   2663  29f7b8cb   2663   Yes   ELTE.bin
+  8a4cecc2   2721  8a4cecc2   2721   Yes   ELTF.bin
+  7a6a5d1a   2340  7a6a5d1a   2340   Yes   ELTG.bin
+  01a00dce  20712  01a00dce  20712   Yes   ELTcode.bin
+  1e4466ec  20712  1e4466ec  20712   Yes   ELTcode.unprot.bin
+  00d5bb7a     40  00d5bb7a     40   Yes   ELThead.bin
+  99529ca8    256  99529ca8    256   Yes   PYTHON.bin
+  49ee043c   2502  49ee043c   2502   Yes   SHIPS.bin
+  c4547e5e   1023  c4547e5e   1023   Yes   WORDS9.bin
+</pre>
+
+						<p>In this case all the assembled binaries match the original binaries, so our build process has worked.</p>
+
+						<h2 class="articleSubheader">6. Assemble a bootable disc image with elite-disc.asm<br />
+						                             -----------------------------------------------------</h2>
+
+						<p>Finally, BeebAsm loads elite-disc.asm, which reads the following files:</p>
+
+						<ul class="tightList">
+							<li>boot-files/$.!BOOT.bin</li>
+
+							<li>basic-programs/$.ELITE.bin</li>
+
+							<li>ELITE.bin</li>
+
+							<li>ELTcode.bin</li>
+						</ul>
+
+						<p>and creates the following:</p>
+
+						<ul class="tightList">
+							<li>elite-cassette-from-source-disc.ssd</li>
+						</ul>
+
+						<p>This script builds the final disc image, to match the released version of the game (albeit on a disc rather than a cassette). Note that the name of the disc image depends on the variant that's being built - the name shown above is the default build, which builds the version from the original source discs for the cassette version.</p>
+
+						<p>The names of the files in the released version of cassette Elite are slightly different to those produced by the build process from the source disc, because the released disc also contains Acornsoft's iconic mode 7 loading screen in a BASIC program called ELITE. As a result, the ELITE binary that the build process generates for the Elite loader in step 4 gets renamed to ELTdata. The final disc image therefore contains the following files:</p>
+
+						<ul>
+							<li>!BOOT - a boot file that is *EXECuted on a Shift-Break and simply CHAINs the ELITE program</li>
+
+							<li>ELITE - displays the mode 7 Acornsoft loading screen for Elite, and then *RUNs the Elite loader in ELTdata</li>
+
+							<li>ELTdata - the Elite loader with its Saturn loading screen, renamed from the original ELITE file that's produced by the build process</li>
+
+							<li>ELTcode - the main game code</li>
+						</ul>
+
+						<p>Note that by default, the build process produces a version of the cassette game that can be loaded from disc, so the above names are designed to fit into the seven-character limit of DFS. You can build a genuine cassette version by setting the DISC configuration variable to FALSE, in which case the filenames will be ELITEdata and ELITEcode.</p>
+
+						<p>The disc image can be loaded into an emulator, or into a real BBC Micro using a device like a Gotek.</p>
+
+						<h2 class="articleSubheader"><a name="repositories" id="repositories"></a>Doing the above on a modern computer<br />
+						                             ------------------------------------</h2>
+
+						<p>For more details on how to run this process on a modern computer, and for all the sources and build files you need to run this on your PC, Mac or Linux box, see the accompanying GitHub repositories:</p>
+
+						<ul>
+							<li><a href="https://github.com/markmoxon/cassette-elite-beebasm">Fully buildable source for the BBC Micro cassette version</a></li>
+
+							<li><a href="https://github.com/markmoxon/disc-elite-beebasm">Fully buildable source for the BBC Micro disc version</a></li>
+
+							<li><a href="https://github.com/markmoxon/6502sp-elite-beebasm">Fully buildable source for the 6502 Second Processor version</a></li>
+
+							<li><a href="https://github.com/markmoxon/master-elite-beebasm">Fully buildable source for the BBC Master version</a></li>
+
+							<li><a href="https://github.com/markmoxon/electron-elite-beebasm">Fully buildable source for the Acorn Electron version</a></li>
+
+							<li><a href="https://github.com/markmoxon/elite-a-beebasm">Fully buildable source for Elite-A</a></li>
+
+							<li><a href="https://github.com/markmoxon/nes-elite-beebasm">Fully buildable source for the NES version</a></li>
+						</ul>
+            
+						<p>In each case the source code on GitHub is identical to the code on this site (in fact, this website is generated from the GitHub repositories, so they are guaranteed to be identical).</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="terminology_used_in_this_commentary.html">Terminology used in this commentary</a><a class="next" rel="next" title="Next page" href="useful_links.html">Useful links</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

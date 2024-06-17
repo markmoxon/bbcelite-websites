@@ -1,0 +1,250 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_revs_memory_map.html", "The Revs memory map", "The Revs memory map", "A deep dive into the memory map in BBC Micro Revs", "revs", "deep_dives_memory_maps", "the_revs_memory_map");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="index.html">Index of deep dives</a><a class="next" rel="next" title="Next deep dive" href="the_jigsaw_puzzle_binary.html">The jigsaw puzzle binary</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Memory usage is really tight in BBC Micro Revs</h2>
+
+						<p>Revs is an extremely sophisticated piece of programming, so it's no surprise that it leaves very little spare memory when loaded into a standard BBC Micro. The complex loading system <a href="the_jigsaw_puzzle_binary.html">unfolds the game code</a> into every nook and cranny, leaving hardly any room for anything else; the game manages to squeeze working game code into screen memory, <a href="hidden_secrets_of_the_custom_screen_mode.html">hiding it right in the middle of the blue sky</a>; and even the <a href="text_tokens.html">game text is tokenised</a> to save precious memory.</p>
+
+						<p>Indeed, when author Geoff Crammond added a new feature, computer assisted steering (CAS), to the 1986 Superior Software release of Revs, he could only fit in the additional code by repurposing the memory used by the <a href="/source/main/subroutine/setupgame.html">SetupGame</a> routine, which is only run once and isn't needed again once the game has started. The Superior version reuses this memory to store the drivers' accumulated points, overwriting the setup code once it has served its purpose.</p>
+
+						<p>To say that Revs is a tight squeeze is a bit of an understatement. Let's take a deeper look at just how tight things are.</p>
+
+						<h2 class="articleSubheader">The Revs memory map<br />
+													 -------------------</h2>
+
+						<p>When the cassette version of Revs is loaded, this is what the memory map of the BBC Micro Model B looks like. On the left is the memory map of the game running in the custom screen mode, during the driving part of the game, while the right side shows the game running in mode 7, when displaying the various game menus and leaderboards. The game starts in the mode 7 configuration, and switches to the left configuration when heading to the track.</p>
+
+<pre class="articleIndented">  +-----------------------------------+   &amp;FFFF
+  |                                   |
+  | Machine Operating System (MOS)    |
+  |                                   |
+  +-----------------------------------+   &amp;C000
+  |                                   |
+  | Paged ROMs                        |
+  |                                   |                             Mode 7
+  +-----------------------------------+-- &amp;8000 --------------------------+
+  |                                   |                                   |
+  |                                   |                     Screen memory |
+  |                                   |                                   |
+  | Game code (dash data 0-25)        +-- &amp;7C00 --------------------------+
+  |                                   |                                   |
+  |                                   |                                   |
+  |                                   |                                   |
+  +---------- &amp;7B00 = <a href="/source/main/subroutine/updatemirrors.html">UpdateMirrors</a> --+                &amp;7768-&amp;7BFF unused |
+  |                                   |                                   |
+  | Screen memory (dash data 25-40)   |                                   |
+  |                                   |                                   |
+  +-----------------------------------+-- &amp;7768 --------------------------+
+  |                                   |                                   |
+  | Screen memory (dash data 41-42)   |                   Dash data 41-42 |
+  |                                   |                                   |
+  +-----------------------------------+-- &amp;6C00 --------------------------+
+  |                                   |                                   |
+  | Screen memory (track &amp; horizon)   |                &amp;6700-&amp;6BFF unused |
+  |                                   |                                   |
+  +-----------------------------------+-- &amp;6700 --------------------------+
+  |                                   |                                   |
+  | Screen memory (game code in sky)  |                         Game code |
+  |                                   |                                   |
+  +-----------------------------------+-- &amp;5E40 = <a href="/source/main/variable/xvergerightlo.html">xVergeRightLo</a> ----------+
+  |                                   |                                   |
+  | Screen memory (race info text)    |                &amp;5A80-&amp;5E3F unused |
+  |                                   |                                   |
+  +-----------------------------------+-- &amp;5A80 --------------------------+
+  |                                   |                                   |
+  | Main game code &amp; screen buffer    |   Main game code &amp; dash data 0-40 |
+  |                                   |                                   |
+  +-----------------------------------+-- &amp;0B00 --------------------------+
+  |                                   |
+  | Main variable workspace 2         |
+  |                                   |
+  +-----------------------------------+   &amp;0880
+  |                                   |
+  | MOS sound workspace               |
+  |                                   |
+  +-----------------------------------+   &amp;0800
+  |                                   |
+  | Main variable workspace 1         |
+  |                                   |
+  +-----------------------------------+   &amp;0380 = <a href="/source/main/workspace/main_variable_workspace.html#objyawanglelo">objYawAngleLo</a>
+  |                                   |
+  | MOS VDU workspace                 |
+  |                                   |
+  +-----------------------------------+   &amp;0300
+  |                                   |
+  | MOS general workspace             |
+  |                                   |
+  +-----------------------------------+   &amp;0200
+  |                                   |
+  | 6502 stack descends from &amp;01FF    |
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+   &amp;01B8
+  |                                   |
+  | Stack variables workspace         |
+  |                                   |
+  +-----------------------------------+   &amp;0100 = <a href="/source/main/workspace/stack_variables.html#positionnumber">positionNumber</a>
+  |                                   |
+  | Zero page workspace               |
+  |                                   |
+  +-----------------------------------+   &amp;0000 = <a href="/source/main/workspace/zero_page.html#carmoving">carMoving</a>
+</pre>
+
+						<p>The left configuration shows dash data blocks #0 to #40 after they are moved out of the main game code by the <a href="/source/main/subroutine/copydashdata.html">CopyDashData</a> routine, leaving space in the main game code for the screen buffer. The right configuration shows the dash data after it's been put back into the main game code, with only blocks #41 and #42 left in memory, where they remain untouched, ready for the next switch to the custom mode. For a detailed look at the dash data and the complex moving process, see the deep dive on <a href="the_jigsaw_puzzle_binary.html">the jigsaw puzzle binary</a>.</p>
+
+						<p>Another item of note is the game code between &amp;5E40 and &amp;6700, which is used in both modes, but which is hidden in the custom screen's blue sky during races. For more information on the custom screen mode, see the deep dive on <a href="hidden_secrets_of_the_custom_screen_mode.html">hidden secrets of the custom screen mode</a>.</p>
+
+						<p>Note that the memory map shows the full 64K of addressable memory that's supported by the BBC's 6502 processor, but only the bottom 32K is writable RAM, and hence usable by Revs. The top 16K is mapped to the MOS (Machine Operating System) ROM, and the next 16K is mapped to the currently selected paged ROM, which might be anything from BBC BASIC to the VIEW word processor.</p>
+
+						<p>This 32K of RAM includes both screen memory and the various operating system workspaces, which can leave a pretty small amount for programs (especially in high resolution screen modes). Let's take a look at exactly how much unused memory there is in Revs.</p>
+
+						<h2 class="articleSubheader">Memory usage<br />
+													 ------------</h2>
+
+						<p>Here's a full breakdown of memory usage in bytes, once the Acornsoft version of Revs is loaded and we have started driving:</p>
+
+<pre class="articleIndented">                                                               Used     Unused
+
+  Machine operating system (MOS) ROM                         16,384          -
+  Paged ROMs                                                 16,384          -
+  MOS general workspace in page 2                               256          -
+  MOS VDU workspace in page 3                                   128          -
+  MOS sound workspace in page 8                                 128          -
+  MOS zero page locations, &amp;D0-&amp;E1 and &amp;E4-&amp;FF inclusive         46          -
+                                                             ------     ------
+                              Total MOS and ROM memory       33,326          -
+
+
+  Memory for the custom screen mode                           8,320          -
+  6502 stack, stack variables (at opposite ends of page 1)      256          -
+                                                             ------     ------
+                              Total shared memory             8,576          -
+
+
+  Main game code & screen buffer (in the dash data blocks)   20,352        279
+  Game code above screen memory (from UpdateMirrors and up)   1,280          1
+  Main variable workspace 1 (various tables, config)          1,152         52
+  Main variable workspace 2 (various tables, coordinates)       640         30
+  Zero page workspace (commonly used variables)                 210         66
+                                                             ------     ------
+                              Total game code memory         23,634        428
+
+
+                              Total memory                   65,536
+</pre>
+
+						<p>As you can see, Revs does not use every single last byte of the BBC Micro's usable memory - there are 428 unused bytes. Let's look at these in more detail.</p>
+
+						<h2 class="articleSubheader">Counting the free space<br />
+													 -----------------------</h2>
+
+						<p>Even when Revs is using its custom screen mode, the game contains a few unused blocks of memory, though most of these are in small blocks of one or two bytes, often spacing out variables so they start on page-aligned or easily calculated addresses. For example, a number of the dash data blocks have unused bytes sandwiched between the preceding game code and the start of the dash data; some of these unused blocks are large enough that they could be used for game code or variables, though extending Revs in any meaningful way using these blocks would still be tricky.</p>
+
+						<p>I've managed to track down 428 unused bytes in the original Acornsoft version, once the game is fully loaded and we're driving around the track (there is a lot more unused memory when we're in the mode 7 game menus, but that doesn't count). For comparison, <a href="https://www.bbcelite.com/deep_dives/the_elite_memory_map.html">Elite only has 66 spare bytes</a>, which sounds like a big difference, but Elite needs to use the filing system when running and Revs doesn't, so Elite's memory constraints are slightly higher (though conversely, that's why Revs could use zero page locations &amp;90-&amp;CF, which it doesn't). Whatever the difference, both games are impressively compact.</p>
+
+						<p>Here's a summary of all the unused bytes I know about.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Location(s)</th><th>Unused bytes</th><th>Section</th></tr>
+							<tr><td>Zero page: &amp;90-&amp;CF and &amp;E2-&amp;E3</td><td>66</td><td>Zero page workspace</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#objectsize">objectSize</a></td><td>32</td><td>Main variable workspace 1</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#configassist">configAssist</a></td><td>5</td><td>Main variable workspace 1</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#volumelevel">volumeLevel</a></td><td>1</td><td>Main variable workspace 1</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#laptenths">lapTenths</a></td><td>2</td><td>Main variable workspace 1</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#lapseconds">lapSeconds</a></td><td>2</td><td>Main variable workspace 1</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#lapminutes">lapMinutes</a></td><td>2</td><td>Main variable workspace 1</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#segmentflags">segmentFlags</a></td><td>8</td><td>Main variable workspace 1</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#totalraceseconds">totalRaceSeconds</a></td><td>16</td><td>Main variable workspace 2</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#zsegmentcoordolo">zSegmentCoordOLo</a></td><td>4</td><td>Main variable workspace 2</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#zhelmetcoordlo">zHelmetCoordLo</a></td><td>3</td><td>Main variable workspace 2</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#zsegmentcoordohi">zSegmentCoordOHi</a></td><td>4</td><td>Main variable workspace 2</td></tr>
+							<tr><td>After <a href="/source/main/workspace/main_variable_workspace.html#zhelmetcoordhi">zHelmetCoordHi</a></td><td>3</td><td>Main variable workspace 2</td></tr>
+							<tr><td>Before <a href="/source/main/variable/sounddata.html">soundData</a></td><td>16</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/subroutine/getobjectdistance.html">GetObjectDistance</a></td><td>15</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/subroutine/drawsegmentedge_part_7_of_7.html">DrawSegmentEdge (part 7)</a></td><td>10</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/vergescale.html">vergeScale</a></td><td>2</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/handpixels.html">handPixels</a></td><td>6</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/stadrawbyte.html">staDrawByte</a></td><td>26</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/subroutine/drawfence_part_2_of_2.html">DrawFence (part 2)</a></td><td>1</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token18.html">token18</a></td><td>1</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/subroutine/checkrestartkeys.html">CheckRestartKeys</a></td><td>2</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/pixelstoleft.html">pixelsToLeft</a></td><td>7</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token11.html">token11</a></td><td>5</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token25.html">token25</a></td><td>4</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token51.html">token51</a></td><td>4</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token3.html">token3</a></td><td>4</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token0.html">token0</a></td><td>4</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token17.html">token17</a></td><td>13</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token35.html">token35</a></td><td>5</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token45.html">token45</a></td><td>2</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/subroutine/print2digitbcd.html">Print2DigitBCD</a></td><td>1</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token39.html">token39</a></td><td>1</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token49.html">token49</a></td><td>3</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/dashdataoffset.html">dashDataOffset</a></td><td>3</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token30.html">token30</a></td><td>2</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token53.html">token53</a></td><td>2</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token38.html">token38</a></td><td>3</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/mirrorsegment.html">mirrorSegment</a></td><td>2</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token24.html">token24</a></td><td>4</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token15.html">token15</a></td><td>9</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token34.html">token34</a></td><td>12</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token21.html">token21</a></td><td>4</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/timefromoption.html">timeFromOption</a></td><td>1</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/pointsforplace.html">pointsForPlace</a></td><td>2</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token9.html">token9</a></td><td>4</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token12.html">token12</a></td><td>4</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token37.html">token37</a></td><td>4</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/filldataoffset.html">fillDataOffset</a></td><td>7</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token7.html">token7</a></td><td>5</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/dashdata31.html">dashData31</a></td><td>16</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/ylookuplo.html">yLookupLo</a></td><td>7</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/drivernames1.html">driverNames1</a></td><td>3</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/subroutine/resetbestlaptime.html">ResetBestLapTime</a></td><td>1</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/endmirror.html">endMirror</a></td><td>3</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/drivernames2.html">driverNames2</a></td><td>4</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/subroutine/printheader.html">PrintHeader</a></td><td>5</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token1.html">token1</a></td><td>18</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token40.html">token40</a></td><td>6</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/token52.html">token52</a></td><td>2</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/subroutine/flushsoundbuffers.html">FlushSoundBuffers</a></td><td>1</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/sectionsteering.html">sectionSteering</a></td><td>6</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/vergepixelmask.html">vergePixelMask</a></td><td>2</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/zroadsigncoordhi.html">zRoadSignCoordHi</a></td><td>3</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/variable/ycursor.html">yCursor</a></td><td>2</td><td>Main game code</td></tr>
+							<tr><td>After <a href="/source/main/subroutine/drawcarinmirror.html">DrawCarInMirror</a></td><td>1</td><td>Game code above screen memory</td></tr>
+						</table>
+
+						<p>Most of these blocks are tiny, but it would be feasible to add code or data into the larger blocks and connect the code with jumps and branches. Adding up the unused blocks with double-figure sizes gives 118 bytes, which has potential, if nothing else.</p>
+
+						<p>But it's certainly fair to say that Revs does an impressive job of squeezing itself into the standard BBC Micro, using pretty much everything the 32K micro has to offer. Looking at the finished game, you wouldn't expect anything less.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="index.html">Index of deep dives</a><a class="next" rel="next" title="Next deep dive" href="the_jigsaw_puzzle_binary.html">The jigsaw puzzle binary</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

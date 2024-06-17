@@ -1,0 +1,146 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "computer_assisted_steering.html", "Computer assisted steering (CAS)", "Computer assisted steering (CAS)", "A deep dive into Computer Assisted Steering (CAS) in BBC Micro Revs", "revs", "deep_dives_tactics", "computer_assisted_steering");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="tactics_of_the_non-player_drivers.html">Tactics of the non-player drivers</a><a class="next" rel="next" title="Next deep dive" href="wing_mirrors.html">Wing mirrors</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The algorithm behind the steering assistant in the Superior Software release</h2>
+
+						<p>The 1986 Superior Software release of Revs introduced a brand new feature: computer assisted steering, or CAS for short. No doubt inspired by the fact that the original Acornsoft version of Revs is fiercely difficult to master - particularly on keyboard - this new feature helps drivers navigate around the track, but it isn't an autopilot in the traditional sense; it doesn't grab the wheel, and it doesn't wrestle any control from the player.</p>
+
+						<p>Instead, CAS is a more subtle experience that somehow guides you around the trickier corners without appearing to get in the way at all. It really does feel like a gentle helping hand on the steering wheel, and it makes life a lot easier, but without spoiling the challenge.</p>
+
+						<p>The keyboard control document that comes with the game has this to say about CAS:</p>
+
+						<blockquote class="articleIndented">
+							<p>CAS does not alter the characteristics of the simulator, but is merely a "hand" on the steering wheel. So it's still up to you to get your speed and position correct as you approach each bend.
+
+							</p>CAS provides steering demands to the simulator in response to your key or joystick movements and fills in the detail that you cannot provide very easily except with an analogue joystick. It does this by taking into account the severity of oncoming bends and the position of the car relative to the side of the track and basically tries to get round the bend without coming off the track.</p>
+						</blockquote>
+
+						<p>So what does CAS do, and how does it do it? Let's take a look.</p>
+
+						<h2 class="articleSubheader">CAS is a light touch<br />
+													 --------------------</h2>
+
+						<p>CAS helps us drive by gently nudging the steering wheel in the correct direction - it doesn't take over, it just helps us out a bit. It only gets applied if it is switched on, and if we are already steering using the joystick or holding down a steering key on the keyboard (so CAS doesn't take control away from us - we have to be steering already for CAS to have any effect). It also only works if we are driving forwards along the track.</p>
+
+						<p>The way that CAS helps us steer is really clever, though it does stand on the shoulders of giants - specifically, it uses the segment steering values that we calculate when implementing steering in the non-player drivers. This is described at length in the deep dive on <a href="tactics_of_the_non-player_drivers.html">tactics of the non-player drivers</a>, but for the purposes of this article, we can assume that every segment in the track segment buffer has an associated <a href="/source/main/workspace/main_variable_workspace.html#segmentsteering">segmentSteering</a> value - so that's every track segment in our field of view.</p>
+
+						<p>The value of segmentSteering for a segment in the track segment buffer contains the amount and direction of steering that should be applied in order to follow the optimum racing line around the track. This is the line that the non-player drivers strive to follow, only deviating for overtaking manoeuvres. This value is therefore a perfect basis for a system that is supposed to help us around the track; we already have the ideal steering amount stored in the segmentSteering table for the track ahead of us, so CAS simply takes this value and nudges the steering wheel towards the optimum steering amount.</p>
+
+						<p>The format of each value in the segmentSteering table is as follows:</p>
+
+						<ul>
+							<li>Bit 7 is the steering direction (0 for steering left, 1 for steering right)</li>
+
+							<li>Bit 6 determines how this steering value should be applied to the driver (0 means this steering is always applied to the car, 1 means it is only applied if there is enough room on the track)</li>
+
+							<li>Bits 0 to 5 contain the amount of steering, expressed in terms of the change in racing line. The range in racing line is 0 (full right) to 255 (full left), so steering by +26 would steer the car to the left by 10% of the track width, for example</li>
+						</ul>
+
+						<p>Before we look at the algorithm, we should also note the format of the (<a href="/source/main/variable/steeringhi.html">steeringHi</a> <a href="/source/main/variable/steeringlo.html">steeringLo</a>) variable, which contains the position of the steering wheel (i.e. the dash that we move around the edges of the wheel when steering):</p>
+
+						<ul>
+							<li>Bit 0 of steeringLo is the steering direction (0 for steering right, 1 for steering left)</li>
+
+							<li>Bits 1 to 15 contain the amount of steering</li>
+						</ul>
+
+						<p>Note that the steering wheel direction in bit 0 is the other way round to the direction in bit 7 of segmentSteering.</p>
+
+						<p>Given this, let's see how the CAS algorithm works.</p>
+
+						<h2 class="articleSubheader">The CAS algorithm<br />
+													 -----------------</h2>
+
+						<p>CAS is applied by the <a href="/source/main/subroutine/assiststeering.html">AssistSteering</a> routine, which is called from <a href="/source/main/subroutine/processdrivingkeys_part_1_of_6.html">part 1 of ProcessDrivingKeys</a> for joystick players or <a href="/source/main/subroutine/processdrivingkeys_part_2_of_6.html">part 2</a> for keyboard users.</p>
+
+						<p>In each case, the routine is only called if CAS is enabled, which is detected by the <a href="/source/main/subroutine/getsteeringassist.html">GetSteeringAssist</a> routine. This routine returns the configuration status, and it also draws a caret symbol on the rev counter if CAS is enabled, using the configuration flag to generate the pixel bytes required (a very efficient solution). The new configuration keys for CAS (SHIFT-f6 to enable, SHIFT-f3 to disable) are implemented by adding two extra values to the <a href="/source/main/variable/configkeys.html">configKeys</a> table and a new config variable at <a href="/source/main/workspace/main_variable_workspace.html#configassist">configAssist</a>, which are automatically supported by the <a href="/source/main/subroutine/processshiftedkeys.html">ProcessShiftedKeys</a> routine.</p>
+
+						<p>If CAS is enabled, then AssistSteering is called with (U T) set to the current amount of steering from the keyboard or joystick. We only use the current steering value to determine the direction in which we are trying to steer; for keyboard users, this makes sense as steering is digital (left or right), but for joystick users this means that the steering acts like a digital joystick when CAS is enabled, as we throw away any analogue joystick value at this point (this is pointed out on the keyboard control document that comes with the game, where it says "analogue joysticks will steer as digital sticks when CAS is on", and this is why).</p>
+
+						<p>The call to AssistSteering is made just before (U T) gets applied to the position of the steering wheel, so the CAS algorithm simply replaces this amount with a value that includes an extra bit of help to steer us around the track, based on the optimum steering given in segmentSteering.</p>
+
+						<p>Here's how it works. First, we set the following if we are using the controls to steer right:</p>
+
+<pre class="articleIndented">  X = 10
+</pre>
+
+						<p>or the following if we are using the controls to steer left:</p>
+
+<pre class="articleIndented">  X = 50 = 10 + 40
+</pre>
+
+						<p>This sets X to the index of a segment in the track verge buffer (see the deep dive on <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> for details of the verge buffer). Specifically, it is the index of the segment at offset 10 in the verge buffer, which is the fifth element in the track segment list (as entries 0 to 5 are the track section list, with the track segment list starting at index 6). If we are steering to the right, then the index is 10, which points into the verge buffer for the inner verge, but if we are steering left, then we add 40 to the index to take us from the inner verge buffer to the outer verge buffer.</p>
+						
+						<p>Or, to put it more simply, X is the index in the verge buffer of the segment that's five segments towards us from the furthest visible segment, on the side of the track that we are trying to steer towards. We use this below to temper the assistance from CAS so it doesn't steer us off the track.</p>
+
+						<p>Next, we set the following if we are using the controls to steer right:</p>
+
+						<pre class="articleIndented">  (W V) = (steeringHi steeringLo) + 256
+</pre>
+
+						<p>or the following if we are steering using the controls to steer left:</p>
+
+						<pre class="articleIndented">  (W V) = (steeringHi steeringLo) - 256
+</pre>
+
+						<p>This gives us an adjusted steering wheel position, starting from the current position of the steering wheel (i.e. the line on the steering wheel rim). This adjusted position is in the direction that we are steering, so if we are steering right, this value is one "tick" to the right from the current steering wheel position.</p>
+
+						<p>Next, we calculate a variable U that will contain the amount of steering assistance we're going to give. We start with the following:</p>
+						
+<pre class="articleIndented">  U = 32 + max(0, 60 - playerSpeedHi) * 2
+</pre>
+
+						<p>so U is a value in the range 32 to 152, with a higher value at lower speeds.</p>
+
+						<p>We now check bit 6 of segmentSteering. If this is clear, then this means the steering in segmentSteering would be applied to any non-player drivers in this segment, so we incorporate this into our calculation (where |segmentSteering| is segmentSteering with bit 7 cleared, to remove the direction and extract the steering magnitude):</p>
+
+<pre class="articleIndented">  U = max(U, 16 * min(|segmentSteering|, 7))
+</pre>
+
+						<p>The value of 16 * min(|segmentSteering|, 7) is in the range 0 to 112, so this potentially makes the value of U higher when we have sharper steering in segmentSteering. This means there is more chance of CAS raising our original value of U when we are at higher speeds (when the original value of U will be lower) or have higher values of segmentSteering (for sharper bends). The impact of the segmentSteering element is restricted to a maximum of 7, so even on sharp corners, the impact of the assistance is gentle due to the min() function.</p>
+
+						<p>U represents the amount of steering assistance we're going to give, so we now calculate the value of (U T) that we need to return to the ProcessDrivingKeys routine to implement this steering. The calculation is as follows:</p>
+
+<pre class="articleIndented">  (U T) = U * (X-th xVergeRight - (W V)) / 256
+</pre>
+
+						<p>The X-th xVergeRight is fetched from the verge buffer. This is the yaw angle (i.e. the x-coordinate) of the verge that we mentioned above - the fifth track segment counting towards us from the start of the verge buffer, on the side that we are trying to steer towards. Subtracting (W V) from this gives us a value that represents the amount we would have to turn the steering wheel in order to steer towards that part of the verge. We then multiply this distance by U / 256, which scales this amount of steering to a value that is proportional to the segment steering value, so CAS not only assists us to follow the optimum steering for this segment, it has less effect as we steer closer to the verge, so as not to push us off the track.</p>
+
+						<p>Finally, we set bit 0 of (U T) to the direction of steeringLo, so CAS assists us in the same direction as the existing steering (so to get good assistance, you need to be steering in the correct direction).</p>
+
+						<h2 class="articleSubheader">Making room for CAS<br />
+													 -------------------</h2>
+
+						<p>Revs does not have a lot of spare memory (see the deep dive on <a href="the_revs_memory_map.html">the Revs memory map</a> for details), so something had to give before CAS could be added. This takes the form of the following parts of the code, which between them freed up enough space to squeeze in the <a href="/source/main/subroutine/assiststeering.html">AssistSteering</a> routine, plus the configuration code in </p>
+
+						<ul>
+							<li><a href="/source/main/subroutine/setupgame.html">SetupGame</a>: A clever solution for freeing up memory is to move the SetupGame routine, which is run when the game loads, but is never needed again. So in the Superior version, SetupGame is put into the same block of memory as the carSpeedLo, totalPointsLo and totalPointsLo variables, which are only used after the game has started.</li>
+
+							<li><a href="/source/main/subroutine/getcoloursup.html">GetColourSup</a>: This long routine was rewritten to be much shorter, and much easier to understand. Compare the <a href="/source/main/subroutine/getcoloursup.html">one-part Superior Software version</a> to the original, which came in three parts: <a href="/source/main/subroutine/getcolour_part_1_of_3.html">part 1</a>, <a href="/source/main/subroutine/getcolour_part_2_of_3.html">part 2</a> and <a href="/source/main/subroutine/getcolour_part_3_of_3.html">part 3</a>.</li>
+						</ul>
+
+						<p>In all, these changes allowed enough room for <a href="/source/main/subroutine/assiststeering.html">AssistSteering</a> to slip in, along with other driving-related fixes in <a href="/source/main/subroutine/setsteeringlimit.html">SetSteeringLimit</a> and <a href="/source/main/subroutine/setplayerdriftsup.html">SetPlayerDriftSup</a>, and the configuration changes in <a href="/source/main/subroutine/getsteeringassist.html">GetSteeringAssist</a>. Space might have been tight, but CAS is such a useful feature that it was definitely worth the effort.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="tactics_of_the_non-player_drivers.html">Tactics of the non-player drivers</a><a class="next" rel="next" title="Next deep dive" href="wing_mirrors.html">Wing mirrors</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

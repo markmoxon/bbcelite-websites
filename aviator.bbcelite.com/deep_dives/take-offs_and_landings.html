@@ -1,0 +1,172 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "take-offs_and_landings.html", "Take-offs and landings", "Take-offs and landings", "A deep dive into take-offs and landings in BBC Micro Aviator", "aviator", "deep_dives_flight_model", "take-offs_and_landings");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="ripping_the_wings_off.html">Ripping the wings off</a><a class="next" rel="next" title="Next deep dive" href="on-ground_calculations.html">On-ground calculations</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The two most important (and dangerous) parts of every flight</h2>
+
+						<p>Planes are designed for flying, but they aren't designed for driving. <a href="the_flight_model.html">The flight model</a> takes care of modelling the first case, but what about the second? Let's take a look at how Aviator implements take-offs, landings and taxiing.</p>
+
+						<p>The core of these calculations can be found in the multi-part <a href="/source/main/subroutine/processlanding_part_1_of_7.html">ProcessLanding</a> routine, which is called from <a href="/source/main/subroutine/applyflightmodel_part_6_of_7.html">part 6 of the ApplyFlightModel routine</a>, just after the results of the flight model calculations have been applied to the plane to alter its orientation, velocity and so on.</p>
+
+						<p>A key value in the landing calculations is the <a href="/source/main/workspace/main_variable_workspace.html#onground">onGround</a> flag, which is passed to ProcessLanding in the variable L. This variable is 0 if we are not on the ground, and 1 if we are on the ground, with the latter effectively meaning "we have landed", as opposed to "we are touching the ground". The onGround variable is updated by the ProcessLanding routine, which is the routine we're about to explain, so the meaning of onGround will become more apparent as we work through the following.</p>
+
+						<h2 class="articleSubheader">Take-off<br />
+													 --------</h2>
+
+						<p>Interestingly, there aren't any take-off checks as such - instead there's a simple check in <a href="/source/main/subroutine/processlanding_part_2_of_7.html">part 2 of ProcessLanding</a> to see if the plane is still touching the ground, and if it isn't then the onGround variable is set to 0 to indicate that take-off has occurred. The process of taking off is purely a consequence of the standard flight model, as increasing the forward velocity eventually gives the plane lift.</p>
+
+						<p>The very noticeable forward tilt that occurs when starting a take-off run along the runway is also just a consequence of the flight model, and represents a change in xTurn and xRotation that comes from the dxTurn component of the flight model calculations. See the deep dive on <a href="the_flight_model.html">the flight model</a> for details of the flight model.</p>
+
+						<h2 class="articleSubheader">Emergency landings are rough<br />
+													 ----------------------------</h2>
+
+						<p><a href="/source/main/subroutine/processlanding_part_1_of_7.html">Part 1 of ProcessLanding</a> checks whether we are on the ground, and if we are, it then checks whether we are on the runway. This latter check crops up a few times, so let's look at what's involved.</p>
+
+						<p>The <a href="/source/main/subroutine/checkplaneonrunway.html">CheckPlaneOnRunway</a> routine checks whether the plane is on or above the runway. The runway runs north-south, and the runway's anchor point is in the southwest corner of the runway's outline rectangle. The plane is on the runway if both of the following are true:</p>
+
+						<ul>
+							<li>The x-axis (east-west) distance between the plane and the runway's anchor point is less than 256. The runway is 256 wide, so this checks that the plane is not either side of the runway.</li>
+
+							<li>The z-axis (north-south) distance between the plane and the runway's anchor point is positive, and less than 24 * 256. The runway is 24 * 256 long, so this checks that the plane is not to the north or the south of the runway.</li>
+						</ul>
+
+						<p>If we are on the ground but not on the runway, then this is an emergency landing, so we call the <a href="/source/main/subroutine/applybumpyride.html">ApplyBumpyRide</a> routine to do just that. We call this routine twice, once to bump the plane up by a random height, and again to apply a random roll.</p>
+
+						<p>The routine works by taking the plane's forward airspeed in zVelocityPHi, randomising it and scaling it to get a 16-bit variable, and then adding the result to the height or roll. Specifically, we add (A 0) right-shifted by Y + 1 places, where A is the current value of zVelocityPHi, AND'd with a random number to produce a random number in the range 0 to zVelocityPHi. Y is the scale factor that is passed to the routine, which is 8 for the height calculation (so the height is bumped by a random height in the range 0 to zVelocityP >> 9), and 4 for the roll calculation (so we roll the plane by a random angle in the range 0 to zVelocityP >> 5).</p>
+
+						<p>Specifically, it calculates:
+
+<pre class="articleIndented">                          (A 0)
+   variable = variable + -------
+                         2^(Y+1)
+</pre>
+
+						<p>where A is a random number in the range 0 to zVelocityPHi.</p>
+
+						<p>When applied to the zRotation variable, this rolls the plane randomly, and when applied to the yPlane variable, it bumps the plane up or down. The amount of roll or bumpiness is dependent on the forward velocity of the plane, so the higher the speed, the bumpier the ride.</p>
+
+						<h2 class="articleSubheader">Touching the ground<br />
+													 -------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/processlanding_part_2_of_7.html">next part of ProcessLanding</a> works out whether or not the plane is touching the ground. First, we check the high byte of the plane's height in yPlaneHi, and make sure it is either 0 or negative (and in the latter case, we zero the height, as clearly we can't fly below ground). If this is true, we then check the low byte in yPlaneLo to see if it is less than the value in yLandingGear, which contains the distance from the cockpit to the lowest part of the plane (we use a variable to store this figure as it changes depending on whether the undercarriage is up or down).</p>
+
+						<p>If the distance between the cockpit and the ground is less than the distance between the cockpit and the lowest part of the plane, then the plane must be touching the ground, in which case we move on to the next check. If the plane is not touching the ground, then we set onGround to 0 and terminate the landing checks.</p>
+
+						<h2 class="articleSubheader">Taxiing<br />
+													 -------</h2>
+
+						<p><a href="/source/main/subroutine/processlanding_part_3_of_7.html">Part 3 of ProcessLanding</a> checks whether onGround is currently 0. If this is the case, then this is a landing attempt, so we jump to part 6 to process the landing itself; however, if onGround is already 1, we have already landed and are taxiing.</p>
+
+						<p>If we are taxiing, then the following now get set:</p>
+
+						<ul>
+							<li>The plane's height is set to the distance between the cockpit and the lowest part of the plane, so it rolls along at the correct height above ground.</li>
+
+							<li>If the plane's vertical velocity in yVelocity is negative (i.e. down), then it is set to 0, so the plane can't travel down into the ground.</li>
+
+							<li>The plane's roll angle in zRotation is set to 0, to make the wings level (i.e. no roll left or right from the horizontal).</li>
+
+							<li>The plane's turn rate in zTurn is set to 0, to stop the plane turning around the z-axis (i.e. to stop the plane rolling).</li>
+						</ul>
+
+						<p>The rest of the taxiing logic is different, depending on whether or not the undercarriage is up or down.</p>
+
+						<ul>
+							<li>If the undercarriage is up, then <a href="/source/main/subroutine/processlanding_part_4_of_7.html">part 4 of ProcessLanding</a> does the following:
+
+								<ul>
+									<li>If the front of the plane is pointing down, set the plane's pitch angle in xRotation to 0, so the plane flops onto its belly.</li>
+
+									<li>The plane's turn rate in xTurn is set to 0, to stop the plane turning around the x-axis (i.e. to stop the plane from pitching).</li>
+								</ul>
+							</li>
+
+							<li>If the undercarriage is down, then <a href="/source/main/subroutine/processlanding_part_5_of_7.html">part 5 of ProcessLanding</a> does the following:
+
+								<ul>
+									<li>If the front of the plane is pointing down, we are done.</li>
+
+									<li>If the front of the plane is pointing up more than 9.84 degrees (which is the default tilt of the plane when on the runway, as the undercarriage is taller than the rear tail wheel), then set the plane's tilt to 9.84 degrees, and set the plane's turn rate in xTurn to 0, to stop the plane turning around the x-axis (i.e. stop the plane from pitching). This stops the plane from tilting back further than the rear wheel will allow.</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>That's the end of the taxiing process, so let's finish off with a look at the landing process.</p>
+
+						<h2 class="articleSubheader">Landing<br />
+													 -------</h2>
+
+						<p>If onGround is 0, then we have not yet landed, and we jumped here from part 3 above. This is where the landing checks are implemented, in <a href="/source/main/subroutine/processlanding_part_6_of_7.html">Part 6 of ProcessLanding</a></p>
+
+						<p>The first thing to implement is the push-back from the ground that we are landing on. At this point the bottom of the plane - i.e. the wheels if this is a controlled landing, or the belly of the plane otherwise - might have been calculated to be below ground level, particularly if we are coming down fast, so to fix this we set:</p>
+
+<pre class="articleIndented">  yPlaneLo = yLandingGear + (yLandingGear - yPlaneLo) / 2
+</pre>
+
+						<p>as well as negating the vertical velocity in yVelocity. This bounces the plane up by half the distance that the wheels would be below the ground, bouncing it up with the same velocity that it hit the ground.</p>
+
+						<p>So the slower our downward velocity is when we land, the lower the push-back is from the ground, and our landing is less bouncy as a consequence.</p>
+
+						<p>Next, we do various checks to see if this is a safe landing. If any of the following are true, then we are coming down too fast for the landing conditions, and the plane crashes:</p>
+
+						<ul>
+							<li>yVelocity >= 512</li>
+
+							<li>The undercarriage is up and yVelocity >= 320</li>
+
+							<li>The undercarriage is down and yVelocity >= 220</li>
+
+							<li>The undercarriage is down, we are not landing on the runway, and yVelocity >= 160</li>
+						</ul>
+
+                        <p>The above means that if the undercarriage is up, we can successfully land at higher vertical speeds then when the undercarriage is down, especially when doing an emergency landing, though in the latter case both the propeller and engine will get destroyed.</p>
+
+						<h2 class="articleSubheader">Touchdown<br />
+													 ---------</h2>
+
+						<p>Assuming we haven't crashed, we now process our successful touchdown in <a href="/source/main/subroutine/processlanding_part_7_of_7.html">part 7 of ProcessLanding</a>. We start with the following:</p>
+
+<pre class="articleIndented">  zTurn = -zRotation * yVelocity / 8
+</pre>
+
+						<p>This applies a turn moment to the plane that is in the opposite direction to the current roll rotation, and which is proportionate to the speed, so if we come in fast and at a large roll angle, then the plane will be turned fast in the opposite direction.</p>
+
+						<p>Next, the plane's roll angle in zRotation is set to 0, to make the wings level (i.e. no roll left or right from the horizontal).</p>
+
+						<p>After that, and if we are landing with the undercarriage up and the plane tilting forwards, we level the plane out as it belly-flops onto the ground, this time by zeroing xRotation.</p>
+
+						<p>Finally, we check that the vertical velocity is less than 24 and that the plane is exactly touching the ground, and if both of these are true, we set onGround to 1 to indicate a successful landing. Otherwise we leave onGround to 0, so the next iteration of the main loop continues to perform the landing checks, rather than the taxiing checks.</p>
+
+						<p>That's a lot of checks, but then landing is a tricky business...</p>
+
+						<h2 class="articleSubheader">Landing upside down<br />
+													 -------------------</h2>
+
+						<p>If we look at the above, the only real requirement for a safe landing is that we descend to touch the ground with a vertical velocity less than a certain level, and that our plane doesn't bounce too far up again. Once we manage a successful landing then the taxiing code takes over.</p>
+
+						<p>What the landing code, and indeed the taxiing code, don't include is any kind of check whether the plane is upside down, or even pointing in the right direction. Landing backwards or sideways would almost certainly end in tears, but stories abound of people being able to land upside down; the code confirms that this is indeed possible.</p>
+
+						<p>You don't get any more points for landing upside down, though: the code to award 150 points for a successful landing is in <a href="/source/main/subroutine/mainloop_part_10_of_15.html">part 10 of the main loop</a>, and we only get there if we have achieved a minimum height of 512 feet since the last take-off, and have since landed with onGround set to 1. If we choose to do that upside down, backwards or sideways, that's totally up to us...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="ripping_the_wings_off.html">Ripping the wings off</a><a class="next" rel="next" title="Next deep dive" href="on-ground_calculations.html">On-ground calculations</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

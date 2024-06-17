@@ -1,0 +1,289 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "3d_objects.html", "3D objects", "3D objects", "A deep dive into 3D objects in BBC Micro Aviator", "aviator", "deep_dives_3d_geometry", "3d_objects");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="lines_and_points.html">Lines and points</a><a class="next" rel="next" title="Next deep dive" href="placing_objects_on_the_map.html">Placing objects on the map</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Aviator manages trees, hills, aliens, towns and other 3D objects</h2>
+
+						<p>Although <a href="lines_and_points.html">lines and points</a> are at the core of Aviator's 3D world, most of these lines are grouped together into 3D objects, which is a little closer to how we humans think of the world. Objects are things like trees, mountains, fields, the runway, Acornsville, aliens and even the bullet traces when you fire the guns. Some objects are fixed (like Acornsville), while some are dynamic (like the aliens and bullets), but they all use the same underlying object structure.</p>
+
+						<p>Let's take a look at objects, as well as object points, object groups and the way objects are stored as point sequences.</p>
+
+						<h2 class="articleSubheader">Objects in Aviator<br />
+													 ------------------</h2>
+
+						<p>Each object is stored as a collection of points - though note, this is a collection of points, not a collection of lines. We can always convert point IDs into a collection of line IDs by looking to see which lines start or end with those points, but objects are just collections of points.</p>
+
+						<p>There is support for up to 40 objects in Aviator, with object IDs in the range 0 to 39, though in practice objects 10 to 11 and 35 to 39 are unused. The full set of objects is as follows:</p>
+
+						<ul>
+							<li>Object 0 is the horizon<sup>*</sup></li>
+
+							<li>Object 1 is the runway<sup>*</sup></li>
+
+							<li>Object 2 is the suspension bridge</li>
+
+							<li>Objects 3-5 form the lake and river</li>
+
+							<li>Object 6 is a group of eight trees like the one by the runway (see below for more on object groups)</li>
+
+							<li>Object 7 is a group of eight trees with a different design to object 6</li>
+
+							<li>Object 8 is a group of small hill objects</li>
+
+							<li>Object 9 is a group of large hill objects</li>
+
+							<li>Objects 10-11 are unused</li>
+
+							<li>Objects 12-15 are the bullets<sup>*</sup> and bullet traces<sup>*</sup></li>
+
+							<li>Objects 16-29 are the 14 fields, which is also where aliens spawn, so they can feed on the crops</li>
+
+							<li>Object 30 is a group of up to eight dormant aliens<sup>*</sup></li>
+
+							<li>Objects 31-32 are the two feeding aliens<sup>*</sup></li>
+
+							<li>Object 33 is the attacking alien<sup>*</sup></li>
+
+							<li>Object 34 is Acornsville</li>
+
+							<li>Objects 35-39 are unused, but their associated point coordinates are used in the flight model calculations for storing interim calculations like the gravity vector, as in <a href="/source/main/subroutine/applyflightmodel_part_6_of_7.html">part 1 of the ApplyFlightModel routine</a></li>
+						</ul>
+
+						<p>Dynamic objects - those whose locations are not fixed - are marked with an asterisk.</p>
+
+						<p>Each object has an associated set of 3D coordinates that define the object's location in the 3D world (or, more specifically, the location of the object's anchor point). For fixed objects, like the trees, their coordinates are static and reflect their fixed location on the world map, while for dynamic objects, like the bullets, the locations are calculated on the fly. As with points, object location coordinates are positive 16-bit values, split across a number of tables. The coordinate for object ID X is as follows:</p>
+
+						<ul>
+							<li>The x-coordinate is (xObjectHi+X xObjectLo+X)</li>
+
+							<li>The y-coordinate is (yObjectHi+X yObjectLo+X)</li>
+
+							<li>The z-coordinate is (zObjectHi+X zObjectLo+X)</li>
+						</ul>
+
+						<p>The <a href="/source/main/subroutine/setobjectcoords_part_1_of_11.html">SetObjectCoords</a> routine is responsible for calculating the coordinates of an object. It is called from <a href="/source/main/subroutine/processline_part_5_of_7.html">part 5 of the ProcessLine routine</a>.</p>
+
+						<p>Now that we know where objects live in the world, let's look at how they are constructed.</p>
+
+						<h2 class="articleSubheader">Object points are relative to an anchor point<br />
+													 ---------------------------------------------</h2>
+
+						<p>Coordinates for points within objects are calculated using an "anchor point" system. Each object has an anchor point - which is the point at the object's location we mentioned above - and all the other points within the object are stored as being relative to that point.</p>
+
+						<p>In this way the shape of, say, a tree is defined relatively, and the tree can be placed in the world multiple times by setting the anchor point coordinate and calculating the coordinates for all the object points from that. The anchor-relative coordinates for each object point are stored in the (<a href="/source/main/variable/xobjectpoint.html">xObjectPoint</a>, <a href="/source/main/variable/yobjectpoint.html">yObjectPoint</a>, <a href="/source/main/variable/zobjectpoint.html">zObjectPoint</a>) tables, which are converted into real-world coordinates and stored in the points table when an object is visible and needs to be displayed on-screen. These tables effectively define the shape of each object.</p>
+
+						<p>To expand on this a little, this is the same as saying (xObjectPoint, yObjectPoint, zObjectPoint) is the vector from the object's anchor to the point. Each vector is stored as three coordinates, with each coordinate being in the range 0 to 15, plus a scale factor, which is stored in bits 4 to 7 of the z-coordinate in zObjectPoint. The scale is given as a power of 2, so a scale factor of n means we scale the coordinates by 2^n (where n = 0 to 9). All these vectors are positive in all three axes, so the anchor point for an object is therefore the closest point to the origin.</p>
+
+						<p>Given this data structure, the <a href="/source/main/subroutine/setobjpointcoords_part_1_of_2.html">SetObjPointCoords</a> routine is responsible for calculating the coordinates of points within objects, given the location of the anchor point. It is called from <a href="/source/main/subroutine/processline_part_6_of_7.html">part 6 of the ProcessLine routine</a>.</p>
+
+						<h2 class="articleSubheader">Object groups: trees, hills and aliens<br />
+													 --------------------------------------</h2>
+
+						<p>Objects 6 to 9 are special objects: they each contain an object group. An object group contains eight objects that share the same physical design but have different locations within the world. Object 6 contains a group of eight trees scattered across the map, while object 7 also contains a group of eight trees, but these are different trees in different locations that have a slightly different design.</p>
+
+						<p>Similarly, objects 8 and 9 are object groups, but these contain two different heights of hill, again with eight of each design (the smaller hills are in object 8, while the larger hills are in object 9). In the case of hills, though, the same objects sometimes appear in more than one group, so while there are 16 trees dotted around, there are fewer hills.</p>
+
+						<p>The dormant aliens in object 30 use a similar grouping system, though this acts slightly differently. Objects 31 and 32 represent two feeding slots, and dormant aliens are moved from object 30 into these slots when there's a vacancy. Here they work their way through the feeding stages, getting bigger and bigger until they reach maturity, at which point they can jump into object 33, which is a single slot for the alien that attacks Acornsville. This means that while each wave contains eight aliens, only two of them can be feeding at any one time, and only one can be attacking the town. When aliens are destroyed, they create vacancies in objects 31 to 33, so the cycle continues until either the wave is destroyed, or the town is overcome.</p>
+
+						<h2 class="articleSubheader">Objects are stored as point sequences<br />
+													 -------------------------------------</h2>
+
+						<p>Interestingly, objects aren't really constructed in Aviator. The core of the 3D system is the fixed set of lines described in the deep dive on <a href="lines_and_points.html">lines and points</a> - at the end of the day, Aviator will draw lines from this list that it has calculated as being visible, and that's all there is to it. The object system, then, only exists to feed information into the line visibility calculations.</p>
+
+						<p>To support this requirement, each object is defined not as collection of points and edges, as you might have thought, but instead each object is defined by a collection of otherwise unrelated sequences of points; each object is therefore a collection of independent "strands", where each strand is a sequence of points associated with the object ID... and that's it. It is possible to work out from this collection of strands what each object looks like, but that data isn't explicitly stored anywhere.</p>
+
+						<p>These sequences of points are stored in the <a href="/source/main/variable/objectpoints.html">objectPoints</a> table, which stores the sequences as recursive references (see below for the details). Each sequence of point IDs ends with the object ID, which is in the range 0 to 39, so each object is defined by the collection of point sequences that end with the object ID. The objectPoints table therefore maps sequences of points - the "strands" - to objects.</p>
+
+						<p> This is how it works. Given the X-th entry in objectPoints (i.e. the value of objectPoints,X), we can work out the sequence as follows:</p>
+
+						<ul>
+							<li>Entry X represents a point in the sequence with ID X.</li>
+
+							<li>If the value of entry X is 40 or more, then this points to another entry in the sequence. The value contains 40 + the number of the next entry in the sequence. As an example, consider the value in entry 99 of objectPoints, which is 127, or 87 + 40. The next item in the sequence is therefore entry 87 of objectPoints.</li>
+
+							<li>If the value of entry X is in the range 0 to 39, then this represents the object ID for this point sequence, which is where the sequence ends.</li>
+						</ul>
+
+						<p>Given a point ID, we can use this table to follow the sequence of related points, all the way to the object ID at the end. So if we start with entry 69, for example, we get the following:</p>
+
+						<ul>
+							<li>Entry 69 of objectPoints contains 68 + 40, so this represents point 69 and links to entry 68 of objectPoints.</li>
+
+							<li>Entry 68 of objectPoints contains 66 + 40, so this represents point 68 and links to entry 66 of objectPoints.</li>
+
+							<li>Entry 66 of objectPoints contains 2, so this represents point 66, and ends the sequence with an object ID of 2.</li>
+						</ul>
+
+						<p>so looking up point 69 gives us the following chain of points:</p>
+
+<pre class="articleIndented">  69 -> 68 -> 66
+</pre>
+
+						<p>and because the sequence ends here with a value of 2, this is therefore one of the sequences that make up object 2, so this strand forms part of the suspension bridge.</p>
+
+						<p>As another example, point 210 gives us this chain:</p>
+
+<pre class="articleIndented">  210 -> 204 -> 203 -> 205 -> 40 -> 39
+</pre>
+
+						<p>which is one of the sequences for object 34, so this strand forms part of Acornsville.</p>
+
+						<p>Given a point ID within an object, we can only extract the rest of that particular sequence, from that point to the end of that particular strand. The objectPoints table does not lend itself to the reverse operation, that of taking an object ID and extracting all the point sequences. This isn't a problem because all that the graphics engine cares about is which of the 193 lines it should draw in each iteration of the main loop, so instead of asking itself "Should I draw this object?", it asks itself "Should I draw this line?". It answers the latter by splitting the line into two points, asking "Should I draw this point?" for each point, and combining the answers to get a result for the line's final visibility.</p>
+
+						<p>What the objectPoints abstraction does it so enable a further question to be answered - "If I'm drawing this point, are there any other related points that I should also be considering drawing?" - which makes the rest of an object progressively appear as its individual lines become visible. This is why the objectPoints table is structured to enable us to convert point IDs into related points in an object, rather than the other way around - as the edge of an object comes into view, we can trace its strands to pull other lines into view, strand by strand. </p>
+
+						<h2 class="articleSubheader">Object-related variables and constants<br />
+													 --------------------------------------</h2>
+
+						<p>The following variables and constants contain important data about each of the 40 objects.</p>
+
+						<ul>
+							<li>(<a href="/source/main/variable/xobjecthi.html">xObjectHi</a> <a href="/source/main/variable/xobjectlo.html">xObjectLo</a>), (<a href="/source/main/variable/yobjecthi.html">yObjectHi</a> <a href="/source/main/variable/yobjectlo.html">yObjectLo</a>), (<a href="/source/main/variable/zobjecthi.html">zObjectHi</a> <a href="/source/main/variable/zobjectlo.html">zObjectLo</a>)
+
+								<ul>
+									<li>Contains the world coordinates of each object (or, specifically, the object's anchor point)</li>
+
+									<li>Contains fixed data for static objects (e.g. Acornsville, runway), dynamic data for moving objects (e.g. bullets, aliens), or dynamically cycling static data for group-based objects (e.g. trees, hills)</li>
+
+									<li>For the group-based objects 6 to 9, these coordinate values cycle through the relevant values from <a href="/source/main/variable/xgroupobjecthi.html">xGroupObjectHi</a>, <a href="/source/main/variable/zgroupobjecthi.html">yGroupObjectHi</a> (see below)</li>
+
+									<li>Indexed by object ID (0 to 39)</li>
+								</ul>
+							</li>
+						</ul>
+
+						<ul>
+							<li>( (<a href="/source/main/variable/xgroupobjecthi.html">xGroupObjectHi</a> 0), 0, (<a href="/source/main/variable/zgroupobjecthi.html">yGroupObjectHi</a> 0) )
+
+								<ul>
+									<li>Contains fixed data</li>
+
+									<li>Contains the world coordinates of each object in an object group</li>
+
+									<li>There are four groups with eight objects in each</li>
+
+									<li>Coordinates get copied into xObjectHi or zObjectHi as objects are switched into each object group</li>
+								</ul>
+							</li>
+						</ul>
+
+						<ul>
+							<li>(<a href="/source/main/variable/xobjectpoint.html">xObjectPoint</a>, <a href="/source/main/variable/yobjectpoint.html">yObjectPoint</a>, <a href="/source/main/variable/zobjectpoint.html">zObjectPoint</a>)
+
+								<ul>
+									<li>Contains fixed data, though alien objects get magnified while feeding by altering their scale factors <i>in situ</i></li>
+
+									<li>Contains the coordinate relative to the object anchor of each object point within an object</li>
+
+									<li>Stored as a scale factor in the top nibble, and the coordinate value in the bottom nibble</li>
+
+									<li>Indexed by object point ID (0 to 215)</li>
+								</ul>
+							</li>
+						</ul>
+
+						<ul>
+							<li><a href="/source/main/variable/objectpoints.html">objectPoints</a>
+
+								<ul>
+									<li>Contains fixed data</li>
+
+									<li>Contains the points that make up each object, expressed as sequences of point IDs that end in the object ID</li>
+
+									<li>Indexed by point ID (0 to 192)</li>
+								</ul>
+							</li>
+						</ul>
+
+						<ul>
+							<li><a href="/source/main/variable/objectgroup.html">objectGroup</a>
+
+								<ul>
+									<li>Contains the number of the object currently in each of the four object groups at objects 6 to 9</li>
+
+									<li>Dynamically cycles through a set of fixed values:
+										<ul>
+
+											<li>The current object number for object ID 6 (trees like the one by the runway), from 0 to 7</li>
+
+											<li>The current object number for object ID 7 (the other variant of trees), from 8 to 15</li>
+
+											<li>The current object number for object ID 8 (small hills), from 16 to 23</li>
+
+											<li>The current object number for object ID 9 (large hills), from 24 to 31</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+
+						<ul>
+							<li><a href="/source/main/workspace/main_variable_workspace.html#objectstatus">objectStatus</a>
+
+								<ul>
+									<li>Contains dynamic data</li>
+
+									<li>This status byte caches the following status data about each object, so we don't waste time recalculating anything we have already calculated:
+
+										<ul>
+											<li>Whether or not this object's coordinates have been calculated and projected into 2D (by the <a href="/source/main/subroutine/setobjectcoords_part_1_of_11.html">SetObjectCoords</a> routine)</li>
+
+											<li>The calculated visibility of this object</li>
+										</ul>
+									</li>
+
+									<li>Indexed by object ID (0 to 39)</li>
+								</ul>
+							</li>
+						</ul>
+
+						<ul>
+							<li><a href="/source/main/workspace/main_variable_workspace.html#relatedpoints">relatedPoints</a>
+
+								<ul>
+									<li>Contains dynamic data</li>
+
+									<li>Caches up to 49 point IDs from strands while objects are processed for visibility, so they can be processed too</li>
+
+									<li>Indexed by the corresponding point IDs in objectPoints (0 to 192)</li>
+								</ul>
+							</li>
+						</ul>
+
+						<ul>
+							<li><a href="/source/main/variable/maxobjdistance.html">maxObjDistance</a>
+
+								<ul>
+									<li>Contains fixed data</li>
+
+									<li>This value denotes the furthest distance at which each object is visible. This is used in the visibility routines as part of the calculation to decide whether or not an object should be shown on-screen.</li>
+
+									<li>Indexed by object ID (0 to 39)</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>For more information relating to objects, see the deep dives on <a href="rotating_and_translating_points_in_3d_space.html">rotating and translating points in 3D space</a> and <a href="visibility_checks.html">visibility checks</a>. You can also see an example of an object and how it's constructed (a feeding alien, no less!) in the deep dive on <a href="detecting_alien_hits.html">detecting alien hits</a>.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="lines_and_points.html">Lines and points</a><a class="next" rel="next" title="Next deep dive" href="placing_objects_on_the_map.html">Placing objects on the map</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

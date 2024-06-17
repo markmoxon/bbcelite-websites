@@ -1,0 +1,196 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "text_tokens.html", "Text tokens", "Text tokens", "A deep dive into text tokens in BBC Micro Revs", "revs", "deep_dives_text", "text_tokens");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="starting_lights.html">Starting lights</a><a class="next" rel="next" title="Next deep dive" href="the_engine_sounds.html">The engine sounds</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the game text in Revs is tokenised to save space</h2>
+
+						<p>Memory is tight in the unexpanded BBC Micro, and Revs has a number of tricks up its sleeve to tackle this. One of the more interesting is the text token system, which takes all the text used in the game, and compresses it.</p>
+
+						<p>The compression system is relatively simple. Revs contains 55 text tokens, that are numbered from 0 to 54. Each of these tokens (apart from token 54, which is a special case) has an associated string of text, labelled token0 through token53 in the source code. This string contains not only the text for that token, but it can contain other tokens too, as well as arbitrary numbers of spaces. Given that most of the strings are printed in mode 7 and can contain teletext control codes, this system enables us to create some pretty sophisticated tokens with very few bytes.</p>
+
+						<p>Let's take a deeper look at how text tokenisation is implemented in Revs.</p>
+
+						<h2 class="articleSubheader">Text token strings<br />
+													 ------------------</h2>
+
+						<p>Each token's string is a sequence of bytes. They have the following meanings:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr><td>0-159</td><td>Print character n (where n is ASCII or a teletext control code)</td></tr>
+							<tr><td>160-199</td><td>Print n - 160 spaces (i.e. 0 to 39 spaces)</td></tr>
+							<tr><td>200-254</td><td>Print token n - 200 (i.e. token 0 to 54)</td></tr>
+							<tr><td>255</td><td>End of token</td></tr>
+						</table>
+
+						<p>Let's look at <a href="/source/main/variable/token30.html">a typical token definition</a> to see how this works:</p>
+
+<pre class="articleIndented">  .token30
+
+   EQUB 31, 5, 24         \ Move text cursor to column 5, row 24
+
+   EQUB 134               \ Set foreground colour to cyan alphanumeric
+
+   EQUB 200 + 17          \ Print token 17 ("PRESS ")
+
+   EQUS "SPACE BAR "      \ Print "SPACE BAR "
+
+   EQUS "TO CONTINUE"     \ Print "TO CONTINUE"
+
+   EQUB 255               \ End token
+</pre>
+
+						<p>We can print this token by calling the <a href="/source/main/subroutine/printtoken.html">PrintToken</a> routine with X = 30. It is designed to be printed in screen mode 7, and is part of the menu system shown before the race starts. The first two parts write the standard VDU commands to move the text cursor to column 5, row 24, and then to set the foreground colour to cyan (see the BBC User Guide for details of how the mode 7 teletext control codes work).</p>
+
+						<p>Next up we have a byte in the token string that has a value in the range 200 to 254, which indicates we should print another token. In this case it's token 17, which just contains the string "PRESS ", but as all tokens can contain other tokens, it's possible to create tokens with pretty sophisticated recursive content (token 28, for example, clears the screen and prints an entire menu, along with header and prompt, all using embedded tokens).</p>
+
+						<p>Next, we have the text "SPACE BAR " and "TO CONTINUE", and finally we have a value of 255, which denotes the end of the token. So in all, token 30 prints "PRESS SPACE BAR TO CONTINUE" in cyan at column 5 on row 24.</p>
+
+						<p>Tokens 0 to 53 all work in this way, but token 54 doesn't have an associated text string. Instead, when printing token 54, the PrintToken routine calls the <a href="/source/main/subroutine/printheader.html">PrintHeader</a> routine with X = 0, which prints out token 0 ("FORMULA 3  CHAMPIONSHIP") as a double-height header.</p>
+
+						<p>Note that not all tokens are designed for screen mode 7. Tokens 40-45, 48 and 53 are designed to be printed along the top of the driving screen, and are laid out at the exact width of the screen (though token 44 is wider, for some reason). However, as most of the game text is shown in mode 7 before or after the race, most of the tokens are built with teletext control codes in mind.</p>
+
+						<h2 class="articleSubheader">Text routines<br />
+													 -------------</h2>
+
+						<p>Here's a list of all the related routines:</p>
+
+						<ul>
+							<li><a href="/source/main/subroutine/printtoken.html">PrintToken</a> prints the text token given in X. It looks up the address of the relevant token string in the (<a href="/source/main/variable/tokenhi.html">tokenHi</a> <a href="/source/main/variable/tokenlo.html">tokenLo</a>) table, and prints the token one byte at a time, either printing text with PrintCharacter (for bytes 0-159), printing spaces with PrintSpaces (for bytes 160-199), or recursively printing any embedded text tokens with PrintToken (for bytes 200-253) or PrintHeader (for byte 254).</li>
+
+							<li><a href="/source/main/subroutine/printheader.html">PrintHeader</a> prints a token as a double-height header, with the position and colours given in the header tables, and a specific number of spaces between the top and bottom parts of the double-height text (to ensure they line up). Seven tokens are supported (tokens 0 to 6). See the next section on configurable tokens for details of how this works.</li>
+
+							<li><a href="/source/main/subroutine/printheaderchecks.html">PrintHeaderChecks</a> prints a chequered line above and below the mode 7 header. This is only called once, <a href="/source/main/subroutine/mainloop_part_1_of_6.html">at the start of the main game loop in MainLoop</a>, just after PrintHeader is called with X = 4 to print "REVS" four times in multicoloured letters. The call to PrintHeaderChecks decorates the multicoloured REVS banner with two lines of checks.</li>
+
+							<li><a href="/source/main/subroutine/printspaces.html">PrintSpaces</a> prints the specified number of spaces.</li>
+
+							<li><a href="/source/main/subroutine/printcharacter.html">PrintCharacter</a> either prints a character using the normal OSWRCH routine (when we are in mode 7), or pokes the character bitmap directly into screen memory (when we are in the custom screen mode).</li>
+						</ul>
+
+						<p>Let's take a quick look now at the PrintHeader routine, before moving on to the tokens themselves.</p>
+
+						<h2 class="articleSubheader">Configurable text tokens<br />
+													 ------------------------</h2>
+
+						<p>Text tokens 31, 33 and 34 are special, in that they are configurable. They are configured by poking values directly into the strings at token31, token33 and token34.</p>
+
+						<p>The main example of this is <a href="/source/main/subroutine/printheader.html">PrintHeader</a>, which looks up values from the following tables, depending on which header is being printed:</p>
+
+						<ul class="tightList">
+							<li><a href="/source/main/variable/xheader.html">xHeader</a></li>
+							<li><a href="/source/main/variable/yheader.html">yHeader</a></li>
+							<li><a href="/source/main/variable/headerspaces.html">headerSpaces</a></li>
+							<li><a href="/source/main/variable/headerbackground.html">headerBackground</a></li>
+							<li><a href="/source/main/variable/headerforeground.html">headerForeground</a></li>
+						</ul>
+
+						<p>These determine the position, layout and colours of the double-height header that is printed, and the routine works by poking these values directly into tokens 33 and 34, and then printing token 33 to display the final result (which itself prints token 34, as token 33 contains token 34, twice).</p>
+
+						<p>Token 31 is also configured with colour information before it is printed, this time by direct poking into token31.</p>
+
+						<h2 class="articleSubheader">All the text tokens in Revs<br />
+													 ---------------------------</h2>
+
+						<p>The table below lists all the text tokens in Revs. The following syntax is used to denote each token's content:</p>
+
+						<ul>
+							<li>(#) = change to the specified foreground colour, e.g. (cyan) = change to cyan text</li>
+							<li>(#/#) = change to the specified foreground/background colour, e.g. (yellow/red) = change to yellow on red</li>
+							<li>(/#) = change to the specified background colour, e.g. (/black) = change to a black background</li>
+							<li>[#] = print the specified embedded token, e.g. [54] = print token 54</li>
+							<li>(#, #) = move the cursor to specified screen location, e.g. (2, 10) = move to character column 2 on character row 10</li>
+							<li>"&gt;" denotes the teletext right-arrow character</li>
+							<li>Tokens denoted as "race text" are only shown when driving</li>
+							<li>Tokens denoted as "menu" tokens (e.g. Menu [35-37]) denote menus that are only shown in mode 7, with the numbers denoting which tokens are used to show the menu options</li>
+						</ul>
+
+						<p>The following syntax is used for tokens whose contents are set by modifying the token definitions before <a href="/source/main/subroutine/printtoken.html">PrintToken</a> is called:</p>
+
+						<ul>
+							<li>{#/#} = configurable foreground/background colours</li>
+							<li>{#} = configurable embedded token</li>
+							<li>{# spaces} = configurable number of spaces</li>
+						</ul>
+
+						<p>Click on the link in the first column to see the token definition in the source code.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>#</th><th>Summary</th><th>Contents</th></tr>
+							<tr><td><a href="/source/main/variable/token0.html">0</a></td><td>Text</td><td>"FORMULA 3&nbsp;&nbsp;CHAMPIONSHIP"</td></tr>
+							<tr><td><a href="/source/main/variable/token1.html">1</a></td><td>Text</td><td>"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;POINTS&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"</td></tr>
+							<tr><td><a href="/source/main/variable/token2.html">2</a></td><td>Text</td><td>"GRID POSITIONS"</td></tr>
+							<tr><td><a href="/source/main/variable/token3.html">3</a></td><td>Text</td><td>"ACCUMULATED POINTS"</td></tr>
+							<tr><td><a href="/source/main/variable/token4.html">4</a></td><td>Text</td><td>"REVS&nbsp;&nbsp;&nbsp;REVS&nbsp;&nbsp;&nbsp;REVS "<br /><br />Each "REVS" is magenta/yellow/cyan/green [52]</td></tr>
+							<tr><td><a href="/source/main/variable/token5.html">5</a></td><td>Text</td><td>"THE&nbsp;&nbsp;PITS"</td></tr>
+							<tr><td><a href="/source/main/variable/token6.html">6</a></td><td>Text</td><td>"&nbsp;&nbsp;BEST LAP TIMES&nbsp;&nbsp;"</td></tr>
+							<tr><td><a href="/source/main/variable/token7.html">7</a></td><td>Text</td><td>"Novice"</td></tr>
+							<tr><td><a href="/source/main/variable/token8.html">8</a></td><td>Text</td><td>"Amateur"</td></tr>
+							<tr><td><a href="/source/main/variable/token9.html">9</a></td><td>Text</td><td>"Professional"</td></tr>
+							<tr><td><a href="/source/main/variable/token10.html">10</a></td><td>Text</td><td>"SELECT "</td></tr>
+							<tr><td><a href="/source/main/variable/token11.html">11</a></td><td>Text</td><td>"ENTER "</td></tr>
+							<tr><td><a href="/source/main/variable/token12.html">12</a></td><td>Text</td><td>" DRIVER"</td></tr>
+							<tr><td><a href="/source/main/variable/token13.html">13</a></td><td>Text</td><td>" mins"</td></tr>
+							<tr><td><a href="/source/main/variable/token14.html">14</a></td><td>Text</td><td>" laps"</td></tr>
+							<tr><td><a href="/source/main/variable/token15.html">15</a></td><td>Text</td><td>" RACE"</td></tr>
+							<tr><td><a href="/source/main/variable/token16.html">16</a></td><td>Text</td><td>" > "</td></tr>
+							<tr><td><a href="/source/main/variable/token17.html">17</a></td><td>Text</td><td>"PRESS "</td></tr>
+							<tr><td><a href="/source/main/variable/token18.html">18</a></td><td>Text</td><td>" 5"</td></tr>
+							<tr><td><a href="/source/main/variable/token19.html">19</a></td><td>Text</td><td>"10"</td></tr>
+							<tr><td><a href="/source/main/variable/token20.html">20</a></td><td>Text</td><td>"20"</td></tr>
+							<tr><td><a href="/source/main/variable/token21.html">21</a></td><td>F3 class menu</td><td>Clear screen<br /><br /> "FORMULA 3&nbsp;&nbsp;CHAMPIONSHIP" header [54]<br /><br />Menu [36-38]:<br /><br />(flashing cyan) "PRESS "<br /><br />"1&nbsp;&nbsp;Novice"<br /><br />"2&nbsp;&nbsp;Amateur"<br /><br />"3&nbsp;&nbsp;Professional"<br /><br />(2, 10) "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SELECT THE CLASS OF RACE"</td></tr>
+							<tr><td><a href="/source/main/variable/token22.html">22</a></td><td>F3 duration menu</td><td>Clear screen<br /><br /> "FORMULA 3&nbsp;&nbsp;CHAMPIONSHIP" header [54]<br /><br />Menu [36-38]:<br /><br />(flashing cyan) "PRESS "<br /><br />"1&nbsp;&nbsp;&nbsp;5 mins"<br /><br />"2&nbsp;&nbsp;10 mins"<br /><br />"3&nbsp;&nbsp;20 mins"<br /><br />(2, 10) (cyan) "SELECT DURATION OF QUALIFYING LAPS"</td></tr>
+							<tr><td><a href="/source/main/variable/token23.html">23</a></td><td>F3 driver name</td><td>Clear screen<br /><br /> "FORMULA 3&nbsp;&nbsp;CHAMPIONSHIP" header [54]<br /><br />(2, 10) (cyan) "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ENTER NAME OF DRIVER"<br /><br />(12, 17) (yellow) "------------"<br /><br />(9, 16) (magenta) " > "</td></tr>
+							<tr><td><a href="/source/main/variable/token24.html">24</a></td><td>Wing settings 1</td><td>(2, 10) cyan "SELECT WING SETTINGS > range 0 to 40"<br /><br />(14, 16) "rear&nbsp;&nbsp;" (magenta) " > "</td></tr>
+							<tr><td><a href="/source/main/variable/token25.html">25</a></td><td>Wing settings 2</td><td>(13, 18) "front&nbsp;&nbsp;" (magenta) " > "</td></tr>
+							<tr><td><a href="/source/main/variable/token26.html">26</a></td><td>F3 race header</td><td>Clear screen<br /><br /> "FORMULA 3&nbsp;&nbsp;CHAMPIONSHIP" header [54]<br /><br />(10, 12) (yellow) "STANDARD OF RACE"<br /><br />(14, 14)</td></tr>
+							<tr><td><a href="/source/main/variable/token27.html">27</a></td><td>F3 driver menu</td><td>Clear screen<br /><br /> "FORMULA 3&nbsp;&nbsp;CHAMPIONSHIP" header [54]<br /><br />Menu [36-37]:<br /><br />"1&nbsp;&nbsp;ENTER ANOTHER DRIVER"<br /><br />"2&nbsp;&nbsp;START RACE"</td></tr>
+							<tr><td><a href="/source/main/variable/token28.html">28</a></td><td>F3 laps menu</td><td>Clear screen<br /><br /> "FORMULA 3&nbsp;&nbsp;CHAMPIONSHIP" header [54]<br /><br />(2, 10) (cyan) "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SELECT NUMBER OF LAPS"<br /><br />Menu [36-38]:<br /><br />(flashing cyan) "PRESS "<br /><br />"1&nbsp;&nbsp;&nbsp;5 laps"<br /><br />"2&nbsp;&nbsp;10 laps"<br /><br />"3&nbsp;&nbsp;20 laps"</td></tr>
+							<tr><td><a href="/source/main/variable/token29.html">29</a></td><td>F3 driver prompt</td><td>Clear screen<br /><br /> "FORMULA 3&nbsp;&nbsp;CHAMPIONSHIP" header [54]<br /><br />(2, 10) (cyan) "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" (green) " DRIVER > "</td></tr>
+							<tr><td><a href="/source/main/variable/token30.html">30</a></td><td>Press space</td><td>(5, 24) (cyan) "PRESS SPACE BAR TO CONTINUE"</td></tr>
+							<tr><td><a href="/source/main/variable/token31.html">31</a></td><td>Configurable colours</td><td>"&nbsp;&nbsp;" (/black) {foreground/background}</td></tr>
+							<tr><td><a href="/source/main/variable/token32.html">32</a></td><td>Spaces and backspaces</td><td>"&nbsp;&nbsp;" (/black) backspace backspace [31]</td></tr>
+							<tr><td><a href="/source/main/variable/token33.html">33</a></td><td>Configurable header 1</td><td>Clear screen<br /><br />(4, 3) [34] {# spaces} [34]<br /><br />(36, 2)</td></tr>
+							<tr><td><a href="/source/main/variable/token34.html">34</a></td><td>Configurable header 2</td><td>double-height {foreground/background} {token} "&nbsp;&nbsp;" (/black)</td></tr>
+							<tr><td><a href="/source/main/variable/token35.html">35</a></td><td>Cyan prompt</td><td>(2, 10) (cyan)</td></tr>
+							<tr><td><a href="/source/main/variable/token36.html">36</a></td><td>Menu option 1</td><td>(4, 14) (flashing cyan) "PRESS "<br /><br />(5, 16) (cyan/blue) "1&nbsp;&nbsp;" (/black) "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" (yellow)</td></tr>
+							<tr><td><a href="/source/main/variable/token37.html">37</a></td><td>Menu option 2</td><td>(5, 18) (cyan/blue) "2&nbsp;&nbsp;" (/black) "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" (yellow)</td></tr>
+							<tr><td><a href="/source/main/variable/token38.html">38</a></td><td>Menu option 3</td><td>(5, 20) (cyan/blue) "3&nbsp;&nbsp;" (/black) "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" (yellow)</td></tr>
+							<tr><td><a href="/source/main/variable/token39.html">39</a></td><td>Initial menu</td><td>Menu [36-37]:<br /><br />(flashing cyan) "PRESS "<br /><br />"1&nbsp;&nbsp;PRACTICE"<br /><br />"2&nbsp;&nbsp;COMPETITION"</td></tr>
+							<tr><td><a href="/source/main/variable/token40.html">40</a></td><td>Race text</td><td>"Lap Time&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Best Time&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"</td></tr>
+							<tr><td><a href="/source/main/variable/token41.html">41</a></td><td>Race text</td><td>"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Less than one minute to go&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"</td></tr>
+							<tr><td><a href="/source/main/variable/token42.html">42</a></td><td>Race text</td><td>"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;YOUR TIME IS UP!&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"</td></tr>
+							<tr><td><a href="/source/main/variable/token43.html">43</a></td><td>Race text</td><td>"Position&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;In front:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"</td></tr>
+							<tr><td><a href="/source/main/variable/token44.html">44</a></td><td>Race text</td><td>"Laps to go&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Behind:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"</td></tr>
+							<tr><td><a href="/source/main/variable/token45.html">45</a></td><td>Race text</td><td>"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"</td></tr>
+							<tr><td><a href="/source/main/variable/token46.html">46</a></td><td>Screen mode 7</td><td>Screen mode 7<br /><br />Disable cursor</td></tr>
+							<tr><td>47</td><td>Unused</td><td>-</td></tr>
+							<tr><td><a href="/source/main/variable/token48.html">48</a></td><td>Race text</td><td>"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PLEASE&nbsp;&nbsp;WAIT&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"</td></tr>
+							<tr><td><a href="/source/main/variable/token49.html">49</a></td><td>Cursor to heading</td><td>(9, 2)</td></tr>
+							<tr><td><a href="/source/main/variable/token50.html">50</a></td><td>Configurable text for number of laps</td><td>(24, 2) " 5 laps"</td></tr>
+							<tr><td><a href="/source/main/variable/token51.html">51</a></td><td>Text</td><td>" POINTS"</td></tr>
+							<tr><td><a href="/source/main/variable/token52.html">52</a></td><td>Text</td><td>(magenta) "R"<br /><br />(yellow) "E"<br /><br />(cyan) "V"<br /><br />(green) "S"</td></tr>
+							<tr><td><a href="/source/main/variable/token53.html">53</a></td><td>Race text</td><td>"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FINISHED&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"</td></tr>
+							<tr><td><a href="/source/main/subroutine/printheader.html">54</a></td><td>F3 header</td><td>Call <a href="/source/main/subroutine/printheader.html">PrintHeader</a> with X = 0:<br /><br />Clear screen<br /><br />Double-height (yellow/red)<br /><br />"FORMULA 3&nbsp;&nbsp;CHAMPIONSHIP"</td></tr>
+						</table>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="starting_lights.html">Starting lights</a><a class="next" rel="next" title="Next deep dive" href="the_engine_sounds.html">The engine sounds</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

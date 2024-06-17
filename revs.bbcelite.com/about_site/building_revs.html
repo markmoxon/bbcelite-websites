@@ -1,0 +1,173 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("about_site", "building_revs.html", "Building Revs from the source", "Building Revs from the source", "Details of how to build BBC Micro Revs from the source", "revs", "about_site", "building_revs");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="terminology_used_in_this_commentary.html">Terminology used in this commentary</a><a class="next" rel="next" title="Next page" href="useful_links.html">Useful links</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<p>If you would like to build a fully working version of Revs on a modern computer, from the exact same source code as on this site, then you will find everything you need in the <a href="https://github.com/markmoxon/revs-beebasm">accompanying GitHub repository</a>, including full instructions. Here we take a look at how the source files are structured and how the build process works.</p>
+
+						<h2 class="articleSubheader">The Revs build pipeline<br />
+						                             -----------------------</h2>
+
+						<p>The modern build process uses a multi-stage pipeline, using the BeebAsm assembler and Python.</p>
+
+						<p>There are five main folders in each repository, which reflect the progress of the build process (the links will take you to the relevant folders on GitHub):</p>
+
+						<ul>
+							<li><a href="https://github.com/markmoxon/revs-beebasm/tree/main/1-source-files">1-source-files</a> contains all the different source files, such as the main assembler source files, image binaries, boot files and so on.</li>
+
+							<li><a href="https://github.com/markmoxon/revs-beebasm/tree/main/2-build-files">2-build-files</a> contains build-related scripts, such as the checksum and crc32 verification scripts.</li>
+
+							<li><a href="https://github.com/markmoxon/revs-beebasm/tree/main/3-assembled-output">3-assembled-output</a> contains the output from the assembly process, when the source files are assembled and the results processed by the build files.</li>
+
+							<li><a href="https://github.com/markmoxon/revs-beebasm/tree/main/4-reference-binaries">4-reference-binaries</a> contains the correct binaries for the released game, so we can verify that our assembled output matches the reference.</li>
+
+							<li><a href="https://github.com/markmoxon/revs-beebasm/tree/main/5-compiled-game-discs">5-compiled-game-discs</a> contains the final output of the build process: an SSD disc image that contains the compiled game and which can be run on real hardware or in an emulator.</li>
+						</ul>
+
+						<p>These folders are used in the multi-stage build process in the following manner: the 1-source-files are assembled, then checksummed by the 2-build-files to create the 3-assembled-output, which is optionally verified against the 4-reference-binaries before being compiled into the final 5-compiled-game-discs.</p>
+
+						<p>This build process is configured via the project's <a href="https://github.com/markmoxon/revs-beebasm/blob/main/Makefile">Makefile</a>. The specific build steps are as follows (the links will take you to the relevant source files on GitHub):</p>
+
+						<ol>
+							<li>Assemble the loader with <a href="https://github.com/markmoxon/revs-beebasm/blob/main/1-source-files/main-sources/revs-loader.asm">revs-loader.asm</a></li>
+
+							<li>Assemble the Silverstone track data with <a href="https://github.com/markmoxon/revs-beebasm/blob/main/1-source-files/main-sources/revs-silverstone.asm">revs-silverstone.asm</a></li>
+
+							<li>Assemble the main game with <a href="https://github.com/markmoxon/revs-beebasm/blob/main/1-source-files/main-sources/revs-source.asm">revs-source.asm</a></li>
+
+							<li>Calculate checksums with <a href="https://github.com/markmoxon/revs-beebasm/blob/main/2-build-files/revs-checksum.py">revs-checksum.py</a></li>
+
+							<li>Verify the assembled output with <a href="https://github.com/markmoxon/revs-beebasm/blob/main/2-build-files/crc32.py">crc32.py</a></li>
+
+							<li>Assemble a bootable disc image with <a href="https://github.com/markmoxon/revs-beebasm/blob/main/1-source-files/main-sources/revs-disc.asm">revs-disc.asm</a></li>
+						</ol>
+
+						<p>Let's take a look at each of the pipeline stages in more detail.</p>
+
+						<h2 class="articleSubheader">1. Assemble the loader with revs-loader.asm<br />
+						                             -------------------------------------------</h2>
+
+						<p>BeebAsm loads revs-loader.asm and creates the following file:</p>
+
+						<ul class="tightList">
+							<li>Revs1.bin</li>
+						</ul>
+
+						<p>revs-loader.asm contains the source code for the game loader.</p>
+
+						<h2 class="articleSubheader">2. Assemble the main game with revs-silverstone.asm<br />
+						                             ---------------------------------------------------</h2>
+
+						<p>BeebAsm loads revs-silverstone.asm and creates the following file:</p>
+
+						<ul class="tightList">
+							<li>Silvers.bin</li>
+						</ul>
+
+						<p>revs-silverstone.asm contains the track data for Silverstone, the track that came with the original 1985 version of Revs.</p>
+
+						<h2 class="articleSubheader">3. Assemble the main game with revs-source.asm<br />
+						                             ----------------------------------------------</h2>
+
+						<p>BeebAsm loads revs-source.asm and creates the following file:</p>
+
+						<ul class="tightList">
+							<li>Revs.bin</li>
+						</ul>
+
+						<p>revs-source.asm contains the main source code for Revs.</p>
+
+						<h2 class="articleSubheader">4. Calculate checksums with revs-checksum.py<br />
+						                             --------------------------------------------</h2>
+
+						<p>Next, the pipeline runs the Python script revs-checksum.py, which reads all the track data files:</p>
+
+						<ul class="tightList">
+							<li>Silvers.bin</li>
+						</ul>
+
+						<p>and inserts correct checksums into the four bytes at trackChecksum. The checksum algorithm is quite simple:</p>
+
+						<ul>
+							<li>trackChecksum+0 counts the number of data bytes ending in %00</li>
+
+							<li>trackChecksum+1 counts the number of data bytes ending in %01</li>
+
+							<li>trackChecksum+2 counts the number of data bytes ending in %10</li>
+
+							<li>trackChecksum+3 counts the number of data bytes ending in %11</li>
+						</ul>
+
+						<p>Without the correct checksum values, the game will hang.</p>
+
+						<h2 class="articleSubheader">5. Verify the assembled output with crc32.py<br />
+						                             --------------------------------------------</h2>
+
+						<p>By default the crc32.py script is run on the results, which compares the assembled output with the binaries from the original build process. This enables us to confirm that our output is correct.</p>
+
+						<p>The verification output for the Acornsoft variant is as follows:</p>
+
+<pre class="articleIndented">  Results for release: acornsoft
+  [--originals--]  [---output----]
+  Checksum   Size  Checksum   Size  Match  Filename
+  -----------------------------------------------------------
+  b367ef0f   2000  b367ef0f   2000   Yes   BrandsHatch.bin
+  18d57479   2000  18d57479   2000   Yes   DoningtonPark.bin
+  0f2aa17c   2000  0f2aa17c   2000   Yes   OultonPark.bin
+  e22a0a93  24064  e22a0a93  24064   Yes   Revs.bin
+  d37f9cba   1455  d37f9cba   1455   Yes   Revs1.bin
+  0b090b15   1849  0b090b15   1849   Yes   Silverstone.bin
+  9dcd008c   2000  9dcd008c   2000   Yes   Snetterton.bin
+  -             -  75798a13   2000    -    Nurburgring.bin
+</pre>
+
+						<p>In this case the assembled binaries match the original binaries, so our build process has worked.</p>
+
+						<h2 class="articleSubheader">6. Assemble a bootable disc image with revs-disc.asm<br />
+						                             ----------------------------------------------------</h2>
+
+						<p>Finally, BeebAsm loads revs-disc.asm, which reads the following files:</p>
+
+						<ul class="tightList">
+							<li>boot-files/$.!BOOT.bin</li>
+
+							<li>basic-programs/$.REVS.bin</li>
+
+							<li>Revs.bin</li>
+
+							<li>Revs1.bin</li>
+
+							<li>Silvers.bin</li>
+						</ul>
+
+						<p>and creates the following:</p>
+
+						<ul class="tightList">
+							<li>revs-acornsoft.ssd</li>
+						</ul>
+
+						<p>This script builds the final disc image, to match the released version of the game. Note that the name of the disc image depends on the release that's being built - the name shown above is the default build, which builds the Acornsoft version that doesn't have steering assist.</p>
+
+						<p>The disc image can be loaded into an emulator, or into a real BBC Micro using a device like a Gotek.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="terminology_used_in_this_commentary.html">Terminology used in this commentary</a><a class="next" rel="next" title="Next page" href="useful_links.html">Useful links</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

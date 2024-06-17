@@ -1,0 +1,140 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "pitch_and_yaw_angles.html", "Pitch and yaw angles", "Pitch and yaw angles", "A deep dive into pitch and yaw angles in BBC Micro Revs", "revs", "deep_dives_3d_geometry", "pitch_and_yaw_angles");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_around_the_dashboard.html">Drawing around the dashboard</a><a class="next" rel="next" title="Next deep dive" href="placing_cars_on_the_track.html">Placing cars on the track</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Pitch and yaw angles are fundamental to the way Revs stores object positions</h2>
+
+						<p>All 3D games have some kind of projection system that takes coordinates from the 3D world and projects them onto the 2D screen. The most common approach in 8-bit games is the simple perspective projection, in which we convert 3D coordinates to 2D coordinates by simply dividing the x-coordinate (left-right) and y-coordinate (up-down) by the z-coordinate (into and out of the screen):</p>
+
+<pre class="articleIndented">  screen_x = x / z
+
+  screen_y = y / z
+</pre>
+
+						<p>This is the approach used in both Elite and Aviator: in Elite, the projection logic is in the <a href="https://www.bbcelite.com/cassette/main/subroutine/proj.html">PROJ routine</a>, while in Aviator it's in the <a href="https://aviator.bbcelite.com/source/main/subroutine/projectpoint_part_1_of_3.html">ProjectPoint routine</a>. At the core of each routine is simple division by the z-coordinate, giving us a screen coordinate that we can scale appropriately to fit on-screen.  For more details of the maths behind this projection, plus lots of information about other types of projection, see the <a href="https://en.wikipedia.org/wiki/3D_projection#Perspective_projection">Wikipedia article on perspective projection</a>.</p>
+
+						<p>However, Revs doesn't use this simple perspective projection. Instead, the 3D world in Revs is projected into yaw and pitch angles, which then double up as screen coordinates. In fact, because of the close relationship between the angles and screen coordinates, it's often easier just to think of them as equivalent terms, like this:
+
+						<ul>
+							<li>Yaw angle = azimuth angle = x-coordinate = distance across the screen = left (-ve) to right (+ve) coordinate</li>
+
+							<li>Pitch angle = elevation angle = y-coordinate = distance up the screen = down (-ve) to up (+ve) coordinate</li>
+						</ul>
+
+						<p>In reality things are more subtle than this implies, but when trying to get your head around the coordinate system in Revs, it's a handy shortcut. Let's look at what's involved.</p>
+
+						<h2 class="articleSubheader">Projection in Revs<br />
+													 ------------------</h2>
+
+						<p>The core routine in the Revs projection system is <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a>, which calculates the pitch and yaw angles for an object, from the point of view of the player; the angles themselves are calculated in the <a href="/source/main/subroutine/getobjyawangle_part_1_of_4.html">GetObjYawAngle</a> and <a href="/source/main/subroutine/getobjpitchangle.html">GetObjPitchAngle</a> routines.</p>
+
+						<p>Taken from the point of view of the player's car (i.e. our car as we drive around the track), the object's yaw angle rotates around the up-down y-axis, while the pitch angle rotates around the x-axis. If an object has a higher pitch angle from the perspective of the player, then it is higher up, and we'd need to bend our head back and look up to see the object; if an object has a higher yaw angle, then it is round to the right, and we'd have to twist our neck to the right to see it.</p>
+
+						<p>These are the same terms that we use to describe the spaceship angles in Elite or the Spitfire angles in Aviator, though in Revs there are only pitch and yaw, as the simulation does not extend to rolling the car (i.e. rotating around the z-axis). If you are of an astronomical persuasion, alternative names for pitch and yaw are elevation and azimuth.</p>
+
+						<p>Revs stores its 3D world using standard three-axis 16-bit coordinates, but for most calculations it converts these coordinates into pitch and yaw angles, relative to another object. The GetObjectAngles routine calculates the angles of an object relative to the player, and it's mainly used when working out where to draw objects in the track view, as the track view is from the perspective of the player.</p>
+
+						<h2 class="articleSubheader">Angles and screen coordinates<br />
+													 -----------------------------</h2>
+
+						<p>Angles in Revs are stored as signed integers, representing a full circle in the range -127 to +128. If we consider an overhead view of our car, with the car looking forwards towards 0 degrees, then the range looks like this:</p>
+
+<pre class="articleIndented">           0
+     -32   |   +32
+        \  |  /
+         \ | /                 ^
+          \|/                  |
+  -64 -----+----- +64          +   Overhead view of car, looking forward
+          /|\
+         / | \
+        /  |  \
+     -96   |   +96
+          128
+</pre>
+
+						<p>So positive angles are to the right, negative angles are to the left, and angles whose magnitude is greater than 64 are behind.</p>
+
+						<p>To convert angles to screen coordinates, we consider the origin to be in the centre of the screen, and then simply scale the relevant angle. So, for example, in the x-axis, we take the yaw angle and multiply it by 4, and then we add 80 to move it into the screen's coordinate range (as the origin for the screen is in the bottom-left corner, and the screen is 160 pixels wide, so adding 80 converts to screen x-coordinates).</p>
+
+						<p>This means that the field of view from the player's perspective is from -20 to +20 degrees of yaw angle; everything else is either off-screen or behind us. It also means that we can think of yaw angle as being equivalent to the projected x-coordinate, and the pitch angle as being equivalent to the projected y-coordinate. Some variable names, like <a href="/source/main/variable/yvergeright.html">yVergeRight</a> or <a href="/source/main/variable/xvergerightlo.html">xVergeRightLo</a>, are actually angles, but because of their context it's easier to think of them as screen coordinates, so I've chosen more coordinate-friendly variable names.</p>
+
+						<p>Converting directly from pitch and yaw angle into screen coordinates is possible because the viewing strip in Revs is quite restricted. It adds a bit of a fisheye effect to the view, in that cars directly ahead of the player will be more spaced out, while those around the periphery will be slightly squashed together, but this isn't terribly noticeable, and if anything it adds a bit of a TV-camera lensing effect. What is does do, though, is provide us with a system that not only supports screen coordinates, but also collision detection and distance calculations, all in the same angle system.</p>
+  
+						<h2 class="articleSubheader">Angles as compass headings<br />
+													 --------------------------</h2>
+
+						<p>The main game code tends to make more sense if you use the angle system above, but there is another interpretation of the yaw angle system, is we consider the angles as unsigned integers instead. Doing this gives us the following angle system:</p>
+
+<pre class="articleIndented">           0
+     224   |   32
+        \  |  /
+         \ | /                 ^
+          \|/                  |
+  192 -----+----- 64           +   Overhead view of car, looking forward
+          /|\
+         / | \
+        /  |  \
+     160   |   96
+          128
+</pre>
+
+						<p>This is equivalent to thinking of the angles in a circle going from 0 to 360 degrees, just stored in the range 0 to 255. So 90 degrees is stored as 64, 180 degrees is stored as 128, 270 degrees as 192, and so on. In terms of the code, there is no difference between this system and the signed system described above, but when talking about the car's view ahead, it is much easier to talk about a field of view of +/-32 than a field of view from 224 to 255 and 0 to 32.</p>
+
+						<p>However, when talking about the track's compass heading in the extra track files, it is much easier to talk in terms of angles from 0 to 360 degrees, in which case this interpretation is more useful. See the deep dive on <a href="dynamic_track_generation_in_the_extra_tracks.html">dynamic track generation in the extra tracks</a> for details.</p>
+
+						<h2 class="articleSubheader">Calculating object angles<br />
+													 -------------------------</h2>
+
+						<p>The pitch and yaw angles are calculated using trigonometry. Let's just consider the yaw angle for simplicity, and let's work out the yaw angle for an object that's in front of and to the right of the player's car. It looks like this, if the player's car is at the origin in the bottom-left corner, again as an overhead view of car, looking forwards:</p>
+
+<pre class="articleIndented">
+
+  ^         (x, z) = object
+  |       /|
+  |      / |
+  |     /  |
+  |    /   |
+  |   /    | &lt;------- z
+  |  /     |
+  | /      |
+  |/ t     |
+  +-----------------------&gt;
+
+  &lt;-- x --&gt;
+</pre>
+
+						<p>Say the object is x coordinates to the right of the player's car, and z coordinates into the screen. The yaw angle is therefore t in the above diagram, and we can calculate its value using the arctangent, as follows:</p>
+
+<pre class="articleIndented">  t = arctan(z / x)
+</pre>
+
+						<p>This calculation is performed by the GetObjYawAngle routine, which does the division using the Divide8x8 routine, and then uses a lookup table at <a href="/source/main/variable/arctany.html">arctanY</a> to convert the result into the required angle range, as shown above.</p>
+
+						<p>There's a similar calculation for the pitch angle in the GetObjPitchAngle routine. This routine also uses the <a href="/source/main/variable/dividex.html">divideX</a> lookup table to calculate the object's scale factor, depending on the value of x (so the object is smaller when x is larger and the object is further away).</p>
+
+						<p>To summarise, you will see angles used everywhere in Revs. For example, when building the track verges, the <a href="/source/main/subroutine/getsectionangles_part_1_of_3.html">GetSectionAngles</a> routine fetches angles for sections using the GetSectionYawAngle and GetObjPitchAngle routines, while the <a href="/source/main/subroutine/getsegmentangles_part_1_of_3.html">GetSegmentAngles</a> routine does a similar job for segments, this time using the <a href="/source/main/subroutine/getsegmentyawangle.html">GetSegmentYawAngle</a> and GetObjPitchAngle routines. And when working out whether the player's car has moved forwards into the next segment, <a href="/source/main/subroutine/moveplayersegment.html">MovePlayerSegment</a> works out the angles between the car and the nearest segment to determine exactly where the car is within the segment.</p>
+
+						<p>It's precision engineering, with minimal trigonometry and no matrices. That alone makes this a very different approach to Elite and Aviator...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_around_the_dashboard.html">Drawing around the dashboard</a><a class="next" rel="next" title="Next deep dive" href="placing_cars_on_the_track.html">Placing cars on the track</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

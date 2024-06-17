@@ -1,0 +1,282 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "creating_objects_from_edges.html", "Creating objects from edges", "Creating objects from edges", "A deep dive into creating objects from edges in BBC Micro Revs", "revs", "deep_dives_objects", "creating_objects_from_edges");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="scaling_objects_with_scaffolds.html">Scaling objects with scaffolds</a><a class="next" rel="next" title="Next deep dive" href="the_track_data_file_format.html">The track data file format</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Revs draws on-screen objects using nothing but vertical edges</h2>
+
+						<p>When Revs draws on-screen objects such as cars and road signs, it does so in a way that you might not expect. Rather than drawing individual rectangles using horizontal lines, vertical lines and filled areas, absolutely everything gets drawn as a sequence of vertical edges. This might sound odd, but it fits in nicely with the way the screen buffer is stored in vertical strips in the dash data blocks, and it makes the process of drawing objects much more efficient than it would be with a horizontal approach. In this article, we take a detailed look at this edge-based drawing system.</p>
+
+						<p>The best way to explain the drawing process is by example, so let's consider a familiar object: the black-and-white road sign by the side of the track when we start a practice lap of Silverstone. I'm talking about the sign on the right in this screenshot:</p>
+
+						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/screen_buffer/practice_start.png" alt="The view at the start of the practice lap in BBC Micro Revs" />
+
+						<p>You can read more about this object in the deep dive on <a href="object_definitions.html">object definitions</a>. When this screen is drawn in the screen buffer, it looks pretty different:</p>
+
+						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/screen_buffer/practice_start_buffer.png" alt="The contents of the screen buffer at the start of the practice lap in BBC Micro Revs" />
+
+							<p>See the deep dive on <a href="drawing_the_track_view.html">drawing the track view</a> for an explanation of the screen buffer. Here's the sign from the screen buffer with the dash data blocks superimposed, so you can see how the sign object fits into the dash data blocks that make up the screen buffer:</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/drawing_edges/dash_data_with_sign.png" alt="The dash data blocks, showing the location of the sign amongst the blocks" />
+
+						<p>Again, see the deep dive on <a href="drawing_the_track_view.html">drawing the track view</a> for an explanation of the dash data blocks and what the above images mean. For the purposes of this article, though, let's just focus in on the sign on the right, which looks like this in-game:</p>
+
+						<img class="titleImage" style="width: 216px; height: 108px; border: 1px solid grey;" src="/images/objects/drawing_edges/sign_full.png" alt="The sign in full" />
+
+						<p>and like this in the screen buffer (along with a bit of the track verge):</p>
+
+						<img class="titleImage" style="width: 216px; height: 108px; border: 1px solid grey;" src="/images/objects/drawing_edges/sign_in_buffer.png" alt="The sign in the screen buffer" />
+
+						<p>and like this when superimposed over the dash data blocks:</p>
+
+						<img class="titleImage" style="width: 216px; height: 108px; border: 1px solid grey;" src="/images/objects/drawing_edges/sign_in_dash_data.png" alt="The sign amongst the dash data blocks" />
+
+						<p>Now, let's split the sign in the screen buffer into its constituent dash data blocks, like this (ignoring the all-black columns on either side, as they are empty):</p>
+
+						<table class="spacedTable">
+							<tr>
+								<td class="center">1</td>
+								<td class="center">2</td>
+								<td class="center">3</td>
+								<td class="center">4</td>
+								<td class="center">5</td>
+							</tr>
+							<tr>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 24px; height: 45px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_1.png" alt="Block 1 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 24px; height: 45px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_2.png" alt="Block 2 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 24px; height: 45px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_3.png" alt="Block 3 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 24px; height: 45px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_4.png" alt="Block 4 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 24px; height: 45px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_5.png" alt="Block 5 of the sign" /></div></td>
+							</tr>
+						</table>
+
+						<p>So to draw the sign by the side of the track, the game has to populate the screen buffer in the dash data blocks with these five different bits of content. Let's see how it does that.</p>
+
+						<h2 class="articleSubheader">Drawing edges<br />
+													 -------------</h2>
+
+						<p>The sign object is made up of three parts, and the game draws the sign one object part at a time, in this order:</p>
+
+						<ul>
+							<li>Part 0 is the large rectangular part of the sign, with a black centre and white stripes down the sides</li>
+
+							<li>Part 1 is the left leg, made up of a black edge on the left and a red fill, with no edge on the right</li>
+
+							<li>Part 2 is the right leg, which is also made up of a black edge on the left and a red fill, with no edge on the right</li>
+						</ul>
+
+						<p>Let's separate the contents of the sign in the screen buffer into these three parts, to give us the three sets of pixels that we need to draw in order to show the sign by the side of the track:</p>
+
+						<table class="spacedTable">
+							<tr>
+								<td>&nbsp;</td>
+								<td class="center">1</td>
+								<td class="center">2</td>
+								<td class="center">3</td>
+								<td class="center">4</td>
+								<td class="center">5</td>
+							</tr>
+							<tr>
+								<td style="vertical-align: middle; padding-right: 2ch">Part 0</td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 33px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_1_part_0.png" alt="Block 1 of part 0 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 33px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_2_part_0.png" alt="Block 2 of part 0 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 33px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_3_part_0.png" alt="Block 3 of part 0 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 33px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_4_part_0.png" alt="Block 4 of part 0 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 33px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_5_part_0.png" alt="Block 5 of part 0 of the sign" /></div></td>
+							</tr>
+							<tr>
+								<td style="vertical-align: middle; padding-right: 2ch">Part 1</td>
+								<td>&nbsp;</td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 12px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_2_part_1.png" alt="Block 2 of part 1 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 12px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_3_part_1.png" alt="Block 3 part 1 of of the sign" /></div></td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+							</tr>
+							<tr>
+								<td style="vertical-align: middle; padding-right: 2ch">Part 2</td>
+								<td>&nbsp;</td>
+								<td>&nbsp;</td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 12px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_3_part_2.png" alt="Block 3 of part 2 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 12px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_4_part_2.png" alt="Block 4 of part 2 of the sign" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 12px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_5_part_2.png" alt="Block 5 of part 2 of the sign" /></div></td>
+							</tr>
+						</table>
+
+						<p>For each of these object parts, the drawing routine does the following:</p>
+
+						<ul>
+							<li>Draw the block containing the left edge</li>
+
+							<li>Draw the block containing the right edge</li>
+
+							<li>Fill the object by drawing the blocks between the two edges, from right to left</li>
+
+							<li>Fill the block to the right of the right edge, to ensure the background resumes to the right of the object</li>
+						</ul>
+
+						<p>In the first two steps, if the right edge is in the same pixel byte as the left edge, we create a pixel byte containing both edges, and draw both edges into the screen buffer at the same time.</p>
+
+						<p>Note that in the context of the screen buffer, each dash data block is a four-pixel-wide column, so "drawing a block" means filling the relevant section of the dash data block with pixel bytes. Also note that &amp;55 signifies black in the buffer, and &amp;55 looks like a black-green-black-green striped pixel byte in the above, as that's what &amp;55 would look like when poked directly into screen memory. The game converts this to black when drawing the contents of the screen buffer on-screen, but we're looking at the contents of the screen buffer here, not the screen, so we get the striped version.</p>
+
+						<p>Let's see this in action for part 0 of the sign. Here are the above steps in order, with each step drawing into one dash data block:</p>
+
+						<table class="spacedTable">
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 33px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_1_part_0.png" alt="Block 1 of part 0 of the sign" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Block 1: Draw the left edge of the sign, with the white edge in the last pixel of the pixel byte, and the first three pixel bytes set to the existing background (blue for the top three pixel rows, green for the bottom three)</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 33px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_4_part_0.png" alt="Block 4 of part 0 of the sign" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Block 4: Draw the right edge of the sign, with the white edge in the second pixel of the pixel byte, the black fill colour of the sign in the first pixel, and then the final two pixels set to the existing background, just as for the left edge</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 33px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_3_part_0.png" alt="Block 3 of part 0 of the sign" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Block 3: Fill the inside of the object part in black, starting from the right, using a pixel byte of &amp;55 as this represents four pixels in black (&amp;55 displays as a black, green, black, green pixel byte when poked into the screen like this)</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 33px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_2_part_0.png" alt="Block 2 of part 0 of the sign" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Block 2: Continue filling the inside of the object part in black by moving to the left, again using a value of &amp;55</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 33px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_5_part_0.png" alt="Block 5 of part 0 of the sign" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Block 5: Fill to the right of the object using the existing background, which again is blue for the top three pixel rows and green for the bottom three rows</td></tr>
+						</table>
+
+						<p>For part 1 we have a slightly simpler process, as at this scale the leg isn't wide enough to contain any fill colour. That said, the right edge is an outside edge and this object part has the "draw outside edges in the fill colour" flag set, so the right edge is drawn in the fill colour (red), while the left edge is drawn in the edge colour (black). On top of this, we also have the left and right edges in the same pixel byte, so they are both drawn to the screen buffer in one go:</p>
+
+						<table class="spacedTable">
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 12px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_2_part_1.png" alt="Block 2 of part 1 of the sign" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Block 2: Draw the left edge in the first pixel, the right edge in the second pixel, and the background colour in pixels three and four, drawing the combined result into the buffer in one go</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 12px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_3_part_1.png" alt="Block 3 of part 1 of the sign" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Block 3: Fill to the right of the object with the green colour of the background (note that this pixel byte gets overwritten by the left edge pixel byte of part 2)</td></tr>
+						</table>
+
+						<p>For part 2 it's a similar story, except the leg straddles two pixel bytes, and the first pixel byte for this leg overwrites the last pixel byte from the previous leg:</p>
+
+						<table class="spacedTable">
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 12px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_3_part_2.png" alt="Block 3 of part 2 of the sign" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Block 3: Draw the left edge of the leg in the last pixel of the pixel byte, filling the first three pixels with the green background</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 12px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_4_part_2.png" alt="Block 4 of part 2 of the sign" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Block 4: Draw the right edge of the leg in the first pixel of the byte, filling the last three pixels with the green background</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 24px; height: 12px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/objects/drawing_edges/block_5_part_2.png" alt="Block 5 of part 2 of the sign" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Block 5: Fill to the right of the object with the green colour of the background</td></tr>
+						</table>
+
+						<p>Now we know what the edge-drawing process looks like, let's take a look at the code that actually does the drawing.</p>
+
+						<h2 class="articleSubheader">The object drawing routines<br />
+													 ---------------------------</h2>
+
+						<p>The main object drawing routine is <a href="/source/main/subroutine/drawobject.html">DrawObject</a>, which is responsible for drawing all the objects in Revs (so that's the road signs, the corner markers, the starting flag and all the different types of car). It does this by calling the <a href="/source/main/subroutine/drawobjectedges.html">DrawObjectEdges</a> routine for each object that it needs to draw, so it calls DrawObjectEdges once when drawing a flag, and four times when drawing the four-object car, for example.</p>
+
+						<p>To draw an object, DrawObjectEdges runs through each of the object's parts in turn, and draws the part's vertical edges into the screen buffer as described above. The actual drawing is done by calling the <a href="/source/main/subroutine/drawobjectedge_part_1_of_5.html">DrawObjectEdge</a> routine for each edge. This routine either draws the edge or, if the next edge is within the same byte, it prepares a pixel byte containing the current edge, ready for the next edge to be added in the next call to DrawObjectEdge. Once an edge has been drawn, DrawObjectEdge calls the <a href="/source/main/subroutine/fillinsideobject.html">FillInsideObject</a> routine to fill the object (unless this is the first edge, in which case this step is skipped), and if we just drew the last edge, it calls the <a href="/source/main/subroutine/fillafterobject.html">FillAfterObject</a> routine to draw the existing background to the right of the object part.</p>
+
+						<p>For object parts that are simple rectangles, DrawObjectEdges calls DrawObjectEdge twice, once for the left edge and once for the right edge. For four-edge object parts, DrawObjectEdges calls DrawObjectEdge four times. The first call draws the left edge, and each subsequent call draws and fills up to the next edge, until the last call draws and fills up to the rightmost edge. FillAfterObject then takes over to restore the background to the right of the object, just as before.</p>
+
+						<p>Let's look at how the DrawObjectEdge routine breaks down, followed by the FillInsideObject and FillAfterObject routines.</p>
+
+						<h2 class="articleSubheader">DrawObjectEdge<br />
+													 --------------</h2>
+
+						<p>The DrawObjectEdge routine is at the heart of the object-drawing process. It takes a large number of arguments, some of which are passed between subsequent calls to the routine. See the source code for a definitive list of arguments and return values.</p>
+
+						<p><a href="/source/main/subroutine/drawobjectedge_part_1_of_5.html">DrawObjectEdge (Part 1 of 5)</a></p>
+
+						<ul>
+							<li>Set a number of variables that are required in the subsequent parts:
+
+								<ul>
+									<li><a href="/source/main/workspace/zero_page.html#leftofedge">leftOfEdge</a> contains the fill colour of the object, or if the previous edge is within the same pixel byte and we are now drawing the next edge, it contains the pixel byte from the previous call, which contains the previous edge</li>
+
+									<li><a href="/source/main/workspace/zero_page.html#rightofedge">rightOfEdge</a> contains the fill colour, or (if we need to draw this edge in the same pixel byte as the previous edge), it contains the pixel byte from the previous call</li>
+
+									<li><a href="/source/main/workspace/zero_page.html#edgepixel">edgePixel</a> contains a four-pixel byte in the edge colour passed in bits 2-3 of <a href="/source/main/workspace/zero_page.html#colourdata">colourData</a>, which we will mask later to a single pixel</li>
+
+									<li><a href="/source/main/workspace/zero_page.html#thisedge">thisEdge</a> contains the pixel x-coordinate of the edge to draw</li>
+
+									<li><a href="/source/main/workspace/zero_page.html#blocknumber">blockNumber</a> contains the dash data block number for the edge to draw (as each dash data block is four pixels wide)</li>
+
+									<li><a href="/source/main/workspace/zero_page.html#nextedgecoord">nextEdgeCoord</a> and <a href="/source/main/workspace/zero_page.html#nextblocknumber">nextBlockNumber</a> contain the pixel x-coordinate and dash data block number of the next edge, ready to be used in the next call to DrawObjectEdge</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/drawobjectedge_part_2_of_5.html">DrawObjectEdge (Part 2 of 5)</a></p>
+
+						<ul>
+							<li>Set (Q P) to the screen address of the dash data block containing the edge</li>
+
+							<li>If this edge is off the right of the screen, jump to part 5 to check whether to fill the object up to the right edge of the screen</li>
+
+							<li>Calculate the dash data block offset of the bottom line of the edge to draw</li>
+
+							<li>Confirm that the top line is higher up the screen than the bottom line. If not and this is a left edge, stop drawing as there is nothing to draw; if not and this is a right or extra edge, jump to part 5 to move on to check for any filling we need to do, and move on to the next edge</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/drawobjectedge_part_3_of_5.html">DrawObjectEdge (Part 3 of 5)</a></p>
+
+						<ul>
+							<li>If bit 4 of the colour data is set and this is a left or right edge, check to see if it's an outside edge, and if so, set the edge colour to the fill colour so the edge merges into the object (so the edge is effectively hidden)</li>
+
+							<li>Construct a single-pixel byte for the edge we want to draw in <a href="/source/main/workspace/zero_page.html#edgepixel">edgePixel</a>, containing just the edge pixel in the correct colour</li>
+
+							<li>Build a pixel byte in A containing the edge and fill colour, incorporating the previous edge if it's in the same pixel byte</li>
+
+							<li>If the next edge is in the same byte, return from the subroutine with <a href="/source/main/workspace/zero_page.html#prevedgeinbyte">prevEdgeInByte</a> != 0 so the next call can insert the next edge into the pixel byte</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/drawobjectedge_part_4_of_5.html">DrawObjectEdge (Part 4 of 5)</a></p>
+
+						<ul>
+							<li>Draw the edge by poking the edge and fill colours into the relevant dash data block, calling <a href="/source/main/subroutine/getcolour_part_1_of_3.html">GetColour</a> to fetch the current background colour of the pixel byte we are drawing the edge onto, so we can mask the background pixels into the correct side of the edge (i.e. to the left of the left edge, or the right of the right edge) and the fill colour on the inside of the object</li>
+
+							<li>If the next edge in the object falls within the same pixel byte, then we do not poke the byte into screen memory, but instead store the pixel byte we have calculated so far, so the next call to DrawObjectEdge can pick it up, add the next edge into the correct place and poke the result into screen memory</li>
+
+							<li>When poking the edge into screen memory, we simply fill the relevant dash data block, as sequential bytes populate columns on screen. The value &amp;AA is used as a marker for the bottom of the edge to draw, with the marker being replaced by the original contents once the edge has been drawn</li>
+
+							<li>If this is not the first edge, fill in the column after the edge we just drew, to reset the background colour to the right of the object ("after the object") by calling <a href="/source/main/subroutine/fillafterobject.html">FillAfterObject</a></li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/drawobjectedge_part_5_of_5.html">DrawObjectEdge (Part 5 of 5)</a></p>
+
+						<ul>
+
+							<li>If this is the start of a fill and there is at least one byte free after the edge before the next edge, fill the column to the left of the edge we just drew by calling FillInsideObject, also checking whether we need to fill to the right edge of the screen if the right edge is off-screen</li>
+
+							<li>This part also contains a routine to work out whether the edge is off the right edge of the screen, and whether we should therefore be filling the object all the way up to the right edge</li>
+						</ul>
+
+						<h2 class="articleSubheader">FillInsideObject<br />
+													 ----------------</h2>
+
+						<p>The drawing routine calls <a href="/source/main/subroutine/fillinsideobject.html">FillInsideObject</a> when it finishes drawing any edge except the left edge (as we don't fill to the left of the left edge). This routine fills the object to the left of the edge we just drew, filling the object column by column (where each column corresponds to one dash data block).</p>
+
+						<ul>
+							<li>Calculate the address of the dash data block to the left of the edge into (Q P), so we can fill the object to the left of the edge, from right to left</li>
+
+							<li>Calculate the address of the dash data block to the left of (Q P) and put it in (S R)</li>
+
+							<li>Calculate the offset of the bottom of the object that we want to fill, using the fillDataOffset table to ensure that we drop down correctly if the dashboard is sloping down and left</li>
+
+							<li>If we need to fill at least two columns, then we fill the two dash data blocks at (Q P) and (S R) concurrently; if we only need to fill one, then we only fill the column in (Q P)</li>
+
+							<li>If there are more columns to fill, loop back to shift to the left by two dash data blocks, and repeat the process</li>
+						</ul>
+
+						<h2 class="articleSubheader">FillAfterObject<br />
+													 ---------------</h2>
+
+						<p>After all the edges have been drawn in our object, the drawing routine calls <a href="/source/main/subroutine/fillafterobject.html">FillAfterObject</a> to reset the colour to the right of the object to the correct background. It does this by filling the column to the right of the object we just drew with the correct contents.</p>
+
+						<ul>
+							<li>Calculate the address of the dash data block to the right of the edge that we just drew</li>
+
+							<li>Work down the screen (i.e. backwards through the dash data block in memory), and for each byte, check to see if it's a zero, and if so, replace it with the correct background colour (which is fetched by calling the <a href="/source/main/subroutine/getcolour_part_1_of_3.html">GetColour</a> routine)</li>
+						</ul>
+
+						<p>The FillAfterObject routine is complicated somewhat by having a double use. Totally separate from the whole object-drawing process is the <a href="/source/main/subroutine/gettyredashedge.html">GetTyreDashEdge</a> routine, which makes a copy of the contents of the screen buffer in the edge along the right side of the dashboard, as part of the process of fitting the track view around the dashboard - see the deep dive on <a href="drawing_around_the_dashboard.html">drawing around the dashboard</a> for details. The GetTyreDashEdge works by modifying the code in the FillAfterObject routine to copy the contents of an edge instead of filling it, so when reading the code, bear this in mind.</p>
+
+						<p>Also, the FillAfterObject, GetColour and GetTyreDashEdge routines from the original Acornsoft release of Revs were rewritten for the Superior Software release. The newer versions take up less memory and are considerably easier to follow, so I recommend you follow along with the Superior versions (which are called <a href="/source/main/subroutine/fillafterobjectsup.html">FillAfterObjectSup</a>, <a href="/source/main/subroutine/getcoloursup.html">GetColourSup</a> and <a href="/source/main/subroutine/gettyredashedgesup.html">GetTyreDashEdgeSup</a>).</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="scaling_objects_with_scaffolds.html">Scaling objects with scaffolds</a><a class="next" rel="next" title="Next deep dive" href="the_track_data_file_format.html">The track data file format</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

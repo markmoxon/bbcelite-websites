@@ -1,0 +1,134 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_nes_combat_demo.html", "The NES combat demo", "The NES combat demo", "A deep dive into the combat demo in NES Elite", "elite", "deep_dives_nes", "the_nes_combat_demo");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="sprite_usage_in_nes_elite.html">Sprite usage in NES Elite</a><a class="next" rel="next" title="Next deep dive" href="auto-playing_the_combat_demo.html">Auto-playing the combat demo</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the scroll text and combat practice works</h2>
+
+						<p>One of the more entertaining features that the authors added to NES Elite is the combat demo. Bookended by 3D scroll texts, this optional part of the game gives you a pretty powerful ship and pits you against three relatively sleepy enemies, whom you have to eliminate in a timed bout of combat practice:</p>
+
+						<img class="titleImage" src="/images/nes/demo/combat_practice.png" alt="The combat demo in NES Elite">
+
+						<p>It's a pleasant way to get familiar with the flight controls without the pressures of the live game, and you can jump into practice at any point by pressing Start on the title screen (though for pilots who don't need any more lessons, pressing Select will skip the demo and jump straight to the game).</p>
+
+						<p>The NES combat demo owes a lot to the 6502 Second Processor version of Elite, whose own demo mode is described in the deep dive on <a href="6502sp_demo_mode.html">the 6502 Second Processor demo mode</a>. The same routines are used in both to display the 3D Star Wars scroll text, just with a few tweaks to reduce the amount of text shown on-screen in the NES version, and although the original 1985 demo wasn't playable and only showed a few ships flying around in a fixed pattern, the approach of having a flight loop outside of the main game is the same. And the idea of an auto-playing demo is carried over to the NES version too, as the game will play against itself if left alone long enough (see the deep dive on <a href="auto-playing_the_combat_demo.html">auto-playing the combat demo</a> for details).</p>
+
+						<p>Let's take a look at what makes the combat demo tick.</p>
+
+						<h2 class="articleSubheader">The scroll text<br />
+													 ---------------</h2>
+
+						<p>The combat demo kicks off with an homage to the opening scroll text from Star Wars, which scrolls up the screen and into the far distance while David Whittaker's "Assassin's Touch" plays in the background. This music was composed specially for the NES version - see the deep dive on <a href="music_in_nes_elite.html">music in NES Elite</a> for more details.</p>
+
+						 <p>Here's the opening scroll text from the demo:</p>
+
+						<img class="titleImage" src="/images/nes/demo/scrolltext_1.png" alt="The scroll text in NES Elite">
+
+						<img class="titleImage" src="/images/nes/demo/scrolltext_2.png" alt="The scroll text in NES Elite">
+
+						<p>As with the 6502 Second Processor version, the scroll text is implemented using the in-game 3D graphics engine, with the text being made up of lines that work in the exact same way as the lines in a wireframe ship, and which are drawn by the same line-drawing routines.</p>
+
+						<p>The <a href="/nes/bank_6/subroutine/showscrolltext.html">ShowScrollText</a> routine sets up the screen for the demo, and then it calls <a href="/nes/bank_6/subroutine/drawscrolltext.html">DrawScrollText</a> to start drawing the first scroll text. The text for this first scroll text is language-dependent, with the text coming from <a href="/nes/bank_6/variable/scrolltext1_en.html">scrollText1_EN</a>, <a href="/nes/bank_6/variable/scrolltext1_de.html">scrollText1_DE</a> or <a href="/nes/bank_6/variable/scrolltext1_fr.html">scrollText1_FR</a> as appropriate. The text is passed to the <a href="/nes/bank_6/subroutine/drawscrollframes.html">DrawScrollFrames</a> routine, which in turn repeatedly calls the <a href="/nes/bank_6/subroutine/drawscrollframe.html">DrawScrollFrame</a> routine to draw each individual frame of the scroll text.</p>
+
+						<p>Underlying all of this are the same tables as in the 6502 Second Processor version, but with a few tweaks to make life a bit more efficient when drawing a scroll text into tiles. The 2D letter-writing is implemented by the <a href="/nes/bank_6/subroutine/gridset.html">GRIDSET</a> routine, which contains letter definitions in the <a href="/nes/bank_6/variable/ltdef.html">LTDEF</a> table, just as in the 6502 Second Processor version. Characters in the scroll text are drawn using lines on a 3x6 numbered grid like this:</p>
+
+<pre class="articleIndented">   0   1   2
+   .   .   .
+   3   4   5
+   .   .   .
+   6   7   8
+   9   A   B
+</pre>
+
+						<p>The low nibble of each byte is the starting point for that line segment, and the high nibble is the end point, so a value of $28, for example, means "draw a line from point 8 to point 2". The LTDEF table contains definitions for all the characters we can use in the scroll text, as lines on the above grid.</p>
+
+						<p>The range of characters in the NES version is slightly different, and the paths used to trace the letters have been altered to be more compatible with tiles. As an example, take the letter "A", which looks like this in the 6502 Second Processor version:</p>
+
+<pre class="articleIndented">  $60, $02, $28, $35, $00
+</pre>
+
+						<p>In the NES version the same shape is encoded like this:</p>
+
+<pre class="articleIndented">  $06, $02, $28, $35, $00
+</pre>
+
+						<p>The first line is different - instead of going from position 0 down to position 6, we now go up from 6 to 0. This is because the next line starts from 0, so the new ordering ensures that lines are drawn more continuously, which helps to ensure fewer gaps in the lines if we start to run low on spare patterns. In practice we don't run out of patterns as the text is short enough to fit into the available patterns, but the letters have still been re-coded to minimise the risk.</p>
+
+						<p>The maths to project the scroll text onto the NES screen is a bit different to the original, and the NES scroll text disappears more quickly and at a closer distance than in the Second Processor version (which does slow down terribly with the much longer scroll effect, so this fix is a noticeable improvement). But the concept is the same, and the code was clearly lifted and converted directly from the 1985 version, which is nice to see.</p>
+
+						<h2 class="articleSubheader">Combat practice<br />
+													 ---------------</h2>
+
+						<p>Once the scroll text has disappeared into the distance, the code jumps to the <a href="/nes/bank_0/subroutine/playdemo.html">PlayDemo</a> routine, where combat practice starts. This routine sets up the local bubble for the main event by calling the <a href="/nes/bank_7/subroutine/setupdemouniverse.html">SetupDemoUniverse</a> routine, and then it configures three ships - a Mamba, a Krait and a Sidewinder - via the <a href="/nes/bank_0/subroutine/setupdemoship.html">SetupDemoShip</a> routine, before spawning them with the <a href="/nes/bank_0/subroutine/nwshp.html">NWSHP</a> routine. The ships are configured to fly forwards over our heads before wheeling off to the sides, and it's really quite atmospheric, especially as another brand new David Whittaker tune, "Game Theme", starts to play as the ships appear.</p>
+
+						<p>The ship-spawning process is interesting as it relies on the way that the main loop in NES Elite has been split into smaller parts (as described in the deep dive on <a href="splitting_the_main_loop_in_the_nes_version.html">splitting the main loop in the NES version</a>). As each ship is spawned, the demo runs a fixed number of frames of the main flight loop, so the ships fly forwards and over our heads, one after the other. This is all controlled by calls to the <a href="/nes/bank_0/subroutine/rundemoflightloop.html">RunDemoFlightLoop</a> routine, which in turn runs a fixed number of iterations of the flight loop via the <a href="/nes/bank_0/subroutine/flightloop4to16.html">FlightLoop4To16</a> routine.</p>
+
+						<p>After spawning the three ships, the demo code hands over control to <a href="/nes/bank_0/subroutine/main_game_loop_part_5_of_6.html">part 5 of the main game loop</a> to run the combat practice using the same loop as the main game. <a href="/nes/bank_0/subroutine/main_flight_loop_part_15_of_16.html#ma93">Part 15 of the flight loop</a> contains code that checks whether we are in the demo rather than the main game, and if we have killed all three ships then it jumps back to <a href="/nes/bank_6/subroutine/showscrolltext.html">ShowScrollText</a> to show the results in a scroll text like this:</p>
+
+						<img class="titleImage" src="/images/nes/demo/results_1.png" alt="The scroll text in NES Elite">
+
+						<p>followed by an introduction to the rest of the game:</p>
+
+						<img class="titleImage" src="/images/nes/demo/results_2.png" alt="The scroll text in NES Elite">
+
+						<img class="titleImage" src="/images/nes/demo/results_3.png" alt="The scroll text in NES Elite">
+
+						<h2 class="articleSubheader">Timing the results<br />
+													 ------------------</h2>
+
+						<p>The combat demo is timed, and as you can see above, the total time taken is shown as a scroll text once the third ship has been destroyed. The time taken is measured by the (<a href="/nes/common/workspace/zp.html#nmitimerhi">nmiTimerHi</a> <a href="/nes/common/workspace/zp.html#nmitimerlo">nmiTimerLo</a>) counter, which gets incremented by the NMI handler once every 50 VBlanks. On the PAL version this means the counter ticks up exactly once a second, while on the NTSC version it ticks up every 0.8333 seconds (so the timings on the NTSC version are inaccurate).</p>
+
+						<p>The scroll text showing the results is again language-dependent, with the text coming from <a href="/nes/bank_6/variable/scrolltext2_en.html">scrollText2_EN</a>, <a href="/nes/bank_6/variable/scrolltext2_de.html">scrollText2_DE</a> or <a href="/nes/bank_6/variable/scrolltext2_fr.html">scrollText2_FR</a> as appropriate. This scroll text contains four special characters, which show the time in (nmiTimerHi nmiTimerLo), broken down into minutes and seconds like this:</p>
+
+						<ul>
+							<li>$83 is the first digit of the minutes</li>
+
+							<li>$82 is the second digit of the minutes</li>
+
+							<li>$81 is the first digit of the seconds</li>
+
+							<li>$80 is the second digit of the seconds</li>
+						</ul>
+
+                        <p>The <a href="/nes/bank_6/subroutine/gridset.html">GRIDSET</a> routine implements these special values by fetching an ASCII value from the relevant byte in the the K5 variable, and then returning the lines for that character. The locations are as follows:</p>
+
+						<ul>
+							<li>Character $83 displays the character whose ASCII code is in location K5+3</li>
+
+							<li>Character $82 displays the character whose ASCII code is in location K5+2</li>
+
+							<li>Character $81 displays the character whose ASCII code is in location K5+1</li>
+
+							<li>Character $80 displays the character whose ASCII code is in location K5</li>
+                        </ul>
+
+						<p>The <a href="/nes/bank_6/subroutine/showscrolltext.html#scro7">latter part of the ShowScrollText routine</a> calculates the characters that we need in order to show the value of nmiTimer in minutes and seconds. It then sets the values of K5 though K5+3 to the ASCII characters that represent the individual digits of this time, so the scroll text can incorporate the correct numbers like this:</p>
+
+						<img class="titleImage" src="/images/nes/demo/results_1.png" alt="The scroll text in NES Elite">
+
+						<p>On the subject of time, there's a 60 second penalty that's added for each missile that you use during combat practice. This is added by the <a href="/nes/bank_0/subroutine/frmis.html">FRMIS</a> routine when a missile is launched, which displays the following warning before adding 60 seconds to (nmiTimerHi nmiTimerLo):</p>
+
+						<img class="titleImage" src="/images/nes/demo/penalty.png" alt="A time penalty being applied in NES Elite">
+
+						<p>Alas, there don't seem to be any extra points awarded for brazenly shooting down missiles without even blinking. <a href="http://www.elitehomepage.org/dkwheel.htm#A53">Alex Ryder</a> would not be impressed...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="sprite_usage_in_nes_elite.html">Sprite usage in NES Elite</a><a class="next" rel="next" title="Next deep dive" href="auto-playing_the_combat_demo.html">Auto-playing the combat demo</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

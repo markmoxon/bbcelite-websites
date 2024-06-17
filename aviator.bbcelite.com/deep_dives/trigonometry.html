@@ -1,0 +1,66 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "A deep dive into trigonometry in BBC Micro Aviator", "aviator", "deep_dives_maths", "trigonometry");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="times_tables_and_nibble_arithmetic.html">Times tables and nibble arithmetic</a><a class="next" rel="next" title="Next deep dive" href="random_numbers.html">Random numbers</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Calculating sine and cosine in the rotation matrices</h2>
+
+						<p>Aviator needs to calculate the sine and cosine of the current rotation angles every time it generates the rotation matrices. This happens on each iteration of the main loop, as the rotation angles potentially change between loop iterations, so the matrices have to be constructed from scratch each time. See the deep dive on <a href="rotation_matrices.html">rotation matrices</a> for more details on how the rotation matrices use trigonometry.</p>
+
+						<p>There are two parts to Aviator's trigonometry code: a lookup table, and an interpolation routine. Let's look at these in turn.
+
+						<h2 class="articleSubheader">The lookup table<br />
+													 ----------------</h2>
+
+						<p>The game code supports trigonometry using the time-honoured approach of the trigonometric lookup table, split into high and low bytes in <a href="/source/main/variable/sinhi.html">sinHi</a> and <a href="/source/main/variable/sinlo.html">sinLo</a>. Together, these let us fetch the 16-bit sine of an angle as (sinHi sinLo).</p>
+
+						<p>The lookup table contains sine values for a quarter of a circle, i.e. for the range 0 to 90 degrees, or 0 to PI/2 radians. The table contains values for indexes 0 to 256, which cover the quarter from 0 to PI/2 radians (see the description of the interpolation routine below for an explanation of why the table goes to 256 rather than 255). Entry X in the table is therefore (X / 256) * (PI / 2) radians of the way round the quarter circle, so the table at index X contains the sine of this value.</p>
+
+						<p>The value of sine across the quarter circle ranges from 0 to 1:</p>
+
+<pre class="articleIndented">  sin(0) = 0
+
+  sin(90) = sin(PI/2) = 1
+</pre>
+
+						<p>but assembly language doesn't support fractions, so instead we store the sine in a 16-bit number that contains the sine multiplied by 65536, so the range of (sinHi sinLo) over the course of the quarter circle is 0 to 65536. It might help to think of sinHi as an integer ranging from 0 to 256 across the quarter circle, with sinLo as the fractional part ranging from 0 to 255; this is the approach taken in the Sine16Bit routine, which we look at below.</p>
+
+						<p>In other words, entry X in this table contains sin(X) * 65536, where X ranges from 0 to 256 over the course of a quarter circle. It also means that because sin(90 - X) = -cos(X), we can fetch the cosine of an angle by inverting the bits of X and negating the result, as this will flip the angle from the range 0 to 90 to the range 90 to 0. In other words, cos(X) = -sin(~X), when X ranges over 0 to 256 to describe a quarter circle.</p>
+
+						<h2 class="articleSubheader">The interpolation routine<br />
+													 -------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/sine16bit.html">Sine16Bit</a> routine uses the lookup table to calculate the sine of a 16-bit angle, like this:</p>
+
+<pre class="articleIndented">  (A Y) = sin(X W)
+</pre>
+
+						<p>where (X W) is a 16-bit angle, with 0 to 65535 representing a quarter circle. It uses linear interpolation to calculate a more accurate 16-bit result than the table contains, as follows.</p>
+
+						<p>The sine lookup table contains 256 entries that represent a quarter circle, so we work out the result by first looking up the sine for the high byte X, and then interpolating W/256 of the way between the results for X and X + 1. It might help to think of X being an integer (0 to 255) and W being a fraction (0 to 255) and we're trying to map X.W onto the sine table by finding the entry for X and doing linear interpolation between X and X + 1 for the fractional amount.</p>
+
+						<p>This, incidentally, is why the lookup table has an extra entry on the end - so we can look up the result for (X W) + 1 when (X W) is 65535.</p>
+
+						<p>In this way, Aviator supports high precision trigonometric functions, with a quick table lookup and a simple bit of interpolation.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="times_tables_and_nibble_arithmetic.html">Times tables and nibble arithmetic</a><a class="next" rel="next" title="Next deep dive" href="random_numbers.html">Random numbers</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,224 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "source_code_clues_hidden_in_the_game_binary.html", "Source code clues hidden in the game binary", "Source code clues hidden in the game binary", "A deep dive into the source code clues hidden in the game binary in BBC Micro Aviator", "aviator", "deep_dives_other", "source_code_clues_hidden_in_the_game_binary");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="multi-byte_variables.html">Multi-byte variables</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Snippets of original source code and what they can tell us</h2>
+
+						<p>Assembling large machine code programs on memory-starved 8-bit home computers can be a tricky process. Assembly language source code is always considerably larger than the machine code that it produces, so if you're trying to build a machine code binary that fills your computer to the brim, assembling the whole thing in-place is not an option (at least, not on the original hardware).</p>
+
+						<p>The most popular approach is to split the source code up into smaller batches, and then assemble each batch to produce a set of smaller binaries that you can concatenate into the final game binary. On the BBC Micro, this is fairly easy to do with the assembler that comes built into BBC BASIC, with each part assembling its code, saving it to a file, and then loading the next BASIC program to assemble the next part.</p>
+
+						<p>A side-effect of this approach is that unless you clear down the computer's memory between program loads - something you are extremely unlikely to do, as this process relies on variables retaining their values between parts - then you will be left with fragments of the previous part's program and its assembled code in memory. If the source code defines a variable's block of memory by simply incrementing the program counter in P%, rather than using an explicit sequence of EQU commands to zero the block, then the block will contain whatever was already in memory, and whatever was already there will then be saved into the finished game binary.</p>
+
+						<p>As a result, it is pretty common to find bits of original source code buried in game binaries, particularly with large games. Aviator is no exception, so let's take a look at the secrets that are buried in the released game, and what they can tell us about the original source code.</p>
+
+						<h2 class="articleSubheader">Analysing the source for clues<br />
+													 ------------------------------</h2>
+
+						<p>Here is a list of all the parts of the game binary that don't contain game code or data, but instead contain "background noise" from the compilation process. Sometimes the data is just a jumbled mess that doesn't contain any clues, and sometimes it's a snippet of source code that is identifiable as assembly language, but which doesn't tell us anything. And then sometimes you hit the jackpot, and you find a chunk of original source code that's really interesting.</p>
+
+						<p>This table is therefore a list of all the potential sites in our hunt for clues to the original source code. You can click on the links below to see the clues <i>in situ</i>; they will either be buried in EQUB blocks, or marked with "these bytes appear to be unused", but the table shows what they contain in text form, which is what we analyse next.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Location in source code</th><th>Location in game binary</th><th>Contents</th></tr>
+							<tr><td>End of <a href="/source/main/variable/previoustime.html">previousTime</a></td><td>2 bytes at offset &amp;1D9E to &amp;1D9F</td><td>(spaces)</td></tr>
+							<tr><td><a href="/source/main/variable/distancefromhit.html">distanceFromHit</a> to <a href="/source/main/variable/fuellevel.html">fuelLevel</a></td><td>7 bytes at offset &amp;258C</td><td>HI=&amp;44A<br /><br />Must be a fragment of "YAHI=&amp;44A0", which sets the address of the yObjectHi variable</td></tr>
+							<tr><td><a href="/source/main/variable/scorelo.html">scoreLo</a> to <a href="/source/main/variable/highscorehi.html">highScoreHi</a></td><td>4 bytes at offset &amp;259C</td><td>I=&amp;4<br /><br />Must be a fragment of "ZAHI=&amp;44C8", which sets the address of the zObjectHi variable</td></tr>
+							<tr><td>End of <a href="/source/main/variable/maxlinedistance.html">maxLineDistance</a> to <a href="/source/main/variable/scoretext.html">scoreText</a></td><td>570 bytes at offset &amp;2AC6 to &amp;2CFF</td><td>Large block of source code - see clue 1 below</td></tr>
+							<tr><td>End of <a href="/source/main/variable/scoretext.html">scoreText</a></td><td>12 bytes at offset &amp;2CF4 to &amp;2CFF</td><td>:JMP sut5</td></tr>
+							<tr><td>End of <a href="/source/main/variable/lineendpointid.html">lineEndPointId</a></td><td>7 bytes at offset &amp;2DC1 to &amp;2DC7</td><td>tru2:C</td></tr>
+							<tr><td>End of <a href="/source/main/subroutine/checktimepassed.html">CheckTimePassed</a></td><td>10 bytes at offset &amp;2E26 to &amp;2E2F</td><td>=ABCwxDEFP</td></tr>
+							<tr><td>End of <a href="/source/main/variable/linestartpointid.html">lineStartPointId</a></td><td>9 bytes at offset &amp;2EF1 to &amp;2EF9</td><td>(jumbled mess)</td></tr>
+							<tr><td><a href="/source/main/variable/alienobjectid.html">alienObjectId</a> to <a href="/source/main/variable/matrix4lo.html">matrix4Lo</a></td><td>60 bytes at offset &amp;3108 to &amp;3143</td><td>edba`_^\[ZYX}|{zxwvutrqp19<br />      LDY#31<br />.???  LDX P...</td></tr>
+							<tr><td>End of <a href="/source/main/subroutine/checkflyingskills_part_1_of_2.html">CheckFlyingSkills</a> to <a href="/source/main/variable/matrix4hi.html">matrix4Hi</a></td><td>38 bytes at offset &amp;315E to &amp;3183</td><td>(jumbled mess)</td></tr>
+							<tr><td>End of <a href="/source/main/variable/scalefactor.html">scaleFactor</a></td><td>3 bytes at offset &amp;31FD to &amp;31FF</td><td>#18</td></tr>
+							<tr><td><a href="/source/main/variable/xobjectlo.html">xObjectLo</a> for unused objects 35-39</td><td>6 bytes at offset &amp;3323 to &amp;3327</td><td>#31:BC</td></tr>
+							<tr><td><a href="/source/main/variable/yobjectlo.html">yObjectLo</a> for unused objects 35-39</td><td>6 bytes at offset &amp;334B to &amp;3351</td><td>#4:JMP</td></tr>
+							<tr><td><a href="/source/main/variable/zobjectlo.html">zObjectLo</a> for unused objects 35-39</td><td>6 bytes at offset &amp;3373 to &amp;3379</td><td>(spaces)</td></tr>
+							<tr><td><a href="/source/main/variable/xobjecthi.html">xObjectHi</a> for unused objects 35-39</td><td>6 bytes at offset &amp;339B to &amp;33A1</td><td>A SIZE</td></tr>
+							<tr><td><a href="/source/main/variable/yobjecthi.html">yObjectHi</a> for unused objects 35-39</td><td>6 bytes at offset &amp;3363 to &amp;3369</td><td>Tokenised BASIC line number</td></tr>
+							<tr><td><a href="/source/main/variable/zobjecthi.html">zObjectHi</a> for unused objects 35-39</td><td>5 bytes at offset &amp;33EB to &amp;33F0</td><td>A:LSR</td></tr>
+							<tr><td>End of <a href="/source/main/subroutine/removescore.html">RemoveScore</a> to <a href="/source/main/variable/xtemppoint2hi.html">xTempPoint2Hi</a></td><td>623 bytes at offset &amp;3791 to &amp;39FF</td><td>Large block of source code with embedded machine code - see clues 2 and 3 below</td></tr>
+							<tr><td>End of <a href="/source/main/variable/forcefactor.html">forceFactor</a></td><td>5 bytes at offset &amp;3E8D to &amp;3E91</td><td>(jumbled mess)</td></tr>
+							<tr><td>End of <a href="/source/main/variable/xjoycoord.html">xJoyCoord</a> to <a href="/source/main/variable/altitudeminutes.html">altitudeMinutes</a></td><td>18 bytes at offset &amp;3EEE to &amp;3EFF</td><td>      LDY#1:L</td></tr>
+							<tr><td>End of <a href="/source/main/subroutine/clearrows.html">ClearRows</a></td><td>1 byte at offset &amp;46F8</td><td>@</td></tr>
+							<tr><td>End of <a href="/source/main/subroutine/clearrows.html">ClearRows</a></td><td>92 bytes at offset &amp;4C9A to &amp;4CF7</td><td>&amp;00s and &amp;FFs</td></tr>
+						</table>
+
+						<p>Most of the above clues aren't that eye-opening: finding a snippet of code like ":JMP sut5" simply tells us that there must have been a label in the original source code called "sut5", but that's about it. Other clues, like "HI=&amp;44A" and "I=&amp;4", don't make much sense on their own, but they reveal their secrets when combined with other clues (in this case, the variable name XAHI from clue 3 below).</p>
+
+						<p>But some of them are <i>real</i> clues, so let's take a quick look at how we find them in the first place, before revealing the juiciest secrets below.</p>
+
+						<h2 class="articleSubheader">What clues look like in the game binary<br />
+													 ---------------------------------------</h2>
+
+						<p>One of the easiest ways of tracking down clues in a game binary is to load the binary into a hex editor. Hex editors show the contents of the file both as hexadecimal bytes and as ASCII characters, so if there's a block of original source code hidden in there, it should be fairly obvious. In the table above, the offsets are given from the start of the game binary, so if you load the AVIA.bin file into a hex editor and jump to the relevant offset, you should be able to see the snippets for yourself (you can <a href="https://github.com/markmoxon/aviator-beebasm/blob/main/3-assembled-output/AVIA.bin">grab the file from the accompanying repository</a> if you want to try this).</p>
+
+						<p>In the case of hidden code from the BBC BASIC assembler sources, the embedded assembly language is generally quite readable, though the surrounding BASIC is tokenised and line numbers are stored as integers rather than ASCII text, so the source code appears as assembly language, embedded in random noise. Luckily it's easy enough to copy the source snippets into a modern text editor and strip out the line numbers, and it wouldn't be that hard to convert them to the original line numbers, given a bit of patience (I've left the line numbers out of the examples below, for clarity).</p>
+
+						<p>Finding machine code that's hidden in the binary is rather more difficult, as it won't be obvious from the hex editor. The only way to track this type down is to disassemble the whole binary, and work out which parts are used and which are noise.</p>
+
+						<p>The Aviator binary contains two big chunks of original BBC BASIC assembler source code, plus an unused chunk of machine code. Interestingly, one batch of assembler source code contains test code and differs from the final version, so our glimpse of the original source is even more intriguing than you'd think.</p>
+
+						<p>Let's take a deeper look at the more interesting secrets buried in the Aviator game binary.</p>
+
+						<h2 class="articleSubheader">Clue 1<br />
+													 ------</h2>
+
+						<p>This big block of BBC BASIC assembler code is hidden in the workspace between the <a href="/source/main/variable/maxlinedistance.html">maxLineDistance</a> and <a href="/source/main/variable/scoretext.html">scoreText</a> variables. It contains 570 bytes of source code that looks like this once the BASIC line number bytes are stripped out (the ellipses either indicate corrupted source, or variables like maxObjDistance that contain content that overwrites the source):</p>
+
+<pre class="articleIndented">  .dlp2 STA&amp;76
+  .dl ... :B ... :BNE dlp2
+        DEC&amp;74:BNE dlp1
+        rts
+ 
+  .UBUL LDY#15:STY OB:LDA#98:STA PP
+  .ubu2 TYA:CLC:ADC#&amp;D8:TAX
+        JSR MOBJ
+        JSR UOBJ
+        LDY OB:LDA OSTAT,Y:BMI ubu1
+        LDA#0:STA FRFLAG 
+  .ubu1 DEC PP:DEC OB
+        LDY OB:CPY#12:BCS ubu2
+        rts
+ 
+  .SUTR JMP TEST:BMI sut1:BEQ sut1
+        LDA&amp;0CC5:BNE sut1
+        LDA&amp;FE64: ... 
+        ... #15:CMP#14:BCS sut1
+        ... A#16
+  .sut3 DEC THEME:LDX#7
+  .sut5 CPX THEME:BEQ sut4
+  .sut2 CMP FLDPTR,X:B
+</pre>
+
+						<p>Think about it: this is part of Geoff Crammond's original source code! He literally wrote this - it's in his own, personal style, with his own indented layout, spaces between the mnemonics and variable names (but no spaces between mnemonics and numbers), and his own label names, with routine names in four-letter capitals, and in-routine labels in lower case with three letters and a number.</p>
+
+						<p>This is great! This is what software archaeology is all about... and it's really interesting to compare this snippet of Aviator source code with the comparatively unreadable Elite source code, which doesn't bother with things like spaces or indents or consistent labelling (see my <a href="https://www.bbcelite.com/about_site/about_this_project.html">Elite source code project</a> to see for yourself). The difference is really illuminating; the Aviator source code is a lot neater and easier to follow, no doubt about it.</p>
+
+						<p>By looking at the code and comparing it to the disassembly on this site, we can see that this snippet of source code contains the end of the <a href="/source/main/subroutine/delay.html">Delay</a> routine, then the whole <a href="/source/main/subroutine/updatebullets.html">UpdateBullets</a> routine and the start of the <a href="/source/main/subroutine/spawnalien.html">SpawnAlien</a> routine. When I disassembled Aviator from the game binary, I had to invent my own labels as they don't get saved as part of the machine code binary, but you can see from the above that Geoff Crammond called the update bullets routine UBUL, and the alien spawning routine SUTR.</p>
+
+						<p>There are a few more interesting points. For a start, the version of UpdateBullets/UBUL in the final game is a bit longer than this version, and the instructions do not match up. Then there's a pretty explicit jump to a test routine ("JMP TEST"), which replaces the LDX themeStatus instruction at the start of the SpawnAlien/SUTR routine. But we can at least work out that the original source's name for the <a href="/source/main/variable/alienobjectid.html">alienObjectId</a> variable was FLDPTR, while <a href="/source/main/subroutine/addpointtoobject.html">AddPointToObject</a> was known as either MOBJ or UOBJ.</p>
+
+						<p>It's a pretty good snippet for clues.</p>
+
+						<h2 class="articleSubheader">Clue 2<br />
+													 ------</h2>
+
+						<p>Interestingly, in the original game binary, the <a href="/source/main/variable/linebufferv.html">lineBufferV</a> variable contains what looks like random noise, but it actually disassembles into code that is never called and is totally ignored, and which doesn't appear anywhere else in the main game code. Specifically, it contains slightly different versions of the <a href="/source/main/subroutine/drawcanopycorners.html">DrawCanopyCorners</a> and <a href="/source/main/subroutine/removescore.html">RemoveScore</a> routines, so perhaps this is a glimpse into early code that didn't make it into the final game?</p>
+
+						<p>Here's the disassembly (the labels are mine and match the final code for these routines):</p>
+
+<pre class="articleIndented">  .DrawCanopyCorners
+
+   LDX #7
+   LDA #%01110111
+   STA P
+   LDA #%10001000
+   STA Q
+   LDA #%11101110
+   STA R
+   LDA #%00010001
+   STA S
+
+  .corn1
+
+   LDY #1
+
+  .corn2
+
+   LDA row1_block0_0,X
+   AND P
+   ORA Q
+   STA row1_block0_0,X
+   LDA row1_block38_0,X
+   AND R
+   ORA S
+   STA row1_block38_0,X
+   DEX
+   DEY
+   BPL corn2
+
+   LSR R
+   LSR S
+   LSR P
+   LSR Q
+   CPX #&amp;FF
+   BNE corn1
+
+   RTS
+
+  .RemoveScore
+
+   LDY #HI(row3_block0_0)
+   LDX #LO(row3_block0_0)
+   LDA #8
+   STA R
+   LDA #0
+   JSR FillCanopyRows
+   RTS
+</pre>
+
+						<p>This version of DrawCanopyCorners draws the canopy corners in a different place on-screen - right at the very edges of the screen, rather than indented by one block - and RemoveScore clears from row 3, block 0 rather than row 3, block 1. These routines therefore don't take the block of rivets round the edges of the canopy into consideration, so one wonders whether they pre-date the addition of the rivets, but somehow didn't get removed from the source code? We can but speculate...</p>
+
+						<h2 class="articleSubheader">Clue 3<br />
+													 ------</h2>
+
+						<p>The machine code in clue 2 is actually embedded in a larger 623-byte block of BBC BASIC assembler source - it's as if the clues themselves contain clues! This bigger block is between <a href="/source/main/subroutine/removescore.html">RemoveScore</a> and <a href="/source/main/variable/xtemppoint2Hi.html">xTempPoint2Hi</a>, and it looks like this:</p>
+
+<pre class="articleIndented">        LDA&amp;86:CLC:A
+
+        ... machine code (see clue 2) ...
+
+  .STIP LDX#2
+  .sti1 LDA XALO,Y:CLC:ADC DTIP:STA&amp;77,X
+        LDA XAHI,Y:ADC#5:STA&amp;7A,X
+  .sti4 TYA:CLC:ADC#40:TAY
+  .sti2 DEX:BPL sti3:rts
+  .sti3 BEQ sti1
+        LDA XALO,Y:STA&amp;77,X
+        LDA XAHI,Y:STA&amp;7A,X:JMP sti4
+ 
+  .HITS LDX#2
+  .hit2 TYA:CLC:ADC#40:TAY
+        LDA XALO,Y:SEC:SBC&amp;77,X:STA&amp;74
+        LDA XAHI,Y:SBC&amp;7A,X:BNE hit1
+        LDA&amp;74:CMP&amp;80,X:BCS hit1
+        DEX:BPL hit2:LDA OB:STA EPTR
+        TSX:INX:INX:TXS
+        LDA#27:STA EPLO:rts
+  .hit1 rts
+ 
+  .ADIF LDA#0:STA&amp;70:STA&amp;72
+</pre>
+
+						<p>Again, this contains part of the original source code, specifically the routine that I call <a href="/source/main/subroutine/getalienweakspot.html">GetAlienWeakSpot</a> in my disassembly (which is called STIP in the original), <a href="/source/main/subroutine/checkalienweakspot.html">CheckAlienWeakSpot</a> (called HITS in the original), and the start of <a href="/source/main/subroutine/gettrailvectorstep.html">GetTrailVectorStep</a> (called ADIF in the original).</p>
+
+					<p>We can also see that the original names for the variables that I call <a href="/source/main/variable/xobjecthi.html">xObjectHi</a> and <a href="/source/main/variable/xobjectlo.html">xObjectLo</a> were XAHI and XALO, so it isn't much of a leap to match <a href="/source/main/variable/yobjecthi.html">yObjectHi</a> to YAHI, <a href="/source/main/variable/zobjectlo.html">zObjectLo</a> to ZALO, and so on. Meanwhile, <a href="/source/main/variable/hittimer.html">hitTimer</a> is EPLO in the original, <a href="/source/main/variable/hitobjectid.html">hitObjectId</a> is EPTR, and the temporary variable that I call <a href="/source/main/workspace/zero_page.html#q">Q</a> is named DTIP in the original.</p>
+
+					<p>This time, the code is 100% identical to the final code in the released game, so we can say with certainty that this is a genuine fragment of the original source code for the release version of Aviator, as hand-written by Geoff Crammond on his very own BBC Micro.</p>
+
+					<p>This is what makes all the effort worthwhile - digging into the game binary to unearth artifacts like this. It's a rare glimpse into the normally hidden world of this legendary BBC Micro programmer, a glimpse of the very keystrokes that formed part of his first real masterpiece. What a privilege it is to see... and all hidden in plain sight.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="multi-byte_variables.html">Multi-byte variables</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

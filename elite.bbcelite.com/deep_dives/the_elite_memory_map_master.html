@@ -1,0 +1,179 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_elite_memory_map_master.html", "BBC Master Elite memory map", "BBC Master Elite memory map", "A deep dive into the memory map of the 6502 Second Processor version of BBC Micro Elite", "elite", "deep_dives_memory_maps", "the_elite_memory_map_master");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_memory_map_disc.html">BBC Micro disc Elite memory map</a><a class="next" rel="next" title="Next deep dive" href="the_elite_memory_map_electron.html">Acorn Electron Elite memory map</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Memory usage in the smoothest version of Elite</h2>
+
+						<p>The main advantage of the BBC Master compared to the standard BBC Micro is extra memory, and given how tightly packed things are in standard Elite, it's a very welcome addition. The main benefit is that it allows the Master version to use the same mode 1/2 split screen as the 6502 Second Processor version, thus giving four colours in the space view and eight colours in the dashboard.</p>
+
+						<p>What the Master doesn't do, perhaps surprisingly, is use this extra memory to implement <a href="flicker-free_ship_drawing.html">flicker-free ship drawing</a>. The Master certainly has much smoother ship animation, but there aren't any clever memory techniques in use here - the lack of flicker is down to an improvement in the ship-drawing algorithm rather than any shenanigans with bank-switching or swapping screen memory; even in a Master, there still isn't enough free memory to maintain two copies of the screen.</p>
+
+						<p>Let's take a quick look at the extra memory available in the Master, and how it fits into the memory map.</p>
+
+						<h2 class="articleSubheader">The Master's extra memory<br />
+													 -------------------------</h2>
+
+						<p>The Master's extra memory comes in three main chunks, and Elite uses all of them.</p>
+
+						<ul>
+							<li>First of all, sideways RAM bank 6 is switched into main memory at &amp;8000 to &amp;BFFF. In the BBC Micro, this address range always contains one of the paged ROMs (such as BASIC), but in the Master it's available as user RAM, so we can use it for storing the ship blueprints, text tokens and so on.</li>
+
+							<li>Next up is shadow RAM, also known as LYNNE, which sits alongside the main memory. We can switch the memory block from &amp;3000 to &amp;7FFF between main memory and shadow RAM, and we can also set up LYNNE to host the screen memory, from &amp;4000 to &amp;7DFF. In this way screen memory doesn't steal RAM from the main memory, and we can just switch to shadow RAM to poke our graphics directly to the screen.</li>
+
+							<li>Finally, the Master also supports an area of memory called HAZEL from &amp;C000 to &amp;DFFF, which can be used for the current filing system workspace. Filing system memory requirements are a real pain in the standard BBC Micro, where, for example, the disc filing system pushes the start of user memory (PAGE) from &amp;0E00 to &amp;1900. HAZEL fixes this problem and takes the extra load, leaving PAGE alone and freeing up a lot of extra memory for Elite.</li>
+						</ul>
+
+						<p>Throughout the source code, you will see memory access being switched between shadow and main RAM. This is done by updating bits 1 and 2 of the Access Control Register at SHEILA &34. This switching aside, the rest of the extra memory just maps into the main memory space, and we can use it as normal.</p>
+
+						<h2 class="articleSubheader">BBC Master memory map<br />
+													 ---------------------</h2>
+
+						<p>This setup gives us a generous memory footprint when compared to the BBC Micro, though the Master version of Elite still manages to fill most of it up. Here's the memory map of Elite on the BBC Master.</p>
+
+<pre class="articleIndented">  +-----------------------------------+   &amp;FFFF
+  |                                   |
+  | Machine Operating System (MOS)    |
+  |                                   |
+  +-----------------------------------+   &amp;C000
+  |                                   |
+  | &amp;B200-&amp;BFFF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;B200
+  |                                   |
+  | Text tokens, sin/cos tables       |
+  |                                   |
+  +-----------------------------------+   &amp;A000 = <a href="/master/game_data/variable/qq18.html">QQ18</a>
+  |                                   |
+  | &amp;9D95-&amp;9FFF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;9D95
+  |                                   |
+  | Ship blueprints (SHIPS.bin)       |
+  |                                   |                         Shadow RAM
+  +-----------------------------------+-- &amp;8000 = <a href="/master/game_data/variable/xx21.html">XX21</a> -------------------+
+  |                                   |                                   |
+  | &amp;7F48-&amp;7FFF unused                |                                   |
+  |                                   |                                   |
+  +--------------------- &amp;7F48 = <a href="/master/main/variable/f_per_cent.html">F%</a> --+                &amp;7E00-&amp;7FFF unused |
+  |                                   |                                   |
+  |                                   |                                   |
+  |                                   |                                   |
+  |                                   +-- &amp;7E00 --------------------------+
+  |                                   |                                   |
+  |                                   |                     Screen memory |
+  |                                   |                                   |
+  | Main game code (BCODE.bin)        +-- &amp;4000 --------------------------+
+  |                                   |                                   |
+  |                                   |              Zero page swap space |
+  |                                   |                                   |
+  |                                   +-- &amp;3000 --------------------------+
+  |                                   |
+  |                                   |
+  |                                   |
+  +-----------------------------------+   &amp;1300 = <a href="/master/main/variable/tvt3.html">TVT3</a>
+  |                                   |
+  | &amp;12AA-&amp;12FF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;12AA
+  |                                   |
+  | WP workspace                      |
+  |                                   |
+  +-----------------------------------+   &amp;0E41 = <a href="/master/main/workspace/wp.html">WP</a>
+  |                                   |
+  | &amp;0E00-&amp;0E40 unused                |
+  |                                   |
+  +-----------------------------------+   &amp;0E00
+  |                                   |
+  | Sideways ROM and NMI workspace    |
+  |                                   |
+  +-----------------------------------+   &amp;0D00
+  |                                   |
+  | Hangar ship line heap             |
+  |                                   |
+  +-----------------------------------+   &amp;0B00
+  |                                   |
+  | &amp;0900-&amp;0AFF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;0900
+  |                                   |
+  | MOS sound/printer workspace       |
+  |                                   |
+  +-----------------------------------+   &amp;0800 = LS%
+  |                                   |
+  | Ship line heap descends from LS%  |
+  |                                   |
+  +-----------------------------------+   SLSP
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  | Ship data blocks ascend from K%   |
+  |                                   |
+  +-----------------------------------+   &amp;0400 = <a href="/master/main/workspace/k_per_cent.html">K%</a>
+  |                                   |
+  | MOS VDU and tape workspace        |
+  |                                   |
+  +-----------------------------------+   &amp;0300
+  |                                   |
+  | MOS general workspace             |
+  |                                   |
+  +-----------------------------------+   &amp;0200
+  |                                   |
+  | 6502 stack descends from &amp;01FF    |
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  | Heap space ascends from XX3       |
+  |                                   |
+  +-----------------------------------+   &amp;0100 = <a href="/master/main/workspace/xx3.html">XX3</a>
+  |                                   |
+  | Zero page workspace               |
+  |                                   |
+  +-----------------------------------+   &amp;0000 = <a href="/master/main/workspace/zp.html">ZP</a>
+</pre>
+
+						<p>The memory map is fairly straightforward, but it's worth mentioning the zero page swap space in shadow RAM at &amp;3000. Whenever the game does any filing system work, such as cataloguing discs or saving commander files, it first swaps out the top part of zero page (&amp;0090 to &amp;00EF) with a copy that's been stored at start of LYNNE. This part of zero page is used by the MOS to store various filing system variables, so this process effectively stores a "filing system-compatible" version of zero page in LYNNE, and swaps it in whenever we do any filing work. This enables the game to share this part of zero page with the operating system, but without corrupting the filing system.</p>
+
+						<h2 class="articleSubheader">Elite code as an image<br />
+													 ----------------------</h2>
+
+						<p>To see just how small BBC Master Elite is, we can convert the main game binary into an image, with one byte per pixel, and a greyscale showing each byte's value, with 0 being shown as black, 255 being shown as white, and interim values as greyscale pixels. The result is a 213-pixel square, like this:</p>
+
+						<img class="titleImage" style="width: 426px" src="/images/master/code.png" alt="The game binary for BBC Maaster Elite as animage" />
+
+						<p>This image contains the entire main game. That's some nice, bloat-free code!</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_memory_map_disc.html">BBC Micro disc Elite memory map</a><a class="next" rel="next" title="Next deep dive" href="the_elite_memory_map_electron.html">Acorn Electron Elite memory map</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

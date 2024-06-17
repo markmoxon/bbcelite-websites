@@ -1,0 +1,122 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("about_site", "building_lander.html", "Building Lander from the source", "Building Lander from the source", "Details of how to build Acorn Archimedes Lander from the source", "lander", "about_site", "building_lander");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="terminology_used_in_this_commentary.html">Terminology used in this commentary</a><a class="next" rel="next" title="Next page" href="useful_links.html">Useful links</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<p>If you would like to build a fully working version of Lander on a modern computer, from the exact same source code as on this site, then you will find everything you need in the <a href="https://github.com/markmoxon/archimedes-lander">accompanying GitHub repository</a>, including full instructions. Here we take a look at how the source files are structured and how the build process works.</p>
+
+						<p>You can also build Lander on an Archimedes. See the section below on "Building Lander on an Archimedes" for information on this.</p>
+
+						<h2 class="articleSubheader">The Lander build pipeline<br />
+						                             -------------------------</h2>
+
+						<p>The modern build process uses a multi-stage pipeline, using the vasm assembler and Python.</p>
+
+						<p>There are five main folders in each repository, which reflect the progress of the build process (the links will take you to the relevant folders on GitHub):</p>
+
+						<ul>
+							<li><a href="https://github.com/markmoxon/archimedes-lander/tree/main/1-source-files">1-source-files</a> contains all the different source files, such as the main assembler source files, BASIC loaders, RISC OS application files and so on.</li>
+
+							<li><a href="https://github.com/markmoxon/archimedes-lander/tree/main/2-build-files">2-build-files</a> contains build-related scripts, such as the crc32 verification script and vasm converter script.</li>
+
+							<li><a href="https://github.com/markmoxon/archimedes-lander/tree/main/3-assembled-output">3-assembled-output</a> contains the output from the assembly process, when the source files are assembled and the results processed by the build files.</li>
+
+							<li><a href="https://github.com/markmoxon/archimedes-lander/tree/main/4-reference-binaries">4-reference-binaries</a> contains the correct binaries for the released game, so we can verify that our assembled output matches the reference.</li>
+
+							<li><a href="https://github.com/markmoxon/archimedes-lander/tree/main/5-compiled-game-discs">5-compiled-game-discs</a> contains the final output of the build process: folders that contains the compiled game for each variant and which can be run on real hardware or in an emulator, plus zips of those folders for easier deployment. It also contains version of the source code that can be built on an Archimedes; see the "Building Lander on an Archimedes" section below for information on the latter. The Arthur variant contains the GameCode binary in two formats: as a pair of files (GameCode and GameCode.inf) that is suitable for programs that support inf files, or as a single file (GameCode,8000-A614) that will work with HostFS. Both options contain the load and execution address of the file, and you should choose the one that works for you when copying the game to your emulator or Archimedes.</li>
+						</ul>
+
+						<p>Note that the zip files produced in the final step do not contain RISC OS filetype metadata; filetypes are included as filename suffixes, so they will work with HostFS. However, if you unzip these archives within RISC OS, then you may have to set the filetypes manually based on the suffixes, and then remove the suffixes from the filenames. (I've tried to find a RISC OS archive creation script that runs on modern machines, but I haven't had any success.)</p>
+
+						<p>These folders are used in the multi-stage build process in the following manner: the 1-source-files are assembled, then checksummed by the 2-build-files to create the 3-assembled-output, which is optionally verified against the 4-reference-binaries before being compiled into the final 5-compiled-game-discs.</p>
+
+						<p>This build process is configured via the project's <a href="https://github.com/markmoxon/archimedes-lander/blob/main/Makefile">Makefile</a>. The specific build steps are as follows (the links will take you to the relevant source files on GitHub):</p>
+
+						<ol>
+							<li>Convert the main source file in <a href="https://github.com/markmoxon/archimedes-lander/blob/main/1-source-files/main-sources/Lander.arm">Lander.arm</a> to a vasm-compatible source with <a href="https://github.com/markmoxon/archimedes-lander/blob/main/2-build-files/convert-to-vasm.py">convert-to-vasm.py</a></li>
+
+							<li>Assemble the <a href="https://github.com/markmoxon/archimedes-lander/blob/main/3-assembled-output/Lander.arm">vasm-compatible source</a> with vasm</li>
+
+							<li>Verify the assembled output with <a href="https://github.com/markmoxon/archimedes-lander/blob/main/2-build-files/crc32.py">crc32.py</a></li>
+
+							<li>Assemble a folder containing the final game with the <a href="https://github.com/markmoxon/archimedes-lander/blob/main/Makefile">Makefile</a></li>
+						</ol>
+
+						<p>This is all fairly standard, except for the first step. I'm using vasm to assemble the source code as it's freely available, cross-platform and has good support for early ARM chips, but it uses GNU assembler syntax, which isn't my favourite flavour. Besides, I wanted to document Lander in the style that David Braben himself would have used back in the day, using the ARM assembler built into BBC BASIC.</p>
+
+						<p>So the main <a href="https://github.com/markmoxon/archimedes-lander/blob/main/1-source-files/main-sources/Lander.arm">Lander.arm</a> source is an homage to the original Archimedes BBC BASIC assembler style, and I've written a <a href="https://github.com/markmoxon/archimedes-lander/blob/main/2-build-files/convert-to-vasm.py">convert-to-vasm.py</a> script that converts this into a <a href="https://github.com/markmoxon/archimedes-lander/blob/main/3-assembled-output/Lander.arm">vasm-compatible source file</a> for vasm to assemble. This makes life a lot more comfortable for Acorn users like myself.</p>
+
+						<p>The final game files can be loaded into an emulator, or into a real Archimedes using a device like a Gotek. The Arthur variant's GameCode binary comes with an .inf file as it has a load and execution address, while the Arthur BASIC loader and all of the files in the RISC OS !Lander application have file types as comma-separated extensions.</p>
+
+						<h2 class="articleSubheader">Encryption in the RISC OS variant<br />
+						                             ---------------------------------</h2>
+
+						<p>The !RunImage file in the RISC OS variant of Lander is encrypted. The <a href="https://github.com/markmoxon/archimedes-lander/tree/main/2-build-files/decrypt">2-build-files/decrypt</a> folder contains a script that decrypts the binary.</p>
+
+						<p>It turns out that the decrypted !RunImage is identical to the Arthur variant's GameCode binary, so the RISC OS variant is the exact same game, just encrypted. To prove this, I've written a Python script called <a href="https://github.com/markmoxon/archimedes-lander/blob/main/2-build-files/decrypt/lander-decrypt.py">lander-decrypt.py</a> that decrypts the original !RunImage binary. This Python script is based on the original decryption routine, whose source is in <a href="https://github.com/markmoxon/archimedes-lander/blob/main/2-build-files/decrypt/lander-decrypt.arm">lander-decrypt.arm</a>.</p>
+
+						<p>The !RunImage produced by the build process doesn't include this encryption, and in its place there's a small routine that simply copies the game code to address &amp;8000, without making any changes (you can see this in the main <a href="https://github.com/markmoxon/archimedes-lander/blob/main/1-source-files/main-sources/RunImage.arm">RunImage.arm</a> source).</p>
+
+						<h2 class="articleSubheader">A note for anyone making changes to Lander<br />
+						                             ------------------------------------------</h2>
+
+						<p>If you make any changes to the Lander source and build the result, then this will probably change the addresses of the source's labels. I have therefore written a small (and very hacky) script to export symbols from the Lander.arm compilation, for importing into !RunImage. This enables !RunImage to jump to the correct address to start the game, even if that address has changed from the original version.</p>
+
+						<p>You can find this script at <a href="https://github.com/markmoxon/archimedes-lander/blob/main/2-build-files/export-symbols.py">2-build-files/export-symbols.py</a>. It produces a vasm-compatible include file called <a href="https://github.com/markmoxon/archimedes-lander/blob/main/3-assembled-output/exports.arm">3-assembled-output/exports.arm</a> that can be included in any other source files you might want to add.</p>
+
+						<p>See the <a href="https://github.com/markmoxon/archimedes-lander/blob/main/1-source-files/main-sources/RunImage.arm">RunImage.arm</a> source file for an example of this in action.</p>
+
+						<h2 class="articleSubheader">Building Lander on an Archimedes<br />
+						                             --------------------------------</h2>
+
+						<p>The build process outlined above produces a file called LanderSrc,fff in the 5-compiled-game-discs folder, or `BLanderSrc,fff` if you are building BigLander. These files contain versions of the game source that can be built on an Archimedes.</p>
+
+						<p>To build the source on an Archimedes, you first need to convert the BBC BASIC text file into tokenised BBC BASIC. If you have RISC OS 3, then you can use Edit to do this, as follows:</p>
+
+						<ul>
+							<li>Download the source as a BBC BASIC text file for <a href="https://raw.githubusercontent.com/markmoxon/archimedes-lander/main/5-compiled-game-discs/LanderSrc%2Cfff">Lander</a> or <a href="https://raw.githubusercontent.com/markmoxon/archimedes-lander/big-landscape/5-compiled-game-discs/BLanderSrc%2Cfff">BigLander</a>.</li>
+
+							<li>Copy the file to an Archimedes machine (if you aren't already downloading it in RISC OS).</li>
+
+							<li>If you are using HostFS then the filetype should be set automatically, but if you need to set it manually, it should be a Text file.</li>
+
+							<li>Load the text file into Edit. You should see the fully documented source code appear.</li>
+
+							<li>Click Menu on Edit's icon bar icon, choose "BASIC options > Line number increment" and set the value to 1.</li>
+
+							<li>Click Menu over Edit's window, choose "Misc > Set type" and set the value to BASIC.</li>
+
+							<li>Save the file, which is now a BASIC program.</li>
+						</ul>
+
+						<p>You now have the Lander source in BBC BASIC, which is how David Braben originally wrote it (though without quite so many comments).</p>
+
+						<p>To build the game from this source, simply run the file by double-clicking it. It will assemble the game and save the GameCode file into the current directory, so you may want to set the current directory before doing this. You may need to allocate more memory to the Next slot for the assembly to work: you need at least 832K to build Lander, and at least 904K to build BigLander.</p>
+
+						<p>You can play the game by simply double-clicking on the GameCode file. You can run Lander on Arthur, RISC OS 2 or RISC OS 3 up to version 3.11, and you can run BigLander on any version of RISC OS. You may need to allocate more memory to the Next slot for the game to run: you need at least 168K to run Lander, and at least 400K to run BigLander.</p>
+
+						<p>Note that the main source code in this repository is very close to being in BBC BASIC format, but it isn't exactly the same (which is why the BBC BASIC version is created by the build process rather than actually being the main source). This is because BBC BASIC has some limitations that make it a tricky companion for large commentaries like this. For example, the colon character separates multiple statements in BBC BASIC, but this also applies within comments, so any comments that contain colons will cause runtime errors when used in BASIC. The same applies with unmatched brackets and double-quotes, though these only generate warnings (though they do break the Text to BASIC conversion process). BBC BASIC also doesn't support comma-separated EQU arguments, which makes laying out tables like the object blueprints rather difficult.</p>
+
+						<p>As a result the main source code in this repository is an homage to BBC BASIC's assembly language format, but it is not 100% accurate. That's why the build includes a conversion script to convert the Lander.arm source file into a working BBC BASIC source. See the <a href="https://github.com/markmoxon/archimedes-lander/blob/main/2-build-files/convert-to-basic.py">convert-to-basic.py</a> script for details.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="terminology_used_in_this_commentary.html">Terminology used in this commentary</a><a class="next" rel="next" title="Next page" href="useful_links.html">Useful links</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

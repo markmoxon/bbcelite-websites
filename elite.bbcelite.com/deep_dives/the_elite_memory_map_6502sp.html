@@ -1,0 +1,213 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_elite_memory_map_6502sp.html", "6502 Second Processor Elite memory map", "6502 Second Processor Elite memory map", "A deep dive into the memory map of the 6502 Second Processor version of BBC Micro Elite", "elite", "deep_dives_memory_maps", "the_elite_memory_map_6502sp");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_memory_map_disc.html">BBC Micro disc Elite memory map</a><a class="next" rel="next" title="Next deep dive" href="the_elite_memory_map_master.html">BBC Master Elite memory map</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Memory usage in the Tube-based version of Elite</h2>
+
+						<p>Unlike the cassette and disc versions of BBC Micro Elite, the 6502 Second Processor version is positively swimming in memory. But even with 32K in the BBC Micro and a whopping 64K in the Second Processor, Elite still manages to take up almost all of the available memory, as everything in the game is loaded at once - all the ship blueprints, all the docked and flight code, and all the features that are unique to this version, like the scrolling text demo, the screenshot system, printer support and the system for <a href="6502sp_tube_communication.html">communicating across the Tube</a>. Even the BBC Master version isn't quite this large; if the cassette version is a paragon of youthful efficiency, the 6502 Second Processor version is more like a middle-aged spread.</p>
+
+						<p>Not surprisingly, the memory map for 6502 Second Processor Elite is split in two, with the majority of the game code running in the parasite (the Second Processor), and a much smaller set of code running in the I/O processor (the BBC Micro), where most of the space is taken up by the screen memory. Let's look at the two memory maps in turn, starting with the motherlode in the parasite.</p>
+
+						<h2 class="articleSubheader">Parasite memory map<br />
+													 -------------------</h2>
+
+						<p>In a 6502 Second Processor that isn't running a language ROM such as BASIC - which is the case when running machine code programs such as Elite - the available user RAM extends from &amp;0400 to &amp;F7FF, plus all of zero page except for 18 bytes, which are reserved for the Second Processor OS. Compared to the standard BBC Micro, this is an amazing amount of memory - out of the 64K of memory in the Second Processor, 2K is required for the Second Processor OS itself, 530 bytes are used as OS workspace (that's &amp;0200-&amp;03FF plus those 18 zero-page bytes), and the 65C02 reserves the 256 bytes of page 1 for the stack (though as with the other versions of Elite, it still uses the opposite end of the stack's page for its own heap storage).</p>
+
+						<p>That's a total of just 2,834 bytes for the OS and stack, leaving 62,702 bytes free for user programs, or 61.2K. Elite manages to use almost all of that memory, leaving just 3,263 bytes, or 3.2K unused:</p>
+
+<pre class="articleIndented">  +-----------------------------------+   &amp;FFFF
+  |                                   |
+  | Second Processor OS               |
+  |                                   |
+  +-----------------------------------+   &amp;F800
+  |                                   |
+  | &amp;F102-&amp;F7FF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;F102
+  |                                   |
+  | Ship blueprints                   |
+  |                                   |
+  +-----------------------------------+   &amp;D000 = <a href="/6502sp/main/variable/xx21.html">XX21</a>
+  |                                   |
+  | Ship line heap descends from LS%  |
+  |                                   |
+  +-----------------------------------+   SLSP
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+   &amp;9200
+  |                                   |
+  | LP workspace                      |
+  |                                   |
+  +-----------------------------------+   &amp;8600 = <a href="/6502sp/main/workspace/lp.html">LP</a>
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  | Ship data blocks ascend from K%   |
+  |                                   |
+  +-----------------------------------+   &amp;8200 = <a href="/6502sp/main/workspace/k_per_cent.html">K%</a>
+  |                                   |
+  | &amp;818F-&amp;81FF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;818F = F%
+  |                                   |
+  | Main parasite code (P.CODE)       |
+  |                                   |
+  +-----------------------------------+   &amp;1000 = <a href="/6502sp/main/workspace/parasite_variables.html">Parasite variables</a>
+  |                                   |
+  | &amp;0E3C-&amp;0FFF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;0E3C
+  |                                   |
+  | WP workspace                      |
+  |                                   |
+  +-----------------------------------+   &amp;0D00 = <a href="/6502sp/main/workspace/wp.html">WP</a>
+  |                                   |
+  | Hangar ship line heap, file space |
+  |                                   |
+  +-----------------------------------+   &amp;0B00
+  |                                   |
+  | &amp;0975-&amp;0AFF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;0975
+  |                                   |
+  | UP workspace                      |
+  |                                   |
+  +-----------------------------------+   &amp;0800 = <a href="/6502sp/main/workspace/up.html">UP</a>
+  |                                   |
+  | Sine, cosine and arctan tables    |
+  |                                   |
+  +-----------------------------------+   &amp;07C0 = <a href="/6502sp/main/variable/sne.html">SNE</a>
+  |                                   |
+  | Recursive text tokens (WORDS.bin) |
+  |                                   |
+  +-----------------------------------+   &amp;0400 = <a href="/6502sp/main/variable/qq18.html">QQ18</a>
+  |                                   |
+  | Second Processor OS workspace     |
+  |                                   |
+  +-----------------------------------+   &amp;0200
+  |                                   |
+  | 6502 stack descends from &amp;01FF    |
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  | Heap space ascends from XX3       |
+  |                                   |
+  +-----------------------------------+   &amp;0100 = <a href="/6502sp/main/workspace/xx3.html">XX3</a>
+  |                                   |
+  | MOS workspace                     |
+  |                                   |
+  +-----------------------------------+   &amp;00EE
+  |                                   |
+  | Zero page workspace               |
+  |                                   |
+  +-----------------------------------+   &amp;0000 = <a href="/6502sp/main/workspace/zp.html">ZP</a>
+</pre>
+
+						<h2 class="articleSubheader">I/O processor memory map<br />
+													 ------------------------</h2>
+
+						<p>Compared to the luxurious 61.2K of user memory available in the parasite, the BBC Micro's memory is a lot more cramped when it acts as the I/O processor. The main reason is that the 6502 Second Processor version of Elite devotes a large chunk of memory to the mode 1/mode 2 split-screen mode - 15.5K, to be precise - and all of that memory is in the BBC Micro.</p>
+
+						<p>On top of that, the Disc Filing System (DFS) takes up a considerable amount of room, pushing PAGE (the start of user memory) to &amp;1900, and then there's the Tube host code that looks after communication with the Second Processor, which gets copied into pages 4 to 7 on start-up, taking over the language ROM workspace that is normally available to machine code programs. We even lose access to a large chunk of zero page, as the Tube host code also uses locations below &amp;80.</p>
+
+						<p>Incidentally, the Tube also grabs another 6 pages of memory by default, this time to support a user-definable (or "exploded") character set. This would push PAGE up to &amp;1F00, but this feature can be disabled to "implode" the character set and reclaim this memory. Elite does this as it doesn't use the OS printing routines, but you can see that demands on the BBC Micro's memory are many and varied, even though the parasite is supposed to be the one doing all the work.</p>
+
+						<p>Let's see how Elite uses up most of the available memory in the I/O processor, leaving just 3,787 bytes, or 3.7K unused.</p>
+
+<pre class="articleIndented">  +-----------------------------------+   &amp;FFFF
+  |                                   |
+  | Machine Operating System (MOS)    |
+  |                                   |
+  +-----------------------------------+   &amp;C000
+  |                                   |
+  | Paged ROMs                        |
+  |                                   |
+  +-----------------------------------+   &amp;8000
+  |                                   |
+  | &amp;7E00-&amp;7FFF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;7E00
+  |                                   |
+  | Memory for the split-screen mode  |
+  |                                   |
+  +-----------------------------------+   &amp;4000
+  |                                   |
+  | &amp;3D36-&amp;3FFF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;3D36
+  |                                   |
+  | Main I/O code (I.CODE)            |
+  |                                   |
+  +-----------------------------------+   &amp;2300 = <a href="/6502sp/i_o_processor/variable/table.html">TABLE</a>
+  |                                   |
+  | &amp;1900-&amp;22FF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;1900
+  |                                   |
+  | MOS workspace                     |
+  |                                   |
+  +-----------------------------------+   &amp;0800
+  |                                   |
+  | Tube host code                    |
+  |                                   |
+  +-----------------------------------+   &amp;0400
+  |                                   |
+  | MOS workspace                     |
+  |                                   |
+  +-----------------------------------+   &amp;0200
+  |                                   |
+  | 6502 stack descends from &amp;01FF    |
+  |                                   |
+  +-----------------------------------+   &amp;0100
+  |                                   |
+  | Zero page workspace               |
+  |                                   |
+  +-----------------------------------+   &amp;0080 = <a href="/6502sp/main/workspace/zp.html">ZP</a>
+  |                                   |
+  | Tube host code                    |
+  |                                   |
+  +-----------------------------------+   &amp;0000
+</pre>
+
+						<p>Overall, the 6502 Second Processor version of Elite leaves a paltry 7,039 bytes unused, or just 6.9K out of the 96K of RAM in the two-system host-parasite setup. It's a far cry from the cut-down cassette version, that's for sure.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_memory_map_disc.html">BBC Micro disc Elite memory map</a><a class="next" rel="next" title="Next deep dive" href="the_elite_memory_map_master.html">BBC Master Elite memory map</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

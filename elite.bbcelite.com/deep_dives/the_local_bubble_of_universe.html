@@ -1,0 +1,213 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_local_bubble_of_universe.html", "The local bubble of universe", "The local bubble of universe", "A deep dive into the local bubble of universe in BBC Micro Elite", "elite", "deep_dives_simulating_the_local_bubble", "the_local_bubble_of_universe");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_split-screen_mode_nes.html">The split-screen mode in NES Elite</a><a class="next" rel="next" title="Next deep dive" href="the_elusive_cougar.html">The elusive Cougar</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The data structures used to simulate the universe around our ship</h2>
+
+						<p>One of the most impressive aspects of Elite is how expansive the universe feels. The eight galaxies and 2048 systems no doubt have something to do with this, but while they might make you feel like nothing more than a pale blue dot in the background of a cosmic snapshot, the experience of flying around in system space is a lot more visceral. That feeling in the pit of your stomach when a group of pirates pings into view on the scanner, while you're busy surfing the sun's rays for precious fuel while trying not to boil the outer hull into stardust... there's a real sense of being there, out in the black. Clearly a 32K micro from the early 1980s can't actually be home to an entire solar system, so how does Elite simulate things closer to home?</p>
+
+						<p>The answer is in the "local bubble of universe", which stores all the details of our immediate vicinity, along with the major bodies in the current system. Take, for example, the famous screenshot from the back of the box for the BBC Micro version:</p>
+
+						<img class="titleImage" src="/images/general/Elite-BBCMicro.png" alt="BBC Micro Elite screenshot" />
+
+						<p>In this local bubble, there are 12 ships that we can see on the 3D scanner, plus the sun and planet (the latter being off-screen). Interestingly, the standard BBC Micro version only supports a maximum of ships (plus the sun and planet), so this is either a doctored screenshot or an enhanced version of the game - I suspect it's the former, as that would be a lot easier than trying to squeeze more ship slots into the memory-starved BBC Micro.</p>
+
+						<p>Let's start by looking at how the local bubble is stored in-game.</p>
+
+						<h2 class="articleSubheader">Data structures in the local bubble<br />
+													 -----------------------------------</h2>
+
+						<p>The local bubble is made up of the following data structures:</p>
+
+						<ul>
+							<li>The ship slots at <a href="/cassette/main/workspace/wp.html#frin">FRIN</a></li>
+
+							<li>The ship data block lookup table at <a href="/cassette/main/variable/univ.html">UNIV</a></li>
+
+							<li>The ship data blocks at <a href="/cassette/main/workspace/k_per_cent.html">K%</a></li>
+
+							<li>The ship blueprints at <a href="/cassette/main/variable/xx21.html">XX21</a></li>
+						</ul>
+
+						<p>Using these, the local bubble can store details on up to #NOSH ships, including the planet, sun and space station. Note that to keep things simple, we call any object in the vicinity a "ship", whether it's a spaceship, or a space station, the planet, the sun, a missile, an escape pod, an asteroid or a cargo canister. Also, the bubble can only contain either the sun or the space station, but not both at the same time, as they share the same slot. The planet is always present.</p>
+
+						<p>So the bubble can contain up to 12 ships on the BBC Micro cassette, BBC Micro disc, Acorn Electron and BBC Master versions (i.e. up to 10 spaceships, plus the planet and sun/station), up to 20 ships on the 6502 Second Processor version (i.e. 18 spaceships), and up to 8 ships on the NES version (i.e. 6 spaceships).</p>
+
+						<p>Let's look at these structures in more detail.</p>
+
+						<h2 class="articleSubheader">The ship slots at FRIN<br />
+													 ----------------------</h2>
+
+						<p>Each ship in our local bubble of universe has its own "ship slot" in the table at FRIN. Ships get added to slots by the NWSHP routine, and when they get killed or fly too far away to be in the bubble, they get removed from the table by the KILLSHP routine, and the whole table gets shuffled down to close up the gap. This means that the next free gap is always at the end of the table, assuming it isn't full (if it is, NWSHP returns with a flag to say that no new ship was created).</p>
+
+						<p>The local bubble always contains the planet, plus either the sun or the space station (but not both). The first two slots are reserved for this purpose as follows.</p>
+
+						<p>The first ship slot at location FRIN is always reserved for the planet. It contains 128 or 130, depending on the type of planet:</p>
+
+						<ul>
+							<li>128 for a planet with an equator and meridian</li>
+
+							<li>130 for a planet with a crater</li>
+						</ul>
+
+						<p>The second ship slot at FRIN+1 is always reserved for the sun and the space station. They can share the same slot because we only ever have one of them in our local bubble of universe at any one time - the sun disappears when we enter the space station's safe zone, and it reappears when we leave it again. This slot always contains one of the following:</p>
+
+						<ul>
+							<li>#SST for the space station (i.e. 2 or 8)</li>
+
+							<li>129 for the sun</li>
+						</ul>
+
+						<p>Any actual ships in our local bubble start at slot FRIN+2. There can be up to 11 ships in the local bubble, and for each of these, there's a slot containing the ship type. Ship types correspond to the blueprint numbers in the lookup table at XX21, and as this table has 13 entries, the ship type will be a value from 1-13 (though this part of the slot table never contains an 8, as we have already reserved the second ship slot at FRIN+1 for the space station). Some ship types have corresponding configuration variables that make the source code a bit easier to follow - such as #COPS for the Viper - but not all of them do. There is also one ship, the Cobra Mk III, that comes in two flavours: a ship type of 5 is a bounty hunting Cobra, while a ship type of 7 is a more peaceful trader. Both ships use the same blueprint when drawn on-screen, but their tactical behaviour is quite different.</p>
+
+						<p>The 13 ship types in the BBC Micro cassette version are as follows, along with the configuration variables where they exist:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>#</th><th>Ship<th>Configuration variable</th></tr>
+							<tr><td>1</td><td><a href="/cassette/main/variable/ship_sidewinder.html">Sidewinder</a></td><td>-</td></tr>
+							<tr><td>2</td><td><a href="/cassette/main/variable/ship_viper.html">Viper</a></td><td>COPS</td></tr>
+							<tr><td>3</td><td><a href="/cassette/main/variable/ship_mamba.html">Mamba</a></td><td>-</td></tr>
+							<tr><td>4</td><td><a href="/cassette/main/variable/ship_python.html">Python</a></td><td>-</td></tr>
+							<tr><td>5</td><td><a href="/cassette/main/variable/ship_cobra_mk_3.html">Cobra Mk III (bounty hunter)</a></td><td>-</td></tr>
+							<tr><td>6</td><td><a href="/cassette/main/variable/ship_thargoid.html">Thargoid</a></td><td>THG</td></tr>
+							<tr><td>7</td><td><a href="/cassette/main/variable/ship_cobra_mk_3.html">Cobra Mk III (trader)</a></td><td>CYL</td></tr>
+							<tr><td>8</td><td><a href="/6502sp/main/variable/ship_coriolis.html">Coriolis station</a></td><td>SST</td></tr>
+							<tr><td>9</td><td><a href="/cassette/main/variable/ship_missile.html">Missile</a></td><td>MSL</td></tr>
+							<tr><td>10</td><td><a href="/cassette/main/variable/ship_asteroid.html">Asteroid</a></td><td>AST</td></tr>
+							<tr><td>11</td><td><a href="/cassette/main/variable/ship_canister.html">Canister</a></td><td>OIL</td></tr>
+							<tr><td>12</td><td><a href="/cassette/main/variable/ship_thargon.html">Thargon</a></td><td>TGL</td></tr>
+							<tr><td>13</td><td><a href="/cassette/main/variable/ship_escape_pod.html">Escape pod</a></td><td>ESC</td></tr>
+						</table>
+
+						<p>The enhanced versions of Elite contain rather more ships; here's the list from the BBC Master version:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>#</th><th>Ship<th>Configuration variable</th></tr>
+							<tr><td>1</td><td><a href="/6502sp/main/variable/ship_missile.html">Missile</a></td><td>MSL</td></tr>
+							<tr><td>2</td><td><a href="/6502sp/main/variable/ship_coriolis.html">Coriolis station</a></td><td>SST</td></tr>
+							<tr><td>"</td><td><a href="/6502sp/main/variable/ship_dodo.html">Dodo station</a></td><td>SST</td></tr>
+							<tr><td>3</td><td><a href="/6502sp/main/variable/ship_escape_pod.html">Escape pod</a></td><td>ESC</td></tr>
+							<tr><td>4</td><td><a href="/6502sp/main/variable/ship_plate.html">Alloy plate</a></td><td>PLT</td></tr>
+							<tr><td>5</td><td><a href="/6502sp/main/variable/ship_canister.html">Canister</a></td><td>OIL</td></tr>
+							<tr><td>6</td><td><a href="/6502sp/main/variable/ship_boulder.html">Boulder</a></td><td>-</td></tr>
+							<tr><td>7</td><td><a href="/6502sp/main/variable/ship_asteroid.html">Asteroid</a></td><td>AST</td></tr>
+							<tr><td>8</td><td><a href="/6502sp/main/variable/ship_splinter.html">Splinter</a></td><td>SPL</td></tr>
+							<tr><td>9</td><td><a href="/6502sp/main/variable/ship_shuttle.html">Shuttle</a></td><td>SHU</td></tr>
+							<tr><td>10</td><td><a href="/6502sp/main/variable/ship_transporter.html">Transporter</a></td><td>-</td></tr>
+							<tr><td>11</td><td><a href="/6502sp/main/variable/ship_cobra_mk_3.html">Cobra Mk III</a></td><td>CYL</td></tr>
+							<tr><td>12</td><td><a href="/6502sp/main/variable/ship_python.html">Python</a></td><td>-</td></tr>
+							<tr><td>13</td><td><a href="/6502sp/main/variable/ship_boa.html">Boa</a></td><td>-</td></tr>
+							<tr><td>14</td><td><a href="/6502sp/main/variable/ship_anaconda.html">Anaconda</a></td><td>ANA</td></tr>
+							<tr><td>15</td><td><a href="/6502sp/main/variable/ship_rock_hermit.html">Rock hermit</a></td><td>HER</td></tr>
+							<tr><td>16</td><td><a href="/6502sp/main/variable/ship_viper.html">Viper</a></td><td>COPS</td></tr>
+							<tr><td>17</td><td><a href="/6502sp/main/variable/ship_sidewinder.html">Sidewinder</a></td><td>SH3</td></tr>
+							<tr><td>18</td><td><a href="/6502sp/main/variable/ship_mamba.html">Mamba</a></td><td>-</td></tr>
+							<tr><td>19</td><td><a href="/6502sp/main/variable/ship_krait.html">Krait</a></td><td>KRA</td></tr>
+							<tr><td>20</td><td><a href="/6502sp/main/variable/ship_adder.html">Adder</a></td><td>ADA</td></tr>
+							<tr><td>21</td><td><a href="/6502sp/main/variable/ship_gecko.html">Gecko</a></td><td>-</td></tr>
+							<tr><td>22</td><td><a href="/6502sp/main/variable/ship_cobra_mk_1.html">Cobra Mk I</a></td><td>-</td></tr>
+							<tr><td>23</td><td><a href="/6502sp/main/variable/ship_worm.html">Worm</a></td><td>WRM</td></tr>
+							<tr><td>24</td><td><a href="/6502sp/main/variable/ship_cobra_mk_3_p.html">Cobra Mk III (pirate)</a></td><td>CYL2</td></tr>
+							<tr><td>25</td><td><a href="/6502sp/main/variable/ship_asp_mk_2.html">Asp Mk II</a></td><td>ASP</td></tr>
+							<tr><td>26</td><td><a href="/6502sp/main/variable/ship_python_p.html">Python (pirate)</a></td><td>-</td></tr>
+							<tr><td>27</td><td><a href="/6502sp/main/variable/ship_fer_de_lance.html">Fer-de-lance</a></td><td>-</td></tr>
+							<tr><td>28</td><td><a href="/6502sp/main/variable/ship_moray.html">Moray</a></td><td>-</td></tr>
+							<tr><td>29</td><td><a href="/6502sp/main/variable/ship_thargoid.html">Thargoid</a></td><td>THG</td></tr>
+							<tr><td>30</td><td><a href="/6502sp/main/variable/ship_thargon.html">Thargon</a></td><td>TGL</td></tr>
+							<tr><td>31</td><td><a href="/6502sp/main/variable/ship_constrictor.html">Constrictor</a></td><td>CON</td></tr>
+							<tr><td>32</td><td><a href="/6502sp/main/variable/ship_logo.html">Elite logo</a></td><td>LGO</td></tr>
+							<tr><td>33</td><td><a href="/6502sp/main/variable/ship_cougar.html">Cougar</a></td><td>COU</td></tr>
+						</table>
+
+						<p>If a ship slot is empty, it contains 0.</p>
+
+						<h2 class="articleSubheader">The ship data block lookup table at UNIV<br />
+													 ----------------------------------------</h2>
+
+						<p>For each occupied ship slot in the table at FRIN, there is a corresponding address in the lookup table at UNIV that points to that ship's data block. The ship data blocks are stored in the K% workspace, and the addresses in UNIV map to the ship slots in FRIN just as you would expect:</p>
+
+						<ul>
+							<li>UNIV points to the ship data block for the planet in slot FRIN</li>
+
+
+							<li>UNIV+1 points to the ship data block for the sun or space station in slot FRIN+1</li>
+
+
+							<li>UNIV+2 points to the ship data block for the ship in slot FRIN+2</li>
+
+
+							<li>UNIV+3 points to the ship data block for the ship in slot FRIN+3</li>
+						</ul>
+
+						<p>...and so on up to UNIV+12. Because each ship data block is always the same size (36 bytes), the addresses in the UNIV table are hard-coded and don't change.</p>
+
+						<h2 class="articleSubheader">The ship data blocks at K%<br />
+													 --------------------------</h2>
+
+						<p>As noted above, the local bubble of universe can contain up to #NOSH ships, one for each slot in FRIN and address in UNIV. Each of those ships has its own ship data block of 36 (NI%) bytes that contains information such as the ship's position in space, its speed, its rotation, its energy levels and so on. It also contains a pointer to that ship's ship line heap which is where we store details of all the lines that are required to draw the ship on-screen, so that it's easy to remove the ship from the screen by redrawing the exact same shape again (see the deep dive on <a href="drawing_ships.html">drawing ships</a> for more details).</p>
+
+						<p>In the cassette and disc versions of Elite, these 12 blocks of ship data live in the first 432 bytes of the workspace at K% (&amp;0900 to &amp;0AD4), while the ship line heaps are stored in descending order from the start of the WP workspace. This is the layout of the ship data blocks and ship line heaps in memory, shown when we are in the process of adding a new ship to the local bubble in the NWSHP routine:</p>
+
+<pre class="articleIndented">  +-----------------------------------+   &amp;0F34
+  |                                   |
+  | WP workspace                      |
+  |                                   |
+  +-----------------------------------+   &amp;0D40 = WP
+  |                                   |
+  | Current ship line heap            |
+  |                                   |
+  +-----------------------------------+   SLSP
+  |                                   |
+  | Proposed heap for new ship        |
+  |                                   |
+  +-----------------------------------+   INWK(34 33)
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+   INF + NI%
+  |                                   |
+  | Proposed data block for new ship  |
+  |                                   |
+  +-----------------------------------+   INF
+  |                                   |
+  | Existing ship data blocks         |
+  |                                   |
+  +-----------------------------------+   &amp;0900 = K%
+</pre>
+
+						<p>If we want to update a ship's data, which we want to do when moving the ship in space during the main flight loop, then instead of working with the data in the K% workspace, we first copy the whole block to the INWK workspace. This "inner workspace" is in zero page, where it is much quicker and more efficient to access memory locations. When we are done updating the ship's data, we copy it back to the relevant location in K%, as pointed to by the UNIV table.</p>
+
+						<p>See the deep dive on <a href="ship_data_blocks.html">ship data blocks</a> for details of the 36 bytes and the information that they contain.</p>
+
+						<h2 class="articleSubheader">The ship blueprints at XX21<br />
+													 ---------------------------</h2>
+
+						<p>Each ship type has an associated ship blueprint that contains fixed data about that specific ship type, such as its maximum speed or the size of the target area we need to hit with our lasers to cause damage. The blueprints also contain data on the ship's vertices, faces and edges, which are used to draw the ship on-screen.</p>
+
+						<p>The table at XX21 contains the blueprint addresses for the various ship types. See the deep dive on <a href="ship_blueprints.html">ship blueprints</a> for more details of the blueprints and the information that they contain.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_split-screen_mode_nes.html">The split-screen mode in NES Elite</a><a class="next" rel="next" title="Next deep dive" href="the_elusive_cougar.html">The elusive Cougar</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

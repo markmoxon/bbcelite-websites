@@ -1,0 +1,108 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "drawing_text.html", "Drawing text", "Drawing text", "A deep dive into drawing text in BBC Micro Elite", "elite", "deep_dives_drawing_text", "drawing_text");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="extended_screen_coordinates.html">Extended screen coordinates</a><a class="next" rel="next" title="Next deep dive" href="fonts_in_nes_elite.html">Fonts in NES Elite</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Elite draws text on-screen by poking character bitmaps directly into screen memory</h2>
+
+						<p>There is a lot of text in Elite, so much so that it needs to be compressed (see the deep dive on <a href="printing_text_tokens.html">printing text tokens</a> for details). But how does this text make it onto the screen, as in this wordy example from the <a href="the_constrictor_mission.html">Constrictor mission</a> briefing?</p>
+
+						<img class="titleImage" src="/images/missions/mission_1a.png" alt="The first briefing screen for the Constrictor mission in BBC Micro Elite" />
+
+						<p>For starters, Elite doesn't rely on the operating system to draw text; indeed, Elite uses hardly any operating system routines at all, choosing instead to implement almost everything itself in the search for speed and efficiency. In the main game code for the BBC Micro cassette version, there are just three calls to OSBYTE, two to OSWORD and one to OSFILE, and that's it for operating system calls. (For the curious, the OSBYTE calls flush all the buffers, read the joystick, and enable/disable BREAK and ESCAPE; the OSWORD calls read a line from the keyboard, and make a sound; and the OSFILE call saves or loads the commander file... and that's all.)</p>
+
+						<p>It's no surprise, then, that Elite has its very own text drawing routine at <a href="/cassette/main/subroutine/tt26.html">TT26</a> that pokes text directly to the screen, rather than relying on the standard OSWRCH command (which would probably have issues with the custom screen mode anyway). This deep dive looks at how this text-drawing routine works in the BBC Micro version; for details of how the NES version draws text using fonts and tile-based characters, see the deep dive on <a href="fonts_in_nes_elite.html">fonts in NES Elite</a>.</p>
+
+						<h2 class="articleSubheader">The text cursor<br />
+													 ---------------</h2>
+
+						<p>The text printing routine at <a href="/cassette/main/subroutine/tt26.html">TT26</a> has a lot in common with the <a href="/cassette/main/subroutine/pixel.html">PIXEL</a> routine described in the deep dive on <a href="drawing_monochrome_pixels_in_mode_4.html">Drawing monochrome pixels in mode 4</a>, not least of which is the calculation of the screen address where we need to poke our text. The PIXEL routine starts with pixel x-coordinate and y-coordinates for the pixel to draw, but for text, Elite maintains a text cursor in locations XC and YC:</p>
+
+						<ul>
+							<li><a href="/cassette/main/workspace/zp.html#xc">XC</a> is the x-coordinate of the text cursor (i.e. the text column), which can be from 0 to 32. A value of 0 denotes the leftmost column and 32 the rightmost column, but because the top part of the screen (the space view) has a white border that clashes with columns 0 and 32, text is only shown in columns 1-31.</li>
+
+							<li><a href="/cassette/main/workspace/zp.html#xc">YC</a> is the y-coordinate of the text cursor (i.e. the text row), which can be from 0 to 23. The screen actually has 31 character rows if you include the dashboard, but the text printing routines only work on the top part (the space view), so the text cursor only goes up to a maximum of 23, the row just before the screen splits. A value of 0 denotes the top row, but because the top part of the screen has a white border that clashes with row 0, text is always shown at row 1 or greater.</li>
+						</ul>
+
+						<p>When TT26 is called to print a printable character, it prints it at the text cursor location, and increments the XC cursor value to point to the next character along, so repeated calls to TT26 will print characters one after the other.</p>
+
+						<h2 class="articleSubheader">Character bitmaps<br />
+													 -----------------</h2>
+
+						<p>So we have an on-screen cursor position where we want to print a character, but how do we know what to print? For that, we need a character definition in the form of a bitmap.</p>
+
+						<p>Note that this only applies to printable ASCII characters in the range 32-95, as other characters don't have a screen presence; character 7, for example, emits a beep, while character 13 is a carriage return, which we can implement by moving the text cursor without having to print anything. This deep dive is only concerned with drawing printable characters, though the TT26 routine does cope with all character types.</p>
+
+						<p>The first step, then, is to get hold of the bitmap definition for the character we want to draw on the screen (i.e. we need the pixel shape of this character). The BBC Micro's MOS ROM contains bitmap definitions of the BBC's ASCII characters, starting from &amp;C000 for space (ASCII 32) and ending with the £ symbol (ASCII 126), so this is where we need to look.</p>
+
+						<p>(Note that in the 6502 Second Processor version, to save time looking this information up from the MOS ROM each time, a copy of these bitmap definitions is embedded into the source code at page FONT%, so page 0 of the font is at FONT%, page 1 is at FONT%+1, and page 2 at FONT%+3. The rest of this deep dive talks about fetching the bitmaps from ROM, but for the 6502 Second Processor version, we actually fetch them, from FONT%.)</p>
+
+						<p>There are definitions for 32 characters in each of the three pages of MOS memory, as each definition takes up 8 bytes (8 rows of 8 pixels) and 32 * 8 = 256 bytes = 1 page. So:</p>
+
+						<ul>
+							<li>ASCII 32-63  are defined in &amp;C000-&amp;C0FF (page 0)</li>
+
+							<li>ASCII 64-95  are defined in &amp;C100-&amp;C1FF (page 1)</li>
+
+							<li>ASCII 96-126 are defined in &amp;C200-&amp;C2F0 (page 2)</li>
+						</ul>
+
+						<p>The code starting at label RR1 in <a href="/cassette/main/subroutine/tt26.html">TT26</a> converts the ASCII code of the character that we want to print into the correct location in ROM, so when we come to poke values into the screen, we know what to poke. So now we just need to work out where to poke the character definition that we just tracked down.</p>
+
+						<h2 class="articleSubheader">Converting rows and columns to screen addresses<br />
+													 -----------------------------------------------</h2>
+
+						<p>The next task, then, is to convert the current text cursor location from columns and rows into an address in screen memory.</p>
+
+						<p>This part of the process is very similar to the <a href="/cassette/main/subroutine/pixel.html">PIXEL</a> routine described in the deep dive on <a href="drawing_monochrome_pixels_in_mode_4.html">Drawing monochrome pixels in mode 4</a>. As each on-screen character is 8 pixels wide, and the special screen mode Elite uses for the top part of the screen is 256 pixels across with one bit per pixel, we can simply multiply the text column number by 8 to get a value that is not only the screen address offset of the text cursor from the left side of the screen, it's also the least significant byte of the screen address where we want to print this character, as each row of on-screen pixels corresponds to one page.</p>
+
+						<p>To put this more explicitly, the screen starts at &amp;6000, so the text rows are stored in screen memory like this:
+
+						<ul>
+							<li>Row 1: &amp;6000 - &amp;60FF for YC = 1, XC = 0 to 31</li>
+							<li>Row 2: &amp;6100 - &amp;61FF for YC = 2, XC = 0 to 31</li>
+							<li>Row 3: &amp;6200 - &amp;62FF for YC = 3, XC = 0 to 31</li>
+						</ul>
+
+						<p>and so on.</p>
+
+						<p>Now to work out the most significant byte of the screen address. As already mentioned, in Elite's square mode 4 screen, each row of text on-screen takes up exactly one page, so the first row is page &amp;60xx, the second row is page &amp;61xx, so we can get the page for character (XC, YC) by OR'ing with &amp;60.  To see this in action, consider that our two values are, in binary:</p>
+
+<pre class="articleIndented">  YC is between:  %00000000
+            and:  %00010111
+         &amp;60 is:  %01100000
+</pre>
+
+						<p>so YC OR &amp;60 effectively adds &amp;60 to YC, giving us the page number that we want, which is the most significant byte of the screen address of the character we want to display.</p>
+
+						<h2 class="articleSubheader">Poking into screen memory<br />
+													 -------------------------</h2>
+
+						<p>We now have the address where we need to poke our character, and we have the bitmap that we want to poke, so it's finally time to draw the character on-screen. Luckily, this is relatively straightforward, because the BBC Micro splits its screen mode up into character blocks, each of which is 8 bytes wide (see the diagram in the deep dive on <a href="drawing_monochrome_pixels_in_mode_4.html">Drawing monochrome pixels in mode 4</a> for details of the screen memory structure). We only want to display characters according to this same grid, so we simply need to poke our 8x8 character bitmap into the character block pointed to by the screen address we calculated above. (It would be a much trickier proposition if we wanted to display characters anywhere on-screen, rather than in alignment with the standard screen's character block, but Elite doesn't need this kind of flexibility.)</p>
+
+						<p>For the monochrome mode 4 screen in cassette and disc Elite, poking into this location is a simple case of extracting each of the 8 rows from the character bitmap (each row being a byte), and poking this into the 8 bytes at our screen address. As with the line-drawing routine, this poking is done using EOR logic so the text can be removed by redrawing the same characters, and when we have poked all 8 rows, we are done and the character appears instantly on-screen.</p>
+
+						<p>For the colour versions of Elite, the approach is similar, but each character block in screen memory is only 4 pixels wide instead of 8 pixels, so instead of poking the whole character row into memory, we first have to do the left half of the bitmap first (by extracting the high nibble of each row in the bitmap and poking 8 of them into one character block), and then the right half in the next character block along (this time extracting the low nibble of the bitmap). We also have to check whether we are crossing a page boundary, as the four-colour space view has two pages of screen memory for each character row, so the I/O processor's <a href="/6502sp/i_o_processor/subroutine/tt26.html">TT26</a> routine is rather more convoluted, but the approach is broadly the same.</p>
+
+						<p>It's a long way from 10 PRINT "Hello world!":GOTO 10, that's for sure...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="extended_screen_coordinates.html">Extended screen coordinates</a><a class="next" rel="next" title="Next deep dive" href="fonts_in_nes_elite.html">Fonts in NES Elite</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

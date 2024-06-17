@@ -1,0 +1,69 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_key_logger.html", "The key logger", "The key logger", "A deep dive into the key logger in BBC Micro Aviator", "aviator", "deep_dives_other", "the_key_logger");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="random_numbers.html">Random numbers</a><a class="next" rel="next" title="Next deep dive" href="multi-byte_variables.html">Multi-byte variables</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Making sure that every key press makes gets recorded</h2>
+
+						<p>There are lots of control keys in Aviator - I mean, the game even comes with its own little poster showing a picture of a keyboard with all the game keys marked. It perhaps isn't surprising, then, that the game contains its own key logging routine to ensure no key presses are lost in the excitement of flying a Spitfire.</p>
+
+						<p>Out of the box, the BBC Micro's operating system only supports a "two-key rollover". This means that it can handle up to two concurrent key presses, on top of the modifier keys like SHIFT and CTRL. This level of support is generally fine for typing, as you rarely intend to press more than two letter keys at the same time, but for a game like Aviator with different keys for elevator, rudder, aileron, throttle and plenty else, using the built-in routines would mean a lot of ignored key presses.</p>
+
+						<p>Let's look at Aviator's key logger and see how it keeps track of everything.</p>
+
+						<h2 class="articleSubheader">Logging keys<br />
+													 ------------</h2>
+
+						<p>Aviator gets around the operating system's limitations by implementing its own keyboard-scanning routine in <a href="/source/main/subroutine/scankeyboard.html">ScanKeyboard</a>. This uses the operating system's OSBYTE command to scan the keyboard for a specific key, so when we want to check whether any of the flight keys are being pressed, we call this routine individually for each key we are interested in. This sidesteps the operating system's built-in limit, and allows us to support an arbitrary number of concurrent key presses.</p>
+
+						<p>Given this method of checking for individual keys, the <a href="/source/main/subroutine/updatekeylogger.html">UpdateKeyLogger</a> routine manages the rest. This routine records each significant key press as a 16-bit number in the key logger table at (<a href="/source/main/workspace/main_variable_workspace.html#keyloggerhi">keyLoggerHi</a> <a href="/source/main/workspace/main_variable_workspace.html#keyloggerlo">keyLoggerLo</a>). The key logger table contains six entries, each of which corresponds with a key pair. The key pairs are as follows:</p>
+
+						<ul>
+							<li>L or &lt; (elevator dive/pitch)</li>
+							<li>A or + (rudder yaw left/right)</li>
+							<li>S or D (aileron bank left/right) </li>
+							<li>W or E (throttle down/up)</li>
+							<li>U or B (undercarriage, brakes)</li>
+							<li>F or SHIFT (flaps, fire)</li>
+						</ul>
+
+						<p>The key logger works by scanning in turn for each of the first keys shown above (i.e. "L", "A", "S", "W", "U" or "F", whose internal key numbers are in the <a href="/source/main/variable/keytable1.html">keyTable1</a> table). If a key is pressed, then the corresponding 16-bit value from the (<a href="/source/main/variable/keytable1hi.html">keyTable1Hi</a> <a href="/source/main/variable/keytable1lo.html">keyTable1Lo</a>) table is stored in the key logger at the relevant key's entry. Otherwise it scans for the second key (i.e. "&lt;", "+", "D", "E", "B" or SHIFT, whose internal key numbers are in the <a href="/source/main/variable/keytable2.html">keyTable2</a> table), and if that is pressed, then the corresponding 16-bit value from the (<a href="/source/main/variable/keytable2hi.html">keyTable2Hi</a> <a href="/source/main/variable/keytable2lo.html">keyTable2Lo</a>) table is stored in the key logger.</p>
+
+						<p>In this way all the main flight keys are checked, and in a way where we don't bother to check for a second key if the first in that pair is being pressed (so if we are pressing "S" and "D" at the same time, the logger will ignore the "D" key press and bank the plane to the left, for example).</p>
+
+						<p>Not only that, but the values that are inserted into the key logger are used by the <a href="/source/main/subroutine/updateflightmodel_part_1_of_4.html">UpdateFlightModel</a> routine to directly affect the plane's orientation. The values are as follows:</p>
+
+						<ul>
+							<li>Elevator dive/pitch = -1 or 1</li>
+							<li>Rudder yaw left/right = -1 or 1</li>
+							<li>Aileron bank left/right = -1 or 1</li>
+							<li>Throttle down/up = -15 or 15</li>
+							<li>Undercarriage, brakes = 4 or 7</li>
+							<li>Flaps, fire = 5 or 8</li>
+						</ul>
+
+						<p>The numbers for the last two bullet points don't have a direct meaning - they just let the <a href="/source/main/subroutine/processotherkeys.html">ProcessOtherKeys</a> routine test for whether or not the keys are pressed - but the values in the first four directly affect the flight model. So, if we press "L" to pitch the plane down, then the first entry in the key logger will be set to -1, and this is the value that gets added to the <a href="/source/main/workspace/main_variable_workspace.html#elevatorposition">elevatorPosition</a> variable to move the elevators in the flight model. Similarly, the throttle keys change the thrust by 15 in either direction.</p>
+
+						<p>This opens up the intriguing possibility of being able to scale the effects of the flight controls differently by altering the entries that the key logger takes from (keyTable1Hi keyTable1Lo) and (keyTable2Hi keyTable2Lo). A turbo-charged, super-responsive Spitfire? That would an interesting experience...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="random_numbers.html">Random numbers</a><a class="next" rel="next" title="Next deep dive" href="multi-byte_variables.html">Multi-byte variables</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

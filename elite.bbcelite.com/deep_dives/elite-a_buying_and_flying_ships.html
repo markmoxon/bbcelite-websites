@@ -1,0 +1,108 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "elite-a_buying_and_flying_ships.html", "Buying and flying ships in Elite-A", "Buying and flying ships in Elite-A", "A deep dive into buying and flying ships in Elite-A", "elite", "deep_dives_elite-a", "buying_and_flying_ships");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="elite-a_making_room_for_the_modifications.html">Making room for the modifications in Elite-A</a><a class="next" rel="next" title="Next deep dive" href="elite-a_ship_blueprints.html">Ship blueprints in Elite-A</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">What it's like to save up for and fly your dream ship in Elite-A</h2>
+
+						<p>In the original Elite, it's all about the Cobra Mk III. It has four missile slots, it has four laser mounts, it has a cargo capacity of 20 tonnes that can be expanded to 35 tonnes... and if you don't like it, tough. You are a Cobra Mk III pilot, and that's that.</p>
+
+						<p>Angus Duggan's Elite-A is different. You start off in an Adder, and you can buy and fly lots of other ships - 15 of them in total. In order of increasing price, you can work your way up from the Adder to the Gecko, Moray, Cobra Mk I, Iguana, Ophidian, Chameleon, Cobra Mk III, Fer-de-Lance, Ghavial, Monitor, Python, Boa, Asp Mk II and Anaconda. The cockpit and controls remain the same, but different ships handle differently in flight, and they all support different levels of equipment and cargo.</p>
+
+						<img class="titleImage" src="/images/elite-a/buying_ships.png" alt="The Elite-A ship-buying screen" />
+
+						<p>Let's look at how Angus added all these different flyable ships to Elite-A.</p>
+
+						<h2 class="articleSubheader">Buying ships in Elite-A<br />
+													 -----------------------</h2>
+
+						<p>Buying ships is pretty straightforward. The price list is stored in the <a href="/elite-a/docked/variable/new_ships.html">new_ships</a> table, along with the ship names, and the process of buying and part-exchanging ships is handled by the <a href="/elite-a/docked/subroutine/n_buyship.html">n_buyship</a> routine, which is called from the <a href="/elite-a/docked/subroutine/eqshp.html">EQSHP</a> routine if CTRL is being held down. The range of ships on offer increases with the economy of the current system, with the number of ships for sale being given by the following:</p>
+
+<pre class="articleIndented">   15 - 2 * economy
+</pre>
+
+						<p>The current system's economy ranges from 0 to 7, so the number of ships for sale is smaller in less advanced economies, and ranges from all 15 ship types for rich industrial economies, down to just one, the Adder, for poor agricultural economies.</p>
+
+						<p>When we buy a new ship, the price of our original ship is refunded, and we get to climb board our shiny, new purchase. Internally, this is what happens:</p>
+
+						<ul>
+							<li>Memory between LASER (the start of our current ship's equipment table) and LASER+36 (our legal status in FIST) is zeroed, so buying a ship not only removes all the equipment we had installed in the previous ship (which is why it's wise to sell all your equipment before buying a new one), but it also resets our legal status to clean.</li>
+
+							<li>The type of ship we just bought is stored in <a href="/elite-a/docked/workspace/up.html#cmdr_type">cmdr_type</a>, which is in the current ship data block in the UP workspace, alongside all the other details of our ship's equipment (cmdr_type actually uses one of the unused bytes that were originally put in for up and down lasers, a feature that was built into early versions of the original game, but was later dropped without reclaiming the equipment bytes). This value is also saved as part of the commander save file at <a href="/elite-a/loader/variable/na_per_cent.html">NA%</a>.</li>
+
+							<li>The <a href="/elite-a/docked/subroutine/n_load.html">n_load</a> routine is called to load the flight characteristics and set the name token for our new ship.</li>
+
+							<li>Our fuel level is set to the hyperspace range of our new ship, so our new ship comes with a full tank.</li>
+
+							<li>The dashboard's missile indicators are reset so they show the correct number of missiles fitted to our new ship (which will be zero).</li>
+						</ul>
+
+						<p>The meat of the above process is in the <a href="/elite-a/docked/subroutine/n_load.html">n_load</a> routine, which does two things:</p>
+
+						<ul>
+							<li>Extended text token 132 in the QQ18 table is updated with the name of the ship type, so that printing token 132 always shows our current ship type.</li>
+
+							<li>The flight characteristics of the new ship type are copied from the <a href="/elite-a/docked/variable/new_details.html">new_details</a> table to a new section of our current ship data block, between <a href="/elite-a/docked/workspace/up.html#new_pulse">new_pulse</a> and <a href="/elite-a/docked/workspace/up.html#new_max">new_max</a>.</li>
+						</ul>
+
+						<p>The flight characteristics form the core of flying new ships in Elite-A, so let's take a deeper look at what's going on here.</p>
+
+						<h2 class="articleSubheader">Flying ships in Elite-A<br />
+													 -----------------------</h2>
+
+						<p>Each ship type in Elite-A comes with its own set of flight characteristics. These are stored in the <a href="/elite-a/docked/variable/new_details.html">new_details</a> table, and when we buy a new ship, these values are copied into a new set of locations in the current ship data block. Here's a list of all the flight characteristics and their locations in the current ship data block, along with links to the code that implements them:</p>
+
+						<ul>
+							<li><a href="/elite-a/docked/workspace/up.html#new_pulse">new_pulse</a> contains the power level of pulse lasers when fitted to this ship type. As with all the laser changes, this simply changes the power level stored in LASER though LASER+3 for this type of laser - the higher the level, the more damage it causes.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_beam">new_beam</a> contains the power level of beam lasers when fitted to this ship type.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_military">new_military</a> contains the power level of military lasers when fitted to this ship type.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_mining">new_mining</a> contains the power level of mining lasers when fitted to this ship type.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_mounts">new_mounts</a> contains the available laser mounts in this ship (1 = Front only, 2 = Front and rear, 4 = Front, rear, left and right). This is used to restrict the range of available views in the <a href="/elite-a/docked/subroutine/qv.html">qv</a> routine, which is called when buying or selling lasers.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_missiles">new_missiles</a> contains the maximum number of missiles that can be fitted to this ship type. This number is checked when buying new missiles in <a href="/elite-a/docked/subroutine/eqshp.html">EQSHP</a>, allowing a larger maximum value to be stored in NOMSL (the current number of missiles) for ships that support more missiles, or a smaller maximum value for those that don't.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_shields">new_shields</a> contains this ship type's shield level. If our ship is damaged and the level of damage is less than our shield level, then the ship emerges unscathed. If the damage level is greater than the shield level, then the damage level is reduced by the shield level before being applied to the ship (i.e. the shields absorb the amount of damage given in new_shields). See the <a href="/elite-a/flight/subroutine/n_oops.html">n_oops</a> routine for the associated code.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_energy">new_energy</a> contains this ship type's ship energy refresh rate when fitted with an energy unit. This value is stored in the <a href="/elite-a/docked/workspace/up.html#engy">ENGY</a> variable, which contains the rate of our current ship's energy refresh rate, just as it does in all versions of Elite (it's just that it's always 1 in the other versions, or 2 if you have the naval energy unit from mission 2).</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_speed">new_speed</a> contains this ship type's maximum speed, which is checked in <a href="/elite-a/flight/subroutine/main_flight_loop_part_3_of_16.html">part 3 of the main flight loop</a> when accelerating.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_hold">new_hold</a> contains the amount of free space in this ship type's hold (though the value is actually the amount of free space plus 1, as this makes the maths slightly easier). In Elite-A, hold space is taken up by both equipment and cargo, so this value is checked in a number of places, such as <a href="/elite-a/flight/subroutine/tnpr1.html">tnpr1</a> (when scooping), <a href="/elite-a/docked/subroutine/tnpr.html">tnpr</a> (when buying cargo) and <a href="/elite-a/docked/subroutine/eqshp.html">EQSHP</a> (when buying equipment).</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_range">new_range</a> contains this ship type's hyperspace range (i.e. the size of the fuel tank). The range is stored as the number of light years multiplied by 10, so a value of 1 represents 0.1 light years, while 70 represents 7.0 light years. This figure is only used when buying fuel in <a href="/elite-a/docked/subroutine/eqshp.html">EQSHP</a>, as the fuel level in <a href="/elite-a/docked/workspace/up.html#qq14">QQ14</a> can already support larger numbers for larger tanks.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_costs">new_costs</a> contains the price table offset for this ship type. In Elite-A the <a href="/elite-a/docked/variable/prxs.html">PRXS</a> table (which contains equipment prices) has multiple sections, for the different types of ship we can buy, and the offset into this table for this ship type is held here. See the <a href="/elite-a/docked/subroutine/eqshp.html">EQSHP</a> routine for more on buying equipment.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_max">new_max</a> contains this ship type's maximum pitch/roll rate. This limits the maximum rate of pitching and rolling using a simple restriction in <a href="/elite-a/flight/subroutine/main_flight_loop_part_2_of_16.html">part 2 of the main flight loop</a>.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_min">new_min</a> contains this ship type's minimum pitch/roll rate. This is always equal to 255 - new_max, so when we buy a new ship, the correct value is calculated rather than being fetched from the new_details table (there are default values for this in the new_details table, though these are commented out). It limits the minimum rate of pitching and rolling using a simple restriction in <a href="/elite-a/flight/subroutine/main_flight_loop_part_2_of_16.html">part 2 of the main flight loop</a>.</li>
+
+							<li><a href="/elite-a/docked/workspace/up.html#new_space">new_space</a> has a label and a reserved byte in the original source, but it appears to be unused, so this is presumably a flight characteristic that was dropped at some stage.</li>
+						</ul>
+
+						<p>The flight characteristics are fixed for each specific ship type, and they are extracted from the new_details table every time we buy a new ship or load a new commander file. In this way the characteristics don't need to be saved, any more than the ship blueprint details need to be saved; only the ship type is saved in the commander file, and the flight characteristics are expanded at load time.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="elite-a_making_room_for_the_modifications.html">Making room for the modifications in Elite-A</a><a class="next" rel="next" title="Next deep dive" href="elite-a_ship_blueprints.html">Ship blueprints in Elite-A</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,138 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "modelling_the_engine.html", "Modelling the engine", "Modelling the engine", "A deep dive into modelling the engine in BBC Micro Revs", "revs", "deep_dives_driving_model", "modelling_the_engine");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="jumps_and_drops.html">Jumps and drops</a><a class="next" rel="next" title="Next deep dive" href="matching_the_code_to_the_driving_model.html">Matching the code to the driving model</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The maths behind engine torque, gear ratios and power transmission</h2>
+
+						<p>This article details the calculations that the driving model performs when modelling the engine. It is designed to be read alongside the <a href="the_core_driving_model.html">core driving model calculations</a>.</p>
+
+						<p>The following is done as part of <a href="the_core_driving_model.html#calculation7">calculation 7 in the core driving model</a>. The code for the following is in the <a href="/source/main/subroutine/applyengine.html">ApplyEngine</a> routine, and the aim of this calculation is to calculate the engine torque and rev count.</p>
+
+						<h2 class="articleSubheader">Calculate the rev count<br />
+													 -----------------------</h2>
+
+						<p>First, we calculate the rev count at which the gear mechanism would be turning if the clutch were engaged at this speed. This depends on the gear ratio for the current gear, which is defined in the track data file at <a href="/source/silverstone/variable/trackgearratio.html">trackGearRatio</a>, and which describes the relationship between the rev count and the wheel speed for each gear:</p>
+
+<pre class="articleIndented">  (A T) = trackGearRatio * playerSpeed * 8
+</pre>
+
+						<p>So lower gears correspond to more revs at the same wheel speed when compared to higher gears.</p>
+
+						<h2 class="articleSubheader"><a id="clutch" name="clutch" class="anchor"></a>Process the clutch<br />
+													 ------------------</h2>
+
+						<p>Next, we deal with the clutch.</p>
+
+						<p>The clutch comes into play once the engine has started and the car is on the ground (if this isn't the case, the logic is at the very start of the ApplyEngine routine will take us off either to the engine-starting routine, or will simply zero the engine torque and stop the calculations).</p>
+
+						<p>If the engine has started and we are on the ground, and we are holding down a gear change key, then the clutch is disengaged and bit 7 of clutchEngaged is set, and we skip the rest of this stage. If we are not holding down a gear change key and the clutch is already engaged (in which case bit 7 of clutchEngaged is clear), we skip the rest of this stage.</p>
+
+						<p>The rest of this stage only applies when the clutch is disengaged but we are not holding down a gear change key (which will happen when we release the gear change key). At this point, we check to see if any of these are true:</p>
+
+						<ul>
+							<li>The throttle is not being applied.</li>
+
+							<li>playerSpeedHi &gt;= 22, so we are moving.</li>
+
+							<li>This is a race and we are not showing the blue lights (so we must be showing the green lights, or no lights at all).</li>
+
+							<li>This is a race, we are showing the blue lights and still have at least 10 iterations until the green lights are shown (i.e. raceStarting = 160 and there are at least 10 iterations until the main loop counter is a multiple of 64 - see the deep dive on <a href="starting_lights.html">starting lights</a> for more details).</li>
+
+							<li>A &gt;= revsOnGearChange, so the revs are higher than at the last gear change.</li>
+						</ul>
+
+						<p>If any of these are true, then then the clutch engages. This means that following a gear change, the clutch engages if any of the following are true:</p>
+
+						<ul>
+							<li>We are not applying the throttle.</li>
+
+							<li>We're going faster than 22 mph.</li>
+
+							<li>We're in a race and the lights are green or haven't been shown yet.</li>
+
+							<li>We're in a race and the lights are blue but are not just about to turn green.</li>
+
+							<li>We rev the engine past the level of last gear change (in revsOnGearChange).</li>
+						</ul>
+
+						<p>In terms of the race, this means that if we release the gear change key when the lights are blue, the clutch will engage and we will stall, though if we release it just before the lights turn green, the clutch will only engage when the lights turn green, giving us a good start.</p>
+
+						<p>If the clutch hasn't been automatically engaged by the above checks, then the clutch remains disengaged and we calculate the following:</p>
+
+<pre class="articleIndented">  A = revsOnGearChange
+
+  If A &gt;= 108, A = A - 2 and revsOnGearChange = revsOnGearChange - 2
+</pre>
+
+						<p>So the revs reduce slowly if the clutch remains disengaged and we don't rev the engine, and the threshold for the clutch re-engaging is also reduced.</p>
+
+						<h2 class="articleSubheader"><a id="torque" name="torque" class="anchor"></a>Calculate the torque<br />
+													 --------------------</h2>
+
+						<p>We now set the rev count to the value of A, which will either be the value from the first step, or an amended value if the clutch is still disengaged:</p>
+
+<pre class="articleIndented">  revCount = A
+</pre>
+
+						<p>We now calculate the power being generated by the engine at this rev count.</p>
+
+						<p>First, we cap the rev count to a maximum of 170:</p>
+
+<pre class="articleIndented">  max(170, revCount)
+</pre>
+
+						<p>so in the following, revCount refers to this capped number.</p>
+
+						<p>Next, we calculate the engine power depending on the rev count, as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Rev count</th><th>Calculation</th></tr>
+							<tr><td>&lt; 3</td><td>The engine has stalled</td></tr>
+							<tr><td>3 to 82</td><td>A = revCount * 2 + 152</td></tr>
+							<tr><td>83 to 86</td><td>A = 186 - (revCount - 83)</td></tr>
+							<tr><td>87 to 91</td><td>A = 182 - (revCount - 87) * 4</td></tr>
+							<tr><td>&gt;= 92</td><td>A = 162 - (revCount - 92) * 2</td></tr>
+						</table>
+
+						<p>In terms of the rev counter on the dashboard, a revCount of 82 shows the needle at the 5,000 revs mark, while 86 is 5,250 revs and 92 is 5,500 revs. This calculation produces the highest engine power between 5,000 and 5,500 revs, with the optimum power of 186 at exactly 5,000 revs.</p>
+
+						<p>Also, note that the calculation for the range 3 to 82 produces increasing power up to a rev count of 52, at which point revCount * 2 + 152 wraps around to zero again, only reaching a power of 60 by the time the revs reach 82. The moral of the story is that having a rev count of less than 5,000 produces way less power than a rev count of between 5,000 and 5,500.</p>
+
+						<p>If the engine stalls with a rev count of less than 3, then we turn the engine off, zero the torque and jump to the <a href="the_core_driving_model.html#calculation8">next calculation</a> in the driving model.</p>
+
+						<p>Otherwise A now contains the raw power that's being generated by the engine, so the final step in calculating the engine torque is to scale this by the power ratio of the gear, which is defined in the track data file at <a href="/source/silverstone/variable/trackgearpower.html">trackGearPower</a> and which describes how much engine power makes it through to the wheels in any given gear:</p>
+
+<pre class="articleIndented">  engineTorque = trackGearPower * A
+</pre>
+
+						<p>So lower gears create more torque at the same rev count when compared to higher gears.</p>
+
+						<p>Finally, we also set the sound target for the new rev count, so the engine gradually changes its sound to the new level:</p>
+ 
+<pre class="articleIndented">  soundRevTarget = revCount + 25
+</pre>
+
+						<p>And that's how the engine works in Revs.</p>					
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="jumps_and_drops.html">Jumps and drops</a><a class="next" rel="next" title="Next deep dive" href="matching_the_code_to_the_driving_model.html">Matching the code to the driving model</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

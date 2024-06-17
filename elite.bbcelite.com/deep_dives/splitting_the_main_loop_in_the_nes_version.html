@@ -1,0 +1,47 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "splitting_the_main_loop_in_the_nes_version.html", "Splitting the main loop in the NES version", "Splitting the main loop in the NES version", "A deep dive into how the main flight loop is split and shared with the combat demo in NES Elite", "elite", "deep_dives_main_loop", "splitting_the_main_loop_in_the_nes_version");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="scheduling_tasks_with_the_main_loop_counter.html">Scheduling tasks in the main loop</a><a class="next" rel="next" title="Next deep dive" href="the_split-screen_mode.html">Split-screen mode in BBC Micro Elite</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the main flight loop is split and shared with the combat demo</h2>
+
+						<p>Broadly speaking, the NES version of Elite has the same main loop structure as the other 6502 versions, and it uses the same main loop counter to schedule tasks (see the deep dives on <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a> and <a href="scheduling_tasks_with_the_main_loop_counter.html">scheduling tasks with the main loop counter</a> for details). However in the NES version, the main flight loop gets split up into separate subroutines to support the "game-in-game" concept of the playable combat demo, where you get to take on three ships in combat without it affecting your in-game commander:</p>
+
+						<img class="titleImage" src="/images/nes/demo/combat_practice.png" alt="The combat demo in NES Elite">
+
+						<p>The main game loop is essentially the same in all the 6502 versions, with <a href="/nes/bank_0/subroutine/main_game_loop_part_2_of_6.html">part 2 of the main game loop</a> calling the main flight loop using a JSR M% instruction. In the original versions, the 16 parts of the main flight loop then follow on from each other in the codebase, so all 16 parts get run sequentially to simulate the local bubble and draw all the ships. When the flight loop is done, we return to part 2 of the main game loop and around we go again. The main flight loop is long, but it's a simple enough structure.</p>
+
+						<p>In the NES version, calling M% from the main game loop still jumps to part 1 of the main flight loop, and parts 1 to 3 are still consecutive, with part 1 falling into part 2, and part 2 falling into part 3. But things change at the end of part 3, with the code splitting up into a handful of subroutines like this:</p>
+
+						<ul>
+							<li>Parts 4 to 12 of the main flight loop are moved into a separate routine at <a href="/nes/bank_0/subroutine/main_flight_loop_part_4_of_16.html">MAL1</a>. In the original version of Elite, this part of the main flight loop is responsible for looping through each ship slot to process the ships in the bubble, but in NES Elite the new routine at MAL1 processes just one slot (given in X). The bones of this part of the main loop are the same as in the original version, it's just that the logic has been moved to a separate subroutine, and that routine only processes one ship.</li>
+
+							<li>A new routine called <a href="/nes/bank_0/subroutine/flightloop4to16.html">FlightLoop4To16</a> implements the loop that surrounds parts 4 to 12 of the original. This loop works through each ship slot and processes the contents, which we can do in the new structure by simply calling MAL1 for each populated slot. So FlightLoop4To16 effectively replaces parts 4 to 12 in the original, and it also falls through into part 13 to 16 of the main flight loop, so calling FlightLoop4To16 does exactly that - it implements parts 4 to 16 of the original flight loop.</li>
+
+							<li>M% is still the entry point for the main flight loop, and it is still in <a href="/nes/bank_0/subroutine/main_flight_loop_part_2_of_16.html">part 2 of the loop</a>, as before. Calling M% therefore starts the main flight loop, and when we get to the end of <a href="/nes/bank_0/subroutine/main_flight_loop_part_3_of_16.html">part 3</a>, we call FlightLoop4To16 to run parts 4 to 16. After returning from that call we fall into another new routine, <a href="/nes/bank_0/subroutine/drawspaceviewinnmi.html">DrawSpaceViewInNMI</a>, which configures the NMI handler to send the space view that we just drew to the PPU, and when that's done, we return from the main flight loop and back to the main game loop.</li>
+						</ul>
+
+						<p>The point of all this splitting up is that the main flight loop can now be run independently from different parts of the codebase. Specifically, <a href="/nes/bank_0/subroutine/death.html">DEATH</a> and <a href="/nes/bank_0/subroutine/rundemoflightloop.html">RunDemoFlightLoop</a> both call FlightLoop4To16 to simulate their own bubbles, one for showing the detritus of our demise, and the other for spawning the three ships of the combat demo (see the deep dive on <a href="the_nes_combat_demo.html">the NES combat demo</a> for more on the latter). There are some blocks of logic in the main flight loop that behave differently depending on where the loop has been called from - for example, <a href="/nes/bank_0/subroutine/main_flight_loop_part_15_of_16.html#ma93">part 15 of the flight loop</a> checks whether we have killed all three ships in the combat demo and triggers the scroll text if we have - but generally the code in the main loop is identical to the other versions, it's just split out separately.</p>
+
+						<p>In comparison, the demo mode in the 6502 Second Processor version doesn't use the main flight loop, but instead it implements its own loop just for the demo (see the deep dive on <a href="6502sp_demo_mode.html">the 6502 Second Processor demo mode</a> for details). The demo isn't playable, so this approach works fine, but the NES solution is a lot more flexible, even if it comes at the expense of having a nice, clean, sequential flight loop.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="scheduling_tasks_with_the_main_loop_counter.html">Scheduling tasks in the main loop</a><a class="next" rel="next" title="Next deep dive" href="the_split-screen_mode.html">Split-screen mode in BBC Micro Elite</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

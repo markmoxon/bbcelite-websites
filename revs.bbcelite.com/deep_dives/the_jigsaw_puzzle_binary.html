@@ -1,0 +1,450 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_jigsaw_puzzle_binary.html", "The jigsaw puzzle binary", "The jigsaw puzzle binary", "A deep dive into the jigsaw puzzle binary in BBC Micro Revs", "revs", "deep_dives_memory_maps", "the_jigsaw_puzzle_binary");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_revs_memory_map.html">The Revs memory map</a><a class="next" rel="next" title="Next deep dive" href="major_variable_blocks.html">Major variable blocks</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Exploring the mind-bending way that Revs is packed into memory</h2>
+
+						<p>Games on the BBC Micro often contain relocation code, particularly those that load from floppy disc. Most of them have relatively simple relocation code, while others, like Elite, have more sophisticated loaders that really shake things up in the search for every spare byte.</p>
+
+						<p>Revs, however, takes relocation to a whole new level. Not only is the game binary a complicated 13-piece puzzle that unfolds itself into available memory like an elegant piece of origami, but the unpacked game code contains an even more intricate 43-piece puzzle that reassembles itself before each driving session and splits itself back up again afterwards, all while the game is running.</p>
+
+						<p>The way in which the game rearranges itself is completely mind-bending, but let's start with a quick introduction to relocation in general, before moving on to the intriguing jigsaw puzzles that are buried in the Revs binary.</p>
+
+						<h2 class="articleSubheader">Relocation on the BBC Micro<br />
+													 ---------------------------</h2>
+
+						<p>Relocation code typically runs right after the game's binary file has been loaded into memory. The canonical example on the BBC Micro involves moving the game code down the memory map before starting it up, as a way of coping with the memory constraints caused by the BBC's disc filing system (DFS).</p>
+
+						<p>This approach is particularly relevant to disc-based games because in a standard BBC Micro, the DFS steals a whole chunk of memory from the user. This is memory that a lot of games need for themselves, particularly those that use memory-hungry, multi-colour graphics modes. On the unexpanded BBC Micro, the beginning of user memory (which is accessible via the PAGE variable in BBC BASIC) is set at &amp;0E00, but as soon as you add Acorn's DFS, it leaps up to &amp;1900, a difference of 2816 bytes, or 2.75K. The extra memory is used by the DFS as workspace, and it's a hungry beast.</p>
+
+						<p>2.75K is a significant loss when you consider that the 32K of RAM in the standard BBC Micro gets shared between operating system workspaces, the 6502 stack and screen memory, meaning the current program has to squeeze into whatever's left over (screen mode 2, for example, takes up a whopping 20K, leaving very little spare room for user programs). Later BBC machines, like the BBC Master, solve this issue by paging in extra memory for the filing system workspace so they can leave PAGE alone when switching to disc, but this isn't the case on the original BBC Micro, where disc users have to take a considerable memory hit compared to tape users.</p>
+
+						<p>It turns out that it's possible to lower PAGE to &amp;1100 and still use most functions of the DFS, but if a game doesn't need to access the disc drive after it's finished loading, we can do a lot better than that. Specifically, we can load our game binary at &amp;1100 or above, and when it's finished loading, we can issue a *TAPE command to switch off the DFS, and then relocate the game code down to &amp;0E00 (or even down to &amp;0B00, if we don't use things like exploded fonts or function key definitions).</p>
+
+						<p>Some games take this a step further. Elite is famous for using practically every available byte in the BBC Micro, so its relocation code is a bit more sophisticated, not only relocating the game code downwards as far as it can, but also storing data such as ship blueprints and tokenised text in various locations from &amp;0300 upwards. See the deep dive on <a href="https://www.bbcelite.com/deep_dives/the_elite_memory_map.html">the Elite memory map</a> in my Elite project for details.</p>
+
+						<p>Revs relocates its code in a similar manner to Elite, unfolding itself from its loading point at &amp;1200 into lower memory, but while Elite keeps most of its main game code intact as one block that it shuffles down the memory map, Revs takes a rather more convoluted approach. Let's take a look at that now.</p>
+
+						<h2 class="articleSubheader">Unpacking the game binary after loading<br />
+													 ---------------------------------------</h2>
+
+						<p>Revs does have a loader program, called Revs1, that runs after the mode 7 loading screen gets drawn, but it mostly contains copy protection code. The version of Revs analysed on this site has had the protection code disabled, so for our purposes the loader does two very simple things: it *LOADs the track data file (Silvers) at address &amp;70DB, and then *RUNs the main game binary (Revs) at address &amp;1200.</p>
+
+						<p>The entry point for the main game binary is the <a href="/source/main/subroutine/entry.html">Entry</a> routine, at the start of the file (i.e. &amp;1200). The first thing that Entry does is relocate the first 256 bytes of the game binary from &amp;1200-&amp;12FF to &amp;7900-&amp;79FF, and then it jumps to the code in its new location.</p>
+
+						<p>This relocated block contains the <a href="/source/main/subroutine/swapcode.html">SwapCode</a> and <a href="/source/main/subroutine/movecode.html">MoveCode</a> routines. These two routines perform a fairly complicated code relocation process, before jumping into the main game code at <a href="/source/main/subroutine/setupgame.html">SetupGame</a> to start the game proper.</p>
+
+						<p>In all, this is what happens when the game binary loads:</p>
+
+						<ul>
+							<li>The *LOAD Silver command does the following:
+
+								<ul>
+									<li>Load the Silverstone track data file at &amp;70DB-&amp;7813</li>
+								</ul>
+							</li>
+
+							<li>The *RUN Revs command does the following:
+
+								<ul>
+									<li>Load the main binary file at &amp;1200-&amp;6FFF</li>
+
+									<li>Jump to the Entry routine at &amp;1200</li>
+								</ul>
+							</li>
+
+							<li>The Entry routine does the following:
+
+								<ul>
+									<li>Move &amp;1200-&amp;12FF to &amp;7900-&amp;79FF</li>
+
+									<li>Jump to the SwapCode routine that is now at &amp;790E</li>
+								</ul>
+							</li>
+
+							<li>The SwapCode routine does the following:
+
+								<ul>
+									<li>Swap memory between &amp;70DB-&amp;77FF and &amp;5300-&amp;5A24</li>
+
+									<li>Run a checksum on the track data, and hang the machine if the checksums do not match</li>
+
+									<li>Jump to the MoveCode routine</li>
+								</ul>
+							</li>
+
+							<li>The MoveCode routine does the following:
+
+								<ul>
+									<li>Move &amp;1500-&amp;15DA to &amp;7000-&amp;70DA</li>
+
+									<li>Move &amp;1300-&amp;14FF to &amp;0B00-&amp;0CFF</li>
+
+									<li>Move &amp;5A80-&amp;645B to &amp;0D00-&amp;16DB</li>
+
+									<li>Move &amp;64D0-&amp;6BFF to &amp;5FD0-&amp;63FF</li>
+
+									<li>Zero &amp;5A80-&amp;5E3F</li>
+
+									<li>Jump to the Protect routine, which jumps straight to the SetupGame routine (as protection is disabled)</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>To help visualise this process, the following table shows the memory structure of the game binary file and track data file just after they are loaded, but before any relocation code is run (i.e. when the game binary is at &amp;1200 and the track data file is at &amp;70DB).</p>
+
+						<p>I've given each block an ID, so in the next section you can see where they end up once the steps in the "relocation details" column are applied.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>#</th><th>Address</th><th>Relocation details</th></tr>
+							<tr><td>1</td><td>&amp;1200-&amp;12FF</td><td>Moves to &amp;7900-&amp;79FF</td></tr>
+							<tr><td>2</td><td>&amp;1300-&amp;14FF</td><td>Moves to &amp;0B00-&amp;0CFF</td></tr>
+							<tr><td>3</td><td>&amp;1500-&amp;15DA</td><td>Moves to &amp;7000-&amp;70DA</td></tr>
+							<tr><td>4</td><td>&amp;15DB-&amp;16DB</td><td>Contains workspace noise that gets overwritten by MoveCode</td></tr>
+							<tr><td>5</td><td>&amp;16DC-&amp;52FF</td><td>Stays unchanged</td></tr>
+							<tr><td>6</td><td>&amp;5300-&amp;5A24</td><td>Swaps with track data at &amp;70DB-&amp;77FF</td></tr>
+							<tr><td>7</td><td>&amp;5A25-&amp;5A79</td><td>Stays unchanged</td></tr>
+							<tr><td>8</td><td>&amp;5A80-&amp;645B</td><td>Moves to &amp;0D00-&amp;16DB</td></tr>
+							<tr><td>9</td><td>&amp;645C-&amp;64CF</td><td>Contains zeroes that get overwritten by MoveCode</td></tr>
+							<tr><td>10</td><td>&amp;64D0-&amp;6BFF</td><td>Moves to &amp;5FD0-&amp;66FF</td></tr>
+							<tr><td>11</td><td>&amp;6C00-&amp;6FFF</td><td>Stays unchanged</td></tr>
+							<tr><td>12</td><td>&amp;70DB-&amp;77FF</td><td>Swaps with game data at &amp;5300-&amp;5A24</td></tr>
+							<tr><td>13</td><td>&amp;7800-&amp;7813</td><td>Stays unchanged</td></tr>
+						</table>
+
+						<p>After the Entry, SwapCode and MoveCode relocation routines are run, we end up with the following in-memory layout. You can see from the IDs how mixed up the blocks are when compared to the original binary file.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>#</th><th>Address</th><th>Relocation details</th></tr>
+							<tr><td>2</td><td>&amp;0B00-&amp;0CFF</td><td>Moved from &amp;1300-&amp;14FF in the game binary</td></tr>
+							<tr><td>8</td><td>&amp;0D00-&amp;16DB</td><td>Moved from &amp;5A80-&amp;645B in the game binary</td></tr>
+							<tr><td>5</td><td>&amp;16DC-&amp;52FF</td><td>Unchanged</td></tr>
+							<tr><td>12</td><td>&amp;5300-&amp;5A24</td><td>Swapped with &amp;70DB-&amp;7724 in the track binary</td></tr>
+							<tr><td>7</td><td>&amp;5A25-&amp;5FCF</td><td>Unchanged (except &amp;5A80-&amp;5E3F, which is zeroed by MoveCode)</td></tr>
+							<tr><td>10</td><td>&amp;5FD0-&amp;66FF</td><td>Moved from &amp;64D0-&amp;6BFF in the game binary</td></tr>
+							<tr><td>-</td><td>&amp;6700-&amp;6BFF</td><td>Unchanged (contains remnants of the moved block #10, which get ignored)</td></tr>
+							<tr><td>11</td><td>&amp;6C00-&amp;6FFF</td><td>Unchanged</td></tr>
+							<tr><td>3</td><td>&amp;7000-&amp;70DA</td><td>Moved from &amp;1500-&amp;15DA in the game binary</td></tr>
+							<tr><td>6</td><td>&amp;70DB-&amp;77FF</td><td>Swapped with &amp;5300-&amp;5A24 in the game binary</td></tr>
+							<tr><td>13</td><td>&amp;7800-&amp;7813</td><td>Unchanged</td></tr>
+							<tr><td>-</td><td>&amp;7814-&amp;78FF</td><td>Blank</td></tr>
+							<tr><td>1</td><td>&amp;7900-&amp;79FF</td><td>Moved from &amp;1200-&amp;12FF in the game binary</td></tr>
+						</table>
+
+						<p>Blocks #4 and #9 from the original binary file get overwritten during the relocation, and we also end up with a block at &amp;6700-&amp;6BFF that doesn't contain anything useful, just the remnants of block #10, which get ignored (this part of memory eventually gets overwritten by the game screen). This, though, is the memory map that finally lets us start the game, by jumping to the Protect routine at &amp;63BD, and on to the SetupGame routine at &amp;63E0.</p>
+
+						<h2 class="articleSubheader">The dashboard jigsaw<br />
+													 --------------------</h2>
+
+						<p>Complex though it is, this 13-piece binary file jigsaw puzzle is relatively straightforward compared to the relocation code that reorganises the game code on-the-fly while the game is running. This is a really interesting aspect of Revs; most games don't constantly reorganise themselves in this way... but then again, most games aren't this complex.</p>
+
+						<p>Buried within the game code are 43 further puzzle pieces, all individually spread throughout the codebase. Some of these pieces contain fragments of code, while others contain fragments of the dashboard image (and one piece contains fragments of both). I'm going to refer to these fragments as the "dash data", as they contain both dashboard and data.</p>
+
+						<p>Each piece of the dash data puzzle lives inside a block. All except for two of these blocks are spread evenly throughout the codebase, with block #0 starting at &amp;3000 (<a href="/source/main/variable/dashdata0.html">dashData0</a>), then block #1 at &amp;3080 (<a href="/source/main/variable/dashdata1.html">dashData1</a>), block #2 at &amp;3100 (<a href="/source/main/variable/dashdata2.html">dashData2</a>) and so on, with each block appearing every &amp;80 bytes. Each block is 79 (&amp;4F) bytes long, so the first byte in block #0 is at &amp;3000 and the last byte is at &amp;304F, while block #1 runs from &amp;3080 to &amp;30CF, and so on.</p>
+
+						<p>(The last two blocks, #41 and #42, don't follow this pattern - see the next section and the "Blocks #41 and #42" section below for more on this.)</p>
+
+						<p>Within each block is a fragment of data. This data is located at the end of the block, and each block can contain a different amount of data (though the amount of data in each specific block is always the same). For example, block #0 contains 52 bytes of data, and these bytes live at the end of the block, with the first data byte at &amp;301C and the last data byte at &amp;304F. Block #5, on the other hand, contains 77 bytes of data, with the block starting at &amp;3280 and the data running from &amp;3283 to &amp;32CF.</p>
+
+						<p>No blocks are full to capacity; the biggest data blocks are 77 bytes, which leaves three spare bytes (as in the block #5 example we just looked at). The rest of the block can be used for anything; you'll often find text tokens in there, and sometimes even entire subroutines. For example, block #5 contains text token 19 at the start of its block, which takes up the three spare bytes.</p>
+
+						<p>Here's a list of all the dash data blocks in the game code, and their various addresses (we'll talk about the screen address in the next section). The links will take you to the data address in that block, though the source code just reserves the memory at this stage).</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Name</th><th>Type</th><th>Block address</th><th>Data address</th><th>Screen address</th><th># bytes</th></tr>
+							<tr><td><a href="/source/main/variable/dashdata0.html">dashData0</a></td><td>Code</td><td>&amp;3000</td><td>&amp;301C-&amp;304F</td><td>&amp;7FCC-&amp;7FFF</td><td>52</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata1.html">dashData1</a></td><td>Code</td><td>&amp;3080</td><td>&amp;309C-&amp;30CF</td><td>&amp;7F98-&amp;7FCB</td><td>52</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata2.html">dashData2</a></td><td>Code</td><td>&amp;3100</td><td>&amp;311C-&amp;314F</td><td>&amp;7F64-&amp;7F97</td><td>52</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata3.html">dashData3</a></td><td>Code</td><td>&amp;3180</td><td>&amp;3196-&amp;31CF</td><td>&amp;7F2A-&amp;7F63</td><td>58</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata4.html">dashData4</a></td><td>Code</td><td>&amp;3200</td><td>&amp;3204-&amp;324F</td><td>&amp;7EDE-&amp;7F29</td><td>76</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata5.html">dashData5</a></td><td>Code</td><td>&amp;3280</td><td>&amp;3283-&amp;32CF</td><td>&amp;7E91-&amp;7EDD</td><td>77</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata6.html">dashData6</a></td><td>Code</td><td>&amp;3300</td><td>&amp;3303-&amp;334F</td><td>&amp;7E44-&amp;7E90</td><td>77</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata7.html">dashData7</a></td><td>Code</td><td>&amp;3380</td><td>&amp;3387-&amp;33CF</td><td>&amp;7DFB-&amp;7E43</td><td>73</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata8.html">dashData8</a></td><td>Code</td><td>&amp;3400</td><td>&amp;340C-&amp;344F</td><td>&amp;7DB7-&amp;7DFA</td><td>68</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata9.html">dashData9</a></td><td>Code</td><td>&amp;3480</td><td>&amp;3490-&amp;34CF</td><td>&amp;7D77-&amp;7DB6</td><td>64</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata10.html">dashData10</a></td><td>Code</td><td>&amp;3500</td><td>&amp;3514-&amp;354F</td><td>&amp;7D3B-&amp;7D76</td><td>60</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata11.html">dashData11</a></td><td>Code</td><td>&amp;3580</td><td>&amp;3598-&amp;35CF</td><td>&amp;7D03-&amp;7D3A</td><td>56</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata12.html">dashData12</a></td><td>Code</td><td>&amp;3600</td><td>&amp;361C-&amp;364F</td><td>&amp;7CCF-&amp;7D02</td><td>52</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata13.html">dashData13</a></td><td>Code</td><td>&amp;3680</td><td>&amp;36A7-&amp;36CF</td><td>&amp;7CA6-&amp;7CCE</td><td>41</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata14.html">dashData14</a></td><td>Code</td><td>&amp;3700</td><td>&amp;372C-&amp;374F</td><td>&amp;7C82-&amp;7CA5</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata15.html">dashData15</a></td><td>Code</td><td>&amp;3780</td><td>&amp;37AC-&amp;37CF</td><td>&amp;7C5E-&amp;7C81</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata16.html">dashData16</a></td><td>Code</td><td>&amp;3800</td><td>&amp;382C-&amp;384F</td><td>&amp;7C3A-&amp;7C5D</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata17.html">dashData17</a></td><td>Code</td><td>&amp;3880</td><td>&amp;38AC-&amp;38CF</td><td>&amp;7C16-&amp;7C39</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata18.html">dashData18</a></td><td>Code</td><td>&amp;3900</td><td>&amp;392C-&amp;394F</td><td>&amp;7BF2-&amp;7C15</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata19.html">dashData19</a></td><td>Code</td><td>&amp;3980</td><td>&amp;39AC-&amp;39CF</td><td>&amp;7BCE-&amp;7BF1</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata20.html">dashData20</a></td><td>Code</td><td>&amp;3A00</td><td>&amp;3A2C-&amp;3A4F</td><td>&amp;7BAA-&amp;7BCD</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata21.html">dashData21</a></td><td>Code</td><td>&amp;3A80</td><td>&amp;3AAC-&amp;3ACF</td><td>&amp;7B86-&amp;7BA9</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata22.html">dashData22</a></td><td>Code</td><td>&amp;3B00</td><td>&amp;3B2C-&amp;3B4F</td><td>&amp;7B62-&amp;7B85</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata23.html">dashData23</a></td><td>Code</td><td>&amp;3B80</td><td>&amp;3BAC-&amp;3BCF</td><td>&amp;7B3E-&amp;7B61</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata24.html">dashData24</a></td><td>Code</td><td>&amp;3C00</td><td>&amp;3C2C-&amp;3C4F</td><td>&amp;7B1A-&amp;7B3D</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata25.html">dashData25</a></td><td>Both</td><td>&amp;3C80</td><td>&amp;3CAC-&amp;3CCF</td><td>&amp;7AF6-&amp;7B19</td><td>36</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata26.html">dashData26</a></td><td>Image</td><td>&amp;3D00</td><td>&amp;3D27-&amp;3D4F</td><td>&amp;7ACD-&amp;7AF5</td><td>41</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata27.html">dashData27</a></td><td>Image</td><td>&amp;3D80</td><td>&amp;3D9C-&amp;3DCF</td><td>&amp;7A99-&amp;7ACC</td><td>52</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata28.html">dashData28</a></td><td>Image</td><td>&amp;3E00</td><td>&amp;3E18-&amp;3E4F</td><td>&amp;7A61-&amp;7A98</td><td>56</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata29.html">dashData29</a></td><td>Image</td><td>&amp;3E80</td><td>&amp;3E94-&amp;3ECF</td><td>&amp;7A25-&amp;7A60</td><td>60</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata30.html">dashData30</a></td><td>Image</td><td>&amp;3F00</td><td>&amp;3F10-&amp;3F4F</td><td>&amp;79E5-&amp;7A24</td><td>64</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata31.html">dashData31</a></td><td>Image</td><td>&amp;3F80</td><td>&amp;3F8C-&amp;3FCF</td><td>&amp;79A1-&amp;79E4</td><td>68</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata32.html">dashData32</a></td><td>Image</td><td>&amp;4000</td><td>&amp;4007-&amp;404F</td><td>&amp;7958-&amp;79A0</td><td>73</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata33.html">dashData33</a></td><td>Image</td><td>&amp;4080</td><td>&amp;4083-&amp;40CF</td><td>&amp;790B-&amp;7957</td><td>77</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata34.html">dashData34</a></td><td>Image</td><td>&amp;4100</td><td>&amp;4103-&amp;414F</td><td>&amp;78BE-&amp;790A</td><td>77</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata35.html">dashData35</a></td><td>Image</td><td>&amp;4180</td><td>&amp;4184-&amp;41CF</td><td>&amp;7872-&amp;78BD</td><td>76</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata36.html">dashData36</a></td><td>Image</td><td>&amp;4200</td><td>&amp;4216-&amp;424F</td><td>&amp;7838-&amp;7871</td><td>58</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata37.html">dashData37</a></td><td>Image</td><td>&amp;4280</td><td>&amp;429C-&amp;42CF</td><td>&amp;7804-&amp;7837</td><td>52</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata38.html">dashData38</a></td><td>Image</td><td>&amp;4300</td><td>&amp;431C-&amp;434F</td><td>&amp;77D0-&amp;7803</td><td>52</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata39.html">dashData39</a></td><td>Image</td><td>&amp;4380</td><td>&amp;439C-&amp;43CF</td><td>&amp;779C-&amp;77CF</td><td>52</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata40.html">dashData40</a></td><td>Image</td><td>&amp;4400</td><td>&amp;441C-&amp;444F</td><td>&amp;7768-&amp;779B</td><td>52</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata41.html">dashData41</a></td><td>Image</td><td>-</td><td>&amp;594A-&amp;598C</td><td>&amp;7725-&amp;7767</td><td>67</td></tr>
+							<tr><td><a href="/source/main/variable/dashdata42.html">dashData42</a></td><td>Image</td><td>-</td><td>&amp;6C00-&amp;7724</td><td>&amp;6C00-&amp;7724</td><td>2853</td></tr>
+						</table>
+
+						<p>So to summarise, we have a jigsaw of 43 pieces, with 41 of those pieces scattered around the game code in regularly spaced blocks, and each of them stored as data at the end of each block. Some blocks contain fragments of the dashboard image, while others contain code.</p>
+
+						<p>But what's it all for? To answer that, we need to look at how the dashboard jigsaw fits back together.</p>
+
+						<h2 class="articleSubheader">Reassembling the dashboard jigsaw<br />
+													 ---------------------------------</h2>
+
+						<p>Revs starts up in mode 7, which is a very frugal screen mode, taking up just 1K of screen memory from &amp;7C00 to &amp;7FFF. It's perfect for all the menus and driver tables, as it displays beautifully clear text using minimal resources.</p>
+
+						<p>Mode 7, though, is clearly unsuitable for a sophisticated driving simulator, so once we have chosen our options and entered our wing settings, the game switches screen mode to a custom graphics mode, which is explained in the deep dive on <a href="hidden_secrets_of_the_custom_screen_mode.html">hidden secrets of the custom screen mode</a>. For the purposes of this article, screen memory changes from the &amp;7C00-&amp;7FFF of mode 7, to the &amp;5A80-&amp;7AFF memory range of the custom screen mode.</p>
+
+						<p>You will notice that the memory range for the custom screen mode overlaps quite a large chunk of the memory map that we got after relocating the game binary with MoveCode. This is no coincidence; block #11 in the game binary, for example, loads at address &amp;6C00 and stays there throughout the binary file relocation process that we discussed above. This block contains the bitmap for the top three-quarters of the dashboard, so when we switch to the custom screen mode, most of the dashboard is already there.</p>
+
+						<p>Similarly, part of block #6 in the game binary contains another fragment of the dashboard, so when this is swapped with the track data in SwapData, a little bit more of the dashboard is put in the right place. These two fragments are shown above as dash data blocks #41 and #42, which is why they don't fit into our regular dash data block system above - they have already been moved into screen memory by the end of the loading process.</p>
+
+						<p>The rest of the dashboard image, and a whole chunk of code, is split into the other 41 dash data blocks shown above. Just before the game switches from mode 7 to the custom screen mode, Revs calls the <a href="/source/main/subroutine/copydashdata.html">CopyDashData</a> routine. This copies these pieces of our jigsaw puzzle into screen memory, which has the effect of displaying the rest of the dashboard on-screen, as well as poking a whole bunch of assembled machine code into memory beyond the end of screen memory, at &amp;7B00-&amp;7FFF.</p>
+
+						<p>The table in the previous section shows the destination address in screen memory for each fragment of dash data, and if you look closely, you can see there's an added twist to this mind-bending puzzle. Dash data blocks are inserted into screen memory in reverse order, so the first block that's inserted into the dashboard is block #40, then block #39, then block #38 and so on, until the end of the dashboard image is poked into screen memory as part of block #25. This block also contains a fragment of code at &amp;7B00 which is continued in block #24, then block #23, then block #22 and so on, until we poke block #0 into the end of user memory to reach &amp;7FFF.</p>
+
+						<p>The point of all this reassembly is two-fold. First, moving all the dash data out of the main game code leaves lots of empty memory blocks that can then be used during the driving phase. They end up storing a screen buffer for the track view, which gets drawn into screen memory and fitted around the dashboard and wing mirrors - see the deep dive on <a href="drawing_around_the_dashboard.html">drawing around the dashboard</a> for more details.</p>
+
+						<p>Second, the jigsaw approach enables us to switch screen modes without worrying about screen memory overwriting anything, as before we switch modes, we can pack up the dashboard and screen memory code and safely stow it back in the body of the main game code, and only then switch to a screen mode that can reuse the memory that previously contained part of the dashboard and our relocated code.</p>
+
+						<p>This reassembly process and its reverse are implemented by the CopyDashData routine, so let's take a look at how this routine works in more detail.</p>
+
+						<h2 class="articleSubheader">The CopyDashData routine<br />
+													 ------------------------</h2>
+
+						<p>The CopyDashData routine uses a whole bunch of tables and variables to implement the complicated moving and reassembly process above. Not only that, but it also supports moving the content in the opposite direction, from screen memory back into the main game code. We need to do the latter when we want to switch back to mode 7 after the race is finished, otherwise mode 7's screen memory will overwrite parts of the dash data.</p>
+
+						<p>Specifically, the CopyDashData routine copies data from the main game code into screen memory if bit 7 of A is clear. If, on the other hand, bit 7 of A is set, then the routine copies the data back from screen memory into the main game code, splitting the data up into each of the dash data blocks as it goes.</p>
+
+						<p>Data is copied in the blocks we defined above. There are 41 of them, numbered from 0 to 40, and they are copied in numerical order, starting with block #0. Each block's data is labelled with <a href="/source/main/variable/dashdata0.html">dashData0</a> through <a href="/source/main/variable/dashdata40.html">dashData40</a>. Note that these labels point to the start of the data within each block, rather than the location of the block itself.</p>
+
+						<p>The first block starts at address &amp;3000. The variable dashData is set to this address.</p>
+
+						<p>A new block starts every &amp;80 bytes, i.e. &amp;3000, &amp;3080, &amp;4000 and so on. The starting address for block I% is therefore dashData + &amp;80 * I%.</p>
+
+						<p>As mentioned above, each block contains up to 79 (&amp;4F) bytes of data. The data ends at offset &amp;4F from the start of the block, and each block can contain any amount of data up to 79 bytes. So for block #0 at &amp;3000, the last byte of data is at &amp;304F. In this particular block there are 52 bytes of data, so the first byte of data is at address &amp;3050 - 52 = &amp;301C. This is therefore the address of the dashData0 label.</p>
+
+						<p>If you look at dashData0 in the source, you will see a SKIP 52 directive. This is because the dash data that lives at dashData0 is actually code that is assembled elsewhere, so it is moved into dashData0 after the code has been assembled, at the end of the BeebAsm source. We talk about this moving process below, but for now note that the 52 in the SKIP directive is the length of the data in that block.</p>
+
+						<p>The offset of the start of the data within each block is stored in the <a href="/source/main/variable/dashdataoffset.html">dashDataOffset</a> table. This actually contains the offset of the last byte before the data starts, so the dashDataOffset entry for block #0 is &amp;1B, as the data starts at &amp;301C.</p>
+
+						<p>A typical block is therefore laid out like this, where I% is the block number:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Location</th><th>Details</th></tr>
+							<tr><td>dashData + &amp;80 * I%</td><td>Start of block I%</td></tr>
+							<tr><td>dashDataOffset,I%</td><td>Offset of the data within the block</td></tr>
+							<tr><td>dashData + &amp;80 * I% + 80</td><td>End of block I%</td></tr>
+						</table>
+
+						<p>The <a href="/source/main/variable/dashdataaddress.html">dashDataAddress</a> table contains two addresses, both for block #0. The first address points to block #0's location in main memory, and the second address points to block #0's location in screen memory. The table therefore contains:</p>
+
+						<ul>
+							<li>dashData, i.e. &amp;3000, which is the address of block #0 in the main code</li>
+
+							<li>&amp;8000 - 80, i.e. &amp;7FB0, which is the address that the start of block #0 maps to in screen memory</li>
+						</ul>
+
+						<p>CopyDashData starts by copying block #0 from the first address to the second (assuming we are copying into screen memory -  if not, we copy in the reverse direction). In this example, the entry in dashDataOffset+0 shows that block #0 contains 52 bytes of data, and the copy process only copies the data rather than the entire block, so this means that the data in block #0 gets copied from &amp;301C-&amp;304F into screen memory at &amp;7FCC-&amp;7FFF, and the data from block #1 will therefore end up in screen memory just before this, i.e. with its last byte at &amp;7FCB.</p>
+
+						<p>CopyDashData repeats this process for all 41 blocks, and that's how the dash data jigsaw gets assembled before each driving session, and split apart after the session ends.</p>
+
+						<h2 class="articleSubheader">Blocks #41 and #42<br />
+													 ------------------</h2>
+
+						<p>For completeness, let's take a quick look at the image data in blocks #41 and #42, starting with block #42 at label <a href="/source/main/variable/dashdata42.html">dashData42</a>. This is sliced up and spread throughout the game binary as part of the loader relocation, so by the time the MoveCode routine has finished running, the dashData42 block is in one piece and is already in the correct place in screen memory. Specifically, MoveCode moves the following parts of the dashboard42 image:</p>
+
+						<ul>
+							<li>&amp;6C00-&amp;6FFF stays where it is (the very top of the dashboard)</li>
+
+							<li>&amp;7000-&amp;70DA comes from &amp;1500-&amp;15DA in the binary file (the top section of the steering wheel)</li>
+
+							<li>&amp;70DB-&amp;7724 comes from &amp;5300-&amp;5949 in the binary file (the middle section of the dashboard)</li>
+						</ul>
+
+						<p>The next part, <a href="/source/main/variable/dashdata41.html">dashData41</a>, is at &amp;594A-&amp;598C in the binary file, and is swapped into screen memory at &amp;7725-&amp;7767 when the track data file is swapped into the main body of the game by the SwapCode routine.</p>
+
+						<p>The rest of the dashboard pieces, from <a href="/source/main/variable/dashdata40.html">dashData40</a> to <a href="/source/main/variable/dashdata0.html">dashData0</a>, are swapped in and out of screen memory by the CopyDashData routine, as described above.</p>
+
+						<h2 class="articleSubheader">Building a packed binary in BeebAsm<br />
+													 -----------------------------------</h2>
+
+						<p>We've now covered the two jigsaw processes - the binary file jigsaw and the dashboard jigsaw - and it's clearly a pretty complex setup. Let's finish off by looking at how we can persuade BeebAsm to assemble this crazy mixed-up codebase and spit out a game binary that matches the released game.</p>
+
+						<p>Not surprisingly, there are quite a few stages we need to work through when creating the final Revs game binary in BeebAsm.</p>
+
+						<p>The first stage is to set up the memory map for when we are playing the game, and specifically for when we are driving around the track - in other words, the memory map after we call CopyDashData to copy the dash data into screen memory. This stage has two steps, both of which are pretty standard assembly tasks:</p>
+
+						<ul>
+							<li>Assemble all the game code at the addresses where that code runs.</p>
+
+							<li>Load the dashboard image into screen memory with an INCBIN command.</li>
+						</ul>
+
+						<p>At this point we have the memory map for when we are playing the game and driving around the track. However, the game starts in mode 7 rather than on the track, so the second stage is to pack the game into its mode 7 configuration. If the game were running, then this could be done by calling the CopyDashData routine with bit 7 of A set, but for the build process, we have to replicate this in BeebAsm, as follows:</p>
+
+						<ul>
+							<li>First, we split the dashboard image into 18 pieces and insert those pieces into the game code at 18 different addresses, in reverse order.</li>
+
+							<li>Then we take the code that runs in screen memory, split it into 26 pieces, and insert those pieces into the game code at 26 different addresses, in reverse order.</li>
+						</ul>
+
+						<p>This gives us the memory map as it is when the game first starts. i.e. just after the game binary has been unpacked.</p>
+
+						<p>The third and final stage is to take this memory map of the unpacked game, and package it up into a game binary that we can load from tape or disc. This unpacking is done by the Entry, MoveCode, SwapCode routines in the game, so our BeebAsm process therefore has to do the reverse of this, by packing the code into the game binary file. These are the steps we take:</p>
+
+						<ul>
+							<li>Take the completed game code, which is still in memory in the order in which it runs, and split it up and pack it back together in the order in which it appears in the game binary.</li>
+
+							<li>In order to produce a game binary that exactly matches the original game file, we also need to zero one block of memory, and populate another with meaningless noise that is a consequence of the way the original game was built on a BBC Micro. We can omit this stage if we don't care about creating an exact duplicate of the released game binary, but we've come this far, so it's worth doing.</li>
+						</ul>
+
+						<p>This three-stage process takes us from assembly code in BeebAsm to a final Revs binary file that matches the released game byte-for-byte. The first stage is standard assembly, but let's look at the second and third stages in more detail, starting with the reverse CopyDashData step.</p>
+
+						<h2 class="articleSubheader">Implementing CopyDashData in BeebAsm<br />
+						------------------------------------</h2>
+
+						<p>First, we need to load the dashboard image and split it up into 18 pieces, which fit into <a href="/source/main/variable/dashdata25.html">dashData25</a> through <a href="/source/main/variable/dashdata42.html">dashData42</a>.</p>
+
+						<p>To enable us to do this cleanly, we load the image binary outside of the code we've already assembled - I've chosen to load it at &amp;9000, but any address outside of the assembled code would do.</p>
+
+						<p>Once loaded into memory, we simply copy the data into the relevant dashData blocks using BeebAsm's COPYBLOCK command, which has the following syntax:</p>
+
+<pre class="articleIndented">  COPYBLOCK start_addr, end_addr, destination_addr
+</pre>
+
+						<p>Note that dashData25 contains both dashboard image (10 bytes at the start of the data) and assembled code (26 bytes at the end of the data), hence the +10 in the following.</p>
+
+<pre class="articleIndented">  ORG &amp;9000
+  
+  INCBIN "1-source-files/images/dashboard.bin"
+  
+  COPYBLOCK &amp;9EF6, &amp;9EF6+10, dashData25
+  COPYBLOCK &amp;9ECD, &amp;9EF6, dashData26
+  COPYBLOCK &amp;9E99, &amp;9ECD, dashData27
+  COPYBLOCK &amp;9E61, &amp;9E99, dashData28
+  COPYBLOCK &amp;9E25, &amp;9E61, dashData29
+  COPYBLOCK &amp;9DE5, &amp;9E25, dashData30
+  COPYBLOCK &amp;9DA1, &amp;9DE5, dashData31
+  COPYBLOCK &amp;9D58, &amp;9DA1, dashData32
+  COPYBLOCK &amp;9D0B, &amp;9D58, dashData33
+  COPYBLOCK &amp;9CBE, &amp;9D0B, dashData34
+  COPYBLOCK &amp;9C72, &amp;9CBE, dashData35
+  COPYBLOCK &amp;9C38, &amp;9C72, dashData36
+  COPYBLOCK &amp;9C04, &amp;9C38, dashData37
+  COPYBLOCK &amp;9BD0, &amp;9C04, dashData38
+  COPYBLOCK &amp;9B9C, &amp;9BD0, dashData39
+  COPYBLOCK &amp;9B68, &amp;9B9C, dashData40
+  COPYBLOCK &amp;9B25, &amp;9B68, dashData41
+  COPYBLOCK &amp;9000, &amp;9B25, dashData42
+</pre>
+
+						<p>Next, we need to move the code that runs within screen memory. We first assemble the code where it runs, in screen memory from &amp;7B00 to &amp;7FFF, and then we use COPYBLOCK to split it up into 26 pieces, which fit into dashData0 through dashData25.</p>
+
+						<p>As noted above, dashData25 contains 10 bytes of dashboard image plus 26 bytes assembled code, hence the +10 in the following.</p>
+
+<pre class="articleIndented">  COPYBLOCK &amp;7FCC, &amp;8000, dashData0
+  COPYBLOCK &amp;7F98, &amp;7FCC, dashData1
+  COPYBLOCK &amp;7F64, &amp;7F98, dashData2
+  COPYBLOCK &amp;7F2A, &amp;7F64, dashData3
+  COPYBLOCK &amp;7EDE, &amp;7F2A, dashData4
+  COPYBLOCK &amp;7E91, &amp;7EDE, dashData5
+  COPYBLOCK &amp;7E44, &amp;7E91, dashData6
+  COPYBLOCK &amp;7DFB, &amp;7E44, dashData7
+  COPYBLOCK &amp;7DB7, &amp;7DFB, dashData8
+  COPYBLOCK &amp;7D77, &amp;7DB7, dashData9
+  COPYBLOCK &amp;7D3B, &amp;7D77, dashData10
+  COPYBLOCK &amp;7D03, &amp;7D3B, dashData11
+  COPYBLOCK &amp;7CCF, &amp;7D03, dashData12
+  COPYBLOCK &amp;7CA6, &amp;7CCF, dashData13
+  COPYBLOCK &amp;7C82, &amp;7CA6, dashData14
+  COPYBLOCK &amp;7C5E, &amp;7C82, dashData15
+  COPYBLOCK &amp;7C3A, &amp;7C5E, dashData16
+  COPYBLOCK &amp;7C16, &amp;7C3A, dashData17
+  COPYBLOCK &amp;7BF2, &amp;7C16, dashData18
+  COPYBLOCK &amp;7BCE, &amp;7BF2, dashData19
+  COPYBLOCK &amp;7BAA, &amp;7BCE, dashData20
+  COPYBLOCK &amp;7B86, &amp;7BAA, dashData21
+  COPYBLOCK &amp;7B62, &amp;7B86, dashData22
+  COPYBLOCK &amp;7B3E, &amp;7B62, dashData23
+  COPYBLOCK &amp;7B1A, &amp;7B3E, dashData24
+  COPYBLOCK &amp;7AF6+10, &amp;7B1A, dashData25+10
+</pre>
+
+						<p>So BeebAsm has now split up the dashboard image and the code that runs in screen memory - i.e. all the dash data from block #0 to block #42 - and has copied each of the 43 parts into the correct place in memory. By this point, then, the memory map is at the correct state for when the game starts... so now we just need to persuade BeebAsm to split this up into the 13 parts that make up the binary file.</p>
+
+						<h2 class="articleSubheader">Implementing MoveCode and SwapCode in BeebAsm<br />
+						---------------------------------------------</h2>
+
+						<p>We now move all the game code from where it runs (i.e. where it's been assembled by the above source code) to its position in the game binary file. The following commands therefore move blocks of code from their addresses when the game is running, to their addresses within the binary game file.</p>
+
+						<p>First, we have to replicate the block move in the Entry routine, which moves code from &amp;1200-&amp;12FF to &amp;7900-&amp;79FF and runs it there. We can this by assembling the block at &amp;7900, but we need to assemble the code-moving part of the Entry routine at address &amp;1200 (where it runs), and then move it to &amp;7900 with the following:</p>
+
+<pre class="articleIndented">  COPYBLOCK &amp;1200, &amp;120E, &amp;7900
+  CLEAR &amp;1200, &amp;120E
+</pre>
+
+						<p>The CLEAR allows us to assemble the main game code at &amp;1200 later on in the source file, without getting an overlap error.</p>
+
+						<p>Next, we implement the reverse of the SwapCode and MoveCode routines; they unpack the code from the game binary into memory, while the following does the opposite and packs the code from memory into the game binary. This is how it's done:</p>
+
+<pre class="articleIndented">  COPYBLOCK &amp;5FD0, &amp;6700, &amp;64D0   \ Copy &amp;5FD0-&amp;66FF to &amp;64D0-&amp;6BFF
+  COPYBLOCK &amp;0D00, &amp;16DC, &amp;5A80   \ Copy &amp;0D00-&amp;16DB to &amp;5A80-&amp;645B
+  COPYBLOCK &amp;7000, &amp;70DB, &amp;1500   \ Copy &amp;7000-&amp;70DA to &amp;1500-&amp;15DA
+  COPYBLOCK &amp;70DB, &amp;7725, &amp;5300   \ Copy &amp;70DB-&amp;7724 to &amp;5300-&amp;5949
+  COPYBLOCK &amp;0B00, &amp;0D00, &amp;1300   \ Copy &amp;0B00-&amp;0CFF to &amp;1300-&amp;14FF
+  COPYBLOCK &amp;7900, &amp;7A00, &amp;1200   \ Copy &amp;7900-&amp;79FF to &amp;1200-&amp;12FF
+  CLEAR &amp;645C, &amp;64D0              \ Reset &amp;645C-&amp;64CF to zero
+</pre>
+
+						<p>The second COPYBLOCK moves code out of &amp;0D00-&amp;16DB, and this vacated block then gets filled by further COPYBLOCK commands that copy code into &amp;1200-&amp;12FF, &amp;1300-&amp;14FF and &amp;1500-&amp;15DA. We are going to save the binary file from address &amp;1200 onwards, as that's where the game binary loads, so we can ignore anything before &amp;1200, but this still leaves a gap at &amp;15DB-&amp;16DB which has had code assembled into it, but that code has been moved elsewhere as part of the binary file packing process.</p>
+
+						<p>In the original game binary this block contains background noise from the original compilation process on the BBC Micro on which the game was assembled. This doesn't have any effect on the game, but if we want to assemble a file that matches the original game binary, we need to put this noise back. We can do that with a block of EQUB directives, as follows:</p>
+
+<pre class="articleIndented">  ORG &amp;15DB
+
+  CLEAR &amp;15DB, &amp;16DC
+
+  EQUB &amp;20, &amp;00, &amp;63, &amp;60, &A6, &amp;03, &amp;10, &amp;03, &amp;20, &amp;CB, &amp;2A, &amp;20
+  EQUB ...
+</pre>
+
+						<p>We can now create the final game binary by saving the block of memory between &amp;1200 and &amp;6FFF... and we're done.</p>
+
+						<p>Phew!</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_revs_memory_map.html">The Revs memory map</a><a class="next" rel="next" title="Next deep dive" href="major_variable_blocks.html">Major variable blocks</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,245 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "program_flow_of_the_main_game_loop.html", "Program flow of the main game loop", "Program flow of the main game loop", "A deep dive into the program flow of the main game loop in BBC Micro Elite", "elite", "deep_dives_main_loop", "program_flow_of_the_main_game_loop");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_memory_map_nes.html">NES Elite memory map</a><a class="next" rel="next" title="Next deep dive" href="scheduling_tasks_with_the_main_loop_counter.html">Scheduling tasks with the main loop counter</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The sequence of events in the main game loop and the main flight loop</h2>
+
+						<p>Here is a high-level look at the main program flow, from the title screen to the end of life as we know it, via the main game loop and the main flight loop. The following is mainly about the flight aspects of the game, as the docked screens don't really have much of a flow, they just get shown when the relevant keys are pressed.</p>
+
+						<p>Each section is broken down into parts that mirror the structure of the source code, so it should be easy enough to find the relevant parts mentioned below.</p>
+
+						<h2 class="articleSubheader">Title sequence<br />
+													 --------------</h2>
+
+						<p>The main title sequence, with its iconic rotating ships, is shown when the game starts, or restarts following a "GAME OVER" message.</p>
+
+						<p><a href="/cassette/main/subroutine/tt170.html">1/2: TT170</a></p>
+
+						<ul>
+							<li>Show "load commander?" title screen (TITLE)</li>
+							<li>Process loading of commander file, if selected</li>
+							<li>Copy last saved commander NA% to current commander TP</li>
+							<li>Show "press fire or space" title screen (TITLE)</li>
+							<li>Set target system to home system</li>
+							<li>Process arrival in system closest to target</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/bay.html">2/2: BAY</a></p>
+
+						<ul>
+							<li>Set the docked flag</li>
+							<li>Jump to the docked section of the main game loop (FRCE, see below) with f8 "pressed" to show Status Mode</li>
+						</ul>
+
+
+						<h2 class="articleSubheader">Main game loop<br />
+													 --------------</h2>
+
+						<p>The main game loop starts when we begin a new game. When docked, only parts 5 and 6 form the game loop, but the whole loop from parts 2 to 6 is run when we are in space (part 1 is a subroutine that's called from part 2).</p>
+
+						<p><a href="/cassette/main/subroutine/main_game_loop_part_1_of_6.html">1/6: Main game loop (Part 1 of 6)</a></p>
+
+						<ul>
+							<li>Potentially called from part 2</li>
+							<li>Spawn a trader</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_game_loop_part_2_of_6.html">2/6: Main game loop (Part 2 of 6)</a></p>
+
+						<ul>
+							<li>Call the main flight loop (see below)</li>
+							<li>Clear any expired in-flight messages from the screen</li>
+							<li>On 255 out of 256 iterations, skip straight to MLOOP in part 5</li>
+							<li>Potentially spawn a trader by jumping up to part 1</li>
+							<li>Potentially spawn a cargo canister or an asteroid</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_game_loop_part_3_of_6.html">3/6: Main game loop (Part 3 of 6)</a></p>
+
+						<ul>
+							<li>Potentially spawn a cop, with a higher chance if we've been bad</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_game_loop_part_4_of_6.html">4/6: Main game loop (Part 4 of 6)</a></p>
+
+						<ul>
+							<li>Potentially spawn a lone bounty hunter, a Thargoid, or a group of 1-4 pirates</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_game_loop_part_5_of_6.html">5/6: Main game loop (Part 5 of 6)</a></p>
+
+						<ul>
+							<li>Main entry point for main game loop at MLOOP</li>
+							<li>Cool down the lasers</li>
+							<li>Update the dashboard (DIALS)</li>
+							<li>If this is not a space view, scan for cursor keys</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_game_loop_part_6_of_6.html">6/6: Main game loop (Part 6 of 6)</a></p>
+
+						<ul>
+							<li>Entry point for displaying a specific screen at FRCE</li>
+							<li>Process function keys and other non-flight keys (TT102)</li>
+							<li>If docked, loop back to part 5 (MLOOP)</li>
+							<li>If in-flight, loop back to part 2</li>
+						</ul>
+
+
+						<h2 class="articleSubheader">Main flight loop<br />
+													 ----------------</h2>
+
+						<p>The main flight loop is called from the main game loop, but only if we are in space. It deals with all the flight aspects of the game, calling the various moving and tactics routines as required.</p>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_1_of_16.html">1/16: Main flight loop (Part 1 of 16)</a></p>
+
+						<ul>
+							<li>Main entry point for main flight loop at M%</li>
+							<li>Seed the random number generator</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_2_of_16.html">2/16: Main flight loop (Part 2 of 16)</a></p>
+
+						<ul>
+							<li>Calculate the alpha and beta angles from the current pitch and roll</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_3_of_16.html">3/16: Main flight loop (Part 3 of 16)</a></p>
+
+						<ul>
+							<li>Scan for flight keys and process the results</li>
+						</ul>
+
+						<p>Now start looping through all the ships in the local bubble, and for each one, do parts 4-12:</p>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_4_of_16.html">4/16: Main flight loop (Part 4 of 16)</a></p>
+
+						<ul>
+							<li>Copy the ship's data block from K% to INWK</li>
+
+							<li>Set XX0 to point to the ship's blueprint (if this is a ship)</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_5_of_16.html">5/16: Main flight loop (Part 5 of 16)</a></p>
+
+						<ul>
+							<li>If an energy bomb has been set off and this ship can be killed, kill it and increase the kill tally</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_6_of_16.html">6/16: Main flight loop (Part 6 of 16)</a></p>
+
+						<ul>
+							<li>Move the ship in space by calling the MVEIT routine (see the deep dive on <a href="program_flow_of_the_ship-moving_routine.html">program flow of the ship-moving routine</a> for details). MVEIT also calls the main tactics routine at TACTICS to implement ship AI (see the deep dive on <a href="program_flow_of_the_tactics_routine.html">program flow of the tactics routine</a> for more)</li>
+
+							<li>Copy the updated ship's data block from INWK back to K%</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_7_of_16.html">7/16: Main flight loop (Part 7 of 16)</a></p>
+
+						<ul>
+							<li>Check how close we are to this ship and work out if we are docking, scooping or colliding with it</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_8_of_16.html">8/16: Main flight loop (Part 8 of 16)</a></p>
+
+						<ul>
+							<li>Process us potentially scooping this item</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_9_of_16.html">9/16: Main flight loop (Part 9 of 16)</a></p>
+
+						<ul>
+							<li>Entry point for docking checks at ISDK</li>
+							<li>Process docking with space station, which can take us to the main loop via BAY (if we dock successfully) or DEATH (if we don't)</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_10_of_16.html">10/16: Main flight loop (Part 10 of 16)</a></p>
+
+						<ul>
+							<li>Remove scooped item after both successful and failed scooping attempts</li>
+							<li>Process collisions, which can lead to DEATH</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_11_of_16.html">11/16: Main flight loop (Part 11 of 16)</a></p>
+
+						<ul>
+							<li>If this isn't the front space view, flip the ship coordinates' axes (PLUT)</li>
+							<li>Process missile lock</li>
+							<li>Process our laser firing</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_12_of_16.html">12/16: Main flight loop (Part 12 of 16)</a></p>
+
+						<ul>
+							<li>Draw the ship (LL9)</li>
+							<li>Process the removal of killed ships</li>
+						</ul>
+
+						<p>Loop back up to part 4 to do the next ship in the local bubble until we have processed them all</p>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_13_of_16.html">13/16: Main flight loop (Part 13 of 16)</a></p>
+
+						<ul>
+							<li>Show energy bomb effect (if applicable)</li>
+							<li>Charge shields and energy banks</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_14_of_16.html">14/16: Main flight loop (Part 14 of 16)</a></p>
+
+						<ul>
+							<li>Spawn a space station if we are close enough to the planet</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_15_of_16.html">15/16: Main flight loop (Part 15 of 16)</a></p>
+
+						<ul>
+							<li>Perform an altitude check with the planet, which can lead to DEATH</li>
+							<li>Perform an altitude check with the sun, which can also lead to DEATH</li>
+							<li>Process fuel scooping</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/main_flight_loop_part_16_of_16.html">16/16: Main flight loop (Part 16 of 16)</a></p>
+
+						<ul>
+							<li>Process laser pulsing</li>
+							<li>Process E.C.M. energy drain</li>
+							<li>Call the stardust routine if we are on a space view (STARS)</li>
+							<li>Return from the main flight loop</li>
+						</ul>
+
+
+						<h2 class="articleSubheader">Death<br />
+													 -----</h2>
+
+						<p>The death routine is called when we die (or quit the game by pausing and pressing ESCAPE). It's a one-way street and eventually loops back to the start to show the title screen again.</p>
+
+						<p><a href="/cassette/main/subroutine/death.html">1/1: DEATH</a></p>
+
+						<ul>
+							<li>We have been killed, so display the chaos of our destruction above a "GAME OVER" sign</li>
+
+							<li>Clean up a number of variables and workspaces, ready for the next attempt</li>
+
+							<li>Jump up to TT170 to start the whole process again</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_memory_map_nes.html">NES Elite memory map</a><a class="next" rel="next" title="Next deep dive" href="scheduling_tasks_with_the_main_loop_counter.html">Scheduling tasks with the main loop counter</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

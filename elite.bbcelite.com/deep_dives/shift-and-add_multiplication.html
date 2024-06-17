@@ -1,0 +1,97 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "shift-and-add_multiplication.html", "Shift-and-add multiplication", "Shift-and-add multiplication", "A deep dive into shift-and-add multiplication in BBC Micro Elite", "elite", "deep_dives_maths", "shift-and-add_multiplication");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="calculating_square_roots.html">Calculating square roots</a><a class="next" rel="next" title="Next deep dive" href="multiplication_and_division_using_logarithms.html">Multiplication and division using logarithms</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The main algorithm behind Elite's many multiplication routines</h2>
+
+						<p>Elite implements multiplication using the shift-and-add algorithm. One such example is the <a href="/cassette/main/subroutine/mult1.html">MULT1</a> routine, which multiplies two 8-bit numbers to give a 16-bit result). Let's take a look at how it does it, as this same technique is used in lots of different multiplication routines throughout the game code (such as <a href="/cassette/main/subroutine/fmltu.html">FMLTU</a> and <a href="/cassette/main/subroutine/mu11.html">MU11</a>).</p>
+
+						<p>Consider multiplying two example numbers, which we'll call p and a (as this makes it easier to map the following explanation to the code in MULT1):</p>
+
+<pre class="articleIndented">  p * a = %00101001 * a
+</pre>
+
+						<p>This is the same as:</p>
+
+<pre class="articleIndented">  p * a = (%00100000 + %00001000 + %00000001) * a
+</pre>
+
+						<p>or:</p>
+
+<pre class="articleIndented">  p * a = %00100000 * a + %00001000 * a + %00000001 * a
+</pre>
+
+						<p>or:</p>
+
+<pre class="articleIndented">  p * a = a &lt;&lt; 5 + a &lt;&lt; 3 + a &lt;&lt; 0
+</pre>
+
+						<p>or, to lay this out in the way we're used to seeing it in school books on long multiplication, if a is made up of binary digits aaaaaaaa, it's the same as:</p>
+
+<pre class="articleIndented">         00101001         p
+         aaaaaaaa x       * a
+  ---------------
+         aaaaaaaa
+        00000000
+       00000000
+      aaaaaaaa
+     00000000
+    aaaaaaaa
+   00000000
+  00000000        +
+  ---------------
+  xxxxxxxxxxxxxxx         -&gt; the result of p * a
+</pre>
+
+						<p>In other words, we can work our way through the digits in the first number p and every time there's a 1, we add an a to the result, shifted to the left by the position of that digit.</p>
+
+						<p>We could code this into assembly relatively easily, but Elite takes a rather more optimised route. Instead of shifting the number aaaaaaaa to the left for each addition, we can instead shift the entire result to the right, saving the bit that falls off the right end, and add an unshifted value of a. If you think of one of the sums in our longhand version like this:</p>
+
+<pre class="articleIndented">    a7a6a5a4a3a2a1a0
+  a7a6a5a4a3a2a1a0   +
+</pre>
+
+						<p>then instead of shifting the second number to the left, we can shift the first number to the right and save the rightmost bit, like this:</p>
+
+<pre class="articleIndented">    a7a6a5a4a3a2a1        -&gt; result bit 0 is a0
+  a7a6a5a4a3a2a1a0 +
+</pre>
+
+						<p>So the routine's approach is to work our way through the digits in the first number p, shifting the result right every time and saving the rightmost bit in the final result, and every time there's a 1 in p, we add another a to the sum.</p>
+
+						<p>This is essentially what Elite does in the MULT1 routine, but there is one more tweak that makes the process even more efficient (and even more confusing, especially when you first read through the code). Instead of saving the result bits out into a separate location, we can stick them onto the left end of p, because every time we shift p to the right, we gain a spare bit on the left end of p that we no longer use.</p>
+
+						<p>For a simpler version of the above algorithm, take a look at MU11, which multiplies two unsigned numbers.</p>
+
+						<h2 class="articleSubheader">Optimised multiplication<br />
+													 ------------------------</h2>
+
+						<p>The above approach is used in all the multiplication routines in Elite, though sometimes it can be a bit hard to follow. Let look at a particularly knotty example.</p>
+
+						<p>The FMLTU routine uses the same basic algorithm as MU11, but because we are only interested in the high byte of the result, we can optimise away a few instructions. Instead of having a loop counter to count the 8 bits in the multiplication, we can instead invert one of the arguments (A in this case, which we then store in P to pull bits off), and then reverse the logic so that ones get skipped and zeroes cause an addition.</p>
+
+						<p>Also, when we do the first shift right, we can stick a one into bit 7, so we can keep looping and shifting right until we run out of ones, which is an easy BNE test. This works because we don't have to store the low byte of the result anywhere, so we can just shift P to the right, rather than ROR'ing it as we do in MULT1 - and that lets us do the BNE test, saving few precious instructions in the process.</p>
+
+						<p>The result is a really slick, optimised multiplication routine that does a specialised job, at the expense of clarity. To understand the FMLTU routine, first try to understand MULT1, then look at MU11, and finally try FMLTU (I have kept the comments similar so they are easier to compare). And if your eyes aren't crossed by that point, then hats off to you, because this is properly gnarly stuff.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="calculating_square_roots.html">Calculating square roots</a><a class="next" rel="next" title="Next deep dive" href="multiplication_and_division_using_logarithms.html">Multiplication and division using logarithms</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,266 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_track_verges.html", "The track verges", "The track verges", "A deep dive into the track verges in BBC Micro Revs", "revs", "deep_dives_track", "the_track_verges");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="building_a_3d_track_from_sections_and_segments.html">Building a 3D track from sections and segments</a><a class="next" rel="next" title="Next deep dive" href="road_signs.html">Road signs</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Revs calculates track verges in the track section and track segment lists</h2>
+
+						<p>The track in Revs is a thing of beauty, and a very large part of that beauty is down to the verge. Sometimes it's red-and-white, sometimes it's black-and-white, and sometimes it's thick and sometimes it's thin, but whatever it looks like, it's impressive just how immersive it is. That's because each and every part of the verge is simulated with the same accuracy as the rest of the game, and even though the track itself is just a mass of black, the accuracy of the colourful verges manages to make the whole track feel real.</p>
+
+						<p>Here's a good example of a red-and-white verge, along the left edge of the track:</p>
+
+						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/general/Revs.png" alt="BBC Micro Revs screenshot" />
+
+						<p>In this article we take a look at the maths behind the track verges, and how Revs calculates each one of those tiny verge marks as they whizz past your shoulder.</p>
+
+						<h2 class="articleSubheader">Overview of the calculation process<br />
+													 -----------------------------------</h2>
+
+						<p>The main verge calculations are done in the <a href="/source/main/subroutine/getvergeandmarkers_part_1_of_4.html">GetVergeAndMarkers</a> routine, which is called from the main driving loop. This routine does the following:</p>
+
+						<ul>
+							<li>Call <a href="/source/main/subroutine/getsectionangles_part_1_of_3.html">GetSectionAngles</a> to get yaw and pitch angles for the inner and outer track sections in the track section list and store the results in (<a href="/source/main/variable/xvergerighthi.html">xVergeRightHi</a> <a href="/source/main/variable/xvergerightlo.html">xVergeRightLo</a>), (<a href="/source/main/variable/xvergelefthi.html">xVergeLeftHi</a> <a href="/source/main/variable/xvergeleftlo.html">xVergeLeftLo</a>), <a href="/source/main/variable/yvergeright.html">yVergeRight</a> and <a href="/source/main/variable/yvergeleft.html">yVergeLeft</a>.</li>
+
+							<li>Call <a href="/source/main/subroutine/getsegmentdetails.html">GetSegmentDetails</a> and <a href="/source/main/subroutine/getsegmentangles_part_1_of_3.html">GetSegmentAngles</a> to get the yaw and pitch angles for the segments (and the verge marks and corner markers) along the right side of the track and store the results in (<a href="/source/main/variable/xvergerighthi.html">xVergeRightHi</a> <a href="/source/main/variable/xvergerightlo.html">xVergeRightLo</a>), <a href="/source/main/variable/yvergeright.html">yVergeRight</a>, (<a href="/source/main/variable/xmarkerhi.html">xMarkerHi</a> <a href="/source/main/variable/xmarkerlo.html">xMarkerLo</a>) and <a href="/source/main/variable/vergedataright.html">vergeDataRight</a>.</li>
+
+							<li>Do the same again to get the yaw and pitch angles for the left side of the track, storing the results in (<a href="/source/main/variable/xvergelefthi.html">xVergeLeftHi</a> <a href="/source/main/variable/xvergeleftlo.html">xVergeLeftLo</a>), <a href="/source/main/variable/yvergeleft.html">yVergeLeft</a>, (<a href="/source/main/variable/xmarkerhi.html">xMarkerHi</a> <a href="/source/main/variable/xmarkerlo.html">xMarkerLo</a>) and <a href="/source/main/variable/vergedataleft.html">vergeDataLeft</a>.</li>
+
+							<li>Set the position of the horizon line according to the track sections and segments that we just processed.</li>
+						</ul>
+
+						<p>In essence, GetVergeAndMarkers is all about populating the verge tables with the angles for each segment and section in the track view. As discussed in the deep dive on <a href="pitch_and_yaw_angles.html">pitch and yaw angles</a>, these angles feed directly into the screen coordinates, so this is effectively the first step in calculating what we need to draw for the track, and where.</p>
+
+						<p>The results of these calculations are stored in the track section list and the track segment list, which together make up the track verge buffer. The track verge buffer lets us cache the results, so we don't have to repeat complex calculations that we have already done. Note that the track verge buffer is distinct from the track segment buffer; the track verge buffer stores data about the track verges, while the track segment buffer stores data about segments. See the deep dive on <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> for more details about all these data structures, but all you need to know for now is that the results are stored to save recalculating.</p>
+
+						<h2 class="articleSubheader">Calculating the section angles<br />
+													 ------------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/getsectionangles_part_1_of_3.html">GetSectionAngles</a> routine is responsible for calculating the pitch and yaw angles of up to six track sections, which are then stored in the track section list. They are used when drawing the track in the <a href="/source/main/subroutine/drawtrack.html">DrawTrack</a> routine. The GetSectionAngles routine does the following:</p>
+
+						<ul>
+							<li>If we have fetched a new track section since the last call, shuffle the track section list along by one, discarding the last section so we can insert the new section at the start. See the deep dive on <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> for more details of the shuffling process.</li>
+
+							<li>Go through the track section list and apply the player's current spin to each valid entry (for both the right and left track section), skipping the entry pointed to by the sectionListPointer. Spin is applied by the <a href="/source/main/subroutine/spintracksection.html">SpinTrackSection</a> routine, which applies spin from the (<a href="/source/main/variable/spinyawanglehi.html">spinYawAngleHi</a> <a href="/source/main/variable/spinyawanglelo.html">spinYawAngleLo</a>) and <a href="/source/main/workspace/zero_page.html#spinpitchangle">spinPitchAngle</a> variables, which are non-zero if the player's car is spinning on the track (following an accident or when losing grip, for example).</li>
+
+							<li>Update the entry at <a href="/source/main/workspace/zero_page.html#sectionlistpointer">sectionListPointer</a> as follows:
+
+								<ul>
+									<li>Calculate the track section number for this entry, relative to the front segment in the track segment buffer.</li>
+
+									<li>Store the yaw and pitch angles for this section in the (xVergeRightHi xVergeRightLo) and yVergeRight tables, or the (xVergeLeftHi xVergeLeftLo) and yVergeLeft tables (depending on which verge we are calculating).</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>This process updates the verge data for track sections in the list in an efficient way, by only recalculating one section's angles on each iteration of the main driving loop. The other sections in the list are updated by applying any spin (so if the car is spinning, the track spins appropriately), which is less accurate than a full projection, but does the job; these other sections are updated properly when it's their turn to be done.</p>
+
+						<p>The track section list contains up to six sections behind the front segment in the track segment buffer. They are stored in the track section list as follows, when we are facing forwards:</p>
+
+						<ul>
+							<li>Entry #5 in the list corresponds to the section behind the front segment</li>
+							<li>Entry #4 in the list corresponds to two sections behind the front segment</li>
+							<li>Entry #3 in the list corresponds to three sections behind the front segment</li>
+							<li>Entry #2 in the list corresponds to four sections behind the front segment</li>
+							<li>Entry #1 in the list corresponds to five sections behind the front segment</li>
+							<li>Entry #0 in the list corresponds to six sections behind the front segment</li>
+						</ul>
+
+						<p>The track section list contains the following for when we are facing backwards:</p>
+
+						<ul>
+							<li>Entry #5 in the list corresponds to the section containing the front segment</li>
+							<li>Entry #4 in the list corresponds to the section behind the front segment</li>
+							<li>Entry #3 in the list corresponds to two sections behind the front segment</li>
+							<li>Entry #2 in the list corresponds to three sections behind the front segment</li>
+							<li>Entry #1 in the list corresponds to four sections behind the front segment</li>
+							<li>Entry #0 in the list corresponds to five sections behind the front segment</li>
+						</ul>
+
+						<p>Note that entry #5 is the last in the list, and for most track sections, we only use the last few entries (e.g. for track section 0, the lower nibble of <a href="/source/silverstone/variable/track_section_data_part_1_of_2.html">trackSectionData</a> is 3, so we only use entries #3 to #5).</p>
+
+						<p>You can think of the track section list as a cache of section data, from the furthest section that we can see in front of us on the track (entry #5), working backwards towards the player. If the next set of track sections are quite bunched up, or we're cresting a hill and can see for a long way, then the higher the number of track sections that we need to cache in the track section list, to make sure we have cached all the sections we might see when looking along the track.</p>
+
+						<p>See the deep dive on <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> for more about the construction of the track section list and how it manages the shuffles and updates mentioned above.</p>
+
+						<h2 class="articleSubheader">Calculating the segment angles<br />
+													 ------------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/getsegmentangles_part_1_of_3.html">GetSegmentAngles</a> routine is responsible for calculating the pitch and yaw angles of up to 16 track segment verges, to store in the track section list. They are used when drawing the track in the DrawTrack routine, and when calculating the positions of the corner markers.</p>
+
+						<p>This routine works through track segments, starting from distant segments and working backwards towards the player, calculating the verge data for each segment as we go, up to a maximum of 16 segments (which is the capacity of the track segment list). It also calculates the angles, distance and number of the segment within the track segment list that is closest to the player's car.</p>
+
+						<p>The yaw angle calculation calls the <a href="/source/main/subroutine/getobjyawangle_part_1_of_4.html">GetObjYawAngle</a> routine, and uses the <a href="/source/main/subroutine/getsegmentyawangle.html">GetSegmentYawAngle</a> routine to store the result in the track segment table. Similarly, the pitch angle is calculated by the <a href="/source/main/subroutine/getobjpitchangle.html">GetObjPitchAngle</a>.</p>
+
+						<p>If a segment is not visible on-screen, then <a href="/source/main/subroutine/getsegmentangles_part_2_of_3.html">part 2 of GetSegmentAngles</a> stops processing any more segments. Because we are moving backwards through the segments towards the player, then once we stop being able to see segments, we don't need to cache any more for drawing on-screen, as we know the rest of the segments will also be behind the player. However, before we stop, we try to eke out as much accuracy out of the last (not visible) segment by trying to process a segment that's one-quarter of the size, just in case this smaller segment is visible, in which case we finish with something to show for the last visible segment (and if not, at least we tried).</p>
+
+						<p>If a segment is visible on-screen, then <a href="/source/main/subroutine/getsegmentangles_part_3_of_3.html">part 3 of GetSegmentAngles</a> calls the <a href="/source/main/subroutine/getvergeandmarkers_part_1_of_4.html">GetVergeAndMarkers</a> routine to get details for this segment's outer verge, as well as any corner markers and verge marks, before storing the angles in the track segment list and moving on to the next segment. See the deep dive on <a href="corner_markers.html">corner markers</a> for details of the corner marker logic.</p>
+
+						<p>A final word about "moving on to the next segment". GetSegmentAngles doesn't fetch a contiguous sequence of segments. Instead, it fetches segments at the offsets given in the <a href="/source/main/variable/segmentstep.html">segmentStep</a> table. The segment list contains 16 entries, with the first segment matching the front segment of the track segment buffer (i.e. 32 segments in front of the player). The next segment is 13 back from that, then the next is 6 back from that, then three back, and the rest of the segments step backwards by one segment. In other words, we fill the segment list like this:</p>
+
+						<ul>
+							<li>Step back 13 segments to 13 for segment list entry  1</li>
+							<li>Step back  6 segments to 19 for segment list entry  2</li>
+							<li>Step back  3 segments to 22 for segment list entry  3</li>
+							<li>Step back  1 segment  to 23 for segment list entry  4</li>
+							<li>Step back  1 segment  to 24 for segment list entry  5</li>
+							<li>Step back  1 segment  to 25 for segment list entry  6</li>
+							<li>Step back  1 segment  to 26 for segment list entry  7</li>
+							<li>Step back  1 segment  to 27 for segment list entry  8</li>
+							<li>Step back  1 segment  to 28 for segment list entry  9</li>
+							<li>Step back  1 segment  to 29 for segment list entry 10</li>
+							<li>Step back  1 segment  to 30 for segment list entry 11</li>
+							<li>Step back  1 segment  to 31 for segment list entry 12</li>
+							<li>Step back  1 segment  to 32 for segment list entry 13</li>
+							<li>Step back  1 segment  to 33 for segment list entry 14</li>
+							<li>Step back  1 segment  to 34 for segment list entry 15</li>
+							<li>Step back  1 segment  to 35 for segment list entry 16</li>
+						</ul>
+
+						<p>Entry 32 in the track segment buffer is the player's car (as it is 32 segments behind the front segment), so the player's car is at entry 13 in the track segment list.</p>
+
+						<p>Let's look at the verge marks next.</p>
+
+						<h2 class="articleSubheader">Verge marks<br />
+													 -----------</h2>
+
+						<p>The <a href="/source/main/subroutine/getvergeandmarkers_part_1_of_4.html">GetVergeAndMarkers</a> routine calculates the colour and shape of the verge marks for a specific track segment (the verge marks are the black-and-white or red-and-white marks along the edge of the track). When a new segment is added to the track segment buffer by the <a href="/source/main/subroutine/gettracksegment_part_1_of_3.html">GetTrackSegment</a> routine, the segment's flags are calculated, based on the flags for the section containing that segment (these segment flags are then stored are stored in the segmentFlags table as part of the track segment buffer - see the deep dive on <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> for more about the buffer).</p>
+
+						<p>Let's see how the segment flags are built from the section flags. The section flags come from the second track section data block in the track data file (see the deep dive on <a href="the_track_data_file_format.html">the track data file format</a> for details), and specifically from the <a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">trackSectionFlag</a> byte, which contains the following flags that are relevant to the verge marks:</p>
+
+						<ul>
+							<li>Bit 1: Colour of left verge marks
+
+								<ul>
+									<li>0 = black-and-white verge marks</li>
+
+									<li>1 = red-and-white verge marks</li>
+								</ul>
+							</li>
+
+							<li>Bit 2: Colour of right verge marks
+
+								<ul>
+									<li>0 = black-and-white verge marks</li>
+
+									<li>1 = red-and-white verge marks</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>The GetVergeAndMarkers routine takes the flags for the current segment, and masks out the relevant bits, depending on whether we are processing the left or right verge. The byte is masked as follows:</p>
+
+<pre class="articleIndented">  segmentFlags AND %00101101 for the right verge
+                   %00110011 for the left verge
+</pre>
+
+						<p>So when we are processing the right verge, we extract these flags while zeroing the rest:</p>
+
+						<ul>
+							<li>Bit 0 (section shape)</li>
+
+							<li>Bit 2 (colour of right verge marks)</li>
+
+							<li>Bit 3 (show right corner markers)</li>
+
+							<li>Bit 5 (corner marker colours)</li>
+						</ul>
+
+						<p>and when we are processing the left verge, we extract these flags while zeroing the rest:</p>
+
+						<ul>
+							<li>Bit 0 (section shape)</li>
+
+							<li>Bit 1 (colour of left verge marks)</li>
+
+							<li>Bit 4 (show left corner markers)</li>
+
+							<li>Bit 5 (corner marker colours)</li>
+						</ul>
+
+						<p>The routine then uses these flags to work out whether to show any corner markers as part of this segment (see the deep dive on <a href="corner_markers.html">corner markers</a> for details), and what kind of verge mark the segment should have.</p>
+
+						<p>Each segment on the track corresponds to one verge mark, so when you see a red-and-white verge, you are effectively seeing each segment in turn, one red, then the next one white, then the next one red, and so on. As the GetVergeAndMarkers routine is called when adding just one segment to the buffer, we first need to work out the colour scheme of the section (i.e. red-and-white or black-and-white), and then the colour of the individual segment (black, white or red).</p>
+
+						<p><a href="/source/main/subroutine/getvergeandmarkers_part_1_of_4.html">Part 1 of GetVergeAndMarkers</a> sets the variable V to the verge colour scheme, using the lookup table at <a href="/source/main/variable/vergecolour.html">vergeColour</a>. It does this by taking bits 0-2 of the masked segment flags from above, and putting them into Y, to give this range of possible values:</p>
+
+<pre class="articleIndented">  Y = 0 = %000 = black right, black left, straight
+  Y = 1 = %001 = black right, black left, curve
+  Y = 2 = %010 = black right, red left,   straight
+  Y = 3 = %011 = black right, red left,   curve
+  Y = 4 = %100 = red right,   black left, straight
+  Y = 5 = %101 = red right,   black left, curve
+  Y = 6 = %110 = red right,   red left,   straight
+  Y = 7 = %111 = red right,   red left,   curve
+</pre>
+
+						<p>We then use Y as an index into the vergeColour table. When we are processing the right verge, we know bit 1 is clear, so the possible values of Y are as follows:</p>
+
+<pre class="articleIndented">  Y = 0 = %000 = black right, black left, straight
+  Y = 1 = %001 = black right, black left, curve
+  Y = 4 = %100 = red right,   black left, straight
+  Y = 5 = %101 = red right,   black left, curve
+</pre>
+
+						<p>When we are processing the left verge, we know bit 2 is clear, so the possible values of Y are as follows:</p>
+
+<pre class="articleIndented">  Y = 0 = %000 = black right, black left, straight
+  Y = 1 = %001 = black right, black left, curve
+  Y = 2 = %010 = black right, red left,   straight
+  Y = 3 = %011 = black right, red left,   curve
+</pre>
+
+						<p>So if Y = 0 or 1, then we know that the verge we are processing is black-and-white, otherwise it is red-and-white. Looking up the Y-th entry in the vergeColour table and storing it in V, we get the following:</p>
+
+<pre class="articleIndented">  V = 0 when Y = 0 to 1 (black-and-white verge)
+  V = 1 when Y = 2 to 7 (red-and-white verge)
+</pre>
+
+						<p>So this gives us the verge type in V.</p>
+
+						<p>The <a href="/source/main/subroutine/getvergeandmarkers_part_4_of_4.html">final part of the GetVergeAndMarkers routine</a> calculates the verge colour of the segment we are processing. It does this by simply checking whether the segment's offset within the segment coordinate tables is odd (in which case the segment is red or black, as specified in V) or even (in which case it is white), and then storing the colour in in the <a href="/source/main/variable/vergedataright.html">vergeDataRight</a> or <a href="/source/main/variable/vergedataleft.html">vergeDataLeft</a> table, which form part of the track segment list. This is then used in the DrawTrack routine when drawing the track verges.</p>
+
+						<h2 class="articleSubheader">Verge width<br />
+													 -----------</h2>
+
+						<p>The other important calculation is the verge width. We calculate the verge width as follows:</p>
+
+<pre class="articleIndented">  +/- scaleUp * 2 ^ (scaleDown - vergeScale)
+</pre>
+
+						<p>where the sign is positive for the right verge and negative for the left verge, and higher values mean wider verges. In the above, <a href="/source/main/workspace/zero_page.html#scaleup">scaleUp</a> and <a href="/source/main/workspace/zero_page.html#scaledown">scaleDown</a> are the segment's scale factors, as set by the call to  <a href="/source/main/subroutine/getobjpitchangle.html">GetObjPitchAngle</a> that we did in <a href="/source/main/subroutine/getsegmentangles_part_1_of_3.html">GetSegmentAngles</a> before calling <a href="/source/main/subroutine/getvergeandmarkers_part_1_of_4.html">GetVergeAndMarkers</a>, and vergeScale is the Y-th value from the <a href="/source/main/variable/vergescale.html">vergeScale</a> table, where Y is the index we calculated for the verge colour above.</p>
+
+						<p>The vergeScale factor is between 3 and 5, and scales the verge width differently for different track configurations, with larger values of vergeScale giving smaller verges (because vergeScale is subtracted in the above calculation). The values in the vergeScale table have the following effect:</p>
+
+						<ul>
+							<li>If both verges are black-and-white, then the verges are thin (vergeScale = 5), on both curved and straight sections</li>
+
+							<li>If this is a curve and at least one of the verges is red-and-white, or we're on a straight and both verges are red-and-white, then the verges are medium thickness (vergeScale = 4)</li>
+
+							<li>If this is a straight and only one of the verges is red-and-white, then the verges are thick (vergeScale = 3)</li>
+						</ul>
+
+						<p>Once the verge width has been decided, we can calculate the coordinates for the outside edge of the track verge by adding the verge width to the track segment's verge coordinates (this will always move the track verge away from the centre of the track, as we set the sign of the verge width above). The result is stored in the track segment list, 16 bytes after the corresponding track segment entry, so indexes 6 to 21 contain the angles for the inner edge of the verge mark (i.e. the outer edge of the black part of the track), while indexes 22 to 37 contain the angles for the outer edge of the verge mark (i.e. where the verge mark meets the green grass).</p>
+
+						<p>The verge width is also used in the DrawTrack routine when drawing the verges into the screen buffer.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="building_a_3d_track_from_sections_and_segments.html">Building a 3D track from sections and segments</a><a class="next" rel="next" title="Next deep dive" href="road_signs.html">Road signs</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

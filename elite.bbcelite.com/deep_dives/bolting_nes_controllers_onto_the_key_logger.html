@@ -1,0 +1,90 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "bolting_nes_controllers_onto_the_key_logger.html", "Bolting NES controllers onto the key logger", "Bolting NES controllers onto the key logger", "A deep dive into how the NES version of Elite simulates a joystick and keyboard", "elite", "deep_dives_flight", "bolting_nes_controllers_onto_the_key_logger");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_key_logger.html">The key logger</a><a class="next" rel="next" title="Next deep dive" href="combat_rank.html">Combat rank</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the NES version simulates a joystick and keyboard</h2>
+
+						<p>There are an awful lot of controls in Elite... so many that the original Acornsoft versions have their own dedicated leaflet listing all the options, folded three ways in an attempt to squeeze them all in. And that's on top of the key strip that sits along the top of the BBC Micro's famous red function keys. Elite's controls, it has to be said, take a bit of getting used to.</p>
+
+						<p>The NES version has rather fewer controls to remember, as there are only eight buttons on each NES controller - the four directional buttons, plus Select, Start, A and B:</p>
+
+						<img class="titleImage lightBorder photo" style="width: 256px" src="/images/nes/general/nes_controller.jpg" alt="The NES controller" />
+
+						<p>To get around this limitation there's a rather neat icon bar system that replaces all those esoteric function key presses from the BBC version, but under the hood, the code is still based on the exact same key logger system as in the originals. The key logger was implemented because the BBC Micro's built-in operating system routines only support a two-key rollover, which means you can only press two keys at the same time and other keys are ignored. This isn't good enough for fast-paced space combat, so the authors built their own key logger that supports an eight-key rollover for the primary flight controls. You can read all about it in the deep dive on <a href="the_key_logger.html">the key logger</a>, and it turns out that the exact same key logger is at the heart of the NES version's controller routines, though it has a number of routines bolted onto the front of it to support the NES controllers.</p>
+
+						<p>We'll take a look at how those routines work in a moment, but first let's see how to read the controllers on the NES.</p>
+
+						<h2 class="articleSubheader">Reading the controllers<br />
+													 -----------------------</h2>
+
+						<p>As described in the deep dive on <a href="understanding_the_nes_for_elite.html">understanding the NES for Elite</a> there are two NES controllers, each of which has eight buttons, and the state of these buttons can be read via two CPU registers that are memory mapped to $4016 (JOY1) and $4017 (JOY2). To read the controllers, we first tell the controllers to latch the button states, and then we read the results one button at a time, in the order: A, B, Select, Start, Up, Down, Left, Right.</p>
+
+						<p>The <a href="/nes/bank_7/subroutine/readcontrollers.html">ReadControllers</a> and <a href="/nes/bank_7/subroutine/scanbuttons.html">ScanButtons</a> routines implement this process, once for each controller (though we only scan the second controller if the game is configured for two pilots). The process is quite simple: ReadControllers pokes 1 and then 0 into JOY1 to tell the controllers to latch the button positions, and then ScanButtons pulls the results for each button from the JOY1 or JOY2 register. ReadControllers is called every VBlank from the <a href="/nes/bank_7/subroutine/nmi.html">NMI handler</a>, so the buttons get read 50 times a second on a PAL system, or 60 times a second on an NTSC system.</p>
+
+						<p>The results get stored in a set of variables that contains one byte for each button on each controller, so for example <a href="/nes/common/workspace/wp.html#controller1a">controller1A</a> stores the state of the A button on controller 1, <a href="/nes/common/workspace/wp.html#controller2start">controller2Start</a> stores the state of the Start button on controller 2, and so on. Each variable stores the history of a specific controller button over the last eight VBlanks, with the current button state in bit 7, the previous VBlank's state in bit 6, and so on (with a 1 indicating that the button was being pressed in that VBlank, and a 0 indicating that it wasn't).</p>
+
+						<p>Once the controller variables have been populated, the NMI handler moves on to the next stage and applies auto-play if the combat demo is currently running in that mode (see the deep dive on <a href="auto-playing_the_combat_demo.html">auto-playing the combat demo</a> for details). Then it processes any movement of the icon bar pointer before moving on to the <a href="/nes/bank_7/subroutine/updatejoystick.html">UpdateJoystick</a> routine. If this is the space view, this routine implements a kind of pseudo-joystick by updating the values of <a href="/nes/common/workspace/wp.html#jstx">JSTX</a> and <a href="/nes/common/workspace/wp.html#jsty">JSTY</a> using the <a href="/nes/bank_7/subroutine/increasejoystick.html">IncreaseJoystick</a> and <a href="/nes/bank_7/subroutine/decreasejoystick.html">DecreaseJoystick</a> routines. These are the variables that the original code uses for the roll and pitch rate, so once they are set, the original flight code can take over and work in the same way as before.</p>
+
+						<p>If this isn't the space view, then UpdateJoystick doesn't update the joystick values, but instead it jumps to the <a href="/nes/bank_7/subroutine/setcontrollerpast.html">SetControllerPast</a> routine. This extracts the states of the left and right buttons from four VBlanks ago (i.e. from bits 0 to 3 in the controller1Left and controller1Right controller variables) and puts them into the high nibbles of <a href="/nes/common/workspace/wp.html#controller1left03">controller1Left03</a> and <a href="/nes/common/workspace/wp.html#controller1right03">controller1Right03</a> (so bits 4 to 7 of these variables reflect the button states from four VBlanks ago). This is used to implement a delay of 0.08 seconds (4 VBlanks) for these two buttons, which you can see if you move the reticle around on the charts - the left and right buttons have a small delay, while the up and down buttons don't. The delay isn't applied to the icon bar pointer, however; logic at the start of SetControllerPast checks whether the B button is being pressed, and skips the delay code if this is the case.</p>
+
+						<p>I'm not entirely sure why the delay is needed, and why it's only implemented for the left and right buttons, but there's probably a good reason, given the amount of effort involved.</p>
+
+						<h2 class="articleSubheader">Bolting onto the key logger<br />
+													 ---------------------------</h2>
+
+						<p>The problem with the controller variables is that the BBC Micro code at the core of the NES version doesn't know anything about controllers - it only knows about the key logger. The authors could have rewritten the core code to cater for the different controller buttons, but instead they decided to bolt the controller code onto the key logger, leaving the main code to keep reading its input from the key logger and joystick variables.</p>
+
+						<p>Their solution can be found in the <a href="/nes/bank_6/subroutine/setkeylogger.html">SetKeyLogger</a> routine, which is called at the start of the main flight-key routine at <a href="/nes/bank_0/subroutine/dokey.html">DOKEY</a>. This routine transforms the state of the controller variables into the key logger at <a href="/nes/common/workspace/wp.html#kl">KL</a>, which contains seven entries from <a href="/nes/common/workspace/wp.html#ky1">KY1</a> to <a href="/nes/common/workspace/wp.html#ky7">KY7</a>. These entries have the exact same meanings as in the original BBC Micro version, as shown in the following table:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Entry</th><th>Code</th><th>Meaning</th><th>BBC Micro</th><th>Controller 1</th><th>Controller 2</th></tr>
+
+							<tr><td>KY1</td><td><a href="/nes/common/workspace/wp.html#ky1">NES</a>, <a href="/cassette/main/workspace/zp.html#ky1">BBC</a></td><td>Slow down</td><td>?</td><td>B and down</td><td>B</td></tr>
+							<tr><td>KY2</td><td><a href="/nes/common/workspace/wp.html#ky2">NES</a>, <a href="/cassette/main/workspace/zp.html#ky2">BBC</a></td><td>Speed up</td><td>Space</td><td>B and up</td><td>A</td></tr>
+							<tr><td>KY3</td><td><a href="/nes/common/workspace/wp.html#ky3">NES</a>, <a href="/cassette/main/workspace/zp.html#ky3">BBC</a></td><td>Roll left</td><td>&lt;</td><td>Left</td><td>Left</td></tr>
+							<tr><td>KY4</td><td><a href="/nes/common/workspace/wp.html#ky4">NES</a>, <a href="/cassette/main/workspace/zp.html#ky4">BBC</a></td><td>Roll right</td><td>&gt;</td><td>Right</td><td>Right</td></tr>
+							<tr><td>KY5</td><td><a href="/nes/common/workspace/wp.html#ky5">NES</a>, <a href="/cassette/main/workspace/zp.html#ky5">BBC</a></td><td>Pitch up</td><td>X</td><td>Down, no B</td><td>Down</td></tr>
+							<tr><td>KY6</td><td><a href="/nes/common/workspace/wp.html#ky6">NES</a>, <a href="/cassette/main/workspace/zp.html#ky6">BBC</a></td><td>Pitch down</td><td>S</td><td>Up, no B</td><td>Up</td></tr>
+							<tr><td>KY7</td><td><a href="/nes/common/workspace/wp.html#ky7">NES</a>, <a href="/cassette/main/workspace/zp.html#ky7">BBC</a></td><td>Fire laser</td><td>A</td><td>A</td><td>-</td></tr>
+						</table>
+
+						<p>The SetKeyLogger routine sets the entries in the key logger depending on the current game configuration, and specifically the number of configured pilots. The buttons on controller 2 are only read when the game is configured for two pilots, otherwise controller 2 is simply ignored. If the game is configured for one pilot, then controller 1 controls steering, speed and weaponry, and holding down B with the up and down buttons changes the speed. If the game is configured for two pilots, then steering and speed are assigned to controller 2, and weaponry is assigned to controller 1, with the fire button A being the only controller 1 button that populates the key logger.</p>
+
+						<p>In this way the NES controllers get bolted onto the front of the key logger, so the existing flight code can continue to check KY1 through KY7 for the flight controls, and the controller variables can be used to implement all the other input functionality, like the icon bar, menu highlights, chart crosshairs and so on.</p>
+
+						<h2 class="articleSubheader">Debounce code<br />
+													 -------------</h2>
+
+						<p>One of the advantages of the controller variables storing their last eight values is that it's easy to implement debounce. Debounce is the act of delaying the effects of a button press to ensure that the action is only performed once rather than repeatedly, and it's typically implemented by waiting until the button is released before performing the action.</p>
+
+						<p>There are lots of examples of debounce in the NES code. For example, the title screen will configure the game to support two pilots if you press any of the A, Start or Select buttons on controller 2, but this is only registered when the button is released, to prevent the code from constantly reconfiguring the game while the button is held down. You can see the debounce in action at the end of the <a href="/nes/bank_0/subroutine/title.html#tite1">TITLE</a> routine, where we have the following code:</p>
+
+<pre class="articleIndented">  LDA controller2A
+  ORA controller2Start
+  ORA controller2Select
+  BMI tite2   
+</pre>
+
+						<p>This will jump to tite2 if any of the three buttons are still being held down, thus skipping the configuration code until the buttons are released. This is why the button history from four VBlanks ago is moved into the high nibble of the controller1Left03 and controller1Right03 variables, rather than leaving it in the low nibble - so they can easily be included in a debounce check along with the standard controller variables, as in the code above.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_key_logger.html">The key logger</a><a class="next" rel="next" title="Next deep dive" href="combat_rank.html">Combat rank</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,92 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "pattern_and_nametable_buffers.html", "The pattern and nametable buffers", "The pattern and nametable buffers", "A deep dive into the pattern and nametable buffers in NES Elite", "elite", "deep_dives_nes", "pattern_and_nametable_buffers");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="splitting_nes_elite_across_multiple_rom_banks.html">Splitting NES Elite across multiple ROM banks</a><a class="next" rel="next" title="Next deep dive" href="bitplanes_in_nes_elite.html">Bitplanes in NES Elite</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the NES version achieves its beautifully smooth wireframe graphics</h2>
+
+						<p>Unlike the other 6502-based versions of Elite, the NES version doesn't draw directly into screen memory. Instead, it draws into the pattern, nametable and attribute buffers, so let's take a look at this fundamental aspect of the game's graphics engine.</p>
+
+						<p>There are two sets of these graphics buffers. They are stored in the extra WRAM that's provided in the Elite cartridge (this RAM is battery-backed, incidentally, though that isn't needed for the graphics buffers, only for the save files that are also stored in the extra WRAM). Here's the memory map of those buffers (see the <a href="the_elite_memory_map_nes.html">NES Elite memory map</a> to see this in context):</p>
+
+<pre class="articleIndented">  +-----------------------------------+   $77FF
+  |                                   |
+  | Attribute buffer 1                |
+  |                                   |
+  +-----------------------------------+   $77C0
+  |                                   |
+  | Nametable buffer 1                |
+  |                                   |
+  +-----------------------------------+   $7400
+  |                                   |
+  | Attribute buffer 0                |
+  |                                   |
+  +-----------------------------------+   $73C0
+  |                                   |
+  | Nametable buffer 0                |
+  |                                   |
+  +-----------------------------------+   $7000
+  |                                   |
+  | Pattern buffer 1                  |
+  |                                   |
+  +-----------------------------------+   $6800
+  |                                   |
+  | Pattern buffer 0                  |
+  |                                   |
+  +-----------------------------------+   $6000 = <a href="/nes/common/workspace/cartridge_wram.html">Cartridge WRAM</a>
+</pre>
+
+						<p>The game draws all of the pixels and lines of the wireframe space view into these buffers, and only when everything has been drawn does the game start sending anything to the PPU. We'll talk about the PPU later, as the sending process is pretty complex, but for now let's just concentrate on the buffers. If you haven't already, you might find it useful to read the deep dives on <a href="drawing_pixels_in_the_nes_version.html">drawing pixels in the NES version</a> and <a href="drawing_lines_in_the_nes_version.html">drawing lines in the NES version</a>, which explain how the drawing routines poke pixels and lines into these buffers.</p>
+
+						<h2 class="articleSubheader">The graphics buffers<br />
+													 --------------------</h2>
+
+						<p>There are two pattern buffers, each of which can contain 256 patterns. These patterns are slightly different to the patterns in the PPU's VRAM, in that they are monochrome, with only one bit per pixel. This means that instead of the strange interleaved structure of the PPU pattern tables (as described in the deep dive on <a href="understanding_the_nes_for_elite.html">understanding the NES for Elite</a>), the pattern buffers are nice and simple, with 8 bytes per pattern, and 256 patterns in total, giving each pattern buffer a total size of 2K.</p>
+
+						<p>(As an aside, this means that the pattern buffers essentially have the same structure as the original BBC Micro mode 4 screen in the 1984 release of Elite, just with the screen split into patterns rather than character blocks. I suspect this symmetery wasn't lost on the original authors.)</p>
+
+						<p>Alongside these pattern buffers are two nametable buffers and two attribute buffers. These have the same structure as the PPU equivalents, so that's 960 bytes in each nametable buffer (one byte per tile), and 64 bytes in each attribute buffer. Altogether this means that each nametable/attribute table pair is 1K in size, just like the same tables in VRAM.</p>
+
+						<p>For the nametable and attribute tables, we have two different sets of buffers so we can clear down and draw into one set while the other set is being sent to the PPU (as both of these processes take quite a bit of time). If we only had one set of buffers then we would either have to wait until everything had been sent to the PPU before drawing anything new, which would be really slow, or we'd have to put up with the screen corrupting when drawing the next frame over the top of the existing one while it's still being sent to the PPU. Neither of these are a good idea, so two buffers it is.</p>
+
+						<p>For the pattern buffers, which always get sent to pattern table 1 in the PPU, we have one buffer for bitplane 0 and another buffer for bitplane 1. For an in-depth discussion of bitplanes, see the deep dive on <a href="bitplanes_in_nes_elite.html">bitplanes in NES Elite</a>.</p>
+
+						<h2 class="articleSubheader">Buffer size<br />
+													 -----------</h2>
+
+						<p>The space view portion of the NES Elite screen contains 18 tile rows, so skipping the box edges, that's 18 by 30 tiles, or 540 tiles. But each pattern buffer only contains 256 patterns, and we only use one buffer when drawing each frame, so how do these 256 patterns manage to support such a large screen area?</p>
+
+						<p>Well, if you think about it, space is mainly empty, and the same is true of the space view. Consider the title screen:</p>
+
+						<img class="titleImage" src="/images/nes/general/title.png" alt="The title screen in NES Elite">
+
+						<p>This contains a pretty hefty wireframe rendering of the Cobra Mk III, so you would think it would take up an awful lot of pattern space. Let's take a look at the tile view of this screen, and highlight the wireframe tiles that have non-empty patterns:</p>
+
+						<img class="titleImage" style="width: 385px" src="/images/nes/drawing_vector_graphics/title_with_grid_highlighted.png" alt="The title screen in NES Elite with used tiles highlighted">
+
+						<p>Counting these up gives us a total of 110 tiles with wireframe patterns, so we need 110 patterns in the pattern buffer to display this ship. In a typical space view, the game reserves 183 patterns for wireframes (though this figure will be smaller if there is an in-flight message or a longer on-screen view name). Our total of 110 patterns easily fits into 183, taking up about 60% of the buffer space. That still leaves 73 patterns for other ships, the planet, the sun and so on, and this is normally enough.</p>
+
+						<p>If we do run out of buffer space when drawing lines or pixels, then we simply don't draw anything in the tile where we run out. In practice you don't see this happening, and even if you did, Elite is such a fast-moving game that you probably wouldn't notice it. Thank goodness for the void of space, as otherwise Elite wouldn't even get out of the starting blocks.</p>
+
+						<p>For more information on how the buffers are used to draw the screen in NES Elite, see the deep dive on <a href="drawing_vector_graphics_using_nes_tiles.html">drawing vector graphics using NES tiles</a>.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="splitting_nes_elite_across_multiple_rom_banks.html">Splitting NES Elite across multiple ROM banks</a><a class="next" rel="next" title="Next deep dive" href="bitplanes_in_nes_elite.html">Bitplanes in NES Elite</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

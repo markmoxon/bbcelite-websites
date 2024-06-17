@@ -1,0 +1,164 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "skidding.html", "Skidding", "Skidding", "A deep dive into skidding in BBC Micro Revs", "revs", "deep_dives_driving_model", "skidding");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="driving_on_grass.html">Driving on grass</a><a class="next" rel="next" title="Next deep dive" href="jumps_and_drops.html">Jumps and drops</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The calculations behind losing grip and squealing tyres</h2>
+
+						<p>This article details the extra calculations that the driving model performs when either the front or rear tyres are skidding. It is designed to be read alongside the <a href="the_core_driving_model.html">core driving model calculations</a>.</p>
+
+						<h2 class="articleSubheader"><a id="calculation9" name="calculation9" class="anchor"></a>Calculation 9: Apply rear tyre skidding<br />
+						---------------------------------------</h2>
+
+						<p>This is an explanation of calculation 9 in the driving model. It might help to <a href="the_core_driving_model.html#calculation9">see calculation 9 in context</a>.</p>
+
+						<p>If the rear tyres are squealing (i.e. bit 7 of tyreSqueal is set) or the rear tyres were squealing in the last iteration of the main driving loop (i.e. bit 6 of tyreSqueal is set), then we make the sound of the tyres squealing and do the following calculations.</p>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyskidforces.html">ApplySkidForces</a></i></p>
+
+						<p>First, we recalculate the sideways force due to the sliding rear wheels, using a similar equation to the one we used for calculating the z-axis force in <a href="the_core_driving_model.html#calculation9">calculation 8</a>, but this time in the x-axis and with a different calculation for (A T):</p>
+
+<pre class="articleIndented">  (NN MM) = scaled up |xVelocity|
+
+  (A T) = wingForce95 &lt;&lt; 8
+
+  xTyreForceRear = max((A T), (NN MM)) * abs(-xVelocity)
+</pre>
+
+						<p>The abs(-xVelocity) ensures that the force is against the direction of travel along the x-axis.</p>
+
+						<p><i>See code: <a href="/source/main/subroutine/gettyreforces.html">GetTyreForces</a></i></p>
+
+						<p>Next, we recalculate the force along the z-axis, starting by calculating the variables that we use in the calculation:</p>
+
+						<ul>
+							<li>If the throttle is being applied:
+
+<pre class="articleIndented">  (A T) = (throttleBrake * engineTorque) / 2
+</pre>
+
+								where throttleBrake is the amount of throttle being applied, and engineTorque is the engine torque from the previous iteration of the main driving loop (as set in <a href="the_core_driving_model.html#calculation21">calculation 21</a>).
+							</li>
+
+							<li>If the throttle is not being applied:
+
+<pre class="articleIndented">  (NN MM) = scaled up |zVelocity|
+
+  (A T) = throttleBrake * wingForce
+</pre>
+							</li>
+						</ul>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyskidforces.html">ApplySkidForces</a></i></p>
+
+						<p>Finally, we can recalculate the forces from the skidding rear tyre.</p>
+
+						<ul>
+							<li>If A &gt;= wingForce95, set:
+
+<pre class="articleIndented">  (A T) = wingForce95 &lt;&lt; 8
+
+  xTyreForceRear = 0
+</pre>
+							</li>
+
+							<li>If the throttle is being applied, set:
+
+<pre class="articleIndented">  zTyreForceRear = (A T) * abs(gearNumber - 1)
+</pre>
+
+								where abs(gearNumber - 1) is negative for reverse gear, and positive for all other gears.
+
+							</li>
+
+							<li>If the throttle is not being applied, set:
+
+<pre class="articleIndented">  zTyreForceRear = max((A T), (NN MM)) * abs(-zVelocity)
+</pre>
+
+							The abs(-zVelocity) ensures that the force is against the direction of travel along the z-axis.
+							</li>
+						</ul>
+
+						<h2 class="articleSubheader"><a id="calculation11" name="calculation11" class="anchor"></a>Calculation 11: Apply front tyre skidding<br />
+						-----------------------------------------</h2>
+
+						<p>This is an explanation of calculation 11 in the driving model. It might help to <a href="the_core_driving_model.html#calculation11">see calculation 11 in context</a>.</p>
+
+						<p>If the front tyres are squealing (i.e. bit 7 of tyreSqueal is set) or the front tyres were squealing in the last iteration of the main driving loop (i.e. bit 6 of tyreSqueal is set), then we make the sound of the tyres squealing and do the following calculations.</p>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyskidforces.html">ApplySkidForces</a></i></p>
+
+						<p>First, we recalculate the sideways force due to the sliding front wheels, using a similar equation to the one we used for calculating the z-axis force in <a href="the_core_driving_model.html#calculation9">calculation 8</a>, but this time in the x-axis and with a different calculation for (A T):</p>
+
+<pre class="articleIndented">  (NN MM) = scaled up |xVelocity|
+
+  (A T) = wingForce95 &lt;&lt; 8
+
+  xTyreForceRear = max((A T), (NN MM)) * abs(-xVelocity)
+</pre>
+
+						<p>The abs(-xVelocity) ensures that the force is against the direction of travel along the x-axis.</p>
+
+						<p><i>See code: <a href="/source/main/subroutine/gettyreforces.html">GetTyreForces</a></i></p>
+
+						<p>Next, we recalculate the force along the z-axis, starting by calculating the variables that we use in the calculation:</p>
+
+						<ul>
+							<li>If the throttle is being applied, stop applying the skidding calculations and jump to <a href="the_core_driving_model.html#calculation12">calculation 12</a>.</li>
+
+							<li>If the throttle is not being applied:
+
+<pre class="articleIndented">  (NN MM) = scaled up |zVelocity|
+</pre>
+
+								where throttleBrake is the amount of throttle being applied.
+							</li>
+						</ul>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyskidforces.html">ApplySkidForces</a></i></p>
+
+						<p>Finally, we can recalculate the forces from the skidding rear tyre.</p>
+
+						<ul>
+							<li>If A &lt; wingForce95, then:
+
+<pre class="articleIndented">  (A T) = throttleBrake * wingForce * 3 / 4
+
+  zTyreForceNose = max((A T), (NN MM)) * abs(-zVelocity)
+</pre>
+							</li>
+
+							<li>If A &gt;= wingForce95, then:
+
+<pre class="articleIndented">  (A T) = wingForce95 &lt;&lt; 8
+
+  zTyreForceNose = max((A T), (NN MM)) * abs(-zVelocity)
+</pre>
+
+							</li>
+						</ul>
+
+						<p>The abs(-zVelocity) ensures that the force is against the direction of travel along the z-axis.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="driving_on_grass.html">Driving on grass</a><a class="next" rel="next" title="Next deep dive" href="jumps_and_drops.html">Jumps and drops</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

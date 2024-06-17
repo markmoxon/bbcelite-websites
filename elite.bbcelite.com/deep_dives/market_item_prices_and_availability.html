@@ -1,0 +1,82 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "market_item_prices_and_availability.html", "Market item prices and availability", "Market item prices and availability", "A deep dive into market item prices and availability in BBC Micro Elite", "elite", "deep_dives_simulating_the_universe", "market_item_prices_and_availability");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="twisting_the_system_seeds.html">Twisting the system seeds</a><a class="next" rel="next" title="Next deep dive" href="pitching_and_rolling.html">Pitching and rolling</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The algorithms behind the generation of each system's cargo market</h2>
+
+						<p>The prices and availability of the market items displayed in the Buy Cargo screen are calculated using a couple of complex formulae, which take a base value for each item, mix in a couple of economic variables, and blend it all with a bit of random behaviour. The result is the heart of Elite's trading system, where canny traders can make a killing (while the rest of us can't seem to get a break).</p>
+
+						<p>Here, for example, is a typical set of market prices and availability at Lave:</p>
+
+						<img class="titleImage" src="/images/cassette/market_prices.png" alt="The Market Price screen in BBC Micro Elite" />
+
+						<p>So how are these figures calculated? Let's start by looking at the formula for prices, and then availability.</p>
+
+						<h2 class="articleSubheader">Market item prices<br />
+													 ------------------</h2>
+
+						<p>This is the formula for an item's price, which is implemented as an 8-bit calculation by the <a href="/cassette/main/subroutine/tt151.html">TT151</a> routine:</p>
+
+<pre class="articleIndented">  price = (base_price + (random AND mask) + economy * economic_factor) * 4
+</pre>
+
+						<p>The resulting price is 10 times the displayed price, so we can show it to one decimal place. The individual items in the calculation are as follows:</p>
+
+						<ul>
+							<li>The item's base_price is byte #0 in the market prices table at QQ23, so it's 19 for food, 20 for textiles, 235 for narcotics and so on.</li>
+
+							<li>Each time we arrive in a new system, a random number is generated and stored in location QQ26, and this is shown as "random" in the calculation above.</li>
+
+							<li>The item's mask is byte #3 in the market prices table at QQ23, so it's &amp;01 for food, &amp;03 for textiles, &amp;78 for narcotics and so on. The more set bits there are in this mask, and the higher their position in this byte, the larger the price fluctuations for this commodity, as the random number is AND'd with the mask. So narcotics will vary wildly in price, while food and textiles will be relatively stable.</li>
+
+							<li>The economy for a system is given in a 3-bit value, from 0 to 7, that is stored in QQ28. This value is described in more detail in routine TT24, but this is the range of values:</li>
+
+<pre class="articleIndented">      0 = Rich Industrial
+      1 = Average Industrial
+      2 = Poor Industrial
+      3 = Mainly Industrial
+      4 = Mainly Agricultural
+      5 = Rich Agricultural
+      6 = Average Agricultural
+      7 = Poor Agricultural
+</pre>
+
+							<li>The economic_factor is stored in bits 0-4 of byte #1 in the market prices table at QQ23, and its sign is in bit 7, so it's -2 for food, -1 for textiles, +8 for narcotics and so on. Negative factors show products that tend to be cheaper than average in agricultural economies but closer to average in rich industrial ones, while positive factors are more expensive in poor agricultural systems than rich industrial ones - so food is cheaper in poor agricultural systems while narcotics are very expensive, and it's the other way round in rich industrial systems, where narcotics are closer to the average price, but food is pricier.</li>
+
+							<li>The units for this item (i.e. tonnes, grams or kilograms) are given by bits 5-6 of byte #1 in the market prices table at QQ23.</li>
+						</ul>
+
+						<h2 class="articleSubheader">Market item availability<br />
+													 ------------------------</h2>
+
+						<p>The availability of each item is also calculated using a formula, this time in the <a href="/cassette/main/subroutine/gvl.html">GVL</a> routine. Again it is performed as an 8-bit calculation:</p>
+
+<pre class="articleIndented">  quantity = (base_quantity + (random AND mask) - economy * economic_factor)
+             mod 64
+</pre>
+
+						<p>If the result of the above is less than 0, then the available quantity is set to 0. The resulting availability is stored in the <a href="/cassette/main/workspace/t_per_cent.html#avl">AVL</a> table.</p>
+
+						<p>The item's base_availability is byte #2 in the market prices table at <a href="/cassette/main/variable/qq23.html">QQ23</a>, so it's 6 for food, 10 for textiles, 8 for narcotics and so on. The other variables are described above.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="twisting_the_system_seeds.html">Twisting the system seeds</a><a class="next" rel="next" title="Next deep dive" href="pitching_and_rolling.html">Pitching and rolling</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

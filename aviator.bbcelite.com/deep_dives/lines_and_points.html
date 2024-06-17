@@ -1,0 +1,188 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "lines_and_points.html", "Lines and points", "Lines and points", "A deep dive into lines and points in BBC Micro Aviator", "aviator", "deep_dives_3d_geometry", "lines_and_points");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="/deep_dives/">Index of deep dives</a><a class="next" rel="next" title="Next deep dive" href="3d_objects.html">3D objects</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The fundamental elements of Aviator's 3D world</h2>
+
+						<p>Aviator's 3D world consists of lines, points and objects. In this deep dive we take a look at the first two, and if you want to find out about the third, there's a separate deep dive on <a href="3d_objects.html">3D objects</a> that follows on naturally from this one.</p>
+
+						<p>Let's start by looking at lines.</p>
+                        
+						<h2 class="articleSubheader">Lines<br />
+													 -----</h2>
+
+						<p>The line is arguably the most important building block in Aviator's 3D world. When the game updates the view out of the Spitfire's canopy, it draws a collection of lines, and that's it; it doesn't draw points and it doesn't draw objects, it only draws lines. So in a very real sense, the 3D engine that powers the game only cares about two things: which lines to draw, and where to draw them. Everything else in the 3D graphics code only exists to inform these two decisions, so it's not surprising that a huge chunk of the codebase is devoted to working out line visibility (the "which?") and line coordinates (the "where?").</p>
+
+						<p>Interestingly, there is a fixed collection of lines in Aviator's 3D world; there are 193 of them, to be exact. This collection is immutable, and together these lines make up the 3D world of Acornsville and its surroundings. Each line is either visible on-screen or hidden, but hidden lines still exist; they just aren't shown.</p>
+
+						<p>Each line has an ID in the range 0 to 192, and each specific line always represents the same thing. For example, lines 1 to 4 always form the rectangular outline of the runway, lines 5 to 11 always form the dashes down the middle of the runway, and lines 56 to 59 always form the tree by the side of the runway.</p>
+
+						<p>When you're getting lost in all the routines that <a href="visibility_checks.html">calculate visibility</a>, or you're following a code hole into the depths of the projection maths, just remember that it's only ever about the lines. If you understand the way the lines work, and you understand the <a href="the_flight_model.html">flight model</a>, then you understand the very core of Aviator.</p>
+
+						<h2 class="articleSubheader">Line-related variables and constants<br />
+													 ------------------------------------</h2>
+
+						<p>The following variables and constants are indexed by line ID, and they contain important data about each of the 193 lines.</p>
+
+						<ul>
+							<li><a href="/source/main/variable/linestartpointid.html">lineStartPointId</a>, <a href="/source/main/variable/lineendpointid.html">lineEndPointId</a>
+
+								<ul>
+									<li>Contains fixed data</li>
+
+									<li>Each line is defined by two points: the start point, and the end point. These can be found in the lineStartPointId and lineEndPointId tables. Each table is indexed by line ID, so for line X, lineStartPointId+X contains the ID of the line's start point, and lineEndPointId+X the ID of the line's end point.</li>
+								</ul>
+							</li>
+
+							<li><a href="/source/main/workspace/main_variable_workspace.html#linestoshow">linesToShow</a>
+
+								<ul>
+									<li>Contains dynamic data</li>
+
+									<li>This dynamic list contains the IDs of the lines that we should show on-screen (each line ID is either in this list or in linesToHide). The list is dynamically generated and is updated on every iteration of the main game loop.</li>
+
+								</ul>
+							</li>
+
+							<li><a href="/source/main/workspace/main_variable_workspace.html#linestohide">linesToHide</a>
+
+								<ul>
+									<li>Contains dynamic data</li>
+
+									<li>This dynamic list contains the IDs of the lines that we should not show on-screen (each line ID is either in this list or in linesToShow). The list is dynamically generated and is updated on every iteration of the main game loop.</li>
+
+								</ul>
+							</li>
+
+							<li><a href="/source/main/variable/maxlinedistance.html">maxLineDistance</a>
+
+								<ul>
+									<li>Contains fixed data</li>
+
+									<li>This value denotes the furthest distance at which each line is visible. It is used in the visibility routines as part of the calculation to decide whether or not a line should be shown on-screen.</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>The visibility checks are central to Aviator's 3D graphics engine. They decide which of the two lists each line should be in: linesToShow or linesToHide. See the deep dive on <a href="visibility_checks.html">visibility checks</a> for more details.</p>
+
+						<h2 class="articleSubheader">Points<br />
+													 ------</h2>
+
+						<p>To go along with this fixed collection of 193 lines, there are two collections of points:</p>
+
+						<ul>
+							<li>The first batch of 216 points consists of the start and end points for the lines. Each of these points has an ID in the range 0 to 215, and these IDs appear in the lineStartPointId and lineEndPointId tables. Lots of these points are fixed in space (such as those that make up the town), while others move around in space and are dynamically generated (such as those that make up the bullet trails). All of them are associated with line start and end points.</li>
+
+							<li>The second batch of 40 points is used to store calculated object anchor points (see the deep dive on <a href="3d_objects.html">3D objects</a> for details), plus various calculated vectors that are used in the flight model (such as the gravity vector and bullet velocity vectors). These points are not associated with line start and end points.</li>
+						</ul>
+
+						<p>Each of these 256 points has its own associated set of 3D coordinates. Each coordinate is a 16-bit value, and the six bytes that make up the full 3D coordinate are split across a number of different tables. The coordinate for the point with ID X is as follows:</p>
+
+						<ul>
+							<li>The x-coordinate is (xPointHi+X xPointLo+X)</li>
+
+							<li>The y-coordinate is (yPointHi+X yPointLo+X)</li>
+
+							<li>The z-coordinate is (zPointHi+X zPointLo+X)</li>
+						</ul>
+
+						<p>These tables contain the coordinates associated with this point. These tables are dynamically populated with data as the main loop progresses:</p>
+
+						<ul>
+							<li>First, they are populated with each point's location coordinates, in terms of the outside world. These are positive 16-bit coordinates, with the origin at ground level in the southwest corner of the map, not far from Acornsville.</li>
+
+							<li>These coordinates then get rotated into the plane's frame of reference, ready to be processed for visibility. They are now signed 16-bit coordinates, relative to the pilot (which is another way of saying they are relative to the screen, albeit in three dimensions).</li>
+
+							<li>Finally they are projected into 2D screen coordinates, for drawing on the screen. By this point they are positive 8-bit coordinates, relative to the bottom-left corner of the canopy view.</li>
+						</ul>
+
+						<p>All these calculations are done <i>in situ</i> within the point tables, which saves a lot of space.</li>
+
+						<p>Of the first 216 point IDs, some points are fixed in space (such as the skyscrapers in the town), and they get their coordinates calculated by the <a href="/source/main/subroutine/setpointcoords.html">SetPointCoords</a> routine. Other points appear inside objects, and those have their coordinates calculated by <a href="/source/main/subroutine/setobjpointcoords_part_1_of_2.html">SetObjPointCoords</a> as being relative to the anchor point - see the deep dive on <a href="3d_objects.html">3D objects</a> for details.</p>
+
+						<h2 class="articleSubheader">Coordinate systems<br />
+													 ------------------</h2>
+
+						<p>The coordinate system used by Aviator's 3D world is as follows:</p>
+
+						<ul>
+							<li>The x-axis goes left and right (positive is to the right)</li>
+
+							<li>The y-axis goes up and down (positive is up)</li>
+
+							<li>The z-axis goes forwards and backwards (positive is forwards)</li>
+						</ul>
+
+						<p>So, if we are talking about the coordinate system from the plane's point of view (its "frame of reference"), then the x-axis points out of the right side of the plane, the y-axis points out of the roof, and the z-axis points forwards out of the nose of the plane.</p>
+
+						<p>This is a pretty standard way of expressing 3D coordinates in gaming (Elite uses the same system, for example), but because Aviator is set on land rather than in space, it can sometimes be a bit confusing. From the point of view of the 3D world - i.e. from the perspective of someone standing on the ground, rather than flying the plane - the x-axis points east, the y-axis points up into the sky, and the z-axis points north. This means that the radar, which shows an overhead view of proceedings, draws its blips using the x- and z-coordinates only, as the y-coordinate denotes altitude, and altitude is ignored on the radar.</p>
+
+						<p>From the perspective of the computer, it's perhaps easiest to think of the x- and y-axes mapping to the x- and y-axes on the screen, with the z-axis adding the "third dimension".</p>
+
+						<h2 class="articleSubheader">Point-related variables and constants<br />
+													 -------------------------------------</h2>
+
+						<p>The following variables and constants are indexed by point ID, and they contain important data about each of the 193 lines.</p>
+
+						<ul>
+							<li>( (<a href="/source/main/variable/xpointhi.html">xPointHi</a> <a href="/source/main/workspace/main_variable_workspace.html#xpointlo">xPointLo</a>), (<a href="/source/main/workspace/main_variable_workspace.html#ypointhi">yPointHi</a> <a href="/source/main/workspace/main_variable_workspace.html#ypointlo">yPointLo</a>), (<a href="/source/main/variable/zpointhi.html">zPointHi</a> <a href="/source/main/workspace/main_variable_workspace.html#zpointlo">zPointLo</a>) )
+
+								<ul>
+									<li>Contains dynamic data</li>
+
+									<li>Contains coordinates for 256 points:
+
+										<ul>
+											<li>0-215: Coordinates for line start and end points</li>
+
+											<li>216-255: Coordinates for object anchor points and other vectors; for example, the velocity vectors for the bullets in objects 12-15 are stored in points 228-231, as the value for object X is stored in 216+X</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+
+							<li><a href="/source/main/workspace/main_variable_workspace.html#pointstatus">pointStatus</a>
+
+								<ul>
+									<li>Contains dynamic data</li>
+
+									<li>This status byte caches the following data about each point, so we don't waste time recalculating anything we have already calculated:
+
+										<ul>
+											<li>Whether or not this point's coordinates have been calculated and projected into 2D (by the <a href="/source/main/subroutine/projectpoint_part_1_of_3.html">ProjectPoint</a> routine)</li>
+
+											<li>The polarity of the coordinates of each axis</li>
+
+											<li>The calculated visibility of this point</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>Together, lines and points describe the world of Aviator that gets shown to the pilot. For details on how these lines are grouped together into 3D shapes such as towns, bridges and runways, see the deep dive on <a href="3d_objects.html">3D objects</a> for the next part of the story.</p>
+
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="/deep_dives/">Index of deep dives</a><a class="next" rel="next" title="Next deep dive" href="3d_objects.html">3D objects</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

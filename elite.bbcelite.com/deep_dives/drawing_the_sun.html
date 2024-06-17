@@ -1,0 +1,102 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "drawing_the_sun.html", "Drawing the sun", "Drawing the sun", "A deep dive into drawing the sun in BBC Micro Elite", "elite", "deep_dives_drawing_suns_and_explosions", "drawing_the_sun");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_saturn_on_the_loading_screen.html">Drawing Saturn on the loading screen</a><a class="next" rel="next" title="Next deep dive" href="drawing_explosion_clouds.html">Drawing explosion clouds</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Drawing and storing the sun, and the systems on the Short-range Chart</h2>
+
+						<p>The sun in Elite is an absolute sight to behold, with its flickering fringes and bright, white glare that lights up even the darkest corners of space. Perhaps surprisingly, it turns out to be quite a lot easier to draw the sun than the meridians and craters of the planets.</p>
+
+						<p>It also comes in three flavours. First, there's the white-hot sun of the BBC Micro and Acorn Electron versions:</p>
+
+						<img class="titleImage" src="/images/cassette/sun.png" alt="The sun in BBC Micro Elite" />
+
+						<p>Then there's the red-and-yellow sun of the 6502 Second Processor and BBC Master versions:</p>
+
+						<img class="titleImage" src="/images/6502sp/sun.png" alt="The sun in 6502 Second Processor Elite" />
+
+						<p>And finally, there's the super-hot blue star of the NES version:</p>
+
+						<img class="titleImage" src="/images/nes/general/sun.png" alt="The sun in NES Elite" />
+
+						<p>Let's see what it takes to let there be light in the Elite universe.</p>
+
+						<h2 class="articleSubheader">Line by line<br />
+													 ------------</h2>
+
+						<p>Unlike the planets, which are drawn as circles, the sun is drawn by the <a href="/cassette/main/subroutine/sun_part_1_of_4.html">SUN</a> routine as a set of horizontal lines, with one line per pixel line on-screen. This is how the shimmering edges are drawn, by randomly making the lines shorter or longer (more on that later). The exact same process is used to remove the sun from the screen in the <a href="/cassette/main/subroutine/wpls.html">WPLS</a> routine.</p>
+
+						<p>Note that the NES version of Elite calculates sun lines in the same way as the other versions, but it doesn't store the results, as it doesn't need to remove the sun from the screen. Also, the horizontal line-drawing routines are optimised for drawing the sun into tiles; see the deep dive on <a href="drawing_lines_in_the_nes_version.html">drawing lines in the NES version</a> for more details.</p>
+
+						<p>In all versions, each sun line is defined by two parameters: the coordinate of the centre of the line, and the length of the line from its centre to one end (which we call the "half-width", as it's half the width of the full horizontal line). For the sun, all the lines have the same centre x-coordinate, which is the same x-coordinate as the centre of the sun.</p>
+
+						<p>Given this, we can draw the sun line by line, and all we need to calculate is the half-width of the line for that particular y-coordinate. We can do this using nothing more complicated than Pythagoras - there's no need for any trigonometry here. Consider drawing a sun line near the bottom of a sun with radius K, let's say the line that is V lines below the centre. It looks something like this:</p>
+
+<pre class="articleIndented">                         _ - _
+                      =         =
+                    =             =                   |`.
+                   =               =                  |  `.  K
+  We want          =       |`.     =                V |    `.
+  to draw           =      |  `.  =         __--&gt;     |      `.
+  this line ------&gt;  ._____|____`.   ___.--´          +--------`
+                         - _ -                     SQRT(K^2 - V^2)
+</pre>
+
+						<p>Looking at the triangle from the centre of the sun down to the horizontal line we want to draw, we can apply Pythagoras to calculate that the half-width of the line we want to draw is SQRT(K^2 - V^2), so along with the value of V we have all the data we need to draw that line, and by extension the whole ball of fire.</p>
+
+						<h2 class="articleSubheader">Flickering fringes<br />
+													 ------------------</h2>
+
+						<p>The sun's flickering fringes are easy enough to implement in this model.</p>
+
+						<p>We start by calculating a figure between 0 and 7, with bigger numbers for bigger suns, and call this the "fringe size", which we store in CNT. This defines the width of the pulsating fringe around the sun (which explains why the sun stops flickering when it's far away - it has a fringe size of 0).</p>
+
+						<p>Then, when calculating the half-width of each line using the method above, we simply pick a random number between 0 and the fringe size, and add it to the half-width. This makes the sun symmetrical around its vertical meridian, and as the random number changes for each line and for each redraw of the sun, the sun's fringes shimmer and flicker. It's simple but very effective, and it adds very little effort, even to the erase procedure, as we can see in the next section.</p>
+
+						<h2 class="articleSubheader">Drawing and storing sun lines with SUN<br />
+													 --------------------------------------</h2>
+
+						<p>As with all objects in the sky, we can erase the sun from the screen by drawing it a second time in the same place as before, so it cancels out the existing sun using EOR logic. Although the maths above isn't complex, it is still pretty time-consuming, especially with a large sun on the screen, so as with the planets, the sun has its own line heap, stored at LSO, which stores the data for every line in the current sun. (Note that the NES version is an exception, as it uses screen buffers for each frame and doesn't need to erase the screen contents, so it doesn't have any line heaps at all. See the deep dive on <a href="drawing_vector_graphics_using_nes_tiles.html">drawing vector graphics using NES tiles</a> for details.)</p>
+
+						<p>The first location at LSO has a special meaning:</p>
+
+						<ul class="tightList pre">
+							<li>LSO = 1   indicates the line heap contains data</li>
+							<li>LSO = &amp;FF indicates the line heap is empty</li>
+						</ul>
+
+						<p>Because the sun is made up of lines and it can fill the entire space view, the sun's line heap contains 192 values, one for each of the lines on the screen. The value in LSO+Y contains details of the sun's line on pixel row Y, with a 0 indicating there is no line, and a non-zero value containing the half-width of the sun line on that y-coordinate. Along with the sun's centre coordinates in SUNX and SUNY, the line heap contains everything we need to know in order to draw the sun, all without having to recalculate anything.</p>
+
+						<p>This also applies to the random fringe factor that we add to the half-width to make the sun shimmer. As we're only storing the half-width and that contains the random fringe size, we can store and redraw shimmering suns with no more effort than a clean ball sun. It's remarkably elegant for such a complicated- looking graphical effect.</p>
+
+						<h2 class="articleSubheader">Drawing flicker-free and efficient sun lines<br />
+													 --------------------------------------------</h2>
+
+						<p>The SUN routine combines the drawing of the new sun and the removal of the old one into one pass through the line heap, from the bottom of the screen to the top (so from the end of the heap to the start). We do this in <a href="/cassette/main/subroutine/sun_part_2_of_4.html">part 2</a> by starting at the bottom and plotting each sun line in turn from the line heap as we move up the screen. As each line is plotted, thus erasing the old sun, it is removed from the line heap.</p>
+
+						<p>We do this until we reach the point where we need to start drawing the new sun, at which point we move into <a href="/cassette/main/subroutine/sun_part_3_of_4.html">part 3</a>. This part of the code removes the old sun line and replaces it with the new one, and this is done in a rather clever way that's much more efficient than simply erasing the old line and drawing the new one. The code works out what we need to add or erase from each end of the old sun line to turn it into the new sun line, and then it only applies those changes, leaving alone any part of the line that needs to remain white. This minimises the amount of on-screen change, and because of this the sun is totally flicker-free, unlike the ships and planets (which are erased and redrawn using EOR logic, and which therefore flicker noticeably). This approach also minimises the amount of line-drawing that's required, making it quicker than a simple erase-and-replace approach would be.</p>
+
+						<p>After updating each line, we replace the value in the line heap with the new line's half-width, so the new sun can be erased in the same way. Once the new sun is drawn, we then keep heading up the screen in <a href="/cassette/main/subroutine/sun_part_4_of_4.html">part 4</a>, where we redraw any remaining lines from the old sun, thus removing them from the screen, and leaving just the new sun on show.</p>
+
+						<p>The LSO line heap block shares its memory with the ship line heap for the space station. This memory can be shared as our local bubble of universe can support either the sun or a space station, but not both.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_saturn_on_the_loading_screen.html">Drawing Saturn on the loading screen</a><a class="next" rel="next" title="Next deep dive" href="drawing_explosion_clouds.html">Drawing explosion clouds</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

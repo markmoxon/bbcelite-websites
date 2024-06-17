@@ -1,0 +1,676 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "object_definitions.html", "Object definitions", "Object definitions", "A deep dive into object definitions in BBC Micro Revs", "revs", "deep_dives_objects", "object_definitions");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="trigonometry.html">Trigonometry</a><a class="next" rel="next" title="Next deep dive" href="drawing_a_3d_car_from_2d_parts.html">Drawing a 3D car from 2D parts</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Details of the 13 objects that make up the signs, flags, markers and cars</h2>
+
+						<p>The main driving view in Revs is a relatively straightforward composition. In the distance is the cloudless, blue sky; then just below the horizon is the track with its red-and-white verges, black bitumen and grassy surroundings; and finally there are various objects spinning past, from road signs and corner markers and starting flags by the track edge, to competitors' cars crowding the racing line around the bends. In this article, we're going to look at each of these objects in detail.</p>
+
+						<p>There are 13 different types of object in Revs. These objects are all fully scalable, so each of them can be shown at any distance with different levels of detail, all while using the same object definitions - see the deep dive on <a href="scaling_objects_with_scaffolds.html">scaling objects with scaffolds</a> for details. Individually each object is 2D, but some of them can be put together to create really convincing 3D objects - see the deep dive on <a href="drawing_a_3d_car_from_2d_parts.html">drawing a 3D car from 2D parts</a> for more on that. And despite this complexity, each object is drawn efficiently using nothing more than vertical edges, which fit nicely into the strip-based structure of the screen buffer - see the deep dive on <a href="creating_objects_from_edges.html">creating objects from edges</a> for more about the object-drawing process, and the deep dive on <a href="drawing_the_track_view.html">drawing the track view</a> for details about the screen buffer.</p>
+
+						<p>We'll take a tour through all the different object types in a moment, but first let's look at how the object system works.</p>
+
+						<h2 class="articleSubheader">The object system<br />
+                        -----------------</h2>
+
+						<p>There are 13 types of object in Revs, each with its own object definition. The different object types are numbered 0 to 12, and the type of the object currently being drawn is stored in the <a href="/source/main/workspace/zero_page.html#objecttype">objectType</a> variable. The object types are as follows (the links will take you down to the relevant object type definition below):</p>
+
+						<ol start="0">
+							<li><a href="#type0">Four-object car, front tyres</a></li>
+
+							<li><a href="#type1">Four-object car, body and helmet</a></li>
+
+							<li><a href="#type2">Four-object car, rear tyres</a></li>
+
+							<li><a href="#type3">Four-object car, rear wing</a></li>
+
+							<li><a href="#type4">Standard car</a></li>
+
+							<li><a href="#type5">Distant car</a></li>
+
+							<li><a href="#type6">Corner marker</a></li>
+
+							<li><a href="#type7">Straight sign</a></li>
+
+							<li><a href="#type8">Start flag</a></li>
+
+							<li><a href="#type9">Blank road sign</a></li>
+
+							<li><a href="#type10">Chicane road sign</a> (or the <a href="#type10a">hairpin road sign</a> in some tracks)</li>
+
+							<li><a href="#type11">Right turn road sign</a></li>
+
+							<li><a href="#type12">Left turn road sign</a></li>
+						</ol>
+
+						<p>Each object type is made up of one or more object parts. When drawing an object, we draw each part individually and in order, so parts that are drawn first can be partially obscured by parts that are drawn later. For example, take a look at object type 0, which displays the front tyres of the four-object car:</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_0.png" alt="Object 0 at close quarters" />
+
+						<p>The red rectangle is the last object part to be drawn, so it overlaps the black-and-white tyres on either side.</p>
+
+						<p>Each object part has its own set of data in the object data tables, which define the size and colour of the object part. Most object parts are simple rectangles, and they are defined by values for the top, bottom, left and right edges of the rectangle, plus the colour of the rectangle.</p>
+
+						<p>The shape and size of each object part is defined in the object data tables at <a href="/source/main/variable/objecttop.html">objectTop</a>, <a href="/source/main/variable/objectbottom.html">objectBottom</a>, <a href="/source/main/variable/objectleft.html">objectLeft</a> and <a href="/source/main/variable/objectright.html">objectRight</a>. These tables are indexed by the <a href="/source/main/variable/objectindex.html">objectIndex</a> table, which lets us convert an object type into a range of indexes that can be used to pull the relevant values from the data tables.</p>
+
+						<p>The object data tables contain dimensions that are relative to the centre of the object, with each dimension being stored as one of a set of scaffold measurements. The scaffold system is described in detail in the deep dive on <a href="scaling_objects_with_scaffolds.html">scaling objects with scaffolds</a>, but for the purposes of this article, you can think of each object type as being drawn on a scalable 65-by-65 grid, with the axes ranging from -32 to +32.</p>
+
+						<p>Each object part's colour is defined in the <a href="/source/main/variable/objectColour.html">objectColour</a> table. Each entry in objectColour defines two colours for the relevant object part: the edge colour (in bits 2-3) and the fill colour (in bits 0-1). Each object part is a rectangle, but of the four edges, only the left and right edges are drawn. Object type 5, which shows a distant car, is a good example of an object with just one object part:</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_5.png" alt="Object 5 at close quarters" />
+
+						<p>As you can see, the rectangle has left and right edges, but nothing at the top or bottom. Objects that appear to have top or bottom edges, like the tyres in object type 0 above, implement them using individual object parts for the edges (so object type 0 has two dedicated object parts for the two white lines at the tops of the tyres). So from left to right, each object part is drawn as a left edge (in the edge colour), then the inside of the rectangle (in the fill colour), and then a right edge (in the edge colour).</p>
+
+						<p>It's worth noting that the four colours used in the object definitions are logical colours. The default mapping is 0 = black, 1 = red, 2 = white and 3 = green, but this can be changed before calling the display routines to shows objects like cars and corner markers in different colours. This enables different drivers to have different car colours, and for the corner flags to be white on the approach to a corner, and red on the corner itself.</p>
+
+						<p>If bit 4 of objectColour is set, then the object's outside edge is drawn in the fill colour, which effectively hides it by merging it with the rectangle's fill. An outside edge is defined as a left edge in the left half of the screen, or a right edge in the right half of the screen. This gives objects like the corner marker (object type 6) an asymmetric appearance, like this:</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_6.png" alt="Object 6 at close quarters" />
+
+						<p>The marker has a black edge on the track side of the marker (the inside edge), but a white edge on the side away from the track (the outside edge); the example above is of a marker on the right side of the track. This logic works correctly on both sides of the track without needing to change the object definition in any way.</p>
+
+						<p>Some object parts are more complicated than simple rectangles and use two sets of data to create four-edge object parts. This feature is only used by object types 2 and 4, where it gives the cars red and white central sections. Here's object type 2, which shows the rear tyres of the four-object car:</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_2.png" alt="Object 2 at close quarters" />
+
+						<p>The four-edge object part is the strip along the top of the tyres, which has three sections (black, red and black) with white edges. Four-edge object parts are signalled by bit 7 of <a href="/source/main/variable/objectColour.html">objectColour</a> being set, in which case the next data entries from <a href="/source/main/variable/objecttop.html">objectTop</a>, <a href="/source/main/variable/objectbottom.html">objectBottom</a>, <a href="/source/main/variable/objectleft.html">objectLeft</a> and <a href="/source/main/variable/objectright.html">objectRight</a> and objectColour define the positions and colours of the two extra edges in the object part.</p>
+
+						<p>Incidentally, bit 6 of objectColour being set indicates that this is last object part in each object type. This saves us having to store an end index for each part - the objectIndex table just contains the index of the first object part for each object type, and the code stops when it reaches a part with bit 6 of objectColour set. This saves a few precious bytes without affecting performance.</p>
+
+						<p>Finally, some of the object types below are displayed in groups of multiple objects, as follows:</p>
+
+						<ul>
+							<li>The first four object types (0 to 3) work together to create a 3D car that is made up of four objects - see the deep dive on <a href="drawing_a_3d_car_from_2d_parts.html">drawing a 3D car from 2D parts</a> for details. This is only done for the nearest car to us, and only when we are facing forwards along the track; all other cars use either object type 4 (for close cars) or object type 5 (for distant cars).</li>
+
+							<li>The road sign object types (9 to 12) work in pairs. When asked to draw an object of type 10 to 12 (chicane, right turn or left turn), the game first draws a blank, white sign using an object of type 9, and then it draws the sign's contents by drawing object type 10, 11 or 12 over the top (though only if we are facing forwards, so road signs are blank on the back). See object types 9 to 12 below for more on this.</li>
+						</ul>
+
+						<p>Now that's out of the way, let's take a look at each of the different object types in more detail.</p>
+
+						<h2 class="articleSubheader"><a name="type0" id="type0" class="anchor"></a>Object type 0: Four-object car, front tyres<br />
+                        -------------------------------------------</h2>
+
+						<p>In the four-object car, this is the furthest of the four objects and the first to be drawn, and shows the car's front tyres. The centre of the object is high up so the tyres are low down within the resulting 3D car. See the deep dive on <a href="drawing_a_3d_car_from_2d_parts.html">drawing a 3D car from 2D parts</a> for an explanation of how the four-object car works.</p>
+
+						<p>This is what object type 0 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_0.png" alt="Object 0 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_0.png" alt="Object 0 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>-4</td><td>-5</td><td>-22</td><td>-18</td><td>White</td><td>White</td></tr>
+							<tr><td>1</td><td>-4</td><td>-5</td><td>+18</td><td>+22</td><td>White</td><td>White</td></tr>
+							<tr><td>2</td><td>-5</td><td>-17</td><td>-24</td><td>-16</td><td>White</td><td>Black</td></tr>
+							<tr><td>3</td><td>-5</td><td>-17</td><td>+16</td><td>+24</td><td>White</td><td>Black</td></tr>
+							<tr><td>4</td><td>-8</td><td>-17</td><td>-18</td><td>+18</td><td>Red</td><td>Red</td></tr>
+						</table>
+
+						<p>If we draw all five parts, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object:</p>
+
+<pre class="articleIndented">
+                       -22  -18        0        +18  +22
+
+                                       *                           0
+
+  Parts 0, 1 ->         +---+                     +---+           -4
+                      +-+---++                   ++---+-+         -5
+  Parts 2, 3 ->       |      |                   |      |
+                      |     ++-------------------++     |         -8
+  Part 4 ->           |     |                     |     |
+                      |     |                     |     |
+                      +-----+---------------------+-----+        -17
+
+                     -24   -16         0         +16   +24
+</pre>
+
+						<h2 class="articleSubheader"><a name="type1" id="type1" class="anchor"></a>Object type 1: Four-object car, body and helmet<br />
+													 -----------------------------------------------</h2>
+
+						<p>In the four-object car, this is the second of the four objects to be drawn, and shows the car's body and the driver's helmet. The centre of the object is low down so the helmet peeks above the rear tyres in the resulting 3D car. See the deep dive on <a href="drawing_a_3d_car_from_2d_parts.html">drawing a 3D car from 2D parts</a> for an explanation of how the four-object car works.</p>
+
+						<p>This is what object type 1 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_1.png" alt="Object 1 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_1.png" alt="Object 1 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+5</td><td>+2</td><td>-5</td><td>+5</td><td>White</td><td>Black</td></tr>
+							<tr><td>1</td><td>+2</td><td>-1</td><td>-8</td><td>+8</td><td>White</td><td>Black</td></tr>
+							<tr><td>2</td><td>-1</td><td>-5</td><td>-12</td><td>+12</td><td>White</td><td>Red</td></tr>
+							<tr><td>3</td><td>+6</td><td>+5</td><td>-2</td><td>+2</td><td>White</td><td>White</td></tr>
+						</table>
+
+						<p>If we draw all four parts, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object:</p>
+
+<pre class="articleIndented">
+                          -8      -2       +2      +8
+
+  Part 3 ->                        +-------+                      +6
+                               +---+-------+----+                 +5
+  Part 0 ->                    |                |
+                           +---+----------------+---+             +2
+  Part 1 ->                |                        |
+                           |           *            |              0
+                      +----+------------------------+----+        -1
+                      |                                  |
+  Part 2 ->           |                                  |
+                      |                                  |
+                      +----------------------------------+        -5
+
+                    -12       -5       0       +5       +12
+</pre>
+
+                        <h2 class="articleSubheader"><a name="type2" id="type2" class="anchor"></a>Object type 2: Four-object car, rear tyres<br />
+													 ------------------------------------------</h2>
+
+						<p>In the four-object car, this is the third of the four objects to be drawn, and shows the car's rear tyres. The centre of the object is high up so the tyres are low down within the resulting 3D car, allowing the helmet to be seen above the rear end. See the deep dive on <a href="drawing_a_3d_car_from_2d_parts.html">drawing a 3D car from 2D parts</a> for an explanation of how the four-object car works.</p>
+
+						<p>This is what object type 2 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_2.png" alt="Object 2 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_2.png" alt="Object 2 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>-3</td><td>-5</td><td>-26</td><td>-16</td><td>White</td><td>Black</td></tr>
+							<tr><td>&nbsp;2nd edge</td><td>-</td><td>-</td><td>-</td><td>+16</td><td>-</td><td>Red</td></tr>
+							<tr><td>&nbsp;3rd edge</td><td>-</td><td>-</td><td>-</td><td>+26</td><td>Red</td><td>-</td></tr>
+							<tr><td>2</td><td>-5</td><td>-17</td><td>-26</td><td>+26</td><td>White</td><td>Black</td></tr>
+							<tr><td>3</td><td>-2</td><td>-3</td><td>-24</td><td>-18</td><td>White</td><td>White</td></tr>
+							<tr><td>4</td><td>-2</td><td>-3</td><td>+18</td><td>+24</td><td>White</td><td>White</td></tr>
+						</table>
+
+						<p>If we draw all five parts, we get the following design, where the scaffold measurements are shown around the side, part 0 is a four-edge object part that uses the values that would otherwise make up part 1, and * indicates the centre of the object:</p>
+
+<pre class="articleIndented">
+                      -24  -18         0         +18  +24
+
+                                       *                           0
+
+  Parts 3, 4 ->         +---+                     +---+           -2
+                      +-------+-----------------+-------+         -3
+  Part 0 (x4) ->      |       |                 |       |
+                      +-------+-----------------+-------+         -5
+                      |                                 |
+                      |                                 |
+  Part 2 ->           |                                 |
+                      |                                 |
+                      |                                 |
+                      +---------------------------------+        -17
+
+                     -26     -16       0       +16     +26
+</pre>
+
+<h2 class="articleSubheader"><a name="type3" id="type3" class="anchor"></a>Object type 3: Four-object car, rear wing<br />
+													 -----------------------------------------</h2>
+
+						<p>In the four-object car, this is the closest of the four objects and the last to be drawn, and shows the car's rear wing. The centre of the object is positioned so the white part of the tail touches the ground at the rear of the car, while the wing itself rises above the chassis. See the deep dive on <a href="drawing_a_3d_car_from_2d_parts.html">drawing a 3D car from 2D parts</a> for an explanation of how the four-object car works.</p>
+
+						<p>This is what object type 3 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_3.png" alt="Object 3 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_3.png" alt="Object 3 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+6</td><td>+4</td><td>-16</td><td>+16</td><td>Black</td><td>White</td></tr>
+							<tr><td>1</td><td>+4</td><td>+3</td><td>-16</td><td>+16</td><td>Black</td><td>Black</td></tr>
+							<tr><td>2</td><td>+3</td><td>-10</td><td>-1</td><td>+1</td><td>Black</td><td>White</td></tr>
+							<tr><td>3</td><td>-10</td><td>-16</td><td>-1</td><td>+1</td><td>White</td><td>White</td></tr>
+						</table>
+
+						<p>If we draw all four parts, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object:</p>
+
+<pre class="articleIndented">
+                      -16              0              +16
+
+                       +-------------------------------+       +6
+  Part 0 ->            |                               |
+                       +-------------------------------+       +4
+  Part 1 ->            +--------------+-+--------------+       +3
+                                      | |
+                                      | |
+                                      |*|                       0
+                                      | |
+                                      | |
+  Part 2 ->                           | |
+                                      | |
+                                      | |
+                                      | |
+                                      +-+                     -10
+                                      | |
+  Part 3 ->                           | |
+                                      | |
+                                      +-+                     -16
+</pre>
+
+                        <h2 class="articleSubheader"><a name="type4" id="type4" class="anchor"></a>Object type 4: Standard car<br />
+													 ---------------------------</h2>
+
+						<p>This object type is used for all nearby cars apart from the nearest (which is shown as the four-object car above). If our car has spun round and is pointing the wrong way down the track, then this object type is used for all nearby cars including the nearest, as the four-object car only works when seen from behind.</p>
+
+						<p>This is what object type 4 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_4.png" alt="Object 4 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_4.png" alt="Object 4 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+3</td><td>-1</td><td>-6</td><td>+6</td><td>White</td><td>Black</td></tr>
+							<tr><td>1</td><td>-1</td><td>-5</td><td>-12</td><td>+12</td><td>Red</td><td>Red</td></tr>
+							<tr><td>2</td><td>-3</td><td>-5</td><td>-26</td><td>-16</td><td>White</td><td>Black</td></tr>
+							<tr><td>&nbsp;2nd edge</td><td>-</td><td>-</td><td>-</td><td>+16</td><td>-</td><td>Red</td></tr>
+							<tr><td>&nbsp;3rd edge</td><td>-</td><td>-</td><td>-</td><td>+26</td><td>Red</td><td>-</td></tr>
+							<tr><td>4</td><td>-5</td><td>-17</td><td>-26</td><td>+26</td><td>White</td><td>Black</td></tr>
+							<tr><td>5</td><td>+1</td><td>-5</td><td>-1</td><td>+1</td><td>Black</td><td>White</td></tr>
+							<tr><td>6</td><td>+6</td><td>+3</td><td>-16</td><td>+16</td><td>Black</td><td>White</td></tr>
+						</table>
+
+						<p>If we draw all seven parts, we get the following design, where the scaffold measurements are shown around the side, part 2 is a four-edge object part that uses the values that would otherwise make up part 3, part 5 is the black line up the middle of the object, and * indicates the centre of the object:</p>
+
+<pre class="articleIndented">
+                          -16          0          +16
+
+                           +-----------------------+                 +6
+  Part 6 ->                |                       |
+                           +------+---------+------+                 +3
+  Part 0 ->                       |         |
+                                  |   +-+   |
+  Part 5 ->                       |   |*|   |                         0
+                             +----+---+ +---+----+                   -1
+  Part 1 ->                  |        | |        |
+                  +--------+-+--------+ +--------+-+--------+        -3
+  Part 2 (x4) ->  |        | :        | |        : |        |
+                  +--------+-+--------+-+--------+-+--------+        -5
+                  |                                         |
+                  |                                         |
+  Part 4 ->       |                                         |
+                  |                                         |
+                  |                                         |
+                  +-----------------------------------------+       -17
+
+                 -26        -12      -1 +1        +12      +26
+</pre>
+
+<h2 class="articleSubheader"><a name="type5" id="type5" class="anchor"></a>Object type 5: Distant car<br />
+													 --------------------------</h2>
+
+						<p>This object type is used for distant cars, to simplify the drawing process when a car is too far away for any of the details of object type 4 to be visible. The centre of the object is high up, so the car is shown quite low down on the track and stays below the horizon.</p>
+
+						<p>This is what object type 5 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_5.png" alt="Object 5 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_5.png" alt="Object 5 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>-3</td><td>-17</td><td>-26</td><td>+26</td><td>White</td><td>Black</td></tr>
+						</table>
+
+						<p>If we draw the object, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object:</p>
+
+<pre class="articleIndented">
+                      -26              0              +26
+
+                                       *                        0
+
+                       +-------------------------------+       -3
+                       |                               |
+  Part 0 ->            |                               |
+                       |                               |
+                       +-------------------------------+      -17
+</pre>
+
+                        <h2 class="articleSubheader"><a name="type6" id="type6" class="anchor"></a>Object type 6: Corner marker<br />
+													 ----------------------------</h2>
+
+						<p>This object type is a simple rectangle that's used for the corner markers. It's a good example of the feature that lets us merge outside edges into the fill colour, as it changes the look of the corner markers depending on which side of the track they appear. Specifically, the marker has a black edge on the track side of the marker (the inside edge), but not on the side away from the track (the outside edge). This works on both sides of the track without needing to change the object definition in any way.</p>
+
+						<p>This is what object type 6 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_6.png" alt="Object 6 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_6.png" alt="Object 6 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+16</td><td>+1</td><td>-10</td><td>+10</td><td>Black *</td><td>White</td></tr>
+						</table>
+
+						<p>The * in the above table means that for outside edges, we use the fill colour for the colour of the edge, rather than the edge colour. An outside edge is defined as a right edge in the eight half of the screen, or a left edge in the left half of the screen. This feature is controlled by bit 4 of the objectColour entry for this part.</p>
+
+						<p>If we draw the object, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object:</p>
+
+<pre class="articleIndented">
+                           -10         0         +10
+
+
+
+                            +---------------------+           +16
+                            |                     |
+                            |                     |
+                            |                     |
+  Part 0 ->                 |                     |
+                            |                     |
+                            |                     |
+                            |                     |
+                            +---------------------+            +1
+                                       *                        0
+</pre>
+
+						<h2 class="articleSubheader"><a name="type7" id="type7" class="anchor"></a>Object type 7: Straight sign<br />
+													 ----------------------------</h2>
+
+						<p>This object type is the sign that we see on the right of the track at the start of the practice and qualifying laps. It signifies the start of a straight portion of track. Its legs are asymmetric, with the red legs having a black border on the inside edges only.</p>
+
+						<p>This is what object type 7 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_7.png" alt="Object 7 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_7.png" alt="Object 7 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+20</td><td>-8</td><td>-28</td><td>+28</td><td>White</td><td>Black</td></tr>
+							<tr><td>1</td><td>-8</td><td>-18</td><td>-20</td><td>-16</td><td>Black *</td><td>Red</td></tr>
+							<tr><td>2</td><td>-8</td><td>-18</td><td>+16</td><td>+20</td><td>Black *</td><td>Red</td></tr>
+						</table>
+
+						<p>The * in the above table means that for outside edges, we use the fill colour for the colour of the edge, rather than the edge colour. An outside edge is defined as a right edge in the eight half of the screen, or a left edge in the left half of the screen. This feature is controlled by bit 4 of the objectColour entry for this part.</p>
+
+						<p>If we draw all three parts, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object:</p>
+
+<pre class="articleIndented">
+                  -28                  0                  +28
+
+                   +---------------------------------------+     +20
+                   |                                       |
+                   |                                       |
+  Part 0 ->        |                                       |
+                   |                                       |
+                   |                   *                   |       0
+                   |                                       |
+                   +-------+---+---------------+---+-------+      -8
+                           |   |               |   |
+  Parts 1, 2 ->            |   |               |   |
+                           |   |               |   |
+                           +---+               +---+             -18
+
+                         -20   -16           +16   +20
+</pre>
+
+						<h2 class="articleSubheader"><a name="type8" id="type8" class="anchor"></a>Object type 8: Start flag<br />
+													 -------------------------</h2>
+
+						<p>This object type is the flag to the left of the starting line. Not surprisingly, it only appears once in the whole track.</p>
+
+						<p>This is what object type 8 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_8.png" alt="Object 8 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_8.png" alt="Object 8 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+3</td><td>-18</td><td>-2</td><td>+2</td><td>Black</td><td>Black</td></tr>
+							<tr><td>1</td><td>+16</td><td>+3</td><td>-2</td><td>+16</td><td>White</td><td>Black</td></tr>
+						</table>
+
+						<p>If we draw both parts, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object. This is the only asymmetrical design in terms of overall layout (the sign contents are also asymmetric, but they are shown within a symmetrical road sign). In this object, the flag is offset to the right of the centre line:</p>
+
+<pre class="articleIndented">
+                                       0             +16
+
+                                     +----------------+     +16
+                                     |                |
+                                     |                |
+  Part 1 ->                          |                |
+                                     |                |
+                                     +---+------------+      +3
+                                     |   |
+                                     | * |                    0
+                                     |   |
+                                     |   |
+  Part 0 ->                          |   |
+                                     |   |
+                                     |   |
+                                     |   |
+                                     |   |
+                                     |   |
+                                     +---+                  -18
+
+                                    -2   +2
+         </pre>
+
+						<h2 class="articleSubheader"><a name="type9" id="type9" class="anchor"></a>Object type 9: Blank road sign<br />
+													 ------------------------------</h2>
+
+						<p>This object type is the blank sign on which the road signs in object types 10, 11 and 12 are drawn. For the road signs, this object is drawn first, and then the contents are drawn over the top of the blank sign. Object types 10 to 12 only contain the black contents of the sign, not the white background.</p>
+
+						<p>This is what object type 9 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_9.png" alt="Object 9 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_9.png" alt="Object 9 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+12</td><td>-10</td><td>-16</td><td>+16</td><td>White</td><td>White</td></tr>
+							<tr><td>1</td><td>-10</td><td>-16</td><td>-3</td><td>+3</td><td>Black *</td><td>White</td></tr>
+						</table>
+
+						<p>If we draw both parts, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object:</p>
+
+<pre class="articleIndented">
+                      -16              0              +16
+
+                       +-------------------------------+      +12
+                       |                               |
+                       |                               |
+                       |                               |
+                       |                               |
+  Part 0 ->            |                               |
+                       |               *               |
+                       |                               |
+                       |                               |
+                       |                               |
+                       +-------------+---+-------------+      -10
+                                     |   |
+  Part 1 ->                          |   |
+                                     +---+
+
+                                    -3   +3
+</pre>
+
+						<h2 class="articleSubheader"><a name="type10" id="type10" class="anchor"></a>Object type 10: Chicane road sign<br />
+													 ---------------------------------</h2>
+
+						<p>This object type contains the contents for the chicane road sign. This object is only drawn once the white background in object type 9 has been drawn. If we are facing the wrong way along the track, the sign contents are not drawn, so the road signs are one-sided.</p>
+
+						<p>This is what object type 10 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_10.png" alt="Object 10 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_10.png" alt="Object 10 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+4</td><td>+1</td><td>-10</td><td>+10</td><td>Black</td><td>Black</td></tr>
+							<tr><td>1</td><td>+1</td><td>-6</td><td>-10</td><td>-9</td><td>Black</td><td>Black</td></tr>
+							<tr><td>2</td><td>+10</td><td>+4</td><td>+9</td><td>+10</td><td>Black</td><td>Black</td></tr>
+						</table>
+
+						<p>If we draw all three parts, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object. This object doesn't contain the sign itself, which comes from object type 9, but this is what they look like together:</p>
+
+<pre class="articleIndented">
+                           -10         0         +10
+
+                       +-------------------------------+
+                       |                               |
+                       |                       +--+    |      +10
+  Part 2 ->            |                       |  |    |
+                       |    +------------------+--+    |       +4
+  Part 0 ->            |    |                     |    |
+                       |    +--+------------------+    |       +1
+  Part 1 ->            |    |  |                       |
+                       |    |  |                       |
+                       |    +--+                       |       -6
+                       +-------------+---+-------------+
+                                     |   |
+                                     |   |
+                                     +---+
+
+                              -9              +9
+</pre>
+
+						<h2 class="articleSubheader"><a name="type10a" id="type10a" class="anchor"></a>Object type 10a: Hairpin road sign<br />
+													 ----------------------------------</h2>
+
+						<p>This object type contains the contents for the hairpin road sign. The hairpin sign is only used in the Brands Hatch, N&uuml;rburgring and Oulton Park tracks, where the top and bottom coordinates of part 2 of the chicane road sign object are modified so the right-hand vertical bar is below the horizontal line rather than above it. This turns the sign into a hairpin; see the deep dive on <a href="secrets_of_the_extra_tracks.html">secrets of the extra tracks</a> for details of the extra track modification process. As with the chicane sign, this object is only drawn once the white background in object type 9 has been drawn. If we are facing the wrong way along the track, the sign contents are not drawn, so the road signs are one-sided.</p>
+
+						<p>This is what object type 10a looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/hairpin.png" alt="Object 10 hairpin at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/hairpin.png" alt="Object 10 hairpin at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+4</td><td>+1</td><td>-10</td><td>+10</td><td>Black</td><td>Black</td></tr>
+							<tr><td>1</td><td>+1</td><td>-6</td><td>-10</td><td>-9</td><td>Black</td><td>Black</td></tr>
+							<tr><td>2</td><td>+1</td><td>-4</td><td>+9</td><td>+10</td><td>Black</td><td>Black</td></tr>
+						</table>
+
+						<p>If we draw all three parts, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object. This object doesn't contain the sign itself, which comes from object type 9, but this is what they look like together:</p>
+
+<pre class="articleIndented">
+                           -10         0         +10
+
+                       +-------------------------------+
+                       |                               |
+                       |                               |
+                       |                               |
+                       |    +------------------+--+    |       +4
+  Part 0 ->            |    |                     |    |
+                       |    +--+------------------+    |       +1
+  Part 2 ->            |    |  |               |  |    |
+                       |    |  |               +--+    |       -4
+  Part 1 ->            |    +--+                       |       -6
+                       +-------------+---+-------------+
+                                     |   |
+                                     |   |
+                                     +---+
+
+                              -9              +9
+</pre>
+
+						<h2 class="articleSubheader"><a name="type11" id="type11" class="anchor"></a>Object type 11: Right turn road sign<br />
+													 ------------------------------------</h2>
+
+						<p>This object type contains the contents for the right turn road sign. This object is only drawn once the white background in object type 9 has been drawn. If we are facing the wrong way along the track, the sign contents are not drawn, so the road signs are one-sided.</p>
+
+						<p>This is what object type 11 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_11.png" alt="Object 11 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_11.png" alt="Object 11 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+8</td><td>+5</td><td>-10</td><td>+8</td><td>Black</td><td>Black</td></tr>
+							<tr><td>1</td><td>+5</td><td>-6</td><td>-10</td><td>-8</td><td>Black</td><td>Black</td></tr>
+						</table>
+
+						<p>If we draw both parts, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object. This object doesn't contain the sign itself, which comes from object type 9, but this is what they look like together:</p>
+
+<pre class="articleIndented">
+                           -10         0      +8
+
+                       +-------------------------------+
+                       |                               |
+                       |    +------------------+       |       +8
+  Part 0 ->            |    |                  |       |
+                       |    +--+---------------+       |       +5
+                       |    |  |                       |
+  Part 1 ->            |    |  |                       |
+                       |    |  |                       |
+                       |    +--+                       |       -6
+                       |                               |
+                       +-------------+---+-------------+
+                                     |   |
+                                     |   |
+                                     +---+
+
+                              -8
+</pre>
+
+						<h2 class="articleSubheader"><a name="type12" id="type12" class="anchor"></a>Object type 12: Left turn road sign<br />
+													 -----------------------------------</h2>
+
+						<p>This object type contains the contents for the left turn road sign. This object is only drawn once the white background in object type 9 has been drawn. If we are facing the wrong way along the track, the sign contents are not drawn, so the road signs are one-sided.</p>
+
+						<p>This is what object type 12 looks like at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_12.png" alt="Object 12 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_12.png" alt="Object 12 at close quarters" />
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Top</th><th>Bottom</th><th>Left</th><th>Right</th><th>Edge colour</th><th>Fill colour</th></tr>
+							<tr><td>0</td><td>+8</td><td>+5</td><td>-8</td><td>+10</td><td>Black</td><td>Black</td></tr>
+							<tr><td>1</td><td>+5</td><td>-6</td><td>+8</td><td>+10</td><td>Black</td><td>Black</td></tr>
+						</table>
+
+						<p>If we draw both parts, we get the following design, where the scaffold measurements are shown around the side, and * indicates the centre of the object. This object doesn't contain the sign itself, which comes from object type 9, but this is what they look like together:</p>
+
+<pre class="articleIndented">
+                              -8       0         +10
+
+                       +-------------------------------+
+                       |                               |
+                       |       +------------------+    |       +8
+  Part 0 ->            |       |                  |    |
+                       |       +---------------+--+    |       +5
+                       |                       |  |    |
+  Part 1 ->            |                       |  |    |
+                       |                       |  |    |
+                       |                       +--+    |       -6
+                       |                               |
+                       +-------------+---+-------------+
+                                     |   |
+                                     |   |
+                                     +---+
+
+                                              +8
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="trigonometry.html">Trigonometry</a><a class="next" rel="next" title="Next deep dive" href="drawing_a_3d_car_from_2d_parts.html">Drawing a 3D car from 2D parts</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

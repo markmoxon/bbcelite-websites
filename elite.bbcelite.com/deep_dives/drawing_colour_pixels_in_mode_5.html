@@ -1,0 +1,105 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "drawing_colour_pixels_in_mode_5.html", "Drawing colour pixels in mode 5", "Drawing colour pixels in mode 5", "A deep dive into drawing colour pixels in mode 5 in BBC Micro Elite", "elite", "deep_dives_drawing_pixels", "drawing_colour_pixels_in_mode_5");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_monochrome_pixels_in_mode_4.html">Drawing monochrome pixels in mode 4</a><a class="next" rel="next" title="Next deep dive" href="drawing_pixels_in_the_electron_version.html">Drawing pixels on the Electron</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Poking screen memory to display colour pixels in the dashboard view</h2>
+
+						<p>Drawing four-colour pixels in the dashboard is not as straightforward as you might think. It's complicated enough drawing monochrome pixels in the two-colour mode 4 screen that Elite uses for the space view, but it's even more mind-bending in mode 5, so before you read the following, I highly recommend you take a look at the deep dive on <a href="drawing_monochrome_pixels_in_mode_4.html">drawing monochrome pixels in mode 4</a>, which looks at screen addresses and plotting techniques for this simpler black-and-white mode. If monochrome plotting already makes sense to you, then let's move on to four colours, which the <a href="/cassette/main/subroutine/cpix2.html">CPIX2</a> routine looks after.</p>
+
+						<p>Mode 5 is used for the four-colour dashboard in the BBC Micro version:</p>
+
+						<img class="titleImage" src="/images/general/Elite-BBCMicro.png" alt="BBC Micro Elite screenshot" />
+
+						<p>As with mode 4, the mode 5 screen is laid out in memory using character blocks. Indeed, the character blocks are the same size and height in terms of bits and bytes, and pixel coordinates are identical in both screen modes (both screen modes are 256 coordinates wide), so as far as the end used is concerned, the screen modes are really similar. At the screen memory level, however, there are some key differences.</p>
+
+						<p>The main difference is that each pixel can be one of four colours rather than two, so as a result each pixel takes up twice as much memory (2 bits as opposed to 1 bit). If we look at the way character blocks are laid out in terms of bits, it looks the same as for mode 4 - here's what two neighbouring character blocks look like in both modes:</p>
+
+<pre class="articleIndented">  01234567 01234567
+  01234567 01234567
+  01234567 01234567
+  01234567 01234567
+  01234567 01234567
+  01234567 01234567
+  01234567 01234567
+  01234567 01234567
+</pre>
+
+						<p>However, while in mode 4 each bit represents one pixel, so the above block would be 16 pixels across and 8 pixels high, in mode 5 each pixel takes up two bits, so the above block shows as 8 pixels across and 8 pixels high. Pixels in mode 5 are stretched out so they appear twice as wide as they are high, so everything still fits on-screen in a sensible manner.</p>
+
+						<p>So we know that a character block row in mode 5 consists of four pixels in one byte. The complicated part is how that byte stores those four pixels. If we consider a character row byte like this:</p>
+
+<pre class="articleIndented">  01234567
+</pre>
+
+						<p>then the first pixel is defined by bits 0 and 4, the second by bits 1 and 5, and so on. If we split it up into nibbles:</p>
+
+<pre class="articleIndented">  0123 4567
+</pre>
+
+						<p>then the first pixel is defined by the first bits of each nibble (0 and 4), the second is defined by the second bits of each nibble (1 and 5), and so on with bits 2 and 6, and bits 3 and 7. So consider this character row byte:</p>
+
+<pre class="articleIndented">  1111 0000
+</pre>
+
+						<p>Each of the four bits has a 1 as the first bit and a 0 as the second bit, giving %10, or 2, so this defines four pixels in a row of colour 2. And this one:</p>
+
+<pre class="articleIndented">  1010 0011
+</pre>
+
+						<p>contains the following pixels: %10, %00, %11 and %01, so this is a four-pixel row consisting of pixel colours 2, 0, 3 and 1.</p>
+
+						<p>That aside, modes 4 and 5 work in the same way. Each character row takes up 256 bytes, or exactly one page, so we can convert from screen coordinates to character blocks using the same code. We can even work out the correct row in the relevant character block in the same way, as the screen x- and y-coordinate systems are identical. The only differences are:</p>
+
+						<ul>
+							<li>How we manipulate the individual character row bytes to support the nibble system for four colours</li>
+
+							<li>The fact that the y-coordinate still ranges from 0 to 256, but this time there are only 128 pixels across the screen, so each pixel effectively has two different screen coordinates (though we can easily cater for this by ignoring the last bit of the y-coordinate)</li>
+						</ul>
+
+						<p>We can even use a similar system to the <a href="/cassette/main/variable/twos.html">TWOS</a> table that we use in <a href="/cassette/main/subroutine/pixel.html">PIXEL</a>, but this time it's set up for the nibble system above. As a reminder, the TWOS table provides ready-made bytes for plotting single pixels, such as this one for plotting the third pixel in the row (out of 8):</p>
+
+<pre class="articleIndented">  TWOS+2  = %00100000
+</pre>
+
+						<p>We can do the same for mode 5, but using the <a href="/cassette/main/variable/ctwos.html">CTWOS</a> table instead. For the third pixel in the row (out of 4), the table returns this value instead:</p>
+
+<pre class="articleIndented">  CTWOS+2  = %00100010
+</pre>
+
+						<p>which breaks up into 0010 0010, or %11 in the third pixel. As with TWOS, we can use this byte as a mask onto a 4-pixel colour byte to work out what to poke into screen memory.</p>
+
+						<p>On the subject of 4-pixel colour bytes, this is what they look like for the four colours used in the dashboard:</p>
+
+						<ul class="tightList">
+							<li>Colour 0: %00000000 = &amp;00 (black)</li>
+
+							<li>Colour 1: %00001111 = &amp;0F (red)</li>
+
+							<li>Colour 2: %11110000 = &amp;F0 (yellow/white)</li>
+
+							<li>Colour 3: %11111111 = &amp;FF (green/cyan)</li>
+						</ul>
+
+						<p>So aside from having two bits per pixel and four pixels per character row, mode 5 is pretty similar to the monochrome mode 4.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_monochrome_pixels_in_mode_4.html">Drawing monochrome pixels in mode 4</a><a class="next" rel="next" title="Next deep dive" href="drawing_pixels_in_the_electron_version.html">Drawing pixels on the Electron</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

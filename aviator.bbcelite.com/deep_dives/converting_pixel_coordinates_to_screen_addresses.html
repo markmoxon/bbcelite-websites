@@ -1,0 +1,122 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "converting_pixel_coordinates_to_screen_addresses.html", "Converting pixel coordinates to screen addresses", "Converting pixel coordinates to screen addresses", "A deep dive into converting pixel coordinates to screen addresses in BBC Micro Aviator", "aviator", "deep_dives_graphics", "converting_pixel_coordinates_to_screen_addresses");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="flicker-free_animation_through_colour_cycling.html">Flicker-free animation through colour cycling</a><a class="next" rel="next" title="Next deep dive" href="line_buffers.html">Line buffers</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Going from (x, y) coordinates to screen memory addresses</h2>
+
+						<p>Games need fast graphics, particularly games on comparatively slow 8-bit machines, so instead of calling the graphics routines built into the operating system, Aviator uses its own line-drawing routines. (Actually, the canopy edges and rivets are drawn using the BBC Micro's built-in routines, but that process is only done once, when the game first runs, so there's no need for speed.)</p>
+
+						<p>Aviator's bespoke drawing routines draw pixels on the screen by poking values directly into screen memory. This is a relatively straightforward process, once you understand how bytes relate to pixels, though it's a little strange the first time you try to work it out. Let's take a quick look at how screen memory is laid out in Aviator.</p>
+
+						<h2 class="articleSubheader">Mode 5 screen memory<br />
+													 --------------------</h2>
+
+						<p>In mode 5, which is the four-colour screen mode that Aviator uses, one byte represents four pixels. If we consider a pixel byte made up of eight bits like this:</p>
+
+<pre class="articleIndented">  01234567</pre>
+
+						<p>then the first pixel is defined by bits 0 and 4, the second by bits 1 and 5, and so on. If we split it up into nibbles:</p>
+
+<pre class="articleIndented">  0123 4567</pre>
+
+						<p>then the first pixel is defined by the first bits of each nibble (0 and 4), the second is defined by the second bits of each nibble (1 and 5), and so on with bits 2 and 6, and bits 3 and 7. So consider this character row byte:</p>
+
+<pre class="articleIndented">  1111 0000</pre>
+
+						<p>Each of the four bits has a 1 as the first bit and a 0 as the second bit, giving %10, or 2, so this defines four pixels in a row of colour 2. And this one:</p>
+
+<pre class="articleIndented">  1010 0011</pre>
+
+						<p>contains the following pixels: %10, %00, %11 and %01, so this is a four-pixel row consisting of pixel colours 2, 0, 3 and 1.</p>
+
+						<p>These four-pixel bytes are arranged in character blocks, with each character block containing eight bytes, one stacked above the other. This means each character block is four pixels wide by eight pixels high, and two neighbouring character blocks would like this:</p>
+
+<pre class="articleIndented">        01234567 ->-.      ,------->- 01234567->-.
+                     |    |                       |
+   ,-------<--------´     |     ,-------<--------´
+  |                       |    |
+   `->- 01234567 ->-.     |     `->- 01234567 ->-.
+                     |    |                       |
+   ,-------<--------´     |     ,-------<--------´
+  |                       |    |
+   `->- 01234567 ->-.     |     `->- 01234567 ->-.
+                     |    |                       |
+   ,-------<--------´     |     ,-------<--------´
+  |                       |    |
+   `->- 01234567 ->-.     |     `->- 01234567 ->-.
+                     |    |                       |
+   ,-------<--------´     |     ,-------<--------´
+  |                       |    |
+   `->- 01234567 ->-.     |     `->- 01234567 ->-.
+                     |    |                       |
+   ,-------<--------´     |     ,-------<--------´
+  |                       |    |
+   `->- 01234567 ->-.     |     `->- 01234567 ->-.
+                     |    |                       |
+   ,-------<--------´     |     ,-------<--------´
+  |                       |    |
+   `->- 01234567 ->-.     |     `->- 01234567 ->-.      ^
+                     |    |                       |     :
+   ,-------<--------´     |     ,-------<--------´      :
+  |                       |    |                        |
+  `->- 01234567 ->------´      `->- 01234567 ->-------´
+</pre>
+
+						<p>The screen is made up of character rows, each of which is a screen-wide row of character blocks. Mode 5 is 160 pixels wide and 256 pixels high, so each character row contains 40 character blocks (as each block is 4 pixels wide and 160 = 40 * 4, and there are 32 character rows (as each row is 8 pixels high, and 256 = 32 * 8).</p>
+
+						<h2 class="articleSubheader">Aviator's skewed mode 5 lookup tables<br />
+													 -------------------------------------</h2>
+
+						<p>The key challenge when drawing directly to screen memory is working out which screen memory addresses to update. There are two main solutions. The first is to calculate the memory address from the pixel coordinate, using the fact that each character row is 8 pixels high and each character block is 4 pixels wide. The second is to use a lookup table, which is quicker than doing a calculation, but uses more memory. Aviator uses this second approach.</p>
+
+						<p>Each character row in mode 5 contains 320 bytes - that's 40 character blocks, with 8 bytes per block - and the (<a href="/source/main/variable/ylookuphi.html">yLookupHi</a> <a href="/source/main/variable/ylookuplo.html">yLookupLo</a>) tables let us convert a pixel y-coordinate to the 16-bit address of the start of that row, by looking up the relevant entry for the y-coordinate. We can then calculate the address within the row by adding 8 bytes for every 4 pixels of the x-coordinate, and finally we add the pixel byte number within the character block by calculating y MOD 8 (which is the pixel row within that character row containing the y-coordinate).</p>
+
+						<p>There are two twists, however, that make Aviator's lookup tables rather different to the normal approach of simply storing the start address of character row Y at yLookup+Y.</p>
+
+						<p>The first twist is that the table counts backwards from the bottom of the canopy/top of the dashboard, so the first entry in the table is for the bottom row of the canopy, the next entry is for the row above that, and so on until we hit the top of the canopy, after which we wrap around to the bottom of the screen (i.e. the bottom of the dashboard) and keep going up until the last entry, which is for the top row of the dashboard. To be more explicit, the first 20 entries cover the canopy:</p>
+
+						<ul>
+							<li>Entry 0 = &amp;6F28 = row18_block21_0</li>
+							<li>Entry 1 = &amp;6DF0 = row17_block22_0</li>
+							<li>Entry 2 = &amp;6CB8 = row16_block23_0</li>
+							<li>Entry 3 = &amp;6B80 = row15_block24_0<br /><br />...</li>
+							<li>Entry 17 = &amp;5A70 = row1_block38_0</li>
+							<li>Entry 18 = &amp;5938 = row0_block39_0</li>
+							<li>Entry 19 = &amp;5800 = row0_block0_0</li>
+						</ul>
+
+						<p>while the last 12 entries cover the dashboard:</p>
+
+						<ul>
+							<li>Entry 20 = &amp;7DC8 = row30_block9_0</li>
+							<li>Entry 21 = &amp;7C90 = row29_block10_0<br /><br />...</li>
+							<li>Entry 30 = &amp;7198 = row20_block19_0</li>
+							<li>Entry 31 = &amp;7060 = row19_block20_0</li>
+						</ul>
+
+						<p>The second twist is that the start addresses for each character row are offset by one character block (8 bytes) per row, so instead of being a simple lookup table for multiples of 320 (&amp;140), it's actually a lookup table for multiples of 312 (&amp;138), and the addresses in the table are out by +8 bytes for each row above the top of the dashboard, and -8 bytes for each row below.</p>
+
+						<p>The lookup table works this way so the y-coordinates treat the bottom of the canopy as the origin, with negative coordinates for the dashboard and positive coordinates for the canopy. The <a href="/source/main/subroutine/drawvectorline_part_1_of_3.html">DrawVectorLine</a> subtracts the y-coordinate from 159 to achieve this effect, which makes the coordinate system for the canopy a lot simpler, at the expense of making the lookup tables rather more convoluted.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="flicker-free_animation_through_colour_cycling.html">Flicker-free animation through colour cycling</a><a class="next" rel="next" title="Next deep dive" href="line_buffers.html">Line buffers</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,142 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "elite-a_tube_communication.html", "Tube communication in Elite-A", "Tube communication in Elite-A", "A deep dive into Tube communication in Elite-A", "elite", "deep_dives_elite-a", "tube_communication");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="elite-a_delta_14b_joystick_support.html">Delta 14B joystick support</a><a class="next" rel="next" title="Next deep dive" href="elite-a_the_original_source_files.html">The original Elite-A source files</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the 6502 Second Processor version of Elite-A talks over the Tube</h2>
+
+						<p>Perhaps it was because Angus Duggan developed Elite-A on a BBC Micro with a 6502 Second Processor, but when he took the <a href="/disc/">disc version of Elite</a> and added all that extra functionality to the game, he also assembled a separate version of the game for the 6502 Second Processor that loads automatically if active Tube hardware is detected.</p>
+
+						<img class="titleImage photo" style="width: 400px" src="/images/6502sp/second_processor.jpg" alt="The 6502 Second Processor" />
+
+						<p>The Second Processor has lots of memory, so this version doesn't have to access the disc when jumping between the docked, flight and encyclopedia codebases, and instead can load all three in memory at the same time. It also has a <a href="elite-a_ship_blueprints.html">more sophisticated ship blueprints system</a> that doesn't have to rely on loading files from disc, and because the 6502 Second Processor has a faster processor than the BBC Micro, it runs more smoothly, too.</p>
+
+						<p>Just like the <a href="/6502sp/">official 6502 Second Processor version of Elite</a>, the Second Processor version of Elite-A splits the codebase into two, with one part running on the parasite (the Second Processor) and the other part on the I/O processor (the BBC Micro). The former contains all the game logic, while the latter deals with input and output, such as drawing, scanning the keyboard and making sound effects. The two parts communicate with each over via the Tube - the data bus that connects the I/O processor to the parasite - and in this way the sophisticated game algorithms benefit from the faster processor and larger memory of the parasite, while the BBC Micro can concentrate on interfacing with the world and managing the screen.</p>
+
+						<h2 class="articleSubheader">Talking over the Tube<br />
+													 ---------------------</h2>
+
+						<p>Not surprisingly, the official Acornsoft version of 6502 Second Processor Elite uses the Acorn-recommended approach to communication across the Tube, hooking into the WRCHV and WORDV vectors to allow single-byte and block-based commands to be transmitted between the two using custom calls to the standard OSWRCH and OSWORD routines (see the deep dive on <a href="6502sp_tube_communication.html">"6502 Second Processor Tube communication"</a> for details). The details of how the Tube works are hidden from the game code; everything just works.</p>
+
+						<p>Elite-A, on the other hand, communicates over the Tube in a much more bare-bones manner, without relying on the operating system's own routines. The result is a simple and very effective system that, surprisingly, is quite a bit easier to understand than the official version.</p>
+
+						<p>Let's start with a quick look at how the Tube actually works.</p>
+
+						<p>The Tube is a two-way data bus that supports four communication channels, each of which can pass a byte of data in either direction. All four channels are memory-mapped to addresses in the MOS space, so as far as the code is concerned, we just need to access these mapped locations to transmit data over the Tube or check a channel's status.</p>
+
+						<p>The communication channels are all FIFOs ("First In, First Out"), so we refer to them as FIFO 1, FIFO 2, FIFO 3 and FIFO 4. Each end of each of these FIFOs has both a memory-mapped status register and memory-mapped data register - the first tells us whether the FIFO is empty or not, while the second contains the actual data. For example, the I/O processor maps the FIFO 1 status and data registers to &amp;FEE0 and &amp;FEE1, while the parasite maps its FIFO 1 status and data registers to &amp;FEF8 and &amp;FEF9.</p>
+            
+						<p>Now let's take a look at how Elite-A uses the FIFOs to connect the parasite and the I/O processor codebases together.</p>
+
+						<h2 class="articleSubheader">Elite-A's Tube protocol<br />
+													 -----------------------</h2>
+
+						<p>To see how Elite-A uses the FIFO registers to transmit data over the Tube, let's consider the specific example of sending a byte from the parasite to the I/O processor using FIFO 1. Here's how the process breaks down:</p>
+
+						<ul>
+							<li>On the parasite side, we check the FIFO 1 status register to make sure it's empty. If it isn't empty, then we simply wait until it is, using a polling loop.</li>
+
+							<li>Still on the parasite side, we now set the FIFO 1 data register to the value we want to transmit.</li>
+
+							<li>If we are not expecting a response from the I/O processor, then our work here is done, and we can go off and do something else. If we are expecting a response from the I/O processor, then we wait until we receive it, again using a polling loop, but this time monitoring the FIFO 2 channel's status and data registers for the response.</li>
+
+							<li>Meanwhile, the I/O processor has already been set up to listen for communication from the parasite on FIFO 1 (as discussed in the next section), so the above activity in the parasite triggers a handler on the I/O processor, which checks the FIFO 1 status register, and waits until it is showing as full.</li>
+
+							<li>The I/O processor then reads the transmitted value from the FIFO 1 data register, and processes it accordingly (see the section on Tube commands below).</li>
+
+							<li>If the parasite is expecting a reply, then the I/O processor sends it back to the parasite using a similar process, but using FIFO 2.</p>
+						</ul>
+
+						<p>This exact process is implemented by two routines. The <a href="/elite-a/parasite/subroutine/tube_write.html">tube_write</a> routine on the parasite sends a byte to the I/O processor using FIFO 1, and this byte gets read from FIFO 1 by the <a href="/elite-a/i_o_processor/subroutine/tube_get.html">tube_get</a> routine on the I/O processor side.</p>
+
+						<p>The process for sending data back to the parasite is pretty similar, but the sender and receiver are the other way round and FIFO 2 is used. In this case, the <a href="/elite-a/i_o_processor/subroutine/tube_put.html">tube_put</a> routine on the I/O processor sends a byte to the parasite using FIFO 2, and this byte gets read from FIFO 2 by the <a href="/elite-a/parasite/subroutine/tube_read.html">tube_read</a> routine on the parasite side.</p>
+
+						<p>The following table summarises this protocol:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th></th><th>Parasite -> I/O processor</th><th>I/O processor -> Parasite</th></tr>
+							<tr><td>Channel</td><td>FIFO 1</td><td>FIFO 2</td></tr>
+							<tr><td>Send routine</td><td><a href="/elite-a/parasite/subroutine/tube_write.html">tube_write</a> (Parasite)</td><td><a href="/elite-a/i_o_processor/subroutine/tube_put.html">tube_put</a> (I/O processor)</td></tr>
+							<tr><td>Receive routine</td><td><a href="/elite-a/i_o_processor/subroutine/tube_get.html">tube_get</a> (I/O processor)</td><td><a href="/elite-a/parasite/subroutine/tube_read.html">tube_read</a> (Parasite)</td></tr>
+						</table>
+
+						<p>So, to keep things simple and to avoid traffic collisions, Elite-A only transmits in one direction on each of FIFOs 1 and 2, and it doesn't use FIFOs 3 or 4 at all. This restricts communication to a minimal set of one-byte transmissions, which is a lot simpler than in the official 6502 Second Processor version.</p>
+
+						<h2 class="articleSubheader">Listening using WRCHV<br />
+													 ---------------------</h2>
+
+						<p>There is one more important aspect to this process. Most of the time, the main game is running independently on the parasite, while the I/O processor sits there relatively idle, waiting for commands from the parasite. This behaviour is set up by the Tube's own host code, which sets up a default listener on FIFO 1 to process any bytes that are received. This means that as soon as the computer is turned on and has started up, the I/O processor starts listening to the parasite.</p>
+
+						<p>The default listener is pointed to by the WRCHV vector, which is the handler for OSWRCH, and this is no coincidence - by default, OSWRCH calls on the parasite just send their arguments to the I/O processor on FIFO 1, which runs the handler in WRCHV to write that character. So all we need to do in Elite-A to set up our custom Tube communication protocol is to hook into WRCHV on the I/O processor, and then our handler will be called whenever a byte is sent from the parasite to the I/O processor.</p>
+
+						<p>Indeed, the code in the parasite's <a href="/elite-a/parasite/subroutine/tube_write.html">tube_write</a> routine, which is the one that sends a byte from the parasite to the I/O processor, is 100% identical to Acorn's MOS routine that runs on the parasite to implement OSWRCH across the Tube, while <a href="/elite-a/i_o_processor/subroutine/tube_get.html">tube_get</a> contains the same code as the MOS when it fetches the transmitted data on the I/O processor end.</p>
+
+						<p>The hook into the I/O processor's WRCHV handler is set up by the <a href="/elite-a/i_o_processor/subroutine/tube_elite.html">tube_elite</a> routine that runs when the Elite-A I/O processor code first loads. This points WRCHV to the <a href="/elite-a/i_o_processor/subroutine/tube_wrch.html">tube_wrch</a> routine, which handles all bytes received from the parasite on FIFO 1. If a byte received on FIFO 1 has bit 7 set (i.e. it is >= 128, or >= &amp;80), then this means it represents an Elite-A Tube command rather than an ASCII character to be printed, so it gets passed to the <a href="/elite-a/i_o_processor/subroutine/tube_func.html">tube_func</a> routine, which in turn calls the relevant routine from the lookup table in <a href="/elite-a/i_o_processor/variable/tube_table.html">tube_table</a>. Otherwise the character is processed as an ASCII character, and is written to the screen (or makes a beep, or whatever is appropriate for that ASCII code).</a>
+
+						<p>As discussed in the previous section, the same communication protocol is used in <a href="/elite-a/i_o_processor/subroutine/tube_put.html">tube_put</a> and <a href="/elite-a/parasite/subroutine/tube_read.html">tube_read</a> to return data to the parasite, except they use FIFO 2 instead of FIFO 1. Using FIFO 2 means that transmission from the I/O processor to the parasite does not trigger any kind of handler in the parasite, so if we want to send data from the I/O processor to the parasite, we have to make sure we are listening on the parasite end by explicitly calling tube_read, which blocks the parasite until a value is received on FIFO 2. If we didn't do this, FIFO 2 would store the data but it would never empty out, thus stopping anything else being transmitted on that channel and bringing the game to a halt.</p>
+
+						<h2 class="articleSubheader">Elite-A's Tube commands<br />
+													 -----------------------</h2>
+
+						<p>Now that we know how Elite-A communicates over the Tube, let's take a look at what it actually does with that communication. Like the official version, Elite-A supports a set of commands that the parasite can send to the I/O processor, and some of these commands return values back to the parasite. Unlike the official version, all the Elite-A commands are sent as simple sequences of single bytes, one after the other, which makes things a lot simpler to follow.</p>
+
+						<p>The following table lists all the commands that can be sent. Each command has a unique number, shown in the first column, that is sent as the first byte, and this is followed up by the command parameters, in the order shown in brackets. So, to send a draw_line(x1, y1, x2, y2) command to the I/O processor to tell it to draw a line on-screen, the parasite would first send the command number, &amp;80, followed by x1, y1, x2 and y2 (the line's start and end coordinates). When the parasite receives the first byte, this triggers a call to <a href="/elite-a/i_o_processor/subroutine/tube_wrch.html">tube_wrch</a>, as described in the previous section. This calls <a href="/elite-a/i_o_processor/subroutine/loin_part_1_of_7.html">LL30</a> - the corresponding I/O processor routine for this command as shown in the table - which then fetches the parameters from the parasite using <a href="/elite-a/i_o_processor/subroutine/tube_get.html">tube_get</a>, and draws the line. See the parasite's <a href="/elite-a/parasite/subroutine/ll30.html">LL30</a> routine for an example of this in action.</p>
+
+						<p>Most commands just perform a task ("draw a line", "clear the screen" and so on), but some commands need to return data to the parasite. These commands have an = sign before the command name, as in =scan_xin(key_number), which scans the keyboard for the specified key and returns the result to the parasite. In this case the process is as follows. The parasite sends the command number, &amp;8B, followed by the parameter, which is the internal number of the key to be scanned, and it then calls the <a href="/elite-a/parasite/subroutine/tube_read.html">tube_read</a> routine to wait for the result. Meanwhile, the I/O processor receives the command number and calls <a href="/elite-a/i_o_processor/subroutine/scan_xin.html">scan_xin</a>, which receives the parameter, calls the <a href="/elite-a/i_o_processor/subroutine/dks4.html">DKS4</a> routine to scan the keyboard, and sends the result back to the parasite by calling <a href="/elite-a/i_o_processor/subroutine/tube_put.html">tube_put</a>. See the parasite's <a href="/elite-a/parasite/subroutine/dks4.html">DKS4</a> routine for an example of this in action.</p>
+
+						<p>Here, then, is the complete set of Elite-A Tube commands:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>#</th><th>Command</th><th>Action</th><th>Routine</th></tr>
+							<tr><td>&amp;80</td><td>draw_line(x1, y1, x2, y2)</td><td>Draw a line</td><td><a href="/elite-a/i_o_processor/subroutine/loin_part_1_of_7.html">LL30</a></td></tr>
+							<tr><td>&amp;81</td><td>draw_hline(x1, y1, x2)</td><td>Draw a horizontal line</td><td><a href="/elite-a/i_o_processor/subroutine/hloin.html">HLOIN</a></td></tr>
+							<tr><td>&amp;82</td><td>draw_pixel(x, y, distance)</td><td>Draw space view pixels</td><td><a href="/elite-a/i_o_processor/subroutine/pixel.html">PIXEL</a></td></tr>
+							<tr><td>&amp;83</td><td>clr_scrn()</td><td>Clear the screen</td><td><a href="/elite-a/i_o_processor/subroutine/clr_scrn.html">clr_scrn</a></td></tr>
+							<tr><td>&amp;84</td><td>clr_line()</td><td>Clear bottom of screen</td><td><a href="/elite-a/i_o_processor/subroutine/clyns.html">CLYNS</a></td></tr>
+							<tr><td>&amp;85</td><td>=sync_in()</td><td>Wait for vertical sync</td><td><a href="/elite-a/i_o_processor/subroutine/sync_in.html">sync_in</a></td></tr>
+							<tr><td>&amp;86</td><td>draw_bar(value, colour, screen_low, screen_high)</td><td>Update bar-based dashboard indicator</td><td><a href="/elite-a/i_o_processor/subroutine/dilx.html">DILX</a></td></tr>
+							<tr><td>&amp;87</td><td>draw_angle(value, screen_low, screen_high)</td><td>Update roll/pitch dashboard indicator</td><td><a href="/elite-a/i_o_processor/subroutine/dil2.html">DIL2</a></td></tr>
+							<tr><td>&amp;88</td><td>put_missle(number, colour)</td><td>Update missile indicator</td><td><a href="/elite-a/i_o_processor/subroutine/msbar.html">MSBAR</a></td></tr>
+							<tr><td>&amp;89</td><td>=scan_fire()</td><td>Check joystick fire button</td><td><a href="/elite-a/i_o_processor/subroutine/scan_fire.html">scan_fire</a></td></tr>
+							<tr><td>&amp;8A</td><td>=write_fe4e(value)</td><td>Set 6522 System VIA IER</td><td><a href="/elite-a/i_o_processor/subroutine/write_fe4e.html">write_fe4e</a></td></tr>
+							<tr><td>&amp;8B</td><td>=scan_xin(key_number)</td><td>Scan the keyboard for a specific key</td><td><a href="/elite-a/i_o_processor/subroutine/scan_xin.html">scan_xin</a></td></tr>
+							<tr><td>&amp;8C</td><td>=scan_10in()</td><td>Scan the keyboard</td><td><a href="/elite-a/i_o_processor/subroutine/scan_10in.html">scan_10in</a></td></tr>
+							<tr><td>&amp;8D</td><td>=get_key()</td><td>Wait for keypress</td><td><a href="/elite-a/i_o_processor/subroutine/get_key.html">get_key</a></td></tr>
+							<tr><td>&amp;8E</td><td>write_xyc(x, y, char)</td><td>Write character to screen</td><td><a href="/elite-a/i_o_processor/subroutine/chpr.html">CHPR</a></td></tr>
+							<tr><td>&amp;8F</td><td>write_pod(escp, hfx)</td><td>Set escape pod/hyperspace palette</td><td><a href="/elite-a/i_o_processor/subroutine/write_pod.html">write_pod</a></td></tr>
+							<tr><td>&amp;90</td><td>draw_blob(x, y, colour)</td><td>Draw a dot on the dashboard</td><td><a href="/elite-a/i_o_processor/subroutine/draw_blob.html">draw_blob</a></td></tr>
+							<tr><td>&amp;91</td><td>draw_tail(x, y, base_colour, alt_colour, height)</td><td>Draw a ship on the 3D scanner</td><td><a href="/elite-a/i_o_processor/subroutine/draw_tail.html">draw_tail</a></td></tr>
+							<tr><td>&amp;92</td><td>draw_S()</td><td>Toggle S dashboard bulb</td><td><a href="/elite-a/i_o_processor/subroutine/spblb.html">SPBLB</a></td></tr>
+							<tr><td>&amp;93</td><td>draw_E()</td><td>Toggle E dashboard bulb</td><td><a href="/elite-a/i_o_processor/subroutine/ecblb.html">ECBLB</a></td></tr>
+							<tr><td>&amp;94</td><td>draw_mode()</td><td>Switch line-drawing logic (EOR/OR)</td><td><a href="/elite-a/i_o_processor/subroutine/unwise.html">UNWISE</a></td></tr>
+							<tr><td>&amp;95</td><td>write_crtc(rows)</td><td>Show or hide the dashboard</td><td><a href="/elite-a/i_o_processor/subroutine/det1.html">DET1</a></td></tr>
+							<tr><td>&amp;96</td><td>=scan_y(key_offset, delta_14b)</td><td>Scan the keyboard for a flight key</td><td><a href="/elite-a/i_o_processor/subroutine/scan_y.html">scan_y</a></td></tr>
+							<tr><td>&amp;97</td><td>write_0346(value)</td><td>Update LASCT</td><td><a href="/elite-a/i_o_processor/subroutine/write_0346.html">write_0346</a></td></tr>
+							<tr><td>&amp;98</td><td>=read_0346()</td><td>Read LASCT</td><td><a href="/elite-a/i_o_processor/subroutine/read_0346.html">read_0346</a></td></tr>
+							<tr><td>&amp;99</td><td>return()</td><td>Do nothing</td><td><a href="/elite-a/i_o_processor/subroutine/tube_func.html#return">return</a></td></tr>
+							<tr><td>&amp;9A</td><td>picture_h(line_count, multiple_ships)</td><td>Draw horizontal lines for hangar</td><td><a href="/elite-a/i_o_processor/subroutine/hanger.html">HANGER</a></td></tr>
+							<tr><td>&amp;9B</td><td>picture_v(line_count)</td><td>Draw vertical lines for hangar</td><td><a href="/elite-a/i_o_processor/subroutine/ha2.html">HA2</a></td></tr>
+						</table>
+
+						<p>For more information on what each command does, click on the routine name to see the relevant I/O processor code, as this shows the code that is executed when the parasite sends that command.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="elite-a_delta_14b_joystick_support.html">Delta 14B joystick support</a><a class="next" rel="next" title="Next deep dive" href="elite-a_the_original_source_files.html">The original Elite-A source files</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

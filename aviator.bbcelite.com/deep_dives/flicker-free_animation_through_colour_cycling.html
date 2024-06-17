@@ -1,0 +1,126 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "flicker-free_animation_through_colour_cycling.html", "Flicker-free animation through colour cycling", "Flicker-free animation through colour cycling", "A deep dive into flicker-free animation through colour cycling in BBC Micro Aviator", "aviator", "deep_dives_graphics", "flicker-free_animation_through_colour_cycling");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="explosions_and_turbulence.html">Explosions and turbulence</a><a class="next" rel="next" title="Next deep dive" href="converting_pixel_coordinates_to_screen_addresses.html">Converting pixel coordinates to screen addresses</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Using four colours to create super-smooth animated graphics</h2>
+
+						<p>Aviator has beautifully smooth graphics - there is not a flicker in sight. If you compare this with Elite, then the difference is really obvious; Elite's ships flicker very noticeably, even in the later version for the BBC Master, when an improved algorithm helped reduce the flicker. But it didn't eradicate it entirely, so in this particular battle between these two Acornsoft heavyweights, Aviator wins hands-down.</p>
+
+						<p>The reason is that Aviator uses colour cycling to make the animation smooth. Although Aviator is a black-and-white game, it actually uses mode 5, which is a four-colour screen mode, and it uses those extra colours to switch between animation frames smoothly. The downside is that the canopy view in Aviator has a lower resolution than the space view in Elite, but that smoothness is a pretty good trade-off.</p>
+
+						<p>Let's have a look at how the main drawing routine in <a href="/source/main/subroutine/drawcanopyview.html">DrawCanopyView</a> implements colour cycling.</p>
+
+						<h2 class="articleSubheader">How colour cycling works<br />
+													 ------------------------</h2>
+
+						<p>In the flicker-free approach, colour 0 is always mapped to black and is used for the background, and colour 3 is always mapped to white and is used for the dashboard and the canopy edges. We then use colours 1 and 2 inside the canopy, with one of these mapped to black (so it's invisible against the black background), and the other mapped to white (so it's visible).</p>
+
+						<p>To achieve smooth, flicker-free animation, we update the invisible screen, erasing and re-drawing lines so that it contains an up-to-date view out of the canopy. When we've finished this relatively slow drawing process, we then re-map colours 1 and 2, which flips the two screens in the blink of an eye. This flipping process is very simple and very quick - we simply map the visible colour to black, so the old scene disappears from view, and then we map the invisible colour to white, so the new, updated scene suddenly becomes visible. We then repeat this process to animate the 3D view without flicker.</p>
+
+						<p>So why can't we see the screen updating? Consider the situation where colour 1 is visible (i.e. mapped to white) and colour 2 is hidden (i.e. mapped to black). Pixels that look black on screen can have the following values:</p>
+
+						<ul>
+							<li>%00, which is always mapped to black</li>
+							<li>%10, which is mapped to black as the hidden colour 2</li>
+						</ul>
+
+						<p>and pixels that are white on screen can have the following values:</p>
+
+						<ul>
+							<li>%11, which is always mapped to white</li>
+							<li>%01, which is mapped to white as the visible colour 1</li>
+						</ul>
+
+						<p>If we update the hidden screen by only changing bit 1, then that won't change the colour shown on screen, as it's bit 0 that controls the visible colour. You can see this in the above: if bit 0 is clear then we're in the first list, so the pixel is black, while if bit 0 is set, we are in the second list, which is white. So as long as we leave bit 0 along when updating the screen, the screen won't change, even though we are updating it. We can do this by OR'ing our new values into bit 1, leaving bit 0 alone.</p>
+
+						<p>It's worth noting that the bit we need to change to update the hidden screen is the set bit in the colour number we want to update. So, if colour 2 is hidden, then 2 = %10, so we need to update bit 1 to update the hidden screen; if colour 1 is hidden, then 1 = %01, so we need to update bit 0 to update the hidden screen.</p>
+
+						<h2 class="articleSubheader">The colour cycling process<br />
+													 --------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/drawcanopyview.html">DrawCanopyView</a> implements this approach with the following steps:</p>
+
+						<ul>
+							<li>Modify the drawing routines so that they draw in the currently hidden colour (by calling <a href="/source/main/subroutine/modifydrawroutine.html">ModifyDrawRoutine</a>, which modifies the code of the main line-drawing routine at <a href="/source/main/subroutine/drawcanopyline_part_1_of_9.html">DrawCanopyLine</a>)</li>
+
+							<li>Draw the updated lines in the hidden colour (by calling <a href="/source/main/subroutine/drawhalfhorizon.html">DrawHalfHorizon</a>, <a href="/source/main/subroutine/drawclippedline_part_1_of_6.html">DrawClippedLine</a> and <a href="/source/main/subroutine/drawgunsights.html">DrawGunSights</a>)</li>
+
+							<li>Re-map colours 1 and 2 with the <a href="/source/main/subroutine/setcolourtoblack.html">SetColourToBlack</a> and <a href="/source/main/subroutine/setcolourtowhite.html">SetColourToWhite</a> routines, to change what's shown on screen</li>
+
+							<li>Erase all the lines from the now-hidden screen (by calling <a href="/source/main/subroutine/erasecanopylines.html">EraseCanopyLines</a>)</li>
+
+							<li>Flip the colour variables, ready for the next iteration (by calling <a href="/source/main/subroutine/flipcolours.html">FlipColours</a>)</li>
+						</ul>
+
+						<p>There are two main variables that manage this process: <a href="/source/main/workspace/main_variable_workspace.html#colourlogic">colourLogic</a> and <a href="/source/main/workspace/main_variable_workspace.html#colourcycle">colourCycle</a>.</p>
+
+						<p>The colourLogic variable controls the drawing routines, and has three values:</p>
+
+						<ul>
+							<li>%00000000 = erase lines from the screen</li>
+							<li>%01000000 = draw lines in colour 2</li>
+							<li>%10000000 = draw lines in colour 1</li>
+						</ul>
+
+						<p>The colourCycle variable keeps track of which colour screen is visible and which is invisible, and flips between these two values:</p>
+
+						<ul>
+							<li>%00001111 = show colour 1, hide colour 2</li>
+							<li>%11110000 = show colour 2, hide colour 1</li>
+						</ul>
+
+						<p>When drawing on-screen (as opposed to erasing), these two flip between the following pairs of values:</p>
+
+						<ul>
+							<li>colourLogic = %10000000 = draw lines in colour 1<br />
+								colourCycle = %00001111 = show colour 1, hide colour 2</li>
+
+							<li>colourLogic = %01000000 = draw lines in colour 2<br />
+								colourCycle = %11110000 = show colour 2, hide colour 1</li>
+						</ul>
+
+						<p>On the face of it, this looks wrong, but that's because both variables get flipped just after the screen colours are flipped, but colourCycle actually contains the state that we will apply <i>after</i> we do all the drawing, so you can think of the above list like this:</p>
+
+						<ul>
+							<li>colourLogic = %10000000 = draw lines in colour 1<br />
+								... erase and redraw lines in colour 1 ...<br />
+								colourCycle = %00001111 = show colour 1, hide colour 2</li>
+
+							<li>colourLogic = %01000000 = draw lines in colour 2<br />
+								... erase and redraw lines in colour 2 ...<br />
+								colourCycle = %11110000 = show colour 2, hide colour 1</li>
+						</ul>
+
+						<p>In other words, we flip both variables, then do all the drawing determined by colourLogic, and only when we are done do we apply the colour cycle in colourCycle.</p>
+
+						<h2 class="articleSubheader">Self-modifying code<br />
+													 -------------------</h2>
+
+						<p>To save space, the main line-drawing routine at <a href="/source/main/subroutine/drawcanopyline_part_1_of_9.html">DrawCanopyLine</a> is modified in-place so it draws the correct colour, and either erases or draws as necessary. The code modifications are performed by the <a href="/source/main/subroutine/modifydrawroutine.html">ModifyDrawRoutine</a> routine, which physically pokes new values and instructions into the DrawCanopyLine routine to change its operation. To add to the complexity, the ModifyDrawRoutine routine also modifies code within DrawCanopyLine that then modifies even more code within a different part of DrawCanopyLine; in other words, the modification code sometimes modifies the modification code.</p>
+
+						<p>To speed things up, the on-screen lines are stored in line buffers, so they can be quickly erased from the hidden screen by the <a href="/source/main/subroutine/erasecanopylines.html">EraseCanopyLines</a> routine. This routine sets colourLogic to %00000000, then calls ModifyDrawRoutine to modify the DrawCanopyLine routine so it erases the currently hidden colour, and then it erases all of the lines stored in the line buffer. This clears the hidden screen in the most efficient way possible, so it's ready to take the new set of lines.</p>
+
+						<p>The result of all this self-modifying code and colour switching is a buttery smooth view out of the canopy. If you compare it to Elite's much more flickery space ships, there's no contest; Aviator wins hands down. (Though Elite's hidden-line removal takes things to another level, so credit where it's due...)</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="explosions_and_turbulence.html">Explosions and turbulence</a><a class="next" rel="next" title="Next deep dive" href="converting_pixel_coordinates_to_screen_addresses.html">Converting pixel coordinates to screen addresses</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

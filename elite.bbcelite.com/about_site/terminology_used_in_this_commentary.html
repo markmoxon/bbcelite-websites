@@ -1,0 +1,214 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("about_site", "terminology_used_in_this_commentary.html", "Terminology used in this commentary", "Terminology used in this commentary", "An explanation of terminology used in this commentary", "elite", "about_site", "terminology_used_in_this_commentary");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="about_this_project.html">About this project</a><a class="next" rel="next" title="Next page" href="building_elite.html">Building Elite from the source</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<p>There's a lot to explain in Elite, and some of it is pretty challenging stuff. Before getting stuck in, it's probably wise to take a brief look at some of the terminology I've used in this commentary.</p>
+
+						<p>Let's start with some general terms.</p>
+
+						<ul>
+							<li>Given a number X, ~X is the number with all the bits inverted.</li>
+
+							<li>Given a number A, |A| is the absolute of that number - i.e. the number with no sign, or just the magnitude of the number.</li>
+
+							<li>Given a multi-byte number, (S R) say, the absolute would be written |S R| (see below for more on multi-byte numbers and terminology).</li>
+
+							<li>Coordinates are shown as (x, y), both on the screen and in space, so the centre of the space view is at screen coordinate (128, 96), while our trusty Cobra Mk III is at space coordinates (0, 0, 0).</li>
+
+							<li>Vectors and matrices are enclosed in square brackets, like this:
+
+<pre class="articleIndented">  [ 1   0   0 ]        [ x ]
+  [ 0   1   0 ]   or   [ y ]
+  [ 0   0  -1 ]        [ z ]
+</pre>
+
+							We might sometimes write a column vector as [x y z] instead, just to save space, but it means the same thing as the vertical version.</li>
+
+							<li>As Elite started out on the BBC Micro and Acorn Electron, the original source code uses Acorn's BBC BASIC syntax, so hexadecimal values are shown using ampersands (such as &amp;FE05) and comments start with the '\' backslash character. When talking specifically about other platforms, such as the NES or Commodore 64, hexadecimal values are shown using dollars (such as $FE05), and comments start with the ';' semicolon character.</li>
+						</ul>
+
+						<p>We also need some terminology for multi-byte numbers, but that needs its own section, particularly as Elite has quite a few variations on this theme.</p>
+
+						<h2 class="articleSubheader">Multi-byte numbers<br />
+						                             ------------------</h2>
+
+						<p>Not surprisingly, Elite deals with some pretty big numbers. For example, the cash reserves are stored as big-endian 32-bit numbers, space coordinates are stored as 24-bit sign-magnitude little-endian numbers, and the joystick gives us two's complement signed 16-bit numbers. When you only have the 8-bit bytes of 6502 assembly language to play with, things can get confusing, and quickly.</p>
+
+						<p>First, let's recap some basic definitions, so we're all on the same page.</p>
+
+						<ul>
+							<li>Big-endian numbers store their most significant bytes first, then the least significant bytes. This is how humans tend to write numbers.</li>
+
+							<li>Little-endian numbers store the least significant bytes first then the most significant ones. The 6502 stores its addresses in little-endian format, as do the EQUD and EQUW operatives, for example.</li>
+
+							<li>Sign-magnitude numbers store their sign in their highest bit, and the rest of the number contains the magnitude of the number (i.e. the number without the sign). You can change the sign of a sign-magnitude number by simply flipping the highest bit (bit 7 in an 8-bit sign-magnitude number, bit 15 in a 16-bit sign-magnitude number, and so on). See below for more on sign-magnitude numbers.</li>
+
+							<li>Two's complement numbers, meanwhile, are the mainstay of 6502 assembly language, and instructions like ADC and SBC are designed to work with both negative and positive two's complement numbers without us having to worry about a thing. They also have a sign bit in the highest bit, but negative numbers have their bits flipped compared to positive numbers. To flip the sign of a number in two's complement, you flip all the bits and add 1.</li>
+						</ul>
+
+						<p>Elite uses a smorgasbord of all these types, and it can get pretty confusing. Given this, let's agree on some terminology to make it easier to talk about multi-byte numbers and how they are stored in memory.</p>
+
+						<p>If we have three bytes called x_sign, x_hi and x_lo, which contain a 24-bit sign-magnitude number, with the highest byte in x_sign and the lowest in x_lo, then we can refer to their 24-bit number like this:</p>
+
+<pre class="articleIndented">  (x_sign x_hi x_lo)
+</pre>
+
+						<p>In this terminology, the most significant byte is always written first, irrespective of how the bytes are stored in memory. So, we can talk about 16-bit numbers made up of registers:</p>
+
+<pre class="articleIndented">  (X Y)
+</pre>
+
+						<p>So here X is the high byte and Y the low byte. Or here's a 24-bit number made up of a mix of registers and memory locations:</p>
+
+<pre class="articleIndented">  (A S S+1)
+</pre>
+
+						<p>Again, the most significant byte is on the left, so that's the accumulator A, then the next most significant is in memory location S, and the least significant byte is in S+1.</p>
+
+						<p>Or we can even talk about numbers made up of registers, memory locations and constants, like this 24-bit number:</p>
+
+<pre class="articleIndented">  (A P 0)
+</pre>
+
+						<p>or this constant, which stores 590 in a 32-bit number:</p>
+
+<pre class="articleIndented">  (2 78)
+</pre>
+
+						<p>Just remember that in every case, the high byte is on the left, and the low byte is on the right.</p>
+
+						<p>When talking about numbers in sequential memory locations, we can use another shorthand. Consider this little-endian number:</p>
+
+<pre class="articleIndented">  (K+3 K+2 K+1 K)
+</pre>
+
+						<p>where a 32-bit little-endian number is stored in memory locations K (low byte) through to K+3 (high byte). We can also refer to this number like this:</p>
+
+<pre class="articleIndented">  K(3 2 1 0)
+</pre>
+
+						<p>Or a big-endian number stored in XX15 through XX15+3 would be:</p>
+
+<pre class="articleIndented">  XX15(0 1 2 3)
+</pre>
+
+						<p>where XX15 is the most significant byte and XX15+3 the least significant. We could also refer to the little-endian 16-bit number stored in the X-th byte of the block at XX3 with:</p>
+
+<pre class="articleIndented">  XX3+X(1 0)
+</pre>
+
+						<p>To take this even further, if we want to add another significant byte to the 32-bit number K(3 2 1 0) to make a five-byte, 40-bit number - an overflow byte in a memory location called S, say - then we might talk about:</p>
+
+<pre class="articleIndented">  K(S 3 2 1 0)
+</pre>
+
+						<p>or even something like this:</p>
+
+<pre class="articleIndented">  XX15(4 0 1 2 3)
+</pre>
+
+						<p>which is a five-byte number stored with the highest byte in XX15+4, then the next most significant in XX15, then XX15+1 and XX15+2, through to the lowest byte in XX15+3. And yes, Elite does store one of its numbers like this - see the <a href="/cassette/main/subroutine/bprnt.html">BPRNT</a> routine for the gory details.</p>
+
+						<p>With this terminology, it might help to think of the digits listed in the brackets as being written down in the same order that we would write them down as humans. The point of this terminology is to make it easier for people to read, after all.</p>
+
+						<h2 class="articleSubheader">Sign-magnitude numbers<br />
+						                             ----------------------</h2>
+
+						<p>Many (but not all) of Elite's multi-byte numbers are stored as sign-magnitude numbers.</p>
+
+						<p>For example the x, y and z coordinates in bytes #0-8 of the ship data block in INWK and K% (which contain a ship's coordinates in space) are stored as 24-bit sign-magnitude numbers, where the sign of the number is stored in bit 7 of the sign byte, and the other 23 bits contain the magnitude of the number without any sign (i.e. the absolute value, |x|, |y| or |z|). So an x value of &amp;123456 would be stored like this:</p>
+
+<pre class="articleIndented">     x_sign          x_hi          x_lo
+  +     &amp;12           &amp;34           &amp;56
+  0 0010010      00110100      01010110
+</pre>
+
+						<p>while -&amp;123456 is identical, just with bit 7 of the x_sign byte set:</p>
+
+<pre class="articleIndented">     x_sign          x_hi          x_lo
+  -     &amp;12           &amp;34           &amp;56
+  1 0010010      00110100      01010110
+</pre>
+
+						<p>There are also sign-magnitude numbers where the sign byte is only ever used for storing the sign bit, and bits 0-6 are ignored, and there are others where we only ever care about the top byte (a planet's distance, for example, is determined by the value of x_sign, y_sign and z_sign, for example). But they all work in exactly the same way.</p>
+
+						<h2 class="articleSubheader">Label names in the Acornsoft versions<br />
+						                             -------------------------------------</h2>
+
+						<p>For those versions of Acornsoft Elite where the original source code is available, I have used the same label names in the code on this site. This applies to the BBC Micro cassette version and the 6502 Second Processor version, for which Ian Bell released the source code on his website.</p>
+
+						<p>There are only three exceptions: LABEL_1, LABEL_2 and LABEL_3, which respectively appear in the original source code as `_ (a backtick followed by an underscore), ` (a backtick), and `` (two backticks). Backticks don't compile in BeebAsm and are pretty cryptic, so I've used the LABEL_n terminology from the cassette version instead.</p>
+
+						<p>For those versions where the original source code is not available, we don't know the original label names for code that doesn't already appear in any of the known sources. In these cases I have either invented my own labels, or I've reused labels from pre-existing disassemblies. Here are the details:</p>
+
+						<ul>
+							<li>For the BBC Master Compact version, these are the labels I've added: <a href="/master/main/subroutine/ctrlmc.html">CTRLmc</a>, <a href="/master/main/subroutine/rdfire.html#dfire">DFIRE</a>, <a href="/master/main/subroutine/rdjoy.html#dig1">DIG1</a>, <a href="/master/main/subroutine/rdjoy.html#dig2">DIG2</a>, <a href="/master/main/subroutine/rdjoy.html#digital">DIGITAL</a>, <a href="/master/main/variable/diri.html">DIRI</a>, <a href="/master/main/subroutine/gtdir.html#dirl">DIRL</a>, <a href="/master/main/subroutine/djoy.html">DJOY</a>, <a href="/master/main/subroutine/dks4mc.html">DKS4mc</a>, <a href="/master/main/subroutine/gtdir.html">GTDIR</a>, <a href="/master/main/workspace/zp.html#mos">MOS</a>, <a href="/master/main/workspace/wp.html#nmi">NMI</a>, <a href="/master/main/subroutine/nmiclaim.html">NMICLAIM</a>, <a href="/master/main/subroutine/nmirelease.html">NMIRELEASE</a>, <a href="/master/main/subroutine/mt26.html#noshift">noshift</a>, <a href="/master/main/subroutine/rdfire.html">RDFIRE</a>, <a href="/master/main/subroutine/rdjoy.html">RDJOY</a>, <a href="/master/main/subroutine/return.html">RETURN</a>, <a href="/master/main/subroutine/chpr.html#rrnew">RRNEW</a>, <a href="/master/main/subroutine/shift.html">SHIFT</a>, <a href="/master/main/subroutine/tt17x.html#tt171">TT171</a>, <a href="/master/main/subroutine/tt17x.html">TT17X</a>.</li>
+
+							<li>For the BBC Master version, these are the labels I've added: <a href="/master/main/subroutine/outx.html">OUTX</a>, <a href="/master/main/subroutine/tt67x.html">TT67X</a> (for the duplicated TT67 routine). Also, I have retained the <a href="/master/main/subroutine/gvl.html">GVL</a> label from the cassette version for clarity, even though it is omitted in the original Master source.</p>
+
+							<li>For the Acorn Electron version, these are the labels I've added: <a href="/electron/main/subroutine/ttx66.html#border">BORDER</a>, <a href="/electron/main/subroutine/dks4.html#capsl">CAPSL</a>, <a href="/electron/main/subroutine/delay.html#dely1">DELY1</a>, <a href="/electron/main/subroutine/delay.html#dely2">DELY2</a>, <a href="/electron/main/subroutine/delay.html#dely3">DELY3</a>, <a href="/electron/main/subroutine/key1.html">KEY1</a>, <a href="/electron/main/workspace/s_per_cent_part_1_of_2.html#keyb">KEYB</a>, <a href="/electron/main/subroutine/dks4.html#kscan">KSCAN</a>, <a href="/electron/main/subroutine/tt102.html#lookl">LOOKL</a>, <a href="/electron/main/variable/mdials.html">MDIALS</a>, <a href="/electron/main/subroutine/nextr.html">NEXTR</a>, <a href="/electron/main/variable/sfx.html#sfx2">SFX2</a>, <a href="/electron/main/workspace/wp.html#sfxdu">SFXDU</a>, <a href="/electron/main/subroutine/main_flight_loop_part_1_of_16.html#sfxl">SFXL</a>, <a href="/electron/main/workspace/wp.html#sfxpr">SFXPR</a>, <a href="/electron/main/subroutine/tt102.html#vkeys">VKEYS</a>.</li>
+
+							<li>For the BBC Micro disc version, these are the labels I've added (most of which are the same as in Paul Brink's disassembly): <a href="/disc/flight/workspace/wp.html#cpir">CPIR</a>, <a href="/disc/docked/subroutine/dk4.html#dk9">DK9</a>, <a href="/disc/docked/subroutine/dobegin.html">DOBEGIN</a>, <a href="/disc/docked/subroutine/tt110.html#eny1">eny1</a>, <a href="/disc/docked/subroutine/gtnmes.html">GTNMES</a>, <a href="/disc/docked/subroutine/has1.html#hloop">hloop</a>, <a href="/disc/flight/subroutine/inbay.html">INBAY</a>, <a href="/disc/flight/variable/ltli.html">LTLI</a>, <a href="/disc/docked/subroutine/res2.html#modify">modify</a>, <a href="/disc/flight/subroutine/main_game_loop_part_4_of_6.html#more">more</a>, <a href="/disc/flight/subroutine/tactics_part_7_of_7.html#nroll">nroll</a>, <a href="/disc/flight/subroutine/tactics_part_7_of_7.html#nroll2">nroll2</a>, <a href="/disc/loader_3/subroutine/prot4.html">PROT4</a>, <a href="/disc/docked/subroutine/chpr.html#rrnew">RRNEW</a>, <a href="/disc/flight/subroutine/rships.html">RSHIPS</a>, <a href="/disc/flight/subroutine/scancol.html">SCANCOL</a>, <a href="/disc/docked/subroutine/scram.html">SCRAM</a>, <a href="/disc/flight/variable/shipi.html">SHIPI</a>, <a href="/disc/flight/subroutine/lomod.html#shipina">SHIPinA</a>, <a href="/disc/docked/subroutine/title.html#tiwe">tiwe</a>, <a href="/disc/docked/subroutine/tt17.html#tje">TJe</a>, <a href="/disc/flight/subroutine/lomod.html#tpnot8">TPnot8</a>.</li>
+
+							<li>For the sideways RAM variant of the BBC Micro disc version, all the labels in the <a href="/disc/all/loader_sideways_ram.html">sideways RAM loader</a> have been added by me, apart from the entry point names which I've taken from the MENU program.</li>
+
+							<li>For all versions, I have added labels to the ship blueprints, along the lines of <a href="/cassette/main/variable/ship_sidewinder.html">SHIP_SIDEWINDER</a> and <a href="/cassette/main/variable/ship_cobra_mk_3.html#ship_cobra_mk_3_edges">SHIP_COBRA_MK_3_EDGES</a>. The original source doesn't use labels for the ship data, so I had to add my own.</li>
+						</ul>
+
+						<p>All other labels should be the same as in the original sources.</p>
+
+						<h2 class="articleSubheader">Label names in the NES version<br />
+						                             ------------------------------</h2>
+
+						<p>As the original source for NES Elite has never been released and there is an awful lot of extra code in there, I have had to make up my own labels for the new code. My label names follow a number of rules:</p>
+
+						<ul>
+							<li>Subroutine names are in camel case with an initial capital letter, such as SubroutineLabel</li>
+
+							<li>Variable names are in camel case with an initial lower case letter, such as variableLabel</li>
+
+							<li>Variables that refer to coordinates tend to start with the axis, such as xScreenCoord</li>
+
+							<li>Variables that refer to multi-byte values tend to end in Hi or Lo, such as xCoordLo</li>
+
+							<li>Minor labels within subroutines are four lower-case letters and a number, such as main34</li>
+
+							<li>Subroutines that exist as jump points tend to end in a capital S (a terminology taken from the original version of Elite), so BigRoutineS will typically jump through to BigRoutine, for example</li>
+
+							<li>Bank 7 contains a "switchyard" that enables routines to be called, even when they are in another ROM bank (bank 7 is always present in the top ROM bank, so it can host the switchyard). Routines in the switchyard have names that end in _bn, where n is the destination bank, so for example calling PauseGame_b6 will switch bank 6 into memory, call the PauseGame routine in bank 6, and then switch back to the previous bank when the routine returns</li>
+
+							<li>Some routines are duplicated across ROM banks, such as BRIS, which appears in both bank 0 and bank 2. As there is only one namespace for the project, I have added _bn to the end of one of them (so the copy of BRIS in bank 0 is called BRIS_b0, for example)</li>
+						</ul>
+
+						<p>Routine names tend to be in the form "VerbNoun", so they describe an action, e.g. DrawIconBar or SendPalettesToPPU. Hopefully this makes things easier to follow...</p>
+
+						<p>Wherever code in the NES version is based on the original BBC Micro code (which is around 30% of the NES game binary), I have kept the original labels from the 1984 source. It is therefore pretty easy to work out whether code is original or new, as the original code uses old-school routine names like LL9, DOEXP, TT24, BEGIN and so on, while the new code has routine names like DrawBoxEdges, SendScreenToPPU and MoveIconBarPointer.</p>
+
+						<h2 class="articleSubheader">Variant conditionals<br />
+						                             --------------------</h2>
+
+						<p>The source code is designed to build multiple variants of the game. This is done using BeebAsm variables whose names start with underscores, and the source code contains IF ... ENDIF statement blocks to control which code is assembled during the build, according to which variant is being built.</p>
+
+						<p>This means you can search the source code for the likes of _PAL, _SNG45 and _COMPACT to see exactly how the variants differ. For a list of the source code variables used, see the variant page for each version (such as the page on <a href="/master/releases.html">different variants of the BBC Master version</a>, for example).</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="about_this_project.html">About this project</a><a class="next" rel="next" title="Next page" href="building_elite.html">Building Elite from the source</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

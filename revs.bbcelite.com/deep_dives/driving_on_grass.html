@@ -1,0 +1,132 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "driving_on_grass.html", "Driving on grass", "Driving on grass", "A deep dive into driving on grass in BBC Micro Revs", "revs", "deep_dives_driving_model", "driving_on_grass");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_core_driving_model.html">The core driving model</a><a class="next" rel="next" title="Next deep dive" href="skidding.html">Skidding</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">What happens when you spill off the track into the lush green grass</h2>
+
+						<p>This article details the extra calculations that the driving model performs when any part of the car is driving on grass. It is designed to be read alongside the <a href="the_core_driving_model.html">core driving model calculations</a>.</p>
+
+						<p>Note that the game knows if the car is on grass by checking the colour of two specific screen pixel bytes, one just to the left of the dashboard, and the other just to the right. If one of these pixel bytes is fully green, then we know that side of the car is on grass. The screen memory addresses for these two bytes are defined by the leftSurface and rightSurface configuration variables.</p>
+
+						<h2 class="articleSubheader"><a id="calculation5" name="calculation5" class="anchor"></a>Calculation 5: Calculate height of bumpy grass<br />
+													 -----------------------------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applygrassortrack.html">ApplyGrassOrTrack</a></i></p>
+
+						<p>This is an explanation of calculation 5 in the driving model. It might help to <a href="the_core_driving_model.html#calculation5">see calculation 5 in context</a>.</p>
+
+						<p>First, we check whether we have just hit the track verge, and if so, we set some variables so the car jumps and spins, as follows:</p>
+
+						<ul>
+							<li>If all the following are true:
+
+								<ul>
+									<li>There is grass under at least one side of the car</li>
+
+									<li>bumpyGrassHeight = 0</li>
+
+									<li>heightAboveTrack = 0</li>
+
+									<li>Bit 7 of <a href="/source/main/variable/playerdrift.html">playerDrift</a> is set</li>
+								</ul>
+
+								then this means all of the following are also true:
+
+								<ul>
+									<li>We have at least one wheel off the track</li>
+
+									<li>We haven't already hit the grass, as the grass height is zero</li>
+
+									<li>We aren't already jumping, as we are on the ground</li>
+
+									<li>We are moving sideways pretty fast</li>
+								</ul>
+
+								In other words, we only just hit the verge, so we calculate the following to make the car jump and spin, with the jump being higher with higher speeds:
+
+<pre class="articleIndented">  yGravityDelta = playerSpeedHi / 2
+
+  yJumpHeight = playerSpeedHi / 4
+
+  heightAboveTrack = heightAboveTrack + 1
+
+  spinYawAngleHi = spinYawAngleHi &gt;&gt; 1 with bit 7 set
+</pre>
+
+								We also make the crash/contact sound to indicate that we have hit the verge.
+							</li>
+						</ul>
+
+						<p>Second, if any part of the car is on the grass, then we set the height of the grass in bumpyGrassHeight to a random figure in the range 1 to 7 (with a higher number more likely at higher speeds). We do this on each iteration of the main driving loop, so while we are driving on grass, our height bumps up and down, with higher bumps the faster we are going. Specifically, we do this:</p>
+
+						<ul>
+							<li>If there is grass under at least one side of the car, then:
+
+<pre class="articleIndented">  bumpyGrassHeight = random number in the range 1 to 7
+                     that is higher with higher speeds
+</pre>
+
+								otherwise:
+
+<pre class="articleIndented">  bumpyGrassHeight = 0
+</pre>
+							</li>
+						</ul>
+
+						<p>These variables are used in the <a href="the_core_driving_model.html#calculation21">jumps and drops calculation</a> in the last step of the driving model.</p>
+
+						<h2 class="articleSubheader"><a id="calculation6" name="calculation6" class="anchor"></a>Calculation 6: Calculate wing and brake downward forces<br />
+													 -------------------------------------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applygrassortrack.html">ApplyGrassOrTrack</a></i></p>
+
+						<p>This is an explanation of calculation 6 in the driving model. It might help to <a href="the_core_driving_model.html#calculation6">see calculation 6 in context</a>.</p>
+
+						<p>If we are driving on grass on both sides of the car, then instead of the normal calculation, we set:
+
+<pre class="articleIndented">  wingForce = wingForceGrass + brakeForce
+</pre>
+
+						<p>where wingForceGrass is defined as 25 for the front wing and 26 for the rear wing. This cancels out the downward force that we normally get from the wings, and reduces the base downward force from wingForceTrack (53) to wingForceGrass (25 or 26). The result is a serious loss of grip.</p>
+
+						<h2 class="articleSubheader"><a id="calculation17" name="calculation17" class="anchor"></a>Calculation 17: Apply drag<br />
+													 --------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applywingbalance.html">ApplyWingBalance</a></i></p>
+
+						<p>This is an explanation of calculation 17 in the driving model. It might help to <a href="the_core_driving_model.html#calculation17">see calculation 17 in context</a>.</p>
+
+						<p>If bumpyGrassHeight > 0, then we are already driving across grass, so we change the calculation so the acceleration reduces by twice the amount, as follows:</p>
+
+<pre class="articleIndented">  xPlayerAccel = xPlayerAccel - 2 * playerSpeedHi * xPrevVelocityHi
+</pre>
+
+<pre class="articleIndented">  zPlayerAccel = zPlayerAccel - 2 * playerSpeedHi
+                                  * (wingBalance * playerSpeedHi + 2048)
+                                  * abs(zVelocity)
+</pre>
+
+						<p>The effect is that driving on grass doubles the drag on the car, which leads to a noticeable loss of acceleration.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_core_driving_model.html">The core driving model</a><a class="next" rel="next" title="Next deep dive" href="skidding.html">Skidding</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

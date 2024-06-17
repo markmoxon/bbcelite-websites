@@ -1,0 +1,104 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("hacks", "flicker-free_elite_technical_information.html", "Technical information for flicker-free Elite", "Technical information for flicker-free Elite", "Details of how flicker-free Elite weaves its magic", "elite", "hacks_flicker-free_elite", "technical_information");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="flicker-free_elite_downloads.html">Downloading flicker-free Elite</a><a class="next" rel="next" title="Next page" href="teletext_elite.html">Teletext Elite</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Details of how flicker-free Elite weaves its magic</h2>
+
+						<p>There are two flicker-free flavours of Elite on this site: flicker-free ships and flicker free planets. Let's take a look at how they work.</p>
+
+						<h2 class="articleSubheader">Flicker-free ships<br />
+													 ------------------</h2>
+
+						<p>The improved ship-drawing algorithm in flicker-free Elite originally appeared in the 1986 BBC Master version of Elite. This is the algorithm that I backported to the original 1984 BBC Micro and Acorn Electron versions of Elite, as well as the 1985 version for the 6502 Second Processor.</p>
+
+						<p>For more information on the flicker-free algorithm and the backporting process, see the following deep dives:</p>
+
+						<ul>
+							<li>The <a href="/deep_dives/flicker-free_ship_drawing.html">flicker-free ship drawing</a> deep dive looks at the newer algorithm and how it differs from the earlier, more flickery version in the original game.</li>
+
+							<li>The deep dive on <a href="/deep_dives/backporting_the_flicker-free_algorithm.html">backporting the flicker-free algorithm</a> looks at exactly what was involved in taking the improved algorithm from the BBC Master and squeezing it into the original versions of Elite.</li>
+						</ul>
+
+						<p>See the <a href="flicker-free_elite.html">introduction</a> to see how the two algorithms compare, side-by-side.</p>
+
+						<h2 class="articleSubheader">Flicker-free planets<br />
+													 --------------------</h2>
+
+						<p>In the original BBC Master version, planets still flicker, as they are displayed by a completely different part of the code. When the authors fixed the flicker, they only did so in the ship-drawing routines.</p>
+
+						<p>To get rid of this final bit of flicker, I have applied the same algorithm to the planet-drawing routines, so planets are also erased and redrawn one line at a time. Players of the BBC Micro disc version, BBC Master, 6502 Second Processor, Acorn Electron, Commodore 64 and Commodore Plus/4 can now enjoy both flicker-free ships <i>and</i> planets; unfortunately there isn't enough spare memory in all versions of Elite for this modification, so flicker-free planets are not supported on the BBC Micro cassette version or in Elite-A, where memory is really tight. See the page on <a href="flicker-free_elite_downloads.html">downloading flicker-free Elite</a> for details of all the different versions.</p>
+
+						<p>The bulk of the flicker-free planet change is implemented in the DrawPlanetLine routine, which is injected into the BLINE routine to implement the same single erase/redraw algorithm as in the ship-drawing improvement (the BLINE routine manages the ball line heap for circles and ellipses). Because planet circles, craters, equators and meridians are all managed by the same heap, this fix reduces flicker for the entire planet, not just the circular outline.</p>
+
+						<p>Adding the algorithm to the ball line code does indeed reduce flicker, but it doesn't get rid of it entirely, because unlike ships, planets are quite often static, hanging in the sky as we fly towards them. This means that lines often get erased and redrawn in exactly the same place, which still leads to a small hint of flicker; the same issue affects ships, but because they are always moving, it is far less obvious.</p>
+
+						<p>To get around this, there is a further addition to the code in the form of the DrawNewPlanetLine routine, which checks whether or not a line has moved, and only erases and redraws the line if it is in a different place. If the line hasn't moved, then the erase/redraw process is skipped, so lines that don't move on-screen do not flicker. Due to memory constraints, this extra routine isn't present in the BBC Micro disc version, so planets do still have a slight shimmer in that version, though the flicker is still considerably improved over the original.
+
+						<p>Here's the flicker-free BBC Master version, showing a rock-steady planet:</p>
+
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/flicker-free_elite/flicker-free_meridian.mp4" type="video/mp4">
+						</video></p>
+
+						<p>There is still a very tiny amount of flicker, which kicks in when the number of lines in the line heap changes. In this case we may erase a line in one place and redraw it in a different place, which does produce a tiny glimmer, but overall the extended algorithm does a pretty good job of fixing planet flicker. This effect is particularly noticeable when the planet is partially off-screen, and although the BBC Micro is quick enough to turn this into a slight glimmer, it is a bit more noticeable on the Commodore 64 and Plus/4. But it's still a huge improvement over the original, flickery release, even if the flicker-free version isn't strictly free of flicker.</p>
+
+						<p>There is also the overlap effect that comes from drawing lines on top of each other, such as when the meridian or equator reaches the planet's edge; this is a consequence of the EOR-plotting approach used by Elite, rather than the erase/redraw flicker that this modification fixes, so it's still present.</p>
+
+						<p>To see the code behind this, you can search the <a href="https://github.com/markmoxon/master-elite-beebasm/blob/flicker-free/1-source-files/main-sources/elite-source.asm">elite-source.asm</a> source file in the <a href="https://github.com/markmoxon/master-elite-beebasm/tree/flicker-free">flicker-free branch of the master-elite-beebasm repository</a>. Look for "Mod:" to see the modifications for flicker-free planet drawing.</p>
+
+						<p>If you want to see the modifications in the original BBC Micro Elite, which doesn't include the extra DrawNewPlanetLine routine, then you can search the <a href="https://github.com/markmoxon/disc-elite-beebasm/blob/flicker-free/1-source-files/main-sources/elite-source-flight.asm">elite-source-flight.asm</a> source file in the <a href="https://github.com/markmoxon/disc-elite-beebasm/tree/flicker-free">flicker-free branch of the disc-elite-beebasm repository</a>. Look for "Mod:" to see the modifications for both flicker-free ship and planet drawing.</p>
+
+						<p>Finally, for details of how the flicker-free improvements have been added to the Commodore 64 and Plus/4, head over to the <a href="https://github.com/markmoxon/c64-elite-flicker-free">flicker-free Elite GitHub repository</a> for more information.</p>
+
+						<h2 class="articleSubheader">Finding space on the Electron<br />
+													 -----------------------------</h2>
+
+						<p>Astonishingly, there is enough spare room in the Acorn Electron for the full version of flicker-free planets. Although the game binary uses up almost every single byte of space, leaving only 13 bytes of unused space, it turns out that not all of the game code is actually used, and when those parts are removed, there is not only enough space for flicker-free planets, but for some other improvements as well.</p>
+
+						<p>The Electron version still contains the same unused multiplication routines as the BBC Micro (a <a href="/electron/main/subroutine/unused_duplicate_of_multu.html">duplicate of MULTU</a> and the unused <a href="/electron/main/subroutine/mut3.html">MUT3</a> routine), so there are 28 unused bytes there that can be reused... and on top of that, the authors left the <a href="/electron/main/subroutine/arctan.html">ARCTAN</a> routine (70 bytes) and <a href="/electron/main/variable/act.html">ACT</a> table (32 bytes) intact, even though they are only ever used to draw meridians and equators on planets, a feature that isn't present in the Electron version. There are 11 unused bytes in <a href="/electron/main/subroutine/main_flight_loop_part_2_of_16.html">part 2 of the main flight loop</a> that are skipped using a JMP (so presumably this was code that was inserted at some point, and then deemed unnecessary, so it was just skipped), and there is a chunk of 39 bytes in the <a href="/electron/main/subroutine/tt17.html">TT17</a> routine that enable you to move the crosshairs with a joystick, but as the Electron version doesn't support joysticks, this can also be removed (and in doing so, this fixes a bug in the original where you can still select joystick control, and in doing so break the crosshairs on the charts).</p>
+
+						<p>Another way of saving a few precious bytes is to move variables from main memory into zero page, as instructions that access zero page are one byte smaller than their equivalents that access main memory. There are two zero-page locations just after <a href="/electron/main/workspace/zp.html#yy">YY</a> in Electron Elite that are no longer used - they are used to store the sun's centre axis coordinates in BBC Micro Elite, and the Electron version doesn't have suns - so we can move two variables from main memory into zero page. The best candidates are QQ29, which is used 29 times in the codebase, and QQ3, which is used 10 times, so moving these from the <a href="/electron/main/workspace/wp.html">WP workspace</a> into zero page frees up a total of 41 bytes in main memory (29 plus 10, plus one byte each for the variable).</p>
+
+						<p>Finally, there are some instructions that set the HFX variable in the <a href="/electron/main/subroutine/ll164.html">LL164</a> routine, which can be removed as HFX isn't used anywhere; in the BBC Micro is it used to switch off the split-screen mode for the hyperspace effect, but there is no split-screen mode in the Electron, so that's another one that can be used. Indeed, there are various other optimisations that could free up a few more bytes, but there aren't any other minor BBC Micro features to port to the Electron; Thargoids, suns, meridians and craters all take up large amounts of code, so they will have to stay as BBC Micro-only features.</p>
+
+						<p>Altogether these tweaks free up enough memory to add the following features to Electron Elite:</p>
+
+						<ul>
+							<li>Flicker-free ships</li>
+
+							<li>Flicker-free planets</li>
+
+							<li>The escape capsule animation from the BBC Micro has been added, which is not present in the original Electron version</li>
+
+							<li>There are now three sizes of stardust (like the BBC Micro) rather than two, with the addition of one-pixel stardust</li>
+
+							<li>Planets are more high-fidelity, so the planet's circle looks more like the BBC Micro, and less like a 50p; this does slow things down a little, but overall the faster algorithm for flicker-free planets compensates for this</li>
+
+							<li>For the SSD disc version, the black box that shows loading progress has been removed from the Acornsoft loading screen (it is still used to show loading progress in the UEF cassette version)</li>
+						</ul>
+
+						<p>So the Electron version might not have Thargoids, suns or detailed planets, but it now has one feature that the standard BBC Micro version does not have room for: flicker-free planets. Head over to the <a href="flicker-free_elite_downloads.html">downloads page</a> to get hold of the improved version.</p>
+
+						<p>To see the code behind this, you can search the <a href="https://github.com/markmoxon/electron-elite-beebasm/blob/flicker-free/1-source-files/main-sources/elite-source.asm">elite-source.asm</a> source file in the <a href="https://github.com/markmoxon/electron-elite-beebasm/tree/flicker-free">flicker-free branch of the electron-elite-beebasm repository</a>. Look for "Mod:" to see the modifications for all the in-game features listed above.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="flicker-free_elite_downloads.html">Downloading flicker-free Elite</a><a class="next" rel="next" title="Next page" href="teletext_elite.html">Teletext Elite</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

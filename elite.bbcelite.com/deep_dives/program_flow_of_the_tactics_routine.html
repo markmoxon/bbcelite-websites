@@ -1,0 +1,131 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "program_flow_of_the_tactics_routine.html", "Program flow of the tactics routine", "Program flow of the tactics routine", "A deep dive into the program flow of the tactics routine in BBC Micro Elite", "elite", "deep_dives_tactics_and_combat", "program_flow_of_the_tactics_routine");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="in_the_crosshairs.html">In the crosshairs</a><a class="next" rel="next" title="Next deep dive" href="advanced_tactics_with_the_newb_flags.html">Advanced tactics with the NEWB flags</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How ships and missiles work out attack patterns... or how to run away</h2>
+
+						<p>Ships in Elite seem to have purpose - it's part of the reason why the Elite universe feels so alive. Later versions of the game expand on the simpler artificial intelligence in the BBC versions: the version of Elite for the Acorn Archimedes is particularly celebrated for having ships that genuinely seem to be going about their business, with busy lives of their own. But even in the memory-constrained cassette version on the BBC Micro, the universe feels as if it is piloted by real people... or real aliens, if you're unlucky enough to bump into the Thargoids.</p>
+
+						<p>The heart of Elite's convincing AI is the <a href="/cassette/main/subroutine/tactics_part_2_of_7.html">TACTICS</a> routine. This gets applied to every ship that has bit 7 set in ship byte #32, and it is called by the MVEIT routine, which itself is called on every iteration of the main loop. However, because it takes quite a bit of time to apply tactics to a ship, they are only applied to one or two ships on each iteration of the main flight loop, depending on the value of the main loop counter in MCNT.</p>
+
+						<h2 class="articleSubheader">Program flow<br />
+													 ------------</h2>
+
+						<p>Let's see how ships in Elite are brought to life by stepping through the TACTICS routine. You might want to start with part 2, as that's where the main entry point is (the following is in the order in which it appears in the source code).</p>
+
+						<p><a href="/cassette/main/subroutine/tactics_part_1_of_7.html">1/7: TACTICS (Part 1 of 7)</a></p>
+
+						<ul>
+							<li>Entry point for missile tactics at TA34, called from part 1 for missiles only</li>
+
+							<li>If E.C.M. is active, destroy the missile</li>
+
+							<li>If the missile is hostile towards us, then check how close it is. If it hasn't reached us, jump to part 3 so it can streak towards us, otherwise we've been hit, so process a large amount of damage to our ship, which can lead to DEATH</li>
+
+							<li>Otherwise see how close the missile is to its target. If it has not yet reached its target, give the target a chance to activate its E.C.M. if it has one, otherwise jump to part 3</li>
+
+							<li>If it has reached its target and the target is the space station, destroy the missile, potentially damaging us if we are nearby</li>
+
+							<li>If it has reached its target and the target is a ship, destroy the missile and the ship, potentially damaging us if we are nearby</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/tactics_part_2_of_7.html">2/7: TACTICS (Part 2 of 7)</a></p>
+
+						<ul>
+							<li>Main entry point for TACTICS routine</li>
+
+							<li>If this is a missile, jump up to the missile code in part 1</li>
+
+							<li>If this is an escape pod, point it at the planet and jump to part 7</li>
+
+							<li>If this is the space station and it is hostile, spawn a cop and we're done</li>
+
+							<li>If this is a lone Thargon without a mothership, set it adrift aimlessly and we're done</li>
+
+							<li>If this is a pirate and we are within the space station safe zone, stop the pirate from attacking</li>
+
+							<li>Recharge the ship's energy banks by 1</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/tactics_part_3_of_7.html">3/7: TACTICS (Part 3 of 7)</a></p>
+
+						<ul>
+							<li>Calculate the dot product of the ship's nose vector (i.e. the direction it is pointing) with the vector between us and the ship so we can work out later on whether the enemy ship can hit us with its lasers</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/tactics_part_4_of_7.html">4/7: TACTICS (Part 4 of 7)</a></p>
+
+						<ul>
+							<li>Rarely (2.5% chance) roll the ship by a noticeable amount</li>
+
+							<li>If the ship has at least half its energy banks full, jump to part 6 to consider firing the lasers</li>
+
+							<li>If the ship isn't really low on energy, jump to part 5 to consider firing a missile</li>
+
+							<li>Rarely (10% chance) the ship runs out of both energy and luck, and bails, launching an escape pod and drifting in space</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/tactics_part_5_of_7.html">5/7: TACTICS (Part 5 of 7)</a></p>
+
+						<ul>
+							<li>If the ship doesn't have any missiles, skip to the next part</li>
+
+							<li>If an E.C.M. is firing, skip to the next part</li>
+
+							<li>Randomly decide whether to fire a missile (or, in the case of Thargoids, release a Thargon), and if we do, we're done</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/tactics_part_6_of_7.html">6/7: TACTICS (Part 6 of 7)</a></p>
+
+						<ul>
+							<li>If the ship is not pointing at us, skip to the next part</li>
+
+							<li>If the ship is pointing at us but not accurately, fire its laser at us and skip to the next part</li>
+
+							<li>If we are in the ship's crosshairs, register some damage to our ship, slow down the attacking ship, make the noise of us being hit by laser fire (which could end in DEATH), and we're done</li>
+						</ul>
+
+						<p><a href="/cassette/main/subroutine/tactics_part_7_of_7.html">7/7: TACTICS (Part 7 of 7)</a></p>
+
+						<ul>
+							<li>Work out which direction the ship should be moving, depending on whether it's an escape pod, where it is, which direction it is pointing, and how aggressive it is. At this point XX15 contains the normalised vector from our ship to the ship we are applying AI tactics to (or the normalised vector from the target to the missile - in both cases it's the vector from the potential victim to the attacker). We now check these conditions:
+
+								<ul>
+									<li>This is a trader (in enhanced versions) or escape pod (in standard versions) and XX15 is pointing towards the planet</li>
+
+									<li>The ship is pretty close to us, or it's just not very aggressive (though there is a random factor at play here too), and XX15 is still pointing from our ship towards the enemy ship</li>
+
+									<li>The ship is aggressive (though again, there's an element of randomness here), and XX15 is pointing from the enemy ship towards our ship</li>
+
+									<li>This is a missile heading for a target, and XX15 is pointing from the missile towards the target</li>
+								</ul>
+
+								If any of these are true, then we move the ship in the direction of XX15, which will make aggressive ships head towards us, and ships that are too close turn away. Peaceful traders, meanwhile, head off towards the planet in search of a space station, and missiles home in on their targets.
+							</li>
+
+							<li>Set the pitch and roll counters to head in that direction</li>
+
+							<li>Speed up or slow down, depending on where the ship is in relation to us</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="in_the_crosshairs.html">In the crosshairs</a><a class="next" rel="next" title="Next deep dive" href="advanced_tactics_with_the_newb_flags.html">Advanced tactics with the NEWB flags</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

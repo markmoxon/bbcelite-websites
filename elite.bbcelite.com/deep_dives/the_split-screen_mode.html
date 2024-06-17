@@ -1,0 +1,106 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_split-screen_mode.html", "The split-screen mode in BBC Micro Elite", "The split-screen mode in BBC Micro Elite", "A deep dive into the split-screen mode in BBC Micro Elite", "elite", "deep_dives_screen_mode", "the_split-screen_mode");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="splitting_the_main_loop_in_the_nes_version.html">Splitting the NES main loop</a><a class="next" rel="next" title="Next deep dive" href="the_split-screen_mode_nes.html">The split-screen mode in NES Elite</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Elite's famous split-screen mode, dissected and explained in detail</h2>
+
+						<p>The BBC versions of Elite have a unique split-screen mode that enables a high-resolution black-and-white space view to coexist with a lower resolution, colour ship dashboard. The effect is iconic - nobody had seen this kind of effect in a commercial BBC game before, and it helped cement Elite's position as a technical <i>tour de force</i>, right from the loading screen. This is what it looks like:</p>
+
+						<img class="titleImage" src="/images/general/Elite-BBCMicro.png" alt="BBC Micro Elite screenshot" />
+
+						<p>Alas, the Electron doesn't support the split-screen mode (see below for an explanation of why), but the advanced versions of Elite on the 6502 Second Processor and BBC Master take it to a higher level, supporting a four-colour space view (in mode 1) with an eight-colour dashboard (in mode 2). The split-screen mode in the colour versions works in exactly the same way as in the standard BBC versions, so let's take a look at how it's done.</p>
+
+						<h2 class="articleSubheader">The BBC's split-screen mode<br />
+													 ---------------------------</h2>
+
+						<p>There are two main parts to the implementation of the split-screen mode: the custom mode, and the split-screen aspect.</p>
+
+						<p>Elite's screen mode is a custom mode, based on mode 4 but with fewer pixels. This mode is set up in the loader by reprogramming the registers of the 6845 CRTC - see the section on VDU command data at <a href="/cassette/loader/variable/b_per_cent.html">variable B%</a> for more details, but the salient part is the screen size, which is 32 columns by 31 rows rather than the 40 x 32 of standard mode 4. Screen sizes are given in terms of characters, which are 8 x 8 pixels, so this means Elite's custom screen mode is 256 x 248 pixels, in monochrome.</p>
+
+						<p>The split-screen aspect is implemented using a timer and logic in the <a href="/cassette/main/subroutine/irq1.html">IRQ1</a> interrupt handler. The timer is set when the vertical sync occurs, which happens once every screen refresh. While the screen is redrawn, the timer runs down, and it is set up to run out just as the computer starts to redraw the dashboard section. When the timer hits zero it generates an interrupt, which triggers the code in <a href="/cassette/main/subroutine/irq1.html">IRQ1</a> to reprogram the Video ULA to switch the number of colours per pixel from 2 (black and white) to 4, so the dashboard can be shown in colour. The trick is setting up the timer so that the interrupt happens at the right place during the screen refresh.</p>
+
+						<p>Looking at the code, you can see the SHEILA &amp;44 and &amp;45 commands in LINSCN start the 6522 System VIA T1 timer counting down from 14622 (the high byte is 57, the low byte is 30). The authors almost certainly arrived at this exact figure by getting close and then tweaking the result, as the vertical sync doesn't quite happen when you would expect, but here's how they would have got an initial figure to start working from.</p>
+
+						<p>First, we need to know more about the screen structure and exactly where the vertical sync occurs. Looking at the 6845 registers for screen mode 4, we get the following:</p>
+
+						<ul>
+							<li>The horizontal total register (R0) is set to 63, which means the total number of character columns is 64, the same as the default for mode 4 (the number stored in R0 is the number of columns minus 1)</li>
+
+							<li>The vertical total register (R4) is set to 38, which means the total number of character rows is 39, the same as the default for mode 4 (the number stored in R4 is the number of rows minus 1)</li>
+
+							<li>The vertical displayed register (R6), which gives us the number of character rows, is set to 31 in elite-loader.asm, a change from the default value of 32 for mode 4</li>
+
+							<li>The vertical sync position register (R7) is 34, which again is the default for mode 4</li>
+						</ul>
+
+						<p>For the countdown itself, we use the 6522 System VIA T1 timer, which ticks away at 1 MHz, or 1 million times a second. Each screen row contains 64 characters, or 64 * 8 = 512 pixels, and in mode 4 pixels are written to the screen at a rate of 1 MHz, so that's 512 ticks of the timer per character row.</p>
+
+						<p>This means for every screen refresh, all 39 lines of it, the timer will tick down from 39 * 512 = 19968 ticks. If we can work out how many ticks there are between the vertical sync firing and the screen redraw reaching the dashboard, we can use the T1 timer to switch the colour depth at the right moment.</p>
+
+						<p>Register R7 determines the position of the vertical sync, and it's set to 34 for mode 4. In theory, this means that the vertical sync is fired when the screen redraw hits row 34, though in practice the sync actually fires quite a bit later, at around line 34.5.</p>
+
+						<p>It's probably easiest to visualise the screen layout in terms of rows, with row 1 being the top of the screen:</p>
+
+<pre class="articleIndented">  1     First row of space view
+  .
+  .     ... 24 rows of space view = 192 pixel rows ...
+  .
+  24    Last row of space view
+  25    First row of dashboard
+  .
+  .     ... 7 rows of dashboard = 56 pixel rows ...
+  .
+  31    Last row of dashboard
+  .
+  .     ... vertical retrace period ...
+  .
+  34.5  Vertical sync fires
+  .
+  .     ... 4.5 rows between vertical sync and end of screen ...
+  .
+  39    Last row of screen
+</pre>
+
+						<p>So starting at the vertical sync, we have 4.5 rows before the end of the screen, and then 24 rows from the top of the screen down to the start of the dashboard, so that's a total of 28.5 rows. So given that we have 512 ticks per row, we get:</p>
+
+<pre class="articleIndented">  28.5 * 512 = 14592
+</pre>
+
+						<p>So if we started our timer from 14592 at the vertical sync and let it tick down to zero, then it should get there just as we reach the dashboard.</p>
+
+						<p>However, because of the way the interrupt system works, this needs a little tweaking, which is where the low byte of the timer comes in. In the <a href="/cassette/main/subroutine/irq1.html">IRQ1</a> routine, the low byte is set to 30, to give a total timer count of 14622.</p>
+
+						<p>(Interestingly, in the loading screen in elite-loader.asm, the T1 timer for the split screen has 56 in the high byte, and 50 in the low byte, so it counts down from 14386 instead of 14622. As a result the screen does flicker quite a bit more at the top of the dashboard, and there are quite a few red and yellow pixels above the split, as it switches a bit too early. Perhaps the authors didn't think it worth spending time perfecting the loader's split screen? Who knows...)</p>
+
+						<h2 class="articleSubheader">No split-screen mode on the Electron<br />
+													 ------------------------------------</h2>
+
+						<p>The Electron doesn't have the same split-screen mode as the BBC versions, but instead uses a standard mode 4 display for the whole screen. As a result, the dashboard is monochrome, though with twice the horizontal resolution of the BBC version.</p>
+
+						<p>The main reason for this is that the Electron is missing a vital feature of the above process: it doesn't have a hardware timer like the 6522 System VIA T1 timer we use above. This makes it a lot harder to work out when the cathode ray reaches the top of the dashboard, which is when we need to change the screen mode.</p>
+
+						<p>The Electron does have a couple of interrupts that could, in theory, be used to implement a split-screen effect: the Display End interrupt (which fires at 50Hz, at the end of the display, not unlike the BBC's vertical sync), and the Real-time Clock interrupt (which also fires at 50Hz, but 10ms after the Display End interrupt, which happens while row 99 of the screen display is being shown). It might be possible to write an interrupt handler off the RTC interrupt that gets fired on row 99, and which waits for the right amount of time to get to the top of the dashboard before switching screen mode using SHEILA &07... but it's certainly non-trivial, and it would be a challenge to stop the interrupt handler from slowing everything down while waiting for the dashboard. Still, it is theoretically possible, which is intriguing.</p>
+
+						<p>That said, there is no such interrupt code in the Electron version, and it sticks to standard mode 4 instead of enjoying the colour dashboard of the BBC versions.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="splitting_the_main_loop_in_the_nes_version.html">Splitting the NES main loop</a><a class="next" rel="next" title="Next deep dive" href="the_split-screen_mode_nes.html">The split-screen mode in NES Elite</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

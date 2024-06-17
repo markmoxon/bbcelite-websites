@@ -1,0 +1,73 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "matching_the_code_to_the_driving_model.html", "Matching the code to the driving model", "Matching the code to the driving model", "A deep dive into matching the code to the driving model in BBC Micro Revs", "revs", "deep_dives_driving_model", "matching_the_code_to_the_driving_model");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="modelling_the_engine.html">Modelling the engine</a><a class="next" rel="next" title="Next deep dive" href="tactics_of_the_non-player_drivers.html">Tactics of the non-player drivers</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Tracking down the driving model features that are mentioned in the manual</h2>
+
+						<p>When disassembling a complex game like Revs, you take every clue you can get. This is particularly true when there are no prior analyses out there, as was the case when I pulled apart both Aviator and Revs. You're pretty much on your own when all you have to go on is the game binary and the box it came in.</p>
+
+						<p>Aviator, though, did come with a very big clue, in the form of a long and detailed list of every aspect of the flying model, right there in the game manual. It was so useful that I ended up matching every single clue to the in-game code as I analysed the flight model; you can read all about this in the deep dive on <a href="https://aviator.bbcelite.com/deep_dives/matching_the_code_to_the_flight_model.html">matching Aviator's code to the flight model</a>.</p>
+
+						<p>Inspired by my experience with Aviator, I thought I'd try the same with Revs. This is how it went.</p>
+
+						<h2 class="articleSubheader">Clues from the Revs manual<br />
+													 --------------------------</h2>
+
+						<p>Aviator's section on the flight model is so detailed, it's almost as if the manual's authors took the code-level specification for the game's physics engine and pasted it straight onto the page.</p>
+
+						<p>With Revs, the clues are few and far between, and some of them are fairly vague. Still, here's a comprehensive list of all the clues I can find in the manual, along with links to the relevant code and deep dives. Note that these represent my best guesses, so take the following with a healthy pinch of salt!</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Page</th><th>Clue</th><th style="width: 45%">Details</th></tr>
+							<tr><td><p>8</p></td><td><p>"The engine is most powerful when it is turning between 5000 and 5800 revolutions per minute ... the simulated engine ... will run perfectly well at 2000, 3000, or 4000, or at 7000, but will not provide maximum power. So, change up at 5800 and expect the new gear to bite at around 5000."</p></td><td><ul><li>Set engineTorque depending on the value of revCount</li><li>Code: <a href="/source/main/subroutine/applyengine.html">ApplyEngine</a></li><li>Deep dive: <a href="/deep_dives/modelling_the_engine.html#torque">Modelling the engine (calculate the torque)</a></li></ul></td></tr>
+							<tr><td><p>9</p></td><td><p>"See how revs are lost when you hang one wheel over the grass verge."</p></td><td><ul><li>Reduce the acceleration by twice the amount</li><li>Code: <a href="/source/main/subroutine/applygrassortrack.html">ApplyGrassOrTrack</a></li><li>Deep dive: <a href="/deep_dives/driving_on_grass.html#calculation17">Driving on grass (calculation 17)</a></li></ul></td></tr>
+							<tr><td><p>9</p></td><td><p>"Once completely onto the grass, it is like driving on ice."</p></td><td><ul><li>wingForce = wingForceGrass + brakeForce</li><li>Code: <a href="/source/main/subroutine/applygrassortrack.html">ApplyGrassOrTrack</a></li><li>Deep dive: <a href="/deep_dives/driving_on_grass.html#calculation6">Driving on grass (calculation 6)</a></li></ul></td></tr>
+							<tr><td><p>9</p></td><td><p>"If in a slide, try opposite lock, using the space bar to amplify its effect."</p></td><td><ul><li>xVelocity = xVelocity - zVelocity * steering</li><li>Code: <a href="/source/main/subroutine/applysteeringspeed.html">ApplySteeringSpeed</a></li><li>Deep dive: <a href="/deep_dives/the_core_driving_model.html#calculation10">Core driving model (calculation 10)</a></li></ul></td></tr>
+							<tr><td><p>10</p></td><td><p>"If in a spin, try using the brakes."</p></td><td><ul><li>spinYawDelta = (xTyreForceNose - xTyreForceRear) * 0.3</li><li>Code: <a href="/source/main/subroutine/scaletyreforces.html">ScaleTyreForces</a></li><li>Deep dive: <a href="/deep_dives/the_core_driving_model.html#calculation13">Core driving model (calculation 13)</p></td></tr>
+							<tr><td><p>10</p></td><td><p>"Having stalled on the grass, get into 3rd or 4th gear and with the clutch drawn in start the engine. Pulling away in these gears will prevent a spin developing on the slippery surface."</p></td><td><ul><li>Not modelled directly? Most relevant code seems to be setting (A T) = (throttleBrake * engineTorque) / 2</li><li>Code: <a href="/source/main/subroutine/applytyreforces.html">ApplyTyreForces</a></li><li>Deep dive: <a href="/deep_dives/the_core_driving_model.html#calculation8">Core driving model (calculation 8)</a></li></ul></td></tr>
+							<tr><td><p>12</p></td><td><p>"[When starting a race] turn your engine over. Do not attempt to move or your engine will stall."</p></td><td><ul><li>See the blue light checks in the clutch code</li><li>Code: <a href="/source/main/subroutine/applyengine.html">ApplyEngine</a></li><li>Deep dive: <a href="/deep_dives/modelling_the_engine.html#clutch">Modelling the engine (process the clutch)</a></li></ul></td></tr>
+							<tr><td><p>13</p></td><td><p>"As any racing driver knows, there is a point (near the 5000 revs mark) at which the tyres will spin momentarily to maximise forward momentum. Letting the clutch out in 1st with your revs at this exact point will get you away as fast as your car can manage. You'll know when you've found the balance by the sound of the tyres screaming across the tarmac."</p></td><td><ul><li>Squeal the tyres when xVelocity is non-zero and xVelocity and xTyreForce have the same sign</li><li>Code: <a href="/source/main/subroutine/applytyreforces.html">ApplyTyreForces</a></li><li>Deep dive: <a href="/deep_dives/the_core_driving_model.html#calculation10">Core driving model (calculation 10)</a></li></ul></td></tr>
+							<tr><td><p>16</p></td><td><p>"In the simulation, each rear and front wing is adjustable on a scale of 0 to 40, corresponding to 10 degrees of wing movement; a setting of 40 gives you maximum downforce."</p></td><td><ul><li>wingForce = wingSetting * min(53, playerSpeedHi) * abs(zVelocity)</li><li>Code: <a href="/source/main/subroutine/applygrassortrack.html">ApplyGrassOrTrack</a></li><li>Deep dive: <a href="/deep_dives/the_core_driving_model.html#calculation6">Core driving model (calculation 6)</a></li></ul></td></tr>
+							<tr><td><p>17</p></td><td><p>"If you run too much front wing in relation to the rear, you will find that the car has a tendency to spin on the corners."</p></td><td><ul><li>(A T) = throttleBrake * wingForce</li><li>Code: <a href="/source/main/subroutine/applytyreforces.html">ApplyTyreForces</a></li><li>Deep dive: <a href="/deep_dives/the_core_driving_model.html#calculation8">Core driving model (calculation 8)</a></li></ul></td></tr>
+							<tr><td><p>17</p></td><td><p>"If you run too little front wing in relation to the rear you will find that the front of the car will slide away at the corners."</p></td><td><ul><li>(A T) = throttleBrake * wingForce * 3 / 4</li><li>Code: <a href="/source/main/subroutine/applytyreforces.html">ApplyTyreForces</a></li><li>Deep dive: <a href="/deep_dives/the_core_driving_model.html#calculation10">Core driving model (calculation 10)</a></li></ul></td></tr>
+							<tr><td><p>21</p></td><td><p>"Turning the tyres obliquely to the road sets up resistance to speed. Every time you turn the wheel, you're slowing the car down."</p></td><td><ul><li>zTyreForceNose = zTyreForceNose - xTyreForceNose * steering</li><li>Code: <a href="/source/main/subroutine/applysteeringforce.html">ApplySteeringForce</a></li><li>Deep dive: <a href="/deep_dives/the_core_driving_model.html#calculation12">Core driving model (calculation 12)</a></li></ul></td></tr>
+							<tr><td><p>24</p></td><td><p>"Braking (as opposed to accelerating, which has an opposite, stabilising effect) pulls the weight of the car onto its front, and as you turn into a bend, the car pivots around the front wheels."</p></td><td><ul><li>brakeForce = +/-zTyreForceBoth / 8 feeding into spinYawDelta calculation (see 10 above)</li><li>Code: <a href="/source/main/subroutine/applygrassortrack.html">ApplyGrassOrTrack</a></li><li>Deep dive: <a href="/deep_dives/the_core_driving_model.html#calculation6">Core driving model (calculation 6)</a></li></ul></td></tr>
+						</table>
+
+						<p>On top of this, the race programme contains David Hunt's recommended approach and braking speeds for various corners. These broadly match the figures in the track data file, and specifically the value of trackSectionSpeed in <a href="/source/silverstone/variable/track_section_data_part_1_of_2.html">part 1 of the track section data</a>, which sets the maximum speed for non-player drivers in the track sections before each of the corners (i.e. the track section for the approach).</p>
+
+						<p>Here's a comparison of the manual's speed range and the relevant approach section's speed from the track data file (corners not mentioned in the table below can be taken flat out):</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Section #</th><th>Approaching</th><th>Speed in manual</th><th>Speed in track data</th></tr>
+							<tr><td>0</td><td>Woodcote</td><td>139 down to 117</td><td>136</td></tr>
+							<tr><td>4</td><td>Copse</td><td>134 down to 122</td><td>125</td></tr>
+							<tr><td>11</td><td>Becketts</td><td>137 down to 105</td><td>116</td></tr>
+							<tr><td>17</td><td>Stowe</td><td>139</td><td>139</td></tr>
+							<tr><td>19</td><td>Club</td><td>137</td><td>151</td></tr>
+						</table>
+
+						<p>The figures are reasonably close, though there is a bit of discrepancy at Club Corner, where non-player drivers are happy to take the corner at 151 mph, rather faster than David Hunt's recommended 137 mph. But for the other corners, it appears that the maximum speeds taken by the computer-controlled drivers are based on David Hunt's own driving technique, as described by the man himself in the racing programme. That's a nice touch!</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="modelling_the_engine.html">Modelling the engine</a><a class="next" rel="next" title="Next deep dive" href="tactics_of_the_non-player_drivers.html">Tactics of the non-player drivers</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

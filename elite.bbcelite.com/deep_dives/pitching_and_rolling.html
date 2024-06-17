@@ -1,0 +1,246 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "pitching_and_rolling.html", "Pitching and rolling", "Pitching and rolling", "A deep dive into pitching and rolling in BBC Micro Elite", "elite", "deep_dives_moving_and_rotating_in_space", "pitching_and_rolling");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="market_item_prices_and_availability.html">Market item prices and availability</a><a class="next" rel="next" title="Next deep dive" href="pitching_and_rolling_by_a_fixed_angle.html">Pitching and rolling by a fixed angle</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Applying our pitch and roll to another ship's orientation in space</h2>
+
+						<p>In order to understand the <a href="/cassette/main/subroutine/mvs4.html">MVS4</a> routine, we need first to understand what it's for, so consider our Cobra Mk III sitting in deep space, minding its own business, when an enemy ship appears in the distance. Inside the little bubble of universe that Elite creates to simulate this scenario, our ship is at the origin (0, 0, 0), and the enemy ship has just popped into existence at (x, y, z), where the x-axis is to our right, the y-axis is up, and the z-axis is in the direction our Cobra is pointing in.</p>
+
+						<p>Here's a video of this scenario:</p>
+
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/general/combat.mp4" type="video/mp4">
+						</video>
+
+						<p>Of course, our first thought is to pitch and roll our Cobra to get the new arrival firmly into the crosshairs, and in doing this the enemy ship will appear to move in space, relative to us. For example, if we do a pitch by pulling back on the joystick or pressing "X", this will pull the nose of our Cobra Mk III up, and the point (x, y, z) will appear to move down in the sky in front of us.</p>
+
+						<p>So this routine calculates the movement of the enemy ship in space when we pitch and roll, as then the game can show the ship on-screen and work out whether our lasers are pointing in the correct direction to unleash fiery death on the pirate/cop/innocent trader in our sights.</p>
+
+						<h2 class="articleSubheader">Pitch and roll<br />
+													 --------------</h2>
+
+						<p>To make it easier to work with the 3D rotations of pitching and rolling, we break down the movement into two separate rotations, the roll and the pitch, and we apply one of them first, and then the other (in Elite, we do the roll first, and then the pitch).</p>
+
+						<p>So let's look at the first one: the roll. Imagine we're sitting in our spaceship and do a roll to the right by pressing "&gt;". From our perspective this is the same as the universe doing a roll to the left, so if we're looking out of the front of our ship, and there's a stationary enemy ship at (x, y, z), then rolling by an angle of a will look something like this:</p>
+
+<pre class="articleIndented">  y
+
+  ^         (x´, y´, z´)
+  |       /
+  |      /    &lt;-.
+  |     /       a`.
+  |    /          |
+  |   /
+  |  /              __ (x, y, z)
+  | /       __..--''
+  |/__..--''
+  +-----------------------&gt; x
+</pre>
+
+						<p>So the enemy ship will move from (x, y, z) to (x´, y´, z´) in our little bubble of universe. Moreover, because the enemy ship is stationary, rolling our ship won't change the enemy ship's z-coordinate - it will always be the same distance in front of us, however far we roll. So we know that z´ = z, but how do we calculate x´ and y´?</p>
+
+						<p>First, let's ditch the z-coordinate, as we know this doesn't change. This leaves us with a 2D rotation to consider; we are effectively only interested in what happens in the 2D plane at distance z in front of our ship (imagine a cinema screen at distance z, and that's what we're about to draw graphs on).</p>
+
+						<p>Now, let's look at the triangle formed by the original (x, y) point:</p>
+
+<pre class="articleIndented">  ^
+  |
+  |
+  |
+  |
+  |
+  |         h       __ (x, y)
+  |         __..--''  |
+  | __..--''    t     | &lt;------- y
+  +-----------------------&gt;
+       &lt;---- x ----&gt;
+</pre>
+
+						<p>In this triangle, let's call the angle at the origin t and the hypotenuse h, and we already know the adjacent side is x and the opposite side is y. If we plug these into the equations for sine and cosine, we get:</p>
+
+<pre class="articleIndented">  cos t = adjacent / hypotenuse = x / h
+  sin t = opposite / hypotenuse = y / h
+</pre>
+
+						<p>which gives us the following when we multiply both sides by h:</p>
+
+<pre class="articleIndented">  x = h * cos(t)
+  y = h * sin(t)
+</pre>
+
+						<p>(We could use Pythagoras to calculate h from x and y, but we don't need to - you'll see why in a minute.)</p>
+
+						<p>Now let's look at the 2D triangle formed by the new, post-roll (x´, y´) point:</p>
+
+<pre class="articleIndented">  ^         (x´, y´)
+  |       /|
+  |      / |
+  |     /  |
+  |  h /   |
+  |   /    | &lt;------- y´
+  |  /     |
+  | /      |
+  |/ t+a   |
+  +-----------------------&gt;
+  &lt;-- x´ --&gt;
+</pre>
+
+						<p>In this triangle, the angle is now t + a (as we have rolled left by an angle of a), the hypotenuse is still h (because we're rotating around the origin), the adjacent is x´ and the opposite is y´. If we plug these into the equations for sine and cosine, we get:</p>
+
+						<p> cos(t + a) = adjacent / hypotenuse = x´ / h sin(t + a) = opposite / hypotenuse = y´ / h</p>
+
+						<p>which gives us the following when we multiply both sides by h:</p>
+
+<pre class="articleIndented">  x´ = h * cos(t + a)                                   (i)
+  y´ = h * sin(t + a)                                   (ii)
+</pre>
+
+						<p>We can expand these using the standard trigonometric formulae for compound angles, like this:</p>
+
+<pre class="articleIndented">  x´ = h * cos(t + a)                                   (i)
+     = h * (cos(t) * cos(a) - * sin(t) * sin(a))
+     = h * cos(t) * cos(a) - h * sin(t) * sin(a)        (iii)
+
+  y´ = h * sin(t + a)                                   (ii)
+     = h * (sin(t) * cos(a) + cos(t) * sin(a))
+     = h * sin(t) * cos(a) + h * cos(t) * sin(a)        (iv)
+</pre>
+
+						<p>and finally we can substitute the values of x and y that we calculated from the first triangle above:</p>
+
+<pre class="articleIndented">  x´ = h * cos(t) * cos(a) - h * sin(t) * sin(a)        (iii)
+     = x * cos(a) - y * sin(a)
+
+  y´ = h * sin(t) * cos(a) + h * cos(t) * sin(a)        (iv)
+     = y * cos(a) + x * sin(a)
+</pre>
+
+						<p>So, to summarise, if we do a roll of angle a, then the ship at (x, y, z) will move to (x´, y´, z´), where:</p>
+
+<pre class="articleIndented">  x´ = x * cos(a) - y * sin(a)
+  y´ = y * cos(a) + x * sin(a)
+  z´ = z
+</pre>             <h2 class="articleSubheader">Transformation matrices<br />
+            							 -----------------------</h2>
+
+						<p>We can express the exact same thing in matrix form, like this:</p>
+
+<pre class="articleIndented">  [  cos(a)  sin(a)  0 ]     [ x ]     [ x * cos(a) + y * sin(a) ]
+  [ -sin(a)  cos(a)  0 ]  x  [ y ]  =  [ y * cos(a) - x * sin(a) ]
+  [    0       0     1 ]     [ z ]     [            z            ]
+</pre>
+
+						<p>The matrix on the left is therefore the transformation matrix for rolling through an angle a.</p>
+
+						<p>We can apply the exact same process to the pitch rotation, which gives us a transformation matrix for pitching through an angle b, as follows:</p>
+
+<pre class="articleIndented">  [ 1    0        0    ]     [ x ]     [            x            ]
+  [ 0  cos(b)  -sin(b) ]  x  [ y ]  =  [ y * cos(b) - z * sin(a) ]
+  [ 0  sin(b)   cos(b) ]     [ z ]     [ y * sin(b) + z * cos(b) ]
+</pre>
+
+						<p>Finally, we can multiply these two rotation matrices together to get a transformation matrix that applies roll and then pitch in one go:</p>
+
+<pre class="articleIndented">  [       cos(a)           sin(a)         0    ]     [ x ]
+  [ -sin(a) * cos(b)  cos(a) * cos(b)  -sin(b) ]  x  [ y ]
+  [ -sin(a) * sin(b)  cos(a) * sin(b)   cos(b) ]     [ z ]
+</pre>
+
+						<p>So, to move our enemy ship in space when we pitch and roll, we simply need to do this matrix multiplication. In 6502 assembly language. In a very small memory footprint. Oh, and it needs to be quick, too, because we're going to be using this routine a lot. Got that?</p>
+
+						<h2 class="articleSubheader">Small angle approximation<br />
+													 -------------------------</h2>
+
+						<p>Luckily we can simplify the maths considerably by applying the "small angle approximation". This states that for small angles in radians, the following approximations hold true:</p>
+
+<pre class="articleIndented">  sin a ~= a
+  cos a ~= 1 - (a^2 / 2) ~= 1
+  tan a ~= a
+</pre>
+
+						<p>These approximations make sense when you look at the triangle geometry that is used to show the ratios of trigonometry, and imagine what happens when the angle gets small; for example, cosine is defined as the adjacent over the hypotenuse, and as the angle tends to 0, the hypotenuse "hinges" down on top of the adjacent, so it's intuitive that cos a tends to 1 for small angles.</p>
+
+						<p>The approximations above state that cos a approximates to 1 - (a^2 / 2), but Elite actually uses cos a ~= 1 and corrects for the inaccuracy by regularly calling the TIDY routine to. So dropping the small angle approximations into our rotation calculation above gives the following, much simpler version:</p>
+
+<pre class="articleIndented">  [  1   a   0 ]     [ x ]     [    x + ay     ]
+  [ -a   1  -b ]  x  [ y ]  =  [ y - ax  - bz  ]
+  [ -ab  b   1 ]     [ z ]     [ z + b(y - ax) ]
+</pre>
+
+						<p>So to move rotate a point (x, y, z) around the origin (the centre of our ship) by the current pitch and roll angles (alpha and beta), we just need to calculate these three relatively simple equations:</p>
+
+<pre class="articleIndented">  x -&gt; x + alpha * y
+  y -&gt; y - alpha * x - beta * z
+  z -&gt; z + beta * (y - alpha * x)
+</pre>
+
+						<p>There's a fascinating document on Ian Bell's Elite website that shows this exact calculation, in the author's own handwritten notes for the game. You can see it in the third image here:</p>
+
+<pre class="articleIndented">  <a href="http://www.elitehomepage.org/design/">http://www.elitehomepage.org/design/</a>
+</pre>
+
+						<p>just below the original design for the cockpit, before the iconic 3D scanner was added (which is a whole other story...).</p>
+
+						<h2 class="articleSubheader">Minsky circles<br />
+													 --------------</h2>
+
+						<p>So that's what this routine does... it transforms x, y and z when we roll and pitch. But there is a twist. Let's write the transformation equations as you might write them in code (and, indeed this is how the routine itself is structured).</p>
+
+						<p>First, we do the roll calculations:</p>
+
+<pre class="articleIndented">  y = y - alpha * x
+  x = x + alpha * y
+</pre>
+
+						<p>and then we do the pitch calculations:</p>
+
+<pre class="articleIndented">  y = y - beta * z
+  z = z + beta * y
+</pre>
+
+						<p>At first glance this code looks the same as the matrix calculation above, but then you notice that the value of y used in the calculations of x and z is not the original value of y, but the updated value of y. In fact, the above code actually does the following transformation of (x, y, z):</p>
+
+<pre class="articleIndented">  x -&gt; x + alpha * (y - alpha * x)
+  y -&gt; y - alpha * x - beta * z
+  z -&gt; z + beta * (y - alpha * x - beta * z)
+</pre>
+
+						<p>Oops, that isn't what we wanted to calculate... except this version turns out to do a better job than our original matrix multiplication above. This new version, where we reuse the updated y in the calculations of x and z instead of the original y, was "invented by mistake when [Marvin Minsky] tried to save one register in a display hack", and inadvertently discovered a way to rotate points within a pretty good approximation of a circle without using complex maths. The method appeared as item 149 in the 1972 HAKMEM memo, and if that doesn't mean anything to you, see if you can take the time to look it up. It's worth the effort if you're interested in this kind of thing (and you're the one reading a commentary on 8-bit code from 1984, so I'm guessing this might include you).</p>
+
+						<p>Anyway, the rotation in Minsky's method doesn't describe a perfect circle, but instead it follows a slightly sheared ellipse, but that's close enough for 8-bit space combat in 192 x 256 pixels. So, coming back to the Elite source code, the MVS4 routine implements the rotation like this (shown here for the nosev orientation vectors, i.e. nosev_x, nosev_y and nosev_z):</p>
+
+						<p>Roll calculations:</p>
+
+<pre class="articleIndented">  nosev_y = nosev_y - alpha * nosev_x_hi
+  nosev_x = nosev_x + alpha * nosev_y_hi
+</pre>
+
+						<p>Pitch calculations:</p>
+
+<pre class="articleIndented">  nosev_y = nosev_y - beta * nosev_z_hi
+  nosev_z = nosev_z + beta * nosev_y_hi
+</pre>
+
+						<p>And that's how we rotate a point around the origin by pitch alpha and roll beta, using the small angle approximation to make the maths easier, and incorporating the Minsky circle algorithm to make the rotation more stable.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="market_item_prices_and_availability.html">Market item prices and availability</a><a class="next" rel="next" title="Next deep dive" href="pitching_and_rolling_by_a_fixed_angle.html">Pitching and rolling by a fixed angle</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

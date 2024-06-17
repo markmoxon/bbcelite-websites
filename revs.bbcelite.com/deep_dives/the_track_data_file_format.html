@@ -1,0 +1,421 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_track_data_file_format.html", "The track data file format", "The track data file format", "A deep dive into the track data file format in BBC Micro Revs", "revs", "deep_dives_track", "the_track_data_file_format");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="creating_objects_from_edges.html">Creating objects from edges</a><a class="next" rel="next" title="Next deep dive" href="building_a_3d_track_from_sections_and_segments.html">Building a track from sections and segments</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Every byte in the Revs track data file, explained</h2>
+
+						<p>Right from the start, Revs was built to support more than one track. The original 1985 release may have shipped with just one venue - the iconic Silverstone - but Geoff Crammond cleverly split out the track definition into its own file, separate from the main game binary, so at some point in the future more tracks could be designed and sold to owners of the original game.</p>
+
+						<p>This plan bore fruit later in the year, when the excitingly titled Revs 4 Tracks was released in time for Christmas, giving existing owners of the original Revs access to four brand new tracks: Brands Hatch, Donington Park, Oulton Park and Snetterton. This release didn't contain the Revs game itself, but consisted only of four new track data files, plus a menu program that loaded the chosen track before prompting for the original game disc so it could run the game code.</p>
+
+						<p>The data files for these four extra tracks differ from the original release's Silverstone track in a large number of ways; see the deep dive on <a href="secrets_of_the_extra_tracks.html">secrets of the extra tracks</a> for details. However, the core of the two file formats are the same, so most of this article applies to both formats.</p>
+
+						<p>Let's take a detailed look at the Silverstone track data file - the original and quintessential Revs track.</p>
+
+						<h2 class="articleSubheader">Structure of the track data file<br />
+													 --------------------------------</h2>
+
+						<p>Let's start with a breakdown of every single byte in the Silverstone track data file, which is the file called "Silvers" on the original game disc. This file contains 1,849 bytes of data that initially loads at memory address &amp;70DB, before the loader moves it down to &amp;5300 (see the deep dive on <a href="the_jigsaw_puzzle_binary.html">the jigsaw puzzle binary</a> for details of the loading process).</p>
+
+						<p>The track data in this file is read-only and is not changed in any way once it has been moved to &amp;5300. All the data in the file is labelled with names that start with "track" (or, in the case of axis-based coordinates or vectors, with "xTrack", "yTrack" or "zTrack"). This prefix is only used for data from the track data file and is not used anywhere else in the source, so when you see the likes of <a href="/source/silverstone/variable/track_section_data_part_1_of_2.html">trackSectionData</a>, <a href="/source/silverstone/variable/tracklength.html">trackLength</a> or <a href="/source/silverstone/variable/xtracksegmenti.html">xTrackSegmentI</a> in the code, you can be sure they are referring to values in the read-only track data file.</p>
+
+						<p>Some points before we get to the breakdown:</p>
+
+						<ul>
+							<li>Each of the following bits of data is described in more detail below the table; click the links in the right column to jump down to a summary of all the data in that category.</li>
+
+							<li>Although the data file format supports data for 26 sections, Silverstone only uses 24 of these (any data for the other two sections is simply ignored).</li>
+
+							<li>For 3D coordinates, Revs uses a standard left-handed axis system, which is exactly the same as in Aviator and Elite. This means that when we are looking at the screen, the x-axis runs from left to right, the y-axis runs from down to up, and the z-axis points into the screen. In terms of the track's coordinates in the 3D world, the y-axis gives us the track elevation, while the x-axis is our longitude (west to east) and the z-axis is our latitude (south to north).</li>
+
+							<li>We drive clockwise round Silverstone, with the right verge being on the inside of the track, and the left verge on the outside.</li>
+
+							<li>For more information about sections, segments and the fundamental building blocks of the track data, see the deep dive on <a href="building_a_3d_track_from_sections_and_segments.html">building a 3D track from sections and segments</a>.</p>
+						</ul>
+
+						<p>Now that's out of the way, here's the structure of the Revs track data file, all 1,849 bytes of it from &amp;5300 to &amp;5A38.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Name and address</th><th>Bytes</th><th>Description</th><th>Category</th></tr>
+							<tr><td><p><a href="/source/silverstone/variable/track_section_data_part_1_of_2.html">trackSectionData</a></p><p class="codeSummaryCategory">&amp;5300 to &amp;53CF</p></td><td>8&nbsp;*&nbsp;26</td><td><p>Track section data (Part 1 of 2): Eight bytes of data for each of the 26 track sections</p></td><td><p><a href="#sections">Sections</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/xtracksignvector.html">xTrackSignVector</a></p><p class="codeSummaryCategory">&amp;53D0 to &amp;53DF</p></td><td>1&nbsp;*&nbsp;16</td><td><p>The x-coordinate of the track sign vector for each of the 16 road signs</p></td><td><p><a href="#signs">Signs</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/ztracksignvector.html">zTrackSignVector</a></p><p class="codeSummaryCategory">&amp;53E0 to &amp;53EF</p></td><td>1&nbsp;*&nbsp;16</td><td><p>The z-coordinate of the track sign vector for each of the 16 road signs</p></td><td><p><a href="#signs">Signs</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/ytracksignvector.html">yTrackSignVector</a></p><p class="codeSummaryCategory">&amp;53F0 to &amp;53FF</p></td><td>1&nbsp;*&nbsp;16</td><td><p>The y-coordinate of the track sign vector for each of the 16 road signs</p></td><td><p><a href="#signs">Signs</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/xtracksegmenti.html">xTrackSegmentI</a></p><p class="codeSummaryCategory">&amp;5400 to &amp;54FF</p></td><td>256</td><td><p>Vector x-coordinates between two consecutive segments on the inside of the track</p></td><td><p><a href="#segments">Segments</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/ytracksegmenti.html">yTrackSegmentI</a></p><p class="codeSummaryCategory">&amp;5500 to &amp;55FF</p></td><td>256</td><td><p>Vector y-coordinates between two consecutive segments on the inside of the track</p></td><td><p><a href="#segments">Segments</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/ztracksegmenti.html">zTrackSegmentI</a></p><p class="codeSummaryCategory">&amp;5600 to &amp;56FF</p></td><td>256</td><td><p>Vector z-coordinates between two consecutive segments on the inside of the track</p></td><td><p><a href="#segments">Segments</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/xtracksegmento.html">xTrackSegmentO</a></p><p class="codeSummaryCategory">&amp;5700 to &amp;57FF</p></td><td>256</td><td><p>Vector x-coordinates from the inside to the outside of the track for each segment</p></td><td><p><a href="#segments">Segments</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/ztracksegmento.html">zTrackSegmentO</a></p><p class="codeSummaryCategory">&amp;5800 to &amp;58FF</p></td><td>256</td><td><p>Vector z-coordinates from the inside to the outside of the track for each segment</p></td><td><p><a href="#segments">Segments</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">trackSectionFlag</a></p><p class="codeSummaryCategory">&amp;5900 to &amp;59CF</p></td><td>8&nbsp;*&nbsp;26</td><td><p>Track section data (Part 2 of 2): Eight bytes of data for each of the 26 track sections</p></td><td><p><a href="#sections">Sections</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/tracksteering.html">trackSteering</a></p><p class="codeSummaryCategory">&amp;59D0 to &amp;59E9</p></td><td>1&nbsp;*&nbsp;26</td><td><p>The optimum racing line for non-player drivers on each of the 26 track sections</p></td><td><p><a href="#driver">Drivers</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/tracksigndata.html">trackSignData</a></p><p class="codeSummaryCategory">&amp;59EA to &amp;59F9</p></td><td>1&nbsp;*&nbsp;16</td><td><p>Base coordinates and object types for each of the 16 road signs</p></td><td><p><a href="#signs">Signs</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/tracksectioncount.html">trackSectionCount</a></p><p class="codeSummaryCategory">&amp;59FA</p></td><td>1</td><td><p>The total number of track sections * 8</p></td><td><p><a href="#sections">Sections</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/trackvectorcount.html">trackVectorCount</a></p><p class="codeSummaryCategory">&amp;59FB</p></td><td>1</td><td><p>The total number of segment vectors in the segment vector tables</p></td><td><p><a href="#segments">Segments</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/tracklength.html">trackLength</a></p><p class="codeSummaryCategory">&amp;59FC to &amp;59FD</p></td><td>2</td><td><p>The length of the full track in terms of segments</p></td><td><p><a href="#layout">Layout</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/trackstartline.html">trackStartLine</a></p><p class="codeSummaryCategory">&amp;59FE to &amp;59FF</p></td><td>2</td><td><p>The segment number of the starting line, encoded as 1024 - n</p></td><td><p><a href="#layout">Layout</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/tracklaptimesec.html">trackLapTimeSec</a></p><p class="codeSummaryCategory">&amp;5A00 to &amp;5A02</p></td><td>1&nbsp;*&nbsp;3</td><td><p>Lap times for adjusting each of the three race classes (seconds)</p></td><td><p><a href="#driver">Drivers</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/tracklaptimemin.html">trackLapTimeMin</a></p><p class="codeSummaryCategory">&amp;5A03 to &amp;5A05</p></td><td>1&nbsp;*&nbsp;3</td><td><p>Lap times for adjusting each of the three race classes (minutes)</p></td><td><p><a href="#driver">Driver</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/trackgearratio.html">trackGearRatio</a></p><p class="codeSummaryCategory">&amp;5A06 to &amp;5A0C</p></td><td>1&nbsp;*&nbsp;7</td><td><p>Gear ratios for this track, one for each of the seven gears (R, N, 1 to 5)</p></td><td><p><a href="#driver">Drivers</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/trackgearpower.html">trackGearPower</a></p><p class="codeSummaryCategory">&amp;5A0D to &amp;5A13</p></td><td>1&nbsp;*&nbsp;7</td><td><p>Gear powers for this track, one for each of the seven gears (R, N, 1 to 5)</p></td><td><p><a href="#driver">Drivers</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/trackbasespeed.html">trackBaseSpeed</a></p><p class="codeSummaryCategory">&amp;5A14 to &amp;5A16</p></td><td>1&nbsp;*&nbsp;3</td><td><p>The base speed for each of the three race classes, used when generating the best racing lines and non-player driver speeds</p></td><td><p><a href="#driver">Drivers</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/trackstartposition.html">trackStartPosition</a></p><p class="codeSummaryCategory">&amp;5A17</p></td><td>1</td><td><p>The starting race position of the player during a qualifying lap</p></td><td><p><a href="#layout">Layout</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/trackcarspacing.html">trackCarSpacing</a></p><p class="codeSummaryCategory">&amp;5A18</p></td><td>1</td><td><p>The spacing between the cars at the start of a qualifying lap, in segments</p></td><td><p><a href="#layout">Layout</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/tracktimeradjust.html">trackTimerAdjust</a></p><p class="codeSummaryCategory">&amp;5A19</p></td><td>1</td><td><p>Adjustment factor for the speed of the timers to allow for fine-tuning of time on a per-track basis</p></td><td><p><a href="#driver">Drivers</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/trackraceslowdown.html">trackRaceSlowdown</a></p><p class="codeSummaryCategory">&amp;5A1A</p></td><td>1</td><td><p>Slowdown factor for non-player drivers in the race</p></td><td><p><a href="#driver">Drivers</a></p></td></tr>
+							<tr><td><p>Unused bytes</p><p class="codeSummaryCategory">&amp;5A1A to &amp;5A21</p></td><td>7</td><td><p>-</p></td><td><p>-</p></td></tr>
+							<tr><td><p><a href="/source/silverstone/subroutine/calltrackhook.html">CallTrackHook</a></p><p class="codeSummaryCategory">&amp;5A22 to &amp;5A24</p></td><td>3</td><td><p>The track file's hook code</p></td><td><p><a href="#code">Code</a></p></td></tr>
+							<tr><td><p><a href="/source/silverstone/variable/trackchecksum.html">trackChecksum</a></p><p class="codeSummaryCategory">&amp;5A25 to &amp;5A38</p></td><td>20</td><td><p>The track file's checksum and track name</p></td><td><p><a href="#code">Code</a></p></td></tr>
+						</table>
+
+						<p>That's the format of the entire file, so now let's take a look at each of these entries in more detail, grouped together by type.</p>
+
+						<h2 class="articleSubheader"><a name="sections" id="sections" class="anchor"></a>Track section data<br />
+													 ------------------</h2>
+
+						<p>The track in Revs is broken down into a number of sections, and those sections are broken down further into segments; we'll take a look at the section data here, and examine the segment data in the next part. See the deep dive on <a href="building_a_3d_track_from_sections_and_segments.html">building a 3D track from sections and segments</a> for more details about how the track is built from these two fundamental components.</p>
+
+						<p>Each track section is defined by the following data in the track data file:</p>
+
+						<ul>
+							<li>The 3D coordinates of the start of the section, with one 16-bit coordinate for the inner track verge and another one for the outer verge</li>
+
+							<li>The shape of the section (straight or curved)</li>
+
+							<li>The size of the section, in terms of segments</li>
+
+							<li>Whether the section contains corner markers, and if so, their colours (all white, or white and red)</li>
+
+							<li>The colour of the track verges on either side of the section (black-and-white or red-and-white)</li>
+
+							<li>Data that controls the behaviour of non-player drivers on this section</li>
+						</ul>
+
+						<p>The track data file format supports up to 26 track sections, numbered from 0 to 25 (though Silverstone only uses 24 of these, from 0 to 23). Here's a breakdown of the section-related data in the track data file.</p>
+
+						<ul>
+							<li><a href="/source/silverstone/variable/tracksectioncount.html">trackSectionCount</a> defines the number of sections in the track. This is encoded as the section count multiplied by 8 (so for Silverstone, it contains 24 * 8 = 192). The number is multiplied by 8 so it can be used as an index into the two blocks of section data at trackSectionData and trackSectionFlag.</li>
+
+							<li><a href="/source/silverstone/variable/track_section_data_part_1_of_2.html">trackSectionData</a> is the first of two section data blocks. It contains eight bytes of configuration data for each section, so the whole block contains a total of 26 * 8 = 208 bytes. We'll look at this block in detail below.</li>
+
+							<li><a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">trackSectionFlag</a> is the second of the section data blocks. Again it contains 208 bytes, and as with the first block, each section has eight bytes, giving a total of 16 bytes of data spread across the two blocks.</li>
+						</ul>
+
+						<p>Let's look at the two section data blocks in detail.</p>
+
+						<p>The first block is at <a href="/source/silverstone/variable/track_section_data_part_1_of_2.html">trackSectionData</a>, right at the start of the track data file at address &amp;5300, so the data for section 0 is from &amp;5300 to &amp;5307, the data for section 1 is from &amp;5308 to &amp;530F, and so on, up to the data for section 25 from &amp;53C8 to &amp;53CF. Here's the breakdown of this first block of section data; the addresses shown are those for section 0, with the data for section n being at &amp;5300 + (n * 8).</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Name</th><th>Description</th></tr>
+							<tr><td><p>trackSectionData</p><p class="codeSummaryCategory">&amp;5300</p></td>
+								<td>
+									<ul>
+										<li>Bits 0-2: Size of the track section list</br /></br />
+
+										Defines the number of entries that we store in the track section list for this section, which is used to calculate the coordinates of the track verges (higher numbers mean more sections are calculated, so higher numbers are used for more complex parts of the track)</br /></br />
+
+										See the deep dive on <a href="the_track_verges.html">the track verges</a> for details of how the track section list works</br /></br />
+
+										This value is given in the bottom nibble of the track section data byte (bit 3 is ignored), i.e. the second digit in the hexadecimal value
+
+										</li>
+
+										<li>Bits 4-7: Sign number</br /></br />
+
+										The number of the road sign (0 to 15) to show when we enter this section, but only if the sign number is different to the number in the previous section</br /></br />
+
+										See the deep dive on <a href="road_signs.html">road signs</a> for details of how the road signs are managed</br /></br />
+
+										This value is given in the top nibble of the track section data byte, i.e. the first digit in the hexadecimal value
+
+										</li>
+									</ul>
+								</td>
+							</tr>
+							<tr><td><p>xTrackSectionIHi</p><p class="codeSummaryCategory">&amp;5301</p></td><td><p>High byte of the x-coordinate of the starting point of the inner verge of each track section</p></td></tr>
+							<tr><td><p>yTrackSectionIHi</p><p class="codeSummaryCategory">&amp;5302</p></td><td><p>High byte of the y-coordinate of the starting point of the inner verge of each track section</p></td></tr>
+							<tr><td><p>zTrackSectionIHi</p><p class="codeSummaryCategory">&amp;5303</p></td><td><p>High byte of the z-coordinate of the starting point of the inner verge of each track section</p></td></tr>
+							<tr><td><p>xTrackSectionOHi</p><p class="codeSummaryCategory">&amp;5304</p></td><td><p>High byte of the x-coordinate of the starting point of the outside verge of each track section</p></td></tr>
+							<tr><td><p>trackSectionTurn</p><p class="codeSummaryCategory">&amp;5305</p></td><td><p>The number of the segment towards the end of the section where non-player cars should start turning in preparation for the next section</p></td></tr>
+							<tr><td><p>zTrackSectionOHi</p><p class="codeSummaryCategory">&amp;5306</p></td><td><p>High byte of the z-coordinate of the starting point of the outside verge of each track section</p></td></tr>
+							<tr><td><p>trackDriverSpeed</p><p class="codeSummaryCategory">&amp;5307</p></td><td><p>The maximum speed for non-player drivers on the next section of the track</p></td></tr>
+						</table>
+
+						<p>The second block is at <a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">trackSectionFlag</a>, somewhat later in the track data file at address &amp;5900, so the data for section 0 is from &amp;5900 to &amp;5907, the data for section 1 is from &amp;5908 to &amp;590F, and so on, up to the data for section 25 from &amp;59C8 to &amp;59CF. Here's the breakdown of this second block of section data; again, the addresses shown are those for section 0, with the data for section n being at &amp;5900 + (n * 8).</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Name</th><th>Description</th></tr>
+							<tr><td><p>trackSectionFlag</p><p class="codeSummaryCategory">&amp;5900</p></td>
+								<td>
+									<ul>
+										<li>Bit 0: Section shape
+
+											<ul>
+												<li>0 = straight section (only one segment vector)</li>
+
+												<li>1 = curved section (multiple segment vectors)</li>
+											</ul>
+                                        </li>
+
+										<li>Bit 1: Colour of left verge marks
+
+											<ul>
+												<li>0 = black-and-white verge marks</li>
+
+												<li>1 = red-and-white verge marks</li>
+											</ul>
+                                        </li>
+
+										<li>Bit 2: Colour of right verge marks
+
+											<ul>
+												<li>0 = black-and-white verge marks</li>
+
+												<li>1 = red-and-white verge marks</li>
+											</ul>
+                                        </li>
+
+										<li>Bit 3: Show corner markers on right
+
+											<ul>
+												<li>0 = do not show corner markers to the right of the track</li>
+
+												<li>1 = show corner markers to the right of the track</li>
+											</ul>
+                                        </li>
+
+										<li>Bit 4: Show corner markers on left
+
+											<ul>
+												<li>0 = do not show corner markers to the left of the track</li>
+
+												<li>1 = show corner markers to the left of the track</li>
+											</ul>
+                                        </li>
+
+										<li>Bit 5: Corner marker colours
+
+											<ul>
+												<li>0 = show all corner markers in white</li>
+
+												<li>1 = show corner markers in red or white, as appropriate</li>
+											</ul>
+                                        </li>
+
+										<li>Bit 6 is unused</li>
+
+										<li>Bit 7: Section has a maximum speed
+
+											<ul>
+												<li>0 = this section has no maximum speed</li>
+
+												<li>1 = this section has a maximum speed</li>
+											</ul>
+                                        </li>
+									</ul>
+								</td>
+							</tr>
+							<tr><td><p>xTrackSectionILo</p><p class="codeSummaryCategory">&amp;5901</p></td><td><p>Low byte of the x-coordinate of the starting point of the inner verge of each track section</p></td></tr>
+							<tr><td><p>yTrackSectionILo</p><p class="codeSummaryCategory">&amp;5902</p></td><td><p>Low byte of the y-coordinate of the starting point of the inner verge of each track section</p></td></tr>
+							<tr><td><p>zTrackSectionILo</p><p class="codeSummaryCategory">&amp;5903</p></td><td><p>Low byte of the z-coordinate of the starting point of the inner verge of each track section</p></td></tr>
+							<tr><td><p>xTrackSectionOLo</p><p class="codeSummaryCategory">&amp;5904</p></td><td><p>Low byte of the x-coordinate of the starting point of the outside verge of each track section</p></td></tr>
+							<tr><td><p>trackSectionFrom</p><p class="codeSummaryCategory">&amp;5905</p></td><td><p>The number of the first segment vector in each section, which enables us to fetch the segment vectors for a given track section</p></td></tr>
+							<tr><td><p>zTrackSectionOLo</p><p class="codeSummaryCategory">&amp;5906</p></td><td><p>Low byte of the z-coordinate of the starting point of the outside verge of each track section</p></td></tr>
+							<tr><td><p>trackSectionSize</p><p class="codeSummaryCategory">&amp;5907</p></td><td><p>The length of each track section in terms of segments</p></td></tr>
+						</table>
+
+						<p>The 3D coordinates for the start of each track section are stored as 16-bit signed integers in the two section data tables. There's one coordinate for the inner track verge and another for the outer verge. Specifically, the coordinates for each section are stored as follows:</p>
+
+<pre class="articleIndented">                        [ (xTrackSectionIHi xTrackSectionILo) ]
+  Inner verge starts at [ (yTrackSectionIHi yTrackSectionILo) ]
+                        [ (zTrackSectionIHi zTrackSectionILo) ]
+
+                        [ (xTrackSectionOHi xTrackSectionOLo) ]
+  Outer verge starts at [ (yTrackSectionIHi yTrackSectionILo) ]
+                        [ (zTrackSectionOHi zTrackSectionOLo) ]
+</pre>
+
+						<p>The inner and outer verges are always at the same elevation at the start of each section (as well as within each individual segment), so although the track goes up and down as we drive through different sections and segments, it remains level in terms of camber, i.e. when going from one side of the track to the other. You can see this in the above, as the section's inner and outer coordinates share the same y-coordinate (the y-axis being the axis of elevation, going up and down the screen). See the deep dive on <a href="building_a_3d_track_from_sections_and_segments.html">building a 3D track from sections and segments</a> for a deeper look into this process.</p>
+
+						<p>Now that we have defined the track sections, let's move on to the track segments.</p>
+
+						<h2 class="articleSubheader"><a name="sections" id="segments" class="anchor"></a>Track segment data<br />
+													 ------------------</h2>
+
+						<p>Each track section is broken down into a number of segments. You can see these segments as you drive around the track, as each segment corresponds to a single coloured strip along the track verge (so each black, white or red strip represents exactly one segment). See the deep dive on <a href="building_a_3d_track_from_sections_and_segments.html">building a 3D track from sections and segments</a> for more details about how the track is built from these two fundamental components.</p>
+
+						<p>Each track segment is defined by the following data in the track data file:</p>
+
+						<ul>
+							<li>The inner segment vector, which contains the vector from the previous segment to this one</li>
+
+							<li>The outer segment vector, which contains the vector from the inner verge of the segment to the outer verge</li>
+
+							<li>The index of the first segment vector in each section</li>
+
+							<li>The number of segments in each section</li>
+						</ul>
+
+						<p>Here's a breakdown of the segment-related data in the track data file.</p>
+
+						<ul>
+							<li>trackSectionSize in the <a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">second section data block</a> (see above) defines the number of segments in each section. Each section also has a set of segment vectors associated with it; straight sections have just one segment vector (we'll see why in a minute), while curved sections have one segment vector for each segment in the curve (so each curved section has trackSectionSize segment vectors).</li>
+
+							<li>trackSectionFrom, also in the <a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">second section data block</a> (see above), contains the number of the first segment vector in each section, as in index into the inner and outer segment vector tables. This enables us to fetch the segment vectors for a given track section. (Incidentally, for curved sections, trackSectionFrom + trackSectionSize gives us the trackSectionFrom value for the next section; for straight sections, the next section's trackSectionFrom value is trackSectionFrom + 1, as straight sections only have one segment vector.)</li>
+
+							<li><a href="/source/silverstone/variable/xtracksegmenti.html">xTrackSegmentI</a>, <a href="/source/silverstone/variable/ytracksegmenti.html">yTrackSegmentI</a> and <a href="/source/silverstone/variable/ztracksegmenti.html">zTrackSegmentI</a> contain the inner segment vector for each segment, with each coordinate being a signed 8-bit value:
+
+<pre class="articleIndented">                         [ xTrackSegmentI ]
+  Inner segment vector = [ yTrackSegmentI ]
+                         [ zTrackSegmentI ]
+</pre>
+
+							The inner segment vector is the vector along the inner verge of the track, from the previous segment to the current one.</li>
+
+							<li><a href="/source/silverstone/variable/xtracksegmento.html">xTrackSegmentO</a> and <a href="/source/silverstone/variable/ztracksegmento.html">zTrackSegmentO</a> contain the outer segment vector for each segment, with each coordinate being a signed 8-bit value:
+
+<pre class="articleIndented">                         [ xTrackSegmentO ]
+  Outer segment vector = [ yTrackSegmentI ]
+                         [ zTrackSegmentO ]
+</pre>
+
+							The outer segment vector is the vector from the inner segment to the outer segment (i.e. across the track). As the track is level from the inner to the outer verge, the outer segment vector can reuse the y-coordinate from the inner vector in yTrackSegmentI.</li>
+
+							<li><a href="/source/silverstone/variable/trackvectorcount.html">trackVectorCount</a> contains the total number of segment vectors in the data file, which is 255 for the Silverstone track. As 255 is the maximum number you can store in one byte, and the segment vector tables at xTrackSegmentI, yTrackSegmentI, zTrackSegmentI, xTrackSegmentO and zTrackSegmentO contain 256 entries, this means the last coordinate in each table is always unused.</li>
+						</ul>
+
+						<p>To calculate the 3D coordinates for a specific track segment in a curved section, we take the start coordinates for the section, and add all the segment vectors in order, until we reach the coordinate for the segment we're after. Then, to get the outer coordinate, we add that segment's outer segment vector. See the deep dive on <a href="building_a_3d_track_from_sections_and_segments.html">building a 3D track from sections and segments</a> for a deeper look into this process.</p>
+
+						<p>(Note that in the extra track files, the segment vectors are dynamically generated rather than being hard-coded, though the concept of the segment vector is unchanged; this is the main difference between the standard track data file format and the extra tracks file format. See the deep dive on <a href="dynamic_track_generation_in_the_extra_tracks.html">dynamic track generation in the extra tracks</a> for details.)
+
+						<p>Now that we have defined the two fundamental track building blocks, let's move on to the rest of the data.</p>
+
+						<h2 class="articleSubheader"><a name="sections" id="signs" class="anchor"></a>Road sign data<br />
+													 --------------</h2>
+
+						<p>Each track in Revs can support up to 16 road signs by the side of the track. The track data file contains data for the 3D coordinates of each sign, as well as the type of sign and an associated track section number. See the deep dive on <a href="road_signs.html">road signs</a> for more details about how the following data is used to display the road signs.</p>
+
+						<p>Here's a breakdown of the sign-related data in the track data file.</p>
+
+						<ul>
+							<li><a href="/source/silverstone/variable/tracksigndata.html">trackSignData</a> contains one byte for each of the 16 signs, containing the following data:
+
+								<ul>
+									<li>Bits 0-2 = The object type of the road sign (we add 7 to get the type). The different types of road sign are described in the deep dive on <a href="object_definitions.html">object definitions</a>.</li>
+
+									<li>Bits 3-7 = The number of the track section to use as the base coordinates for the sign (to get the sign's 3D coordinates, we add the scaled track sign vector to this section's start coordinates). Note that this simply defines each sign's 3D coordinates; the mapping between track sections and the signs within those sections is defined elsewhere, in each section's trackSectionData byte.</li>
+								</ul>
+							</li>
+
+							<li><a href="/source/silverstone/variable/xtracksignvector.html">xTrackSignVector</a>, <a href="/source/silverstone/variable/ytracksignvector.html">yTrackSignVector</a> and <a href="/source/silverstone/variable/ztracksignvector.html">zTrackSignVector</a> contain the track sign vector for each sign, as a vector of 8-bit signed integers. To get the 3D coordinates of the sign, we take the coordinates of the track section whose number is in the trackSignData table (see the previous point), and add the track sign vector, scaled as follows:
+
+<pre class="articleIndented">  [ (xTrackSectionIHi xTrackSectionILo) ]   [ xTrackSignVector * 2 ^ 6 ]
+  [ (yTrackSectionIHi yTrackSectionILo) ] + [ yTrackSignVector * 2 ^ 4 ]
+  [ (zTrackSectionIHi zTrackSectionILo) ]   [ zTrackSignVector * 2 ^ 6 ]
+</pre>
+
+							This gives us the 3D coordinate of the sign, which we can use to draw the sign on-screen and check for collisions.</li>
+
+							<li>trackSectionData in the <a href="/source/silverstone/variable/track_section_data_part_1_of_2.html">first block of track section data</a> (see above) contains a sign number for each section, in bits 4-7 (the high nibble, i.e. the first digit in the hexadecimal value). This defines when we show each sign, and the logic is that a sign is shown when we move into a new section whose sign number differs from the previous section's sign number.</li>
+						</ul>
+
+						<h2 class="articleSubheader"><a name="sections" id="layout" class="anchor"></a>Track layout data<br />
+													 -----------------</h2>
+
+						<p>The track data file contains various bits of data to do with the track layout.</p>
+
+						<ul>
+							<li><a href="/source/silverstone/variable/tracklength.html">trackLength</a> contains the total number of segments in the full track, which is 1024 for Silverstone. Note that this counts all the segments along the whole track, though in terms of segment data in the track data file, we only store coordinates for trackVectorCount segments out of this total (which is 255 for Silverstone).<br /><br />
+
+								The reason we can have 1024 track segments with only 255 segment vectors is the way straight track sections are stored, as these only require one segment vector but can contain large numbers of segments (the biggest section at Silverstone is section 15, which contains 135 segments and forms the main part of Hangar Straight, which therefore only needs one segment vector in the data file).<br /><br />
+
+								Each car's position on the track is stored as a segment number in (objectSegmentHi objectSegmentLo), ranging from 0 to trackLength, and with the starting line being segment 0. Note that segment 0 represents the starting line, but this is not the same as the first segment in of section 0; at Silverstone, the starting line is partway through section 4, and therefore so is segment 0.</li>
+
+							<li><a href="/source/silverstone/variable/trackstartline.html">trackStartLine</a> is the position of the starting line, expressed as the number of segments from the starting line to the start of section 0, counting forwards around the track. If the starting line is n segments from the start of section 0, this value is the track length minus n; for Silverstone, the starting line is 181 segments after the start of section 0, so this value is store as 1024 - 181 in the data. Encoding the value in this manner simplifies the code to space out the cars backwards from the starting line, which you can see in the PlaceCarsOnTrack routine.</li>
+
+							<li><a href="/source/silverstone/variable/trackcarspacing.html">trackCarSpacing</a> is the number of segments inserted between each car when placing the cars on the track during qualifying. This is set to 40 for Silverstone, so the driver in first place is placed 40 segments before the starting line, then the second driver is placed 40 segments before that (i.e. 80 segments before the starting line), the third driver is placed 40 segments before that (i.e. 120 segments before the starting line), and so on. During races, this value is ignored and cars are spaced out by one segment on the grid.</li>
+
+							<li><a href="/source/silverstone/variable/trackstartposition.html">trackStartPosition</a> is the starting race position of the player during a practice or qualifying lap. When the cars are placed on the track and spaced out by the number of segments given in trackCarSpacing, the player car is placed at this position. For Silverstone this value is 4, and it counts from zero, so the player's car is the fifth car on the track. As the cars are spaced out by 40 segments as described in the previous point, with the first car 40 segments behind the starting line, this means that for qualifying (and practice), the player's car starts 200 segments back from the starting line, which means we start practice laps partway through section 23 (the last section).</li>
+						</ul>
+
+						<h2 class="articleSubheader"><a name="sections" id="driver" class="anchor"></a>Driver-related data<br />
+													 -------------------</h2>
+
+						<p>The track data file contains a number of driver-related values.</p>
+
+						<ul>
+							<li><a href="/source/silverstone/variable/tracksteering.html">trackSteering</a> is used to calculate the optimum steering for non-player cars to apply through each section. See the deep dive on <a href="tactics_of_the_non-player_drivers.html">tactics of the non-player drivers</a> for details.</li>
+
+							<li><a href="/source/silverstone/variable/tracklaptimemin.html">trackLapTimeMin</a> and <a href="/source/silverstone/variable/tracklaptimesec.html">trackLapTimeSec</a> as used to balance the game for players who may be struggling. If the player's qualifying laps are too slow for the chosen race class, then the game will automatically switch to an easier class. The point at which the race is switched to an easier class is defined by the values of trackLapTimeMin and trackLapTimeSec. For Silverstone, the class is switched to Novice if the slowest human lap time is greater than 1:51, or it's switched to Amateur if the slowest lap time is greater than 1:41.</li>
+
+							<li><a href="/source/silverstone/variable/trackgearratio.html">trackGearRatio</a> and <a href="/source/silverstone/variable/trackgearpower.html">trackGearPower</a> define the gear ratios and power for the track. These values govern the relationship between engine revs and tyre speed, and the transfer of power from the engine to the tyres via the gearbox (see the deep dive on <a href="modelling_the_engine.html">modelling the engine</a> for details).</li>
+
+							<li><a href="/source/silverstone/variable/trackbasespeed.html">trackBaseSpeed</a> defines the base speed for each race class, which is used when generating the optimum racing lines and the speeds of individual non-player drivers.</li>
+
+							<li><a href="/source/silverstone/variable/tracktimeradjust.html">trackTimerAdjust</a> is an adjustment factor for the speed of the timers to allow for fine-tuning of time on a per-track basis. The value of the timerAdjust variable in the main game code is incremented on every iteration of the main driving loop. When it reaches the value in trackTimerAdjust, the timers adds 18/100 of a second rather than 9/100 of a second. Increasing this value therefore speeds up the passage of time, allowing the timer speed to be adjusted on a per-track basis.<br /><br />
+
+							So if a track is particularly heavy on the processor, you would decrease this setting, or for simpler tracks you would increase it. In both cases, the aim is to make one second of the timer match one second in the outside world. Setting this value to 255 disables the timer adjustment, and it is set to 24 for Silverstone, so the timer ticks twice as fast, once every 24 iterations around the main driving loop.</p></li>
+
+							<li><a href="/source/silverstone/variable/trackraceslowdown.html">trackRaceSlowdown</a> reduces the speed of all cars in a race by this amount (this does not affect the speed during qualifying). I suspect this is used for testing purposes, as it is set to 0 for Silverstone.</li>
+						</ul>
+
+						<h2 class="articleSubheader"><a name="sections" id="code" class="anchor"></a>Code-related data<br />
+													 -----------------</h2>
+
+						<p>Finally, there are two code-related bits of data in the track data file, two of which are absolutely essential features of the track file system.</p>
+
+						<ul>
+							<li><a href="/source/silverstone/subroutine/calltrackhook.html">CallTrackHook</a> consists of just three bytes, which in the Silverstone track contain the following assembly instructions:
+
+<pre class="articleIndented">  RTS
+  NOP
+  NOP
+</pre> 
+
+							When the track file is loaded and the <a href="/source/main/subroutine/setupgame.html">SetupGame</a> routine has finished running, the game runs a JSR CallTrackHook instruction that calls this code in the track data file. Silverstone simply returns straight away, but the tracks in Revs 4 Tracks contain a further JSR call in this location, which jumps to code that's buried elsewhere in the track data file. This code modifies the main game code in-place to support different data formats and features. These three bytes might be simple, but they enable the track data file format to be extendable and future-proofed. Adding this hook was a really clever move from Geoff Crammond, and its usage is fully explored in the deep dive on <a href="secrets_of_the_extra_tracks.html">secrets of the extra tracks</a>.</li>
+
+							<li><a href="/source/silverstone/variable/trackchecksum.html">trackChecksum</a> contains four checksum bytes for the track data file. These are checked in the SwapCode routine, where the game crashes if they do not match, clearing the game code from memory in the process. This prevents casual players from simply hacking the track data file to make things easier, though the checksum algorithm is pretty basic, simply counting the number of bytes in the data file as follows (where the data bytes run from the start of the file at &amp;5300 to the end of CallTrackHook at &amp;5A24):
+
+								<ul>
+									<li>trackChecksum+0 counts the number of data bytes ending in %00</li>
+
+									<li>trackChecksum+1 counts the number of data bytes ending in %01</li>
+
+									<li>trackChecksum+2 counts the number of data bytes ending in %10</li>
+
+									<li>trackChecksum+3 counts the number of data bytes ending in %11</li>
+								</ul>
+
+								This functionality is implemented in the modern build process by the Python script <a href="https://github.com/markmoxon/revs-beebasm/blob/main/2-build-files/revs-checksum.py">revs-checksum.py</a>; see the page on <a href="/about_site/building_revs.html">building Revs from the source</a> for more details.
+							</li>
+
+							<li><a href="/source/silverstone/variable/trackgamename.html">trackGameName</a> contains the game name ("REVS") and the track name ("Silverstone") as strings. The game name is checked during the loading process to see whether a track file has been loaded (and if not, one is loaded). This data is not copied into main memory, as it is only used during the loading process.</li>
+
+							<li><a href="/source/silverstone/variable/trackname.html">trackName</a> contains the track name (e.g. "Silverstone"), terminated by a carriage return. This is displayed in the game's mode 7 loading screen. This data is not copied into main memory, as it is only used during the loading process.</li>
+						</ul>
+
+						<p>So that's the Revs track data file format. For more details of how the above data is used, see the deep dives on <a href="building_a_3d_track_from_sections_and_segments.html">building a 3D track from sections and segments</a>, <a href="road_signs.html">road signs</a>, <a href="corner_markers.html">corner markers</a> and <a href="the_track_verges.html">the track verges</a>, amongst others. Also, see the deep dives on <a href="secrets_of_the_extra_tracks.html">secrets of the extra tracks</a>, <a href="dynamic_track_generation_in_the_extra_tracks.html">dynamic track generation in the extra tracks</a> and <a href="the_extra_tracks_data_file_format.html">the extra tracks data file format</a> for details of the differences in the extra track files.</p>
+
+						<p>My hope is that one day, this information will allow enterprising developers to create brand new track files for Revs. Wouldn't that be something...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="creating_objects_from_edges.html">Creating objects from edges</a><a class="next" rel="next" title="Next deep dive" href="building_a_3d_track_from_sections_and_segments.html">Building a track from sections and segments</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

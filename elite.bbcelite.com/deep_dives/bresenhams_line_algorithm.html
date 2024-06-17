@@ -1,0 +1,203 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "bresenhams_line_algorithm.html", "Bresenham's line algorithm", "Bresenham's line algorithm", "A deep dive into Bresenham's line algorithm in BBC Micro Elite", "elite", "deep_dives_drawing_lines", "bresenhams_line_algorithm");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="fonts_in_nes_elite.html">Fonts in NES Elite</a><a class="next" rel="next" title="Next deep dive" href="line-clipping.html">Line-clipping</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The main line-drawing algorithm used to draw non-horizontal lines</h2>
+
+						<p>Most of what you see in the space view in Elite is composed of straight lines. The ships are drawn using wireframes that are made up of straight lines, the planets are made from circles and arcs that consist of lots of small, straight lines, and the sun is no more than a sequence of horizontal lines, drawn along a vertical axis. Having a fast line-drawing algorithm is essential in a game like Elite.</p>
+
+						<p>Horizontal lines are a special case and have their own optimised routine at <a href="/cassette/main/subroutine/hloin.html">HLOIN</a>, but all non-horizontal lines in Elite are drawn by the <a href="/cassette/main/subroutine/loin_part_1_of_7.html">LOIN</a> routine, using a well-known approach called using Bresenham's line algorithm. This algorithm draws lines by stepping along the gentlest slope of each line, drawing one pixel at a time, so lines drawn by this method are stepped in quite a distinctive manner, as you can see from this close-up of the lines in a Cobra Mk III:</p>
+
+						<img class="titleImage lightBorder" style="width: 336px" src="/images/cassette/bresenham.png" alt="A close-up of lines in BBC Micro Elite" />
+
+						<p>Let's look at how Bresenham's algorithm works.</p>
+
+						<h2 class="articleSubheader">The core algorithm<br />
+													 ------------------</h2>
+
+						<p>The basic idea is quite simple. Let's consider a line from (X1, Y1) to (X2, Y2), where that line slopes down and right at a reasonably shallow angle, like this:</p>
+
+<pre class="articleIndented">  (X1, Y1) ''-..__
+                  ''--..__
+                          ''--..__
+                                  ''--.._
+                                          (X2, Y2)
+</pre>
+
+						<p>As we move along the line from (X1, Y1) to (X2, Y2), let's say that we move across by delta_x and down by delta_y, like this:</p>
+
+<pre class="articleIndented">           &lt;---------- delta_x ---------&gt;
+
+  (X1, Y1) ''-..__                                    ^
+                  ''--..__                            | delta_y
+                          ''--..__                    |
+                                  ''--.._             v
+                                          (X2, Y2)
+</pre>
+
+						<p>So we have the following:</p>
+
+						<ul>
+							<li>As we move along the line by delta_x in the x-direction, we move down by delta_y in the y-direction.</li>
+						</ul>
+
+						<p>If we divide each side of the triangle by delta_x, we also get the following:</p>
+
+						<ul>
+							<li>As we move along the line by 1 in the x-direction, we move down by (delta_y / delta_x) in the y-direction.</li>
+						</ul>
+
+						<p>This is the core of the algorithm: if we step along the x-axis, 1 pixel at a time, then if we also move down by (delta_y / delta_x) in the y-direction and plot a point each time, we'll have our line. In pseudo-code, it looks like this:</p>
+
+<pre class="articleIndented">  function line(x1, y1, x2, y2)
+    delta_x = x2 - x1
+    delta_y = y2 - y1
+    y = y1
+    for x from x1 to x2
+      plot(x, y)
+      y = y + (delta_y / delta_x)
+</pre>
+
+						<p>If our screen had an infinite resolution, then this would do nicely... but, of course, it doesn't, so we need to refine this idea. Internally we still do the same calculation for y, but when we come to plot the point with plot(x, y), we need to convert y into an integer. We could just convert y to the nearest integer each time, but working with floating point numbers is pretty slow, so the algorithm speeds things up by using the concept of a "slope error".</p>
+
+						<p>We're drawing a pixel line, so each time we step along the x-axis by 1 pixel, we have a choice of either staying where we are in the y-axis, or moving down one line (i.e. incrementing y by 1). We can't increase y by fractions, so instead, each time we step along the x-axis, we keep a running total of how far we would step down in the y-axis if we weren't constrained by only being able to move down by 1. In other words, we keep a tally of the (delta_y / delta_x)'s that we would ideally be adding to y, until we know we've moved onto the next line, at which point we add 1 to y. This tally is known as the "slope error", as it's a running tally of the current error between our pixels and the real slope of the line.</p>
+
+						<p>There's one final tweak, and that's starting our slope error tally at 0.5, which denotes the centre of the starting pixel. So the final algorithm looks like this:</p>
+
+<pre class="articleIndented">  function line(x1, y1, x2, y2)
+    delta_x = x2 - x1
+    delta_y = y2 - y1
+    slope_err = abs(delta_y / delta_x)
+    error = 0.5
+    y = y1
+    for x from x1 to x2
+      plot(x, y)
+      error = error + slope_err
+      if error &gt;= 1.0 then
+        y = y + 1
+        error = error - 1.0
+</pre>             <h2 class="articleSubheader">Implementing Bresenham in 8-bit integers<br />
+            							 ----------------------------------------</h2>
+
+						<p>You may have noticed that the algorithm above still uses real numbers. When we actually use this approach in Elite, we multiply all the real numbers by 256, so that 256 is equivalent to 1.0. We can now initialise error to 128, and instead of checking whether error &gt;= 1.0, we can check whether error is &gt;= 256, like this:</p>
+
+<pre class="articleIndented">  function line(x1, y1, x2, y2)
+    delta_x = x2 - x1
+    delta_y = y2 - y1
+    slope_err = abs(delta_y / delta_x)
+    error = 128
+    y = y1
+    for x = x1 to x2
+      plot(x, y)
+      error = error + slope_err
+      if error &gt;= 256 then
+        y = y + 1
+        error = error - 256
+</pre>
+
+						<p>There is one final improvement. If we use a single byte to store the error, then error &gt;= 256 is the same as saying "has the addition just overflowed", in which case we don't need to subtract 256 as the byte will already have rolled around to 0. So here is the final algorithm used in Elite:</p>
+
+<pre class="articleIndented">  function line(x1, y1, x2, y2)
+    delta_x = x2 - x1
+    delta_y = y2 - y1
+    slope_err = abs(delta_y / delta_x)
+    error = 128
+    y = y1
+    for x = x1 to x2
+      plot(x, y)
+      error = error + slope_err
+      if C flag is set then
+        y = y + 1
+</pre>
+
+						<p>This is the algorithm that's implemented in <a href="/cassette/main/subroutine/loin_part_4_of_7.html">part 4 of the LOIN routine</a>, for gently sloping lines that go right and down. It uses Q, S, X and Y as follows:</p>
+
+<pre class="articleIndented">  Q = |delta_y| / |delta_x|
+  S = 128
+  Y = Y1
+  for X = X1 to X2
+    plot(X, Y)
+    S = S + Q
+    if C flag set then
+      inc Y
+</pre>
+
+						<p>The full LOIN routine implements the same basic algorithm multiple times, tweaked to cater for all the other variations of sloping line (such as more vertical lines that slope sharply up and to the left, for example). But the same principles apply, just with different signs.</p>
+
+						<p>Also, it's worth noting that Elite doesn't plot the first pixel in any of its lines. This is to prevent corners from disappearing; if you imagine us drawing a triangle by drawing a line from point A to point B, then from B to C, and then from C to A again, then if we plotted all the end points, each of the triangle's vertices (A, B and C) would be plotted twice, once as the start of a line, and again as the end of the line. Normally this wouldn't be a problem, but because Elite draws everything on-screen using EOR logic (so objects can be drawn and then erased by simply drawing them again), this would mean the corner points would disappear, and that would look very strange. So there is logic in the LOIN routine to omit the first pixel from each line, and there's similar logic in the HLOIN routine, which omits the rightmost pixel from horizontal lines for the same reason.</p>
+
+						<p>Note that the original versions of Elite contain a bug where the last pixel is skipped instead of the first pixel, but only when drawing lines that go right and up or left and down. This leads to a messy line join between this kind of line and lines with different slopes. This bug was fixed in the advanced versions, and can be seen in <a href="/cassette/main/subroutine/loin_part_3_of_7.html">part 3 of LOIN</a>.</p>
+
+
+						<h2 class="articleSubheader">Summary of the routine<br />
+													 ----------------------</h2>
+
+						<p>To help with understanding the 7 parts of the line-drawing routine, here's a summary of what each part does.</p>
+
+<pre class="articleIndented">  1. Calculate delta_x, delta_y
+     Choose either parts 2-4 or parts 5-7
+</pre>
+
+						<p>If the line is closer to being horizontal than vertical, we step right along the x-axis:</p>
+
+<pre class="articleIndented">  2. Potentially swap coordinates so X1 &lt; X2
+     Set up screen address variables
+     Calculate |delta_y| / |delta_x|
+     Choose either part 3 or part 4
+</pre>
+
+<pre class="articleIndented">  3. The line is going right and up (no swap) or left and down (swap)
+     X1 &lt; X2 and Y1 &gt; Y2
+     Draw from (X1, Y1) at bottom left to (X2, Y2) at top right
+     If we swapped, don't plot (X1, Y1)
+</pre>
+
+<pre class="articleIndented">  4. The line is going right and down (no swap) or left and up (swap)
+     X1 &lt; X2 and Y1 &lt;= Y2
+     Draw from (X1, Y1) at top left to (X2, Y2) at bottom right
+     If we didn't swap, skip plotting (X1, Y1)
+</pre>
+
+						<p>If the line is closer to being vertical than horizontal, we step up along the y-axis:</p>
+
+<pre class="articleIndented">  5. Potentially swap coordinates so Y1 &gt;= Y2
+     Set up screen address variable
+     Calculate |delta_x| / |delta_y|
+     Choose either part 6 or part 7
+</pre>
+
+<pre class="articleIndented">  6. The line is going up and left (no swap) or down and right (swap)
+     X1 &lt; X2 and Y1 &gt;= Y2
+     Draw from (X1, Y1) at bottom right to (X2, Y2) at top left
+     If we didn't swap, skip plotting (X1, Y1)
+</pre>
+
+<pre class="articleIndented">  7. The line is going up and right (no swap) or down and left (swap)
+     X1 &gt;= X2 and Y1 &gt;= Y2
+     Draw from (X1, Y1) at bottom left to (X2, Y2) at top right
+     If we didn't swap, skip plotting (X1, Y1)
+</pre>
+
+					<p> Note that in the cassette and disc versions, the second part of the second test in step 3 is actually coded as Y1-1 &gt; Y2 (and the corresponding test in step 4 as Y1-1 &lt;= Y2). This was corrected to Y1 &gt; Y2 and Y1 &lt;= Y2 in the 6502 Second Processor version, so that's the version I've included above.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="fonts_in_nes_elite.html">Fonts in NES Elite</a><a class="next" rel="next" title="Next deep dive" href="line-clipping.html">Line-clipping</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

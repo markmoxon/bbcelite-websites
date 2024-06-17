@@ -1,0 +1,296 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "ship_data_blocks.html", "Ship data blocks", "Ship data blocks", "A deep dive into ship data blocks in BBC Micro Elite", "elite", "deep_dives_ship_data", "ship_data_blocks");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="ship_blueprints_in_the_disc_version.html">Ship blueprints in the disc version</a><a class="next" rel="next" title="Next deep dive" href="galaxy_and_system_seeds.html">Galaxy and system seeds</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Storing data for each of the ships in the local bubble of universe</h2>
+
+						<p>As described in the deep dive on <a href="the_local_bubble_of_universe.html">the local bubble of universe</a>, every ship in the local bubble has its own set of associated data structures. One of these is the ship data block, stored in the <a href="/cassette/main/workspace/k_per_cent.html">K% workspace</a>, and that's what we're going to look at in this article.</p>
+
+						<p>The ship data block contains information about the ship's status, its location in space, its orientation and so on. Each ship in the local bubble also has an entry in the lookup table at <a href="/cassette/main/variable/univ.html">UNIV</a> that points to its data block in K%, and along with the ship slots at <a href="/cassette/main/workspace/wp.html#frin">FRIN</a> and the ship blueprints at <a href="/cassette/main/variable/xx21.html">XX21</a>, we have everything we need to simulate the world of Elite.</p>
+
+						<p>For example, here's a screenshot of the <a href="/hacks/elite_universe_editor.html">Elite Universe Editor</a>, which allows you to edit the ships in the local bubble:</p>
+
+						<img class="titleImage" src="/images/elite_universe_editor/ship_id.png" alt="The ship ID poster in Elite Universe Editor" />
+
+						<p>Each of these ships, including the planet, has its own data block that describes where the ship is in space, the direction it's pointing in, and so on. But before we go any further, let's talk about the terminology we're going to use when describing ships and ship data blocks.</p>
+
+						<h2 class="articleSubheader">Ship data terminology<br />
+													 ---------------------</h2>
+
+						<p>Throughout this documentation, we're going to refer to "ships" and "ship data blocks" for all the different object types in the vicinity, not just ships. The same blocks, pointers and data structures are used not only for ships, but also for cargo canisters, missiles, escape pods, asteroids, space stations, planets and suns, but that's a bit of a mouthful compared to "ships", so "ships" it is.</p>
+
+						<p>When working with a ship's data - such as when we move a ship in MVEIT, or spawn a child ship in SFS1 - we normally work with the data in the <a href="/cassette/main/workspace/zp.html#inwk">INWK</a> workspace, as INWK is in zero page and is therefore faster and more memory efficient to manipulate. The ship data blocks in the K% workspace are therefore copied into INWK before they are worked on, and new ship blocks are created in INWK before being copied to K%. As a result, the layout of the INWK data block is identical the layout of each ship data block in K%.</p>
+
+						<p>Note that in the NES version, each ship data block at K% has four extra bytes. Bytes #37 to #40 of the ship data block are used to store the random seeds for the ship's explosion cloud, though they aren't copied to INWK, which stays the same size. The rest of the ship block is the same.</p>
+
+						<p>It's also important to note that INWK is known as XX1 in some parts of the codebase, namely those parts that were written by David Braben on his Acorn Atom, where he was only allowed to use label names starting with two letters, followed by numbers (this is why the source code is full of catchy labels like TT26 and LL9). Because we might end up talking about ship data in INWK, K% or XX1, this commentary refers to "ship byte #5" for byte #5 of the ship data (y_sign), or "ship byte #32" for byte #32 (the AI flag), and so on. Most of the time we will be working with INWK or XX1, but every now and then the bytes in the K% block are manipulated directly, which we will point out in the comments.</p>
+
+						<p>There are 36 bytes of data in each ship's block, and as mentioned above, they all have the same format, though not all bytes are used for all ship types. Planets, for example, don't have AI or missiles, though it would be fun if they did...</p>
+
+						<p>Let's take a look at the format of a typical ship data block.</p>
+
+						<h2 class="articleSubheader">Summary of the ship data block format<br />
+													 -------------------------------------</h2>
+
+						<p>The bytes in each ship data block are arranged as follows:</p>
+
+						<ul class="pre">
+							<li>Bytes #0-2        Ship's x-coordinate in space = (x_sign x_hi x_lo)</li>
+
+							<li>Bytes #3-5        Ship's y-coordinate in space = (y_sign y_hi y_lo)</li>
+
+							<li>Bytes #6-8        Ship's z-coordinate in space = (z_sign z_hi z_lo)</li>
+
+							<li>Bytes #9-14       Orientation vector nosev = [ nosev_x nosev_y nosev_z ]</li>
+
+							<li>Bytes #15-19      Orientation vector roofv = [ roofv_x roofv_y roofv_z ]</li>
+
+							<li>Bytes #21-26      Orientation vector sidev = [ sidev_x sidev_y sidev_z ]</li>
+
+							<li>Byte #27          Speed</li>
+
+							<li>Byte #28          Acceleration</li>
+
+							<li>Byte #29          Roll counter</li>
+
+							<li>Byte #30          Pitch counter</li>
+
+							<li>Byte #31          Exploding state
+                  Killed state
+                  "Is being drawn on-screen" flag
+                  "Is visible on the scanner" flag
+                  Missile count</li>
+
+							<li>Byte #32          AI flag
+                  Hostility flag
+                  Aggression level
+                  E.C.M. flag</li>
+
+							<li>Bytes #33-34      Ship line heap address pointer (non-NES versions)</li>
+
+							<li>Byte #33 = the number of the ship on the scanner (NES version)</li>
+
+							<li>Byte #34 = the cloud counter for the explosion cloud (NES version)</li>
+
+							<li>Byte #35          Energy level</li>
+
+							<li>Byte #36          <a href="/deep_dives/advanced_tactics_with_the_newb_flags.html">NEWB flags</a> (enhanced versions only)</li>
+						</ul>
+
+						<p>Note that in the NES version, INWK+33 and INWK+34 are no longer used to store the ship line heap address, as the NES doesn't have a ship line heap (as ships don't need to be erased line-by-line in that version). Instead INWK+33 contains the number of the ship on the scanner, and INWK+34 contains the cloud counter for the explosion cloud.</p>
+
+						<p>Let's look at these in more detail.</p>
+
+						<h2 class="articleSubheader">Ship coordinates (bytes #0-8)<br />
+													 -----------------------------</h2>
+
+						<p>These bytes contain the ship's location in space relative to our ship. The x-axis goes to the right, the y-axis goes up and the z-axis goes into the screen.</p>
+
+						<ul class="tightList">
+							<li>Byte #0 = x_lo</li>
+							<li>Byte #1 = x_hi</li>
+							<li>Byte #2 = x_sign
+						</ul>
+
+						<ul class="tightList">
+							<li>Byte #3 = y_lo</li>
+							<li>Byte #4 = y_hi</li>
+							<li>Byte #5 = y_sign
+						</ul>
+
+						<ul class="tightList">
+							<li>Byte #6 = z_lo</li>
+							<li>Byte #7 = z_hi</li>
+							<li>Byte #8 = z_sign</li>
+						</ul>
+
+						<p>The coordinates are stored as 24-bit sign-magnitude numbers, where the sign of the number is stored in bit 7 of the sign byte, and the other 23 bits contain the magnitude of the number without any sign (i.e. the absolute values |x|, |y| and |z|).</p>
+
+						<p>We can also write the coordinates like this:</p>
+
+						<ul class="tightList">
+							<li>x-coordinate = (x_sign x_hi x_lo) = INWK(2 1 0)</li>
+							<li>y-coordinate = (y_sign y_hi y_lo) = INWK(5 4 3)</li>
+							<li>z-coordinate = (z_sign z_hi z_lo) = INWK(8 7 6)</li>
+						</ul>
+
+						<h2 class="articleSubheader">Orientation vectors (bytes #9-26)<br />
+													 ---------------------------------</h2>
+
+						<p>The ship's orientation vectors determine its orientation in space. There are three vectors, named according to the direction they point in (i.e. out of the ship's nose, the ship's roof, or the ship's right side):</p>
+
+						<ul class="tightList pre">
+							<li>Byte #9  = nosev_x_lo</li>
+							<li>Byte #10 = nosev_x_hi</li>
+							<li>Byte #11 = nosev_y_lo</li>
+							<li>Byte #12 = nosev_y_hi</li>
+							<li>Byte #13 = nosev_z_lo</li>
+							<li>Byte #14 = nosev_z_hi</li>
+						</ul>
+
+						<ul class="tightList">
+							<li>Byte #15 = roofv_x_lo</li>
+							<li>Byte #16 = roofv_x_hi</li>
+							<li>Byte #17 = roofv_y_lo</li>
+							<li>Byte #18 = roofv_y_hi</li>
+							<li>Byte #19 = roofv_z_lo</li>
+							<li>Byte #20 = roofv_z_hi</li>
+						</ul>
+
+						<ul class="tightList">
+							<li>Byte #21 = sidev_x_lo</li>
+							<li>Byte #22 = sidev_x_hi</li>
+							<li>Byte #23 = sidev_y_lo</li>
+							<li>Byte #24 = sidev_y_hi</li>
+							<li>Byte #25 = sidev_z_lo</li>
+							<li>Byte #26 = sidev_z_hi</li>
+						</ul>
+
+						<p>The vector coordinates are stored as 16-bit sign-magnitude numbers, where the sign of the number is stored in bit 7 of the high byte. See the deep dive on <a href="orientation_vectors.html">orientation vectors</a> for more information.</p>
+
+						<h2 class="articleSubheader">Ship movement (bytes #27-30)<br />
+													 ----------------------------</h2>
+
+						<p>This block controls the ship's movement in space.</p>
+
+						<ul>
+							<li>Byte #27 = Speed, in the range 1-40</li>
+
+							<li>Byte #28 = Acceleration, which gets added to the speed once, in MVEIT, before being zeroed again</li>
+
+							<li>Byte #29 = Roll counter
+
+								<ul>
+									<li>Bits 0-6 = The counter. If this is 127 (%1111111) then damping is disabled and the ship keeps rolling forever, otherwise damping is enabled and the counter reduces by 1 for every iteration of the main flight loop. The ship rolls by a fixed amount (1/16 radians, or 3.6 degrees) for every iteration where the counter is &gt; 0.</li>
+
+									<li>Bit 7 = The direction of roll (a positive roll counter rolls the ship clockwise, a negative roll counter rolls it anti-clockwise)</li>
+								</ul>
+
+							</li>
+
+							<li>Byte #30 = Pitch counter
+
+							<ul>
+								<li>Bits 0-6 = The counter. If this is 127 (%1111111) then damping is disabled and the ship keeps pitching forever, otherwise damping is enabled and the counter reduces by 1 for every iteration of the main flight loop. The ship pitches by a fixed amount (1/16 radians, or 3.6 degrees) for every iteration where the counter is &gt; 0.</li>
+
+								<li>Bit 7 = The direction of pitch (a positive pitch counter makes the ship dive, a negative pitch counter makes the ship climb)</li>
+							</ul>
+						</ul>
+
+						<p>See the deep dive on <a href="pitching_and_rolling_by_a_fixed_angle.html">pitching and rolling by a fixed angle</a> for more details on the pitch and roll that the above counters apply to a ship.</p>
+
+						<h2 class="articleSubheader">Ship flags (bytes #31-32)<br />
+													 -------------------------</h2>
+
+						<p>These two flags contain a lot of information about the ship, and they are consulted often.</p>
+
+						<ul class="pre">
+							<li>Byte #31 = Exploding state, Killed state, "Is being drawn on-screen" flag,
+           "Is visible on the scanner" flag, Missile count</li>
+
+								<ul class="pre">
+									<li>Bits 0-2: %nnn = number of missiles or Thargons (maximum 7)</li>
+
+									<li>Bit 3:    0 = isn't currently being drawn on-screen
+          1 = is currently being drawn on-screen</li>
+
+									<li>Bit 4:    0 = don't show on scanner
+          1 = do show on scanner</li>
+
+									<li>Bit 5:    0 = ship is not exploding
+          1 = ship is exploding</li>
+
+									<li>Bit 6:    0 = ship is not firing lasers
+          1 = ship is firing lasers
+          0 = explosion has not been drawn
+          1 = explosion has been drawn</li>
+
+									<li>Bit 7:    0 = ship has not been killed
+          1 = ship has been killed</li>
+								</ul>
+
+							<li>Byte #32 = AI flag, Hostility flag, Aggression level, E.C.M. flag</li>
+
+								<ul>
+									<li>For ships:</li>
+
+										<ul class="pre">
+											<li>Bit 0:    0 = no E.C.M.
+          1 = has E.C.M.</li>
+
+											<li>Bits 1-5: n = aggression level (see TACTICS part 7)</li>
+
+											<li>Bit 6:    0 = friendly
+          1 = hostile</li>
+
+											<li>Bit 7:    0 = dumb
+          1 = AI enabled (tactics get applied by the TACTICS routine)</li>
+										</ul>
+
+									<li>For the space station:</li>
+
+										<ul class="pre">
+											<li>Bit 7:    0 = friendly
+          1 = hostile</li>
+										</ul>
+
+									<li>For missiles:</li>
+
+										<ul class="pre">
+											<li>Bit 0:    0 = no lock/launched
+          1 = target locked</li>
+
+											<li>Bits 1-5: %nnnnn = target's slot number</li>
+
+											<li>Bit 6:    0 = friendly
+          1 = hostile</li>
+
+											<li>Bit 7:    0 = dumb
+          1 = AI enabled (tactics get applied)</li>
+										</ul>
+								</ul>
+							</li>
+						</ul>
+
+						<h2 class="articleSubheader">Heap pointer and energy (bytes #33-35)<br />
+													 --------------------------------------</h2>
+
+						<p>The final three bytes are as follows:</p>
+
+						<ul>
+							<li>Byte #33 = low byte of ship line heap address pointer in INWK(34 33)</li>
+
+							<li>Byte #34 = high byte of ship line heap address pointer in INWK(34 33)</li>
+
+							<li>Byte #35 = ship energy</li>
+						</ul>
+
+						<p>In the NES version, there is no ship line heap, so the first two bytes are repurposed:</p>
+
+						<ul>
+							<li>Byte #33 = the number of the ship on the scanner</li>
+
+							<li>Byte #34 = the cloud counter for the explosion cloud</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="ship_blueprints_in_the_disc_version.html">Ship blueprints in the disc version</a><a class="next" rel="next" title="Next deep dive" href="galaxy_and_system_seeds.html">Galaxy and system seeds</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

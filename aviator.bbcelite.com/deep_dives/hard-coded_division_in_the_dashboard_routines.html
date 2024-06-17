@@ -1,0 +1,180 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "hard-coded_division_in_the_dashboard_routines.html", "Hard-coded division in the dashboard routines", "Hard-coded division in the dashboard routines", "A deep dive into hard-coded division in the dashboard routines in BBC Micro Aviator", "aviator", "deep_dives_dashboard", "hard-coded_division_in_the_dashboard_routines");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="clock_hands_and_dial_indicators.html">Clock hands and dial indicators</a><a class="next" rel="next" title="Next deep dive" href="adding_bullets_to_the_world.html">Adding bullets to the world</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Using hand-tailored division code for fast calculations</h2>
+
+						<p>Updating the dashboard in a timely manner is an essential task in a flight simulator as complex as Aviator, so it's perhaps no surprise that the update routines contain some beautifully efficient and hand-tailored code to perform the many calculations that power the dashboard's dials. Let's take a closer look at what's involved.</p>
+
+						<p>The long, multi-part <a href="/source/main/subroutine/updateindicator_part_1_of_15.html">UpdateIndicator</a> routine performs calculations for the various indicators on the dashboard. This typically involves taking the relevant measurement, scaling it to fit on the appropriate indicator, and then drawing a suitable vector line (for dial hands), orthogonal line (for vertical bar indicators), joystick cross (for the joystick position display) or artificial horizon line.</p>
+
+						<p>A common feature of these calculations is the scaling step, which is done by multiplying the measurement by a specific scale factor. The shift-and-add multiplication algorithm is used, but instead of using a generic multiply routine, the relevant indicators contain hard-coded multiply routines that have their scale factors baked into the code.</p>
+
+						<p>Generally, if we want to calculate A * T / 256, then the traditional approach would be to use a shift-and-add loop like this:</p>
+
+<pre class="articleIndented"> LSR A               \ Set P = A >> 1 and C flag = bit 0 of A
+ STA P
+
+ LDX T               \ Set T1 = T - 1
+ DEX                 \
+ STX T1              \ We subtract 1 as the C flag will be set when we want
+                     \ to do an addition in the loop below
+
+                     \ We are now going to work our way through the bits of
+                     \ P, and do a shift-add for any bits that are set,
+                     \ keeping the running total in A. We already set up
+                     \ the first shift at the start of this routine, as
+                     \ P = |A| >> 1 and C = bit 0 of A, so we now need to set
+                     \ up a loop to sift through the other 7 bits in P
+
+ LDA #0              \ Set A = 0 so we can start building the answer in A
+
+ LDX #7              \ Set up a counter in X to count the 7 bits remaining
+                     \ in P
+
+.MUL4
+
+ BCC P%+4            \ If C (i.e. the next bit from P) is set, do the
+ ADC T1              \ addition for this bit of P:
+                     \
+                     \   A = A + T1 + C
+                     \     = A + T - 1 + 1
+                     \     = A + T
+
+ ROR A               \ As mentioned above, this ROR shifts A right and
+                     \ catches bit 0 in C - giving another digit for our
+                     \ result - and the next ROR sticks that bit into the
+                     \ left end of P while also extracting the next bit of P
+                     \ for the next addition
+
+ ROR P               \ Add the overspill from shifting A to the right onto
+                     \ the start of P, and shift P right to fetch the next
+                     \ bit for the calculation
+
+ DEX                 \ Decrement the loop counter
+
+ BNE MUL4            \ Loop back for the next bit until P has been rotated
+                     \ all the way
+
+ LSR A               \ Rotate (A P) once more to get the final result, as
+ ROR P               \ we only pushed 7 bits through the above process
+</pre>
+
+						<p>You can read all about this algorithm in my <a href="https://www.bbcelite.com/deep_dives/shift-and-add_multiplication.html">Elite source code project</a>, and you can see it <i>in situ</i> in the Elite source code <a href="https://www.bbcelite.com/cassette/main/subroutine/mult1.html">in the MULT1 routine</a>.</p>
+
+						<p>If we aren't worried about memory usage, then we can unroll the central loop of the algorithm like this, to save a bit of time going around the loop:</p>
+
+<pre class="articleIndented"> BCC P%+4            \ Shift-and-add the first bit of P
+ ADC T1
+ ROR A
+ ROR P
+
+ BCC P%+4            \ Repeat for the second bit
+ ADC T1
+ ROR A
+ ROR P
+
+ BCC P%+4            \ Repeat for the third bit
+ ADC T1
+ ROR A
+ ROR P
+</pre>
+
+						<p>The above code does three bits, and we can repeat the same block for all eight bits to implement the full calculation. You can see this approach in the <a href="https://www.bbcelite.com/6502sp/main/subroutine/mult1.html">MULT1 routine in the 6502 Second Processor version of Elite</a>.</p>
+
+						<p>Note that we still have to shift the result right by one place after the unrolled loop (i.e. the LSR A and ROR P after the end of the loop).</p>
+
+						<p>Aviator takes this to the next level by hard-coding a specific value of T into the code itself - let's refer to this fixed value of T as n, so our routine will now calculate A * n / 256, for a fixed n.</p>
+
+						<p>Given this, let's look at the above unrolled code. If a bit of n is 0 above, then the BCC P%+4 will skip the next instruction (ADC T), leaving just the ROR A and ROR P instructions. Also, in this case, we know the C flag is clear, as we took the BCC, so the ROR A is identical to LSR A.</p>
+
+						<p>We can therefore hard-code the value of n into the code by replacing each of these unrolled blocks:</p>
+
+<pre class="articleIndented"> BCC P%+4
+ ADC T1
+ ROR A
+ ROR P
+</pre>
+
+						<p>with either this, when that bit of n is 0:</p>
+
+<pre class="articleIndented"> LSR A
+ ROR P
+</pre>
+
+						<p>or this, when that bit of n is 1:</p>
+
+<pre class="articleIndented"> ADC T1
+ ROR A
+ ROR P
+</pre>
+
+						<p>We can also ditch the need to calculate T1 = T - 1 by adding in a CLC, like this:</p>
+
+<pre class="articleIndented"> CLC
+ ADC T
+ ROR A
+ ROR P
+</pre>
+
+						<p>Finally, we only need to keep the ROR P instructions if we need to keep the overspill from the result, as we are no longer shifting P to see whether or not to branch over each bit's addition. If we don't need the overspill, we can replace the unrolled calculation with this, when that bit of n is 0:</p>
+
+<pre class="articleIndented"> LSR A
+</pre>
+
+						<p>or this, when that bit of n is 1:</p>
+
+<pre class="articleIndented"> CLC
+ ADC T
+ ROR A
+</pre>
+
+						<p>Putting all of this together into a working example, the following code calculates A = T * 68 / 256, using a value of n = 34 (%00100010). The factor of 2 is because the following omits the final LSR A that normally appears after the loop, for optimal performance.</p>
+
+<pre class="articleIndented"> LDA T               \ Set A = T
+
+ LSR A               \ Bit 0 of n is 0
+
+ CLC                 \ Bit 1 of n is 1
+ ADC T
+ ROR A
+
+ LSR A               \ Bit 2 of n is 0
+
+ LSR A               \ Bit 3 of n is 0
+
+ LSR A               \ Bit 4 of n is 0
+
+ CLC                 \ Bit 5 of n is 1
+ ADC T
+ ROR A
+
+ LSR A               \ Bit 6 of n is 0
+
+                     \ Bit 7 of n is 0 and the final right shift is missing
+</pre>
+
+						<p>The result is a streamlined multiplication algorithm that is tailored to the specific requirements of each dial in the UpdateIndicator routine. You can see this exact code in <a href="/source/main/subroutine/updateindicator_part_7_of_15.html">part 7 of the UpdateIndicator routine</a>, but there are quite a few other tailored divisions throughout the UpdateIndicator routine. It's beautifully succinct and extremely efficient; my hat is most definitely tipped to the programmer.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="clock_hands_and_dial_indicators.html">Clock hands and dial indicators</a><a class="next" rel="next" title="Next deep dive" href="adding_bullets_to_the_world.html">Adding bullets to the world</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

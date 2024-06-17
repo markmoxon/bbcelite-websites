@@ -1,0 +1,228 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "backporting_the_nurburgring_track.html", "Backporting the N&uuml;rburgring track", "Backporting the N&uuml;rburgring track", "A deep dive into backporting the N&uuml;rburgring track in BBC Micro Revs", "revs", "deep_dives_extra_tracks", "backporting_the_nurburgring_track");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_extra_tracks_data_file_format.html">The extra tracks data file format</a><a class="next" rel="next" title="Next deep dive" href="comparing_the_tracks.html">Comparing the tracks</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Porting the N&uuml;rburgring track from the Commodore 64 to the BBC Micro</h2>
+
+						<p>As an Acorn fan and a huge admirer of Geoff Crammond's epic work on the BBC Micro, I was always a bit disappointed that the Commodore 64 had an exclusive Revs track that was never released for the BBC Micro. The N&uuml;rburgring track was bundled with the 1987 Firebird release of Revs+, which otherwise added features that had been pioneered on the BBC Micro, such as joystick support and computer assisted steering... and that seems to have been the last Revs-related release on any platform.</p>
+
+						<p>This is what Revs+ looks like on the Commodore 64, from the menu screen:</p>
+
+						<img class="titleImage" style="width: 300px" src="/images/nurburgring/revs_plus_menu_c64.png" alt="The Revs+ track menu in the Commodore 64 version" />
+
+						<p>to the start of the N&uuml;rburgring practice lap:</p>
+
+						<img class="titleImage" style="width: 300px" src="/images/nurburgring/nurburgring_practice_c64.png" alt="The start of the N&uuml;rburgring practice lap in the Commodore 64 version" />
+
+						<p>Unfortunately this brand new track remained a Commodore exclusive, presumably because the BBC Micro games market was, by this point, a relatively quiet affair. To be fair, by the summer of 1987 when Revs+ was released, Acorn was more than a bit preoccupied by the launch of their new computer, the Acorn Archimedes 310. Given that this was the world's first ARM-based computer and the start of a new 32-bit era for the company, it's perhaps not surprising that the company's focus was shifting away from 8-bit gaming.</p>
+
+						<p>In order to rectify this oversight, I have backported the N&uuml;rburgring track from the Commodore 64 to the BBC Micro, some 35 years after its debut. To drive the N&uuml;rburgring track on the BBC Micro, you can either <a href="/versions/revs-plus.ssd">download an SSD of Revs+ for the BBC Micro</a> for use in an emulator or on a real machine, or you can <a href="https://bbc.xania.org/?autoboot&disc=https://revs.bbcelite.com/versions/revs-plus.ssd">play BBC Micro Revs+ in your browser using JSBeeb</a>.</p>
+
+						<p>The backporting process was pretty challenging, far more than I thought it would be. This article explains why by looking at each stage of the process.</p>
+
+						<h2 class="articleSubheader">Stage 1: Direct extraction<br />
+													 --------------------------</h2>
+
+						<p>The first challenge was to extract the track files from the Commodore 64 version. Luckily I had some help here <a href="https://stardot.org.uk/forums/viewtopic.php?p=349953#p349953">from billcarr2005 on Stardot</a>, who extracted the files by running Revs+ in a Commodore 64 emulator and saving the relevant parts of the emulator's memory into track files, ready to be analysed using a hex editor. The Revs+ cassette doesn't seem to include separate track files, so this process is a bit more complicated than simply copying the files off the disc, as you would do in the BBC version.</p>
+
+						<p>I would get pretty adept at this process during the months that I chipped away at the N&uuml;rburgring track, but at this point I was just happy to download the extracted track file from the Stardot thread, rename it to "Silvers", drop it on the original Revs disc in place of the Silverstone track file, and fire it up on my BBC Micro. Not surprisingly, it simply reset the machine and Revs completely failed to load.</p>
+
+						<p>This was down to an incorrect checksum in the track file. In the BBC Micro version, the track files get checked for integrity by a simple checksum algorithm as part of the <a href="/source/main/subroutine/swapcode.html">SwapCode</a> routine. It isn't a complicated process but it has to be right, and for some reason the extracted file had a problem. So I added the N&uuml;rburgring into the build process that I'd already put together for assembling the original game (see the page on <a href="/about_site/building_revs.html">building Revs from the source</a> for details), and I hooked in the Python checksum script to update the track file's checksum. Once it was all connected, out popped a new track file, which I again renamed to "Silvers", dropped onto the original Revs disc in place of the Silverstone track file, and fired up on my BBC Micro.</p>
+
+						<p>This time the game loaded and the menus worked. Success! But as soon as I tried to go to the track, the whole thing crashed. I knew from billcarr2005's investigations that the track file contained a JMP &amp;9C00 instruction as its CallTrackHook entry that clearly wasn't going to be correct on the BBC Micro (&amp;9C00 is a ROM address on the BBC), but changing this to JMP &amp;5700 to match the other extra track files made no difference.</p>
+
+						<p>Looking at the track data and disassembling the code starting at &amp;5700 (which then took me to &amp;5800 and on to &amp;5600), the crash was not surprising - I soon discovered that the track data was modifying the main game code by poking instructions directly into memory. Some of these modifications seemed to make sense, but others didn't, which wasn't that surprising. To get this working, I figured I'd need to look at exactly which bits of the code were being changed by the track data, and update the modification routines to work with the corresponding code in the BBC Micro.</p>
+
+						<p>Here's an example of some of the code that I found in the track data (this would turn out to be <a href="/source/nurburgring/subroutine/modifygamecode_part_3_of_3.html">part 3 of the ModifyGameCode routine</a>, but I had no idea what it was at the time):</p>
+
+<pre class="articleIndented">  LDA #&amp;04
+  STA &amp;3574
+  LDA #&amp;0B
+  STA &amp;35F4
+  LDA #&amp;AD
+  STA &amp;461C
+  LDA #&amp;57
+  STA &amp;461D
+  LDA #&amp;4B
+  STA &amp;2546
+  LDA #&amp;FF
+  STA &amp;282B
+  RTS
+</pre>
+
+						<p>By looking at what was being modified, I figured the updates to &amp;461C and &amp;461D made sense, as those locations in the main game code contain an address, but sticking &amp;FF into &amp;282B would surely break the instruction that was there (it's a CMP opcode), so that was a bit of a mystery. What I didn't know was that all of these addresses were wrong, and that I was going to have to do quite a lot more analysis of the source code before any pennies would drop.</p>
+
+						<p>So I shelved the N&uuml;rburgring and went back to disassembling the main game.</p>
+
+						<h2 class="articleSubheader">Stage 2: Mapping addresses<br />
+													 --------------------------</h2>
+
+						<p>As I analysed the main game code, I started pulling apart the track files. Silverstone turned out to be almost entirely data, but when I looked at Brands Hatch, I realised that it was full of modification code, not unlike the N&uuml;rburgring. This was a bit of a revelation, as I'd assumed that the track data files would all share the same format, and that the strange modification code I'd seen in the N&uuml;rburgring file was specific to the Commodore 64.</p>
+
+						<p>The next logical step was to compare the Brands Hatch file with the N&uuml;rburgring file, and it soon became apparent that while the files shared a reasonable amount of code, there were lots of small differences, sometimes in the code structure, but more often in any addresses that pointed into the main game code. Some of these addresses were modifications, but most of them were jumps, subroutine calls, and variable reads and writes, so if I wanted to get the track working, I would need to change every address in the track file to the equivalent address in the BBC Micro version of Revs. Essentially, I needed an address map from the Commodore 64 version to the BBC version.</p>
+
+						<p>To help with this, I needed a full memory dump of the game that I knew mapped to specific addresses in the Commodore 64, so I downloaded the VICE emulator, tracked down a copy of Revs+, loaded it up and saved out a snapshot file (and I also saved out a snapshot after choosing the N&uuml;rburgring track and heading to the practice lap, just in case anything got moved around by the track-choosing process). VICE saves its snapshots as .vcf files, which have a bunch of extra data at the start before getting into the memory dump, so I had to work out how many bytes to trim from the start of the snapshot file (see the <a href="https://vice-emu.sourceforge.io/vice_9.html">VICE documentation for details</a>). But eventually I had a full memory dump of the Commodore 64, starting at location &amp;0000, that included both the main game code and the N&uuml;rburgring track at the right addresses, so the byte at offset &amp;xxxx in the snapshot corresponded to memory location &amp;xxxx in the Commodore 64 while running Revs.</p>
+
+						<p>Given this set of clues, I could try to map each Commodore 64 address to the BBC version. A typical memory-mapping attempt would go like this:</p>
+
+						<ul>
+							<li>Extract the Commodore 64 address that we want to match from the N&uuml;rburgring file</li>
+
+							<li>Load up the Commodore 64 memory dump and look at the contents of that address, to try to work out which bit of the main game binary we're looking at</li>
+
+							<li>Look at the bytes around that address in the Commodore 64 memory dump, and try to match them to a similar byte sequence somewhere in the BBC game binary; if we find a match, then we can use this to find the equivalent BBC Micro address</li>
+
+							<li>Failing that, look at the bytes around the code in the N&uuml;rburgring file that references this address, and see if that sequence looks similar to any byte sequences in the BBC Micro track data files; again, if we find a match, we can use this to work out the BBC Micro address</li>
+
+							<li>Failing that, search the Commodore 64 memory dump for the address itself - making sure to look for it with the low byte first, then the high byte, as the 6502 is little-endian - and for each match, take a look at the surrounding code, and see if we can use that to work out a match in the BBC Micro game binary</li>
+
+							<li>And if that fails, park this address and move on to the next one</li>
+						</ul>
+
+						<p>I did all of this using a hex editor, the brilliantly named <a href="https://hexfiend.com/">Hex Fiend</a>, which allowed me to compare and search the binary files using hex codes. Eventually you get good at recognising the hexadecimal opcodes for your favourite instructions; particularly useful anchors when looking for code sequences are &amp;60 for RTS, &amp;4C for JMP, &amp;20 for JSR, as well as any instructions that use immediate addressing, such as &amp;A9 for LDA or &amp;44 for CMP, as their operands don't change when the same code is assembled in a different location.</p>
+
+						<p>The <a href="http://www.6502.org/tutorials/6502opcodes.html">6502 opcode reference</a> was very useful for matching hexadecimal code snippets, and the web-based <a href="https://www.masswerk.at/6502/disassembler.html">Virtual 6502 disassembler</a> was really handy for copying hex blocks and disassembling them on-the-fly to extract all the addresses. It turned out that the variables in zero page appeared to match up between the two versions, so I concentrated on the 16-bit addresses, of which there were more than enough to keep me busy.</p>
+
+						<p>After a fairly extensive stint of detective work, I'd converted all of the addresses that I could find in the N&uuml;rburgring file into what I thought was their BBC Micro equivalents, so I loaded up the amended track file, went through the menus, chose a practice lap...</p>
+
+						<p>And it worked! I could see the track. Sure, it looked a bit strange in the distance, and the top of the road sign seemed to have had an accident, but there it was: the N&uuml;rburgring, on the BBC Micro.</p>
+
+						<img class="titleImage" style="width: 320px" src="/images/nurburgring/wall_of_death.png" alt="The first glimpse of the N&uuml;rburgring track on the BBC Micro, complete with wall of death" />
+
+						<p>Unfortunately, as I pulled away from the starting point and headed for the first bend, the blocky bit of track in the distance revealed itself as a vertical wall, and when I hit it, the game suddenly crashed. It looked like the track height was broken and the car was running into a sudden jump in elevation, but from my rudimentary understanding of the track's y-coordinate tables, nothing seemed to be corrupted or strange in any way; it all looked fine on paper, but it was a long way from fine out on the track.</p>
+
+						<p>I tried a bit of poking around, but no, the track wasn't having any of it. So I parked it again, figuring I should wait until I'd got my head around the game's track elevation code.</p>
+
+						<h2 class="articleSubheader">Stage 3: Zero page differences<br />
+													 ------------------------------</h2>
+
+						<p>My next clue came from a random bit of reading. I've been toying with the idea of applying the BBC Master's flicker-free ship-drawing routines in Elite to the Commodore 64 version (see <a href="https://www.bbcelite.com/deep_dives/backporting_the_flicker-free_algorithm.html">this article in my Elite project</a> for details), so I thought I'd start reading up on how to code the Commodore 64, especially when compared to the BBC Micro.</p>
+
+						<p>One thing confused me, though. I was reading a disassembly of Elite on the Commodore 64 (the fantastic <a href="https://github.com/Kroc/elite-harmless">Elite Harmless</a>), and trying to work out how the build tools worked for generating playable Commodore 64 disk images from source code. For some reason the assembly process was generating two disk images, one called elite-harmless.d64 (which seemed to contain the original version of the game), and another called elite-harmless-hiram.d64 (which was presumably a branch managed by someone called Hiram).</p>
+
+						<p>I can't tell you how long it took for me to realise that Hiram wasn't a coder, but was in fact HIRAM, which is a control line into the Commodore 64's 6510 CPU that controls bank-switching of memory. Once I'd had that "ahhhh" moment, it didn't take long to discover that zero page locations &amp;0000 and &amp;0001 are special on the Commodore 64; they are hard-wired to two pins on the 6510 CPU, which control things like I/O and bank-switching (see the <a href="https://www.c64-wiki.com/wiki/Zeropage">C64 wiki</a> for more on this).</p>
+
+						<p>The standard BBC Micro doesn't have bank-switching, and even in the later models that do, locations &amp;0000 and &amp;0001 are never reserved and are always available to assembly programmers. Revs makes uses of both of these locations, for the <a href="/source/main/workspace/zero_page.html#playermoving">playerMoving</a> and <a href="/source/main/workspace/zero_page.html#thissectionflags">thisSectionFlags</a> variables, and although the first one isn't used by any of the code in the N&uuml;rburgring, the second one most definitely is, as it contains the track section flags for the current track section.</p>
+
+						<p>So I searched the Commodore 64 code for code sequences that in the BBC Micro would use locations &amp;0000 or &amp;0001, and it turns out that Commodore 64 Revs stores playerMoving and thisSectionFlags in locations &amp;0091 and &amp;0092 instead of &amp;0000 and &amp;0001. thisSectionFlags is referenced twice in the N&uuml;rburgring track file, in the <a href="/source/nurburgring/subroutine/hookdatapointers.html">HookDataPointers</a> and <a href="/source/nurburgring/subroutine/hooksegmentvector.html">HookSegmentVector</a> routines, so I changed &amp;0092 to &amp;0001 in both places, assembled the game, loaded it up...</p>
+
+						<p>And it worked! The wall of death had disappeared, and I could drive round quite a bit of the track. Sure, I span off a lot, but I'm a complete klutz at Revs, so that was to be expected. I'm used to seeing the fence animation in Revs; we go back a long way.</p>
+
+						<h2 class="articleSubheader">Stage 4: Adding the right hooks<br />
+													 -------------------------------</h2>
+
+						<p>Even I can crawl around a track at a snail's pace... but however hard I tried, I just couldn't complete a whole lap of the N&uuml;rburgring. I kept spinning off at the hairpin bend, or "Dunlop Kehre" as it's called on the map that accompanies the Firebird game (see the deep dive on <a href="the_nurburgring_track.html">the N&uuml;rburgring track</a> for a more detailed look at my nemesis). In fact, I span off <i>every single time</i>. It got so bad that I hacked the track's starting position so I started each practice lap just before the bend, and sure enough, even if I crawled along at a crawl, I would suddenly start spinning wildly, and would inevitably hit the fence. I eventually had to admit it wasn't my bad driving, but something a bit more fundamental.</p>
+
+						<p>By this point I'd started to analyse the extra track files from the Revs 4 Tracks expansion, and I'd discovered that all the extra tracks are packed with hook routines that modify the main game code (see the deep dive on <a href="secrets_of_the_extra_tracks.html">secrets of the extra tracks</a> for details). As I uncovered the different modifications in the extra tracks from the Revs 4 Tracks expansion, I matched some of it to similar code in the N&uuml;rburgring file. I'd already updated the addresses in the N&uuml;rburgring track, which meant the hooks were being injected correctly into the game code, though at the time I didn't know that's what I was doing - I was just mapping addresses.</p>
+
+						<p>Analysing which tracks contained which modifications was useful, as most of the modifications appear in all the extra tracks. But it turned out that the N&uuml;rburgring had far fewer modifications than the extra tracks on the BBC Micro, and I couldn't work out why, so I parked this issue and started looking at an extra layer of code I'd found in the Commodore 64 version, in case that held any clues.</p>
+
+						<p>Back when billcarr2005 had extracted the N&uuml;rburgring track file on Stardot, he'd pointed out that the CallTrackHook JMP instruction jumped to &amp;9C00 rather than &amp;5700, so I obviously changed this to &amp;5700, as that's the first part of the ModifyGameCode routine in the BBC Micro tracks. I'd forgotten about this until I got stuck, and realised that I hadn't actually disassembled the code at &amp;9C00 in the Commodore version.</p>
+
+						<p>It turns out that the code at &amp;9C00 in Revs+ is originally copied from &amp;4800 in the game binary, and gets run just before the modifications in the track file. The code is mostly to do with joystick functionality, but there's also this snippet:</p>
+
+<pre class="articleIndented">.L9DA7
+
+ BCC L9DAE
+ LDA $0880,X
+ CMP #$03
+
+.L9DAE
+
+ ROR $673B
+ RTS
+</pre>
+
+						<p>This bears a striking resemblance to the <a href="/source/main/subroutine/setplayerdriftsup.html">SetPlayerDriftSup</a> routine in the BBC Micro version - or, more specifically, in the Superior Software variant that was released in 1986, as this routine isn't in the original 1985 Acornsoft release. This routine disables drifting in the first three segments of each track section, which makes it easier to take sharper corners without spinning off. I wondered if this might be the problem I was having, but I was already using the Superior Software variant with the N&uuml;rburgring track, so that couldn't be it.</p>
+
+						<p>But it did make me realise that the code at &amp;9C00 in Revs+ is effectively a code modification that turns Revs into Revs+. It contains a flag that ensures the modifications are only run once, and when it finishes it jumps to the ModifyGameCode routine to apply track-specific modifications; you can practically see the sequential development process in action, with the Revs+ functionality being injected into plain old Revs, just before the extra tracks inject their own Revs 4 Tracks modifications into the mix. So what about all the extra modifications in the BBC Micro extra tracks that don't appear in the N&uuml;rburgring track data? Are those in Revs+ anywhere?</p>
+
+						<p>After another bout of code-matching, I discovered that the Commodore 64 version of Revs, which came out after the BBC Micro version, incorporates some of the modifications from the BBC Micro extra track files, not as track-based modifications, but as pre-applied fixes to the main game binary. In other words, Revs 4 Tracks contains not only new tracks but some bug fixes too, and some of those bug fixes were incorporated into the main game binary in the original version of Commodore 64 Revs, so they could be removed from the track data.</p>
+
+						<p>One of these modifications is the <a href="/source/nurburgring/subroutine/hookfieldofview.html">HookFieldOfView</a> routine. The effect of this hook is that when we populate the verge buffer with verge coordinates in <a href="/source/main/subroutine/getsegmentangles_part_3_of_3.html">part 3 of the GetSegmentAngles</a> routine, we don't give up so easily if we get segments outside the field of view. This prevents track segments from disappearing when we're driving around sharp corners, and they don't get a lot sharper than Dunlop Kehre.</p>
+
+						<p>When I added the HookFieldOfView modification to the N&uuml;rburgring, it fixed the problem with the hairpin. Brilliant! But why did this additional hook routine stop me from spinning off the track, when all it's doing is ensuring that bits of the track get drawn properly. Why does this affect the game's driving model? What's the physics here?</p>
+
+						<p>Of course, it has nothing to do with physics. There's a routine in Revs called <a href="/source/main/subroutine/applygrassortrack.html">ApplyGrassOrTrack</a> that checks whether or not we are driving on grass (and if we are, it applies all sorts of spin as we lose grip). It does this in an efficient but slightly old-school manner, by checking the colour of two specific screen pixel bytes, one just to the left of the dashboard, and the other just to the right. If one of these pixel bytes is fully green, then we know that side of the car is on grass.</p>
+
+						<p>If track segments are disappearing from the screen because the code thinks they are outside our field of view when they aren't, then the track disappears and the default background - the green, green grass of home - shines through, and suddenly the game thinks we have driven off the track and spins the car accordingly. Fixing the track display fixes the colour of these two pixels, and we can drive around the track.</p>
+
+						<p>Following the addition of the HookFieldOfView routine to the track file, I finally managed to drive a complete lap of the N&uuml;rburgring, albeit very slowly and in first gear. "That's it!" I thought.</p>
+
+						<p>Of course, that wasn't it at all.</p>
+
+						<h2 class="articleSubheader">Stage 5: Final tweaks?<br />
+													 ----------------------</h2>
+
+						<p>Buoyed up by this major milestone, I went through all the modification routines in the Revs 4 Tracks files, and applied as many as I could to the N&uuml;rburgring, slotting the routines into the track file as efficiently as possible (see the deep dive on <a href="the_extra_tracks_data_file_format.html">the extra tracks data file format</a> to see what a tight squeeze it is). It turned out that the HookFlipAbsolute, HookMoveBack, HookUpdateHorizon and MoveHorizon routines had already been integrated into the main game code for Revs+, and were therefore omitted from the N&uuml;rburgring track data, so I needed to shoehorn them into the BBC Micro track file somewhere. Other routines were clearly tailored to the individual track, in which case I kept any differences intact; HookFixHorizon, HookFlattenHills and HookJoystick were all slightly different in the different tracks, and the N&uuml;rburgring was no exception.</p>
+
+						<p>Eventually I had a working track data file that I thought contained all the modifications I needed, but somehow things felt a bit off. The car felt really sluggish and struggled to keep up with the other cars, which were managing to zip around the track in ridiculous times, so I started comparing the other values in the track file, specifically those controlling the gearbox. It turned out that the values of <a href="/source/nurburgring/variable/trackgearratio.html">trackGearRatio</a> in the N&uuml;rburgring file were way lower than their equivalents in the BBC Micro tracks, by a consistent factor of 1.44.</p>
+
+						<p>Scaling up all the gear ratios by this factor seemed to help, and I also scaled down the trackDriverSpeed settings for each section by the same factor, to see if this helped. The driver speed is in <a href="/source/nurburgring/variable/track_section_data_part_1_of_2.html">part 1 of the track section data</a>, and it defines the speed that the non-player drivers aim for when approaching a new section, so this fix reduced their overall speeds along the straights when approaching corners, and brought their lap times more in line with the times in <a href="/source/nurburgring/variable/tracklaptimemin.html">trackLapTimeMin</a> and <a href="/source/nurburgring/variable/tracklaptimesec.html">trackLapTimeSec</a>, which define the minimum lap times for the Amateur and Professional classes.</p>
+
+						<p>I also adjusted the <a href="/source/nurburgring/variable/tracktimeradjust.html">trackTimerAdjust</a> value, which controls how fast the real-time clock counts seconds and minutes. I ran the game on my real BBC Micro and the in-game timers were running far too slow, so I timed a five-minute practice session, and adjusted the value until it matched five minutes in the outside world. This was a bit hit-and-miss, as sometimes it ran fast and sometimes it ran slow, but doubling the value from 25 to 50 seemed to do the trick.</p>
+
+						<p>And then, finally, I released the track to the Stardot community, asking for feedback from drivers who could test the game in ways that my embarrassing gear-crunching simply couldn't.</p>
+
+						<h2 class="articleSubheader">Stage 6: Final tweaks<br />
+													 ---------------------</h2>
+
+						<p>It soon became apparent in the <a href="https://stardot.org.uk/forums/viewtopic.php?f=74&t=25174">Stardot thread</a> that there were two problems with the track. First, the game would hang when spinning off the track, but only rarely; and second, the non-player drivers were absolutely hammering around the corners, getting unattainable times and leaving absolutely no chance of overtaking.</p>
+
+						<p>The first one turned out to be a schoolboy error that was only obvious in hindsight (and which would have been really hard to track down if Stardot user jimmy hadn't saved out an emulator state for me to replicate the bug, at which point tracing the program counter made the issue obvious). The crash was down to an infinite loop that was being caused by the <a href="/source/nurburgring/subroutine/hookmoveback.html">HookMoveBack</a> routine, which changes to the way the car gets moved backwards along the track. At the time of the bug, the code looked like this:</p>
+
+<pre class="articleIndented">.HookMoveBack
+
+ BIT playerPastSegment  \ If bit 7 of playerPastSegment is set, return from
+ BMI HookMoveBack-1     \ the subroutine (as HookMoveBack-1 contains an RTS)
+
+ JMP MovePlayerBack     \ Move the player backwards by one segment, returning
+                        \ from the subroutine using a tail call
+</pre>
+
+						<p>I'd copied this hook straight from one of the other tracks and pasted it into the N&uuml;rburgring file, and in the process I'd had to shuffle the order of the other hook routines to fit them all in (the track files are all slightly different because of this - they truly are hand-crafted). As a result, the instruction before the HookMoveBack routine, which is an RTS in all the other track files, was no longer an RTS in the N&uuml;rburgring track file, so the BMI HookMoveBack-1 instruction no longer jumped to an RTS, and instead created an infinite loop.</p>
+
+						<p>I fixed it by changing BMI HookMoveBack-1 to point to another RTS instruction, so the hook routine would work rather than crashing.</p>
+
+						<p>The second issue, of non-player drivers driving far too fast around corners, turned out to be a similar scaling issue to the gear ratios and driver speeds; I just needed to scale the behaviour of the non-player drivers when driving around corners, as I'd only scaled the speeds of their approaches. Cornering behaviour is defined in the <a href="/source/nurburgring/variable/tracksteering.html">trackSteering</a> table in the track file, where the amount of steering is defined for each section, so I scaled the steering values for the sections preceding each corner by the magic number 1.44 (which I'm guessing is related to the speed difference between the BBC Micro and the Commodore 64), and that seemed to help.</p>
+
+						<p>Finally, chrisn on Stardot helpfully provided me with some example leaderboard times from the Commodore 64 version that I could use to tweak the times of the BBC Micro port, so I fired up VICE once more and ran a few races on the N&uuml;rburgring in all the different classes (which I could do by going to the practice lap, quitting to the pits, waiting for the race to run its course, and then checking out the leaderboard times, so I didn't actually have to race myself, thankfully). The last tweak, then, was to scale the values in the <a href="/source/nurburgring/variable/trackbasespeed.html">trackBaseSpeed</a> table, which determine the base speeds in each class for the non-player drivers. This time the best factor turned out to be closer to 0.66 rather than 0.69 (which would have been the figure if I'd scaled down by 1.44), but the results looked good with the smaller figures, so 0.66 it was.</p>
+
+						<p>So, at last, I could release a fully working backport of the N&uuml;rburgring. For comparison, here's the original Commodore 64 version:</p>
+
+						<img class="titleImage" style="width: 300px" src="/images/nurburgring/revs_plus_menu_c64.png" alt="The Revs+ track menu in the Commodore 64 version" />
+
+						<img class="titleImage" style="width: 300px" src="/images/nurburgring/nurburgring_practice_c64.png" alt="The start of the N&uuml;rburgring practice lap in the Commodore 64 version" />
+
+						<p>and here's the backported BBC Micro version:</p>
+
+						<img class="titleImage" style="width: 354px" src="/images/nurburgring/revs_plus_menu.png" alt="The Revs+ track menu" />
+
+						<img class="titleImage" style="width: 320px" src="/images/nurburgring/nurburgring_practice.png" alt="The start of the N&uuml;rburgring practice lap" />
+
+						<p>It might have taken a 35-year wait, a six-month disassembly project and a lot more effort than I'd anticipated, but BBC Micro users can finally drive the N&uuml;rburgring in Revs, and this challenging track has come full circle, back to the original Revs platform.</p>
+
+						<p>The result is well worth the effort, I hope you'll agree...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_extra_tracks_data_file_format.html">The extra tracks data file format</a><a class="next" rel="next" title="Next deep dive" href="comparing_the_tracks.html">Comparing the tracks</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

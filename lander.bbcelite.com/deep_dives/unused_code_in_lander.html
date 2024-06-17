@@ -1,0 +1,72 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "unused_code_in_lander.html", "Unused code in Lander", "Unused code in Lander", "A deep dive into unused code in Lander on the Acorn Archimedes", "lander", "deep_dives_miscellaneous", "unused_code_in_lander");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="comparing_lander_to_zarch.html">Comparing Lander to Zarch</a><a class="next" rel="next" title="Next page" href="landers_origins_on_the_arm1.html">Lander's origins on the ARM1</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Memory might be tight, but even Lander contains some hidden subroutines</h2>
+
+						<p>Lander is a very tight fit on the Archimedes A305, with barely any memory to spare; see <a href="the_lander_memory_map.html">the Lander memory map</a> for details. But despite this, there are quite a few unused routines and variables buried in the game binary, some of which are really quite interesting.</p>
+
+						<p>Here's a list of all the unused code in Lander, along with some speculation about how they got there.</p>
+
+						<ul>
+							<li><a href="/source/main/subroutine/addshipexplosiontobuffer.html">AddShipExplosionToBuffer</a> adds a 50-cluster, 200-particle explosion cloud to the particle data buffer, and <a href="/source/main/subroutine/addsparkcloudtobuffer.html">AddSparkCloudToBuffer</a> adds a cloud of 150 spark particles, all just in front of the player's highest flying position on-screen (so this is above the ship if it is flying low along the ground). You can see both of these explosions in action in <a href="https://youtu.be/oqr9zHwYLpM?t=113">this YouTube video of a pre-release version of Lander</a>, from which this still is taken:
+
+							<img class="titleImage lightBorder" style="width: 300px" src="/images/deep_dives/unused_code/fireworks.png" alt="A still from a video showing a pre-release version of Acorn Archimedes Lander" />
+
+ 							In the video there are a few huge explosion clouds (as shown above), and then there's a sequence of spark clouds. They look like fireworks erupting around the ship, so perhaps these were early versions of the explosion animation that were later dropped?</li>
+
+							<li><a href="/source/main/subroutine/spawnrock.html">SpawnRock</a> spawns a rock in the sky, but at half the altitude of the rocks in the released game's <a href="/source/main/subroutine/droprocksfromthesky.html">DropRocksFromTheSky</a> routine. Perhaps the lower rocks were found to be a bit too hard, with the higher altitude giving the player a bit more time to avoid the onslaught.</li>
+
+							<li><a href="/source/main/subroutine/transposerotationmatrix.html">TransposeRotationMatrix</a> is an interesting routine. It transposes a matrix, which in the context of Lander means that it transposes the rotation matrix, as this is the only matrix in the game. Transposing a matrix does this to the matrix structure:
+
+<pre class="articleIndented">  [ x1 x2 x3 ]      [ x1 y1 z1 ]
+  [ y1 y2 y3 ]  ->  [ x2 y2 z2 ]
+  [ z1 z2 z3 ]      [ x3 y3 z3 ]
+</pre>
+							In other words, it reflects the matrix across the diagonal from the top-left corner to the bottom-right. For rotation matrices, this process reverses the rotation that the matrix represents, so in the case of Lander, the transpose of the rotation matrix would represent the inverse rotation of the player's ship. So instead of the rotation matrix rotating the ship to the correct orientation, the transpose would rotate the rest of the world in the opposite direction. If Lander was ever going to have a ship-centric flight model like Elite, where the ship would stay stationary while the rest of the world rotated around it, then this routine would be at the centre of it.<br /><br />
+
+							As David Braben said in his article <a href="in_david_brabens_own_words.html">in The Micro User</a>:
+
+							<blockquote class="articleIndented">
+								<p>"Also speed considerations restricted the direction of view to a constant (to avoid the overhead of additional rotating and clipping), although on very early versions of the game this was not the case (this code was used to produce the Union Jack demo, which can rotate about any axis)."</p>
+							</blockquote>
+
+							So this routine is possibly a leftover from the fully rotating version of Lander. Now there's a thought...</li>
+
+							<li><a href="/source/main/subroutine/addvectors.html">AddVectors</a> is notable not because of what it does (it adds two vectors), but how it does it. This routine contains the only example of self-modifying code in the whole codebase, though it looks as if the modifying was only done to make it easier to test different vector additions. Luckily this code isn't used, and the rest of Lander remains free of code that hacks itself.</li>
+
+							<li><a href="/source/main/subroutine/addvectorswithfeedback.html">AddVectorsWithFeedback</a> adds a delta vector to a coordinate and updates the delta with feedback from the coordinate value. This might have been used to add some kind of damping - perhaps it's an early example of the much simpler pitch and rotation damping that's implemented in <a href="/source/main/subroutine/moveanddrawplayer_part_1_of_5.html">part 1 of the MoveAndDrawPlayer routine</a>?</li>
+
+							<li><a href="/source/main/subroutine/multiplyvectorbyconstant.html">MultiplyVectorByConstant</a> does what it says - it rotates a vector by a constant value, using the same shift-and-add multiplication algorithm as in the rest of the code.</li>
+
+							<li><a href="/source/main/variable/greycolourwords.html">greyColourWords</a> and <a href="/source/main/variable/greycolourwordsaddr.html">greyColourWordsAddr</a> define a table of unused grey colour words. Was this part of a different lighting model, or old code for setting brightness levels depending on distance? Who knows.</li>
+
+							<li><a href="/source/main/variable/objectpyramid.html">objectPyramid</a> is the object blueprint for object type 0 (see the deep dive on <a href="object_blueprints.html">object blueprints</a> for more details). Object type 0 is never used, so this multi-coloured, rotating pyramid never appears in-game. Like the rock object, the pyramid rotates according to the main loop counter, so if you hack the code to make it appear, it spins around of its own accord. Was this an early version of the code that powers the rotating radar installations in Zarch? It's certainly along the right lines.</li>
+
+							<li><a href="/source/main/subroutine/printhexnumber.html">PrintHexNumber</a> and <a href="/source/main/subroutine/printhexdigit.html">PrintHexDigit</a> are debugging routines that print hexadecimal numbers in the score bar. These were presumably used for debugging purposes during development.</li>
+						</ul>
+
+						<p>Alas, there aren't any hidden messages or Easter eggs in Lander, but a rotating pyramid isn't a bad consolation prize.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="comparing_lander_to_zarch.html">Comparing Lander to Zarch</a><a class="next" rel="next" title="Next page" href="landers_origins_on_the_arm1.html">Lander's origins on the ARM1</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

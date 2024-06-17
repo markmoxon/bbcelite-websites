@@ -1,0 +1,168 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "jumps_and_drops.html", "Jumps and drops", "Jumps and drops", "A deep dive into jumps and drops in BBC Micro Revs", "revs", "deep_dives_driving_model", "jumps_and_drops");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="skidding.html">Skidding</a><a class="next" rel="next" title="Next deep dive" href="modelling_the_engine.html">Modelling the engine</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Jumping over the verge and dropping down from the retrieval crane</h2>
+
+						<p>This article details the calculations that the driving model performs when the car is jumping or being dropped from the crane. It is designed to be read alongside the <a href="the_core_driving_model.html">core driving model calculations</a>.</p>
+
+						<p>The following is done as part of <a href="the_core_driving_model.html#calculation21">calculation 21 in the core driving model</a>. The code for the following is in the <a href="/source/main/subroutine/applyelevation_part_1_of_5.html">ApplyElevation</a> routine, and the aim of this calculation is to calculate the y-coordinate of the car (i.e. its elevation).</p>
+
+						<h2 class="articleSubheader">Applying lift to the nose<br />
+													 -------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyelevation_part_1_of_5.html">ApplyElevation (Part 1 of 5)</a></i></p>
+
+						<p>We start by calculating the amount that the car nose moves up or down, according to whether we are accelerating or braking. This is stored in the liftFromTorque variable, which is in the range -5 to +3. A positive value of liftFromTorque means the nose is being pulled up, and the horizon and all 3D objects get drawn lower on the screen.</p>
+
+						<p>The value of liftFromTorque is only changed if the car is on the ground. The logic is as follows:</p>
+
+						<ul>
+							<li>The horizon goes down when we are not in reverse, we are applying the throttle and engine torque is non-zero (i.e. we pull the nose of the car up by incrementing liftFromTorque, to a maximum of 3).</li>
+
+							<li>The horizon goes up when we are not in reverse, we are applying the brakes and we are moving (i.e. we push the nose of the car down by decrementing liftFromTorque, to a minimum of -5).</li>
+
+							<li>Otherwise, we gradually bring the nose back to the normal level of zero, with the value incrementing towards zero at twice the rate that it decrements towards zero (so the nose rises at twice the speed that it falls, as the suspension springs are more powerful than gravity.</li>
+						</ul>
+
+						<p>The value of liftFromTorque is used in the calculation of the player's pitch angle below, which affects the position of the horizon line.</p>
+
+						<h2 class="articleSubheader">Calculate the player's heading<br />
+													 ------------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyelevation_part_2_of_5.html">ApplyElevation (Part 2 of 5)</a></i></p>
+
+						<p>Next up, we calculate the values of playerHeading and playerSideways, which are to do with the direction the player is facing on the track.</p>
+
+						<ul>
+							<li>playerHeading is the player's yaw angle, relative to the direction of the track, where a heading of 0 means the player is pointing straight along the track.</li>
+
+							<li>playerSideways contains the following information:
+
+								<ul>
+									<li>If playerSideways &lt; 40, then the player's car is facing forwards or backwards along the track</li>
+
+									<li>If playerSideways >= 40, then the player's car is facing sideways, relative to the direction of the track</li>
+								</ul>
+							</li>
+						</ul>
+
+						<h2 class="articleSubheader">Calculate the player's pitch angle<br />
+													 ----------------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyelevation_part_3_of_5.html">ApplyElevation (Part 3 of 5)</a></i></p>
+
+						<p>We now calculate playerPitchAngle, the player's pitch angle. We start by setting A to the elevation change of the car due to the sideways angle of the car in the current segment, and then we calculate the angle as follows:</p>
+
+<pre class="articleIndented">  playerPitchAngle = (  A
+                      + bumpyGrassHeight
+                      + liftFromTorque
+                      + yJumpHeight
+                      + playerPitchAngle) / 2
+</pre>
+
+						<p>So playerPitchAngle contains its previous value, plus four factors that affect the car height, and then we halve the sum before storing the result in playerPitchAngle. This approach slows down the rate of change in playerPitchAngle by 50%, so the horizon doesn't judder as much as it would if we just set playerPitchAngle to the sum of the four other factors</p>
+
+						<p>Incidentally, the value of playerPitchAngle affects everything that is drawn on-screen. The <a href="/source/main/subroutine/getobjpitchangle.html">GetObjPitchAngle</a> routine, which calculates the pitch angle of a 3D object, contains the following code when returning the pitch angle in LL:</p>
+
+<pre class="articleIndented">  SEC
+  SBC playerPitchAngle
+  STA LL
+</pre>
+
+						<p>This subtracts playerPitchAngle from the pitch angle that's returned. This means that higher values of playerPitchAngle result in lower pitch angles for all objects, moving them all down the screen (as higher pitch angles are higher up the screen). And because the same routine is used to calculate pitch angles for track sections and track segments, which in turn are used to determine the position of the horizon in horizonLine, changing the value of playerPitchAngle also moves the horizon line up and down by the same amount.</p>
+
+						<p>Or, to put it another way, increasing any of the elements in the above sum - such as increasing the lift of the nose in liftFromTorque, or jumping higher in yJumpHeight - will push everything in the track view down the screen, just as you would expect.</p>
+
+						<p>We also take this opportunity to calculate the spin pitch angle. This contains the rate of change in the pitch angle (so it's the amount of spin around the x-axis). The calculation is as follows:</p>
+
+<pre class="articleIndented">  spinPitchAngle = playerPitchAngle - previous value of playerPitchAngle
+</pre>
+
+						<p>So the spin pitch angle is literally the change in the player's pitch angle between this iteration and the last one.</p>
+
+						<h2 class="articleSubheader">Apply gravity<br />
+													 -------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyelevation_part_4_of_5.html">ApplyElevation (Part 4 of 5)</a></i></p>
+
+						<p>We now apply gravity to the car. During the previous steps in the driving model, the values of yGravityDelta and yJumpHeight can be set to implement a jump; <a href="/deep_dives/driving_on_grass.html#calculation5">calculation 5</a> is a good example, where the jump height is set if we hit the track verge. We now take those values and apply gravity to them.</p>
+
+						<p>We start by decrementing and clipping yGravityDelta, which is the distance in the y-axis that the car would fall if the track wasn't there:</p>
+
+<pre class="articleIndented">  yGravityDelta = max(yGravityDelta - 4, -56)
+</pre>
+
+						<p>If there aren't any other jumps or bounces happening, and the car is on the ground, then yGravityDelta gets set to 0 at the start of the ApplyElevation routine, so the above sets yGravityDelta to -4. If any jumps or bounces are in progress, then this decreases yGravityDelta by 4 on each iteration, simulating the downward acceleration due to gravity's pull.</p>
+
+						<p>If the car falls past ground level, then we calculate the following to make the car bounce upwards by half the rate that it's falling, and apply a small amount of yaw:</p>
+
+<pre class="articleIndented">  yGravityDelta = |yGravityDelta| / 2
+
+  yJumpHeight = |yGravityDelta| / 4
+
+  spinYawAngleHi = spinYawAngleHi &gt;&gt; 1 with bit 7 set
+
+  heightAboveTrack = 1
+</pre>
+
+						<p>and we make the crash/contact sound to indicate that we've just hit the ground.</p>
+
+						<p>If, on the other hand, the car is still above ground, we apply gravity as follows:</p>
+
+<pre class="articleIndented">  heightAboveTrack = heightAboveTrack + yGravityDelta
+</pre>
+
+						<p>which changes the height of the car above the track by the gravity delta (which will push the car up if it's been set to bounce up, or pull the car down otherwise).</p>
+
+						<p>Note that while the value of heightAboveTrack is typically set by the driving model routine in this way, when we crash, heightAboveTrack gets set to 127 by the <a href="/source/main/subroutine/checkforcrash.html">CheckForCrash</a> routine. If this is an Amateur or Professional race then the race ends then and there, and if this is a practice or qualifying lap then <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> gets called, which sets heightAboveTrack back to 0. But if this is a Novice race, then the main driving loop is restarted without calling ResetVariables, so the value of 127 is retained and when we rejoin the race, we do so from this height above the track, and the gravity routines here simulate being dropped from the retrieval crane.</p>
+
+						<h2 class="articleSubheader">Calculate the car's y-coordinate<br />
+													 --------------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyelevation_part_5_of_5.html">ApplyElevation (Part 5 of 5)</a></i></p>
+
+						<p>The final step is to calculate the new y-coordinate (i.e. the elevation) of the car within the 3D world, as follows:</p>
+
+<pre class="articleIndented">  (yPlayerCoordTop yPlayerCoordHi) =   (ySegmentCoordIHi ySegmentCoordILo)
+                                     + carProgress * yTrackSegmentI
+                                     + heightAboveTrack * 4
+                                     + 172
+</pre>
+
+						<p>This adds the following elements to get the y-coordinate in (yPlayerCoordTop yPlayerCoordHi):</p>
+
+						<ul>
+							<li>(ySegmentCoordIHi ySegmentCoordILo) is the y-coordinate of the current track segment</li>
+
+							<li>carProgress * yTrackSegmentI is the proportion of the height change across the segment for a car that is carProgress of the way through that segment</li>
+
+							<li>heightAboveTrack * 4 is the value of heightAboveTrack that's been calculated throughout the driving model</li>
+
+							<li>172 is added to ensure that the calculated y-coordinate is always positive, as otherwise having large negative values of the other elements might give us a negative y-coordinate, which would be incorrectly interpreted as an extremely high elevation</li>
+						</ul>
+
+						<p>And that brings us to the end of the jump and drop calculations.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="skidding.html">Skidding</a><a class="next" rel="next" title="Next deep dive" href="modelling_the_engine.html">Modelling the engine</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

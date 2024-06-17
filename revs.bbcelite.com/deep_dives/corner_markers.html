@@ -1,0 +1,135 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "corner_markers.html", "Corner markers", "Corner markers", "A deep dive into corner markers in BBC Micro Revs", "revs", "deep_dives_track", "corner_markers");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="road_signs.html">Road signs</a><a class="next" rel="next" title="Next deep dive" href="data_structures_for_the_track_calculations.html">Data structures for the track calculations</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">What the little markers by the trackside tell us about driving around corners</h2>
+
+						<p>Corner markers are small flags that sit by the track verge. They can appear on straight track sections, where three consecutive markers (white, white, red) indicate that we're getting towards the end of the section, and they can appear on curved track sections, in which case a single red marker indicates the halfway point around the corner. They can appear on either side of the track - or, technically, on both sides at once, though Silverstone does not make use of this feature.</p>
+
+						<p>You can see a corner marker on the left in the following picture; this is a single red marker that indicates the halfway point through the left curve that the cars are on.</p>
+
+						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/general/Revs.png" alt="BBC Micro Revs screenshot" />
+
+						<p>Let's see how corner markers are implemented.</p>
+
+						<h2 class="articleSubheader">Marker colours<br />
+													 --------------</h2>
+
+						<p>The logic behind the corner markers is spread out across a number of places in the code, but the key part is in the <a href="/source/main/subroutine/gettracksegment_part_1_of_3.html">GetTrackSegment</a> routine. When a new segment is added to the track segment buffer by this routine, the segment's flags are calculated. They are based on the flags for the section containing that segment, but with changes that are specific to that particular segment. These segment flags are then stored are stored in the <a href="/source/main/workspace/main_variable_workspace.html#segmentflags">segmentFlags</a> table as part of the track segment buffer - see the deep dive on <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> for more about the buffer.</p>
+
+						<p>Let's see how the segment flags are built from the section flags. The section flags come from the second track section data block in the track data file (see the deep dive on <a href="the_track_data_file_format.html">the track data file format</a> for details), and specifically from the <a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">trackSectionFlag</a> byte, which contains the following flags that are relevant to corner markers:</p>
+
+						<ul>
+							<li>Bit 3: Show corner markers on right
+
+								<ul>
+									<li>0 = do not show corner markers to the right of the track</li>
+
+									<li>1 = show corner markers to the right of the track</li>
+								</ul>
+							</li>
+
+							<li>Bit 4: Show corner markers on left
+
+								<ul>
+									<li>0 = do not show corner markers to the left of the track</li>
+
+									<li>1 = show corner markers to the left of the track</li>
+								</ul>
+							</li>
+
+							<li>Bit 5: Corner marker colours
+
+								<ul>
+									<li>0 = show all corner markers in white</li>
+
+									<li>1 = show corner markers in red or white, as appropriate</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/gettracksegment_part_2_of_3.html">Part 2 of the GetTrackSegment routine</a> decides whether or not the segment being added to the track segment buffer should have a corner marker associated with it, and alters the segment flags for that segment accordingly. For example, if the segment does not have a corner marker, then bits 3 and 4 in that segment's flags will get cleared. Or if the segment has a marker but it should be white, which is the case for the first two markers at the end of each straight segment, then bit 5 will get cleared.</p>
+
+						<p>The logic is as follows:</p>
+
+						<ul>
+							<li>For straight sections, a segment potentially gets a corner marker if its position within the section is exactly 7, 14 or 21 segments before the end of the section, with the markers at 21 and 14 segments being white (bit 5 clear), and the marker at 7 segments inheriting the section's bit 5 setting (so it's red if bit 5 is set, white otherwise)</li>
+
+							<li>For curved sections, the segment that is halfway through the curve potentially gets a corner marker (i.e. the segment whose number is half the section's trackSectionSize value), with the marker colour determined by bit 5 (red if set, white otherwise)</li>
+						</ul>
+
+						<p>The reason that segments only <i>potentially</i> get corner markers is that the section flags override everything. So a section whose bits 3 and 4 are clear in their <a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">trackSectionFlag</a> in the track data file will never show any corner markers at all, while a section with bit 3 clear and bit 4 set will show one or more markers on the left side of the track, as determined by the section shape. Bit 5, meanwhile, controls the colour of the last marker (for straights) or the only marker (for curves); if it's clear, all markers in the section are white, but if it's set, then the last marker (for straights) or the only marker (for curves) is shown in red. The first two markers in a straight are always shown in white.</p>
+
+						<p>That covers the colour and configuration of the corner markers, so let's finish off by looking at the coordinates of these markers.</p>
+
+						<h2 class="articleSubheader">Marker coordinates<br />
+													 ------------------</h2>
+
+						<p>Unlike verge coordinates, marker coordinates are not stored in the track segment buffer; the only marker-specific data in the track segment buffer are the relevant segment flags. Instead, there is a marker buffer that stores the details of up to three corner markers. You can configure six markers to appear at once, by setting both bits 3 and 4 for a straight section in the section's <a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">trackSectionFlag</a>, but only three of them will appear at any one time; the Silverstone track does not set markers to appear on both sides of the track at once, so this never an issue in the released game.</p>
+
+						<p>To support these markers, there's a dedicated set of tables and variables for storing the details of up to three of them, as follows:</p>
+
+						<ul>
+							<li><a href="/source/main/workspace/zero_page.html#markerstodraw">markersToDraw</a> contains the number of markers that we need to draw on-screen (0 to 3)</li>
+
+							<li>The <a href="/source/main/variable/markerlistindex.html">markerListIndex</a> table contains the index of each marker's segment in the track segment list (one entry per marker)</li>
+
+							<li>The <a href="/source/main/variable/markerdata.html">markerData</a> table contains the masked segment flags for each marker (one entry per marker)</li></li>
+
+							<li>The (<a href="/source/main/variable/xmarkerhi.html">xMarkerHi</a> <a href="/source/main/variable/xmarkerlo.html">xMarkerLo</a>) tables contain the verge width where the marker should be shown (one 16-bit entry per marker)</li>
+						</ul>
+
+						<p>The <a href="/source/main/subroutine/getvergeandmarkers_part_1_of_4.html">GetVergeAndMarkers</a> routine is responsible for populating the above. It does during the verge calculations described in the deep dive on <a href="the_track_verges.html">the track verges</a>. The first two bits of data are obvious enough, but let's take a quick look at the other two, markerData and (xMarkerHi xMarkerLo).</p>
+						
+						<p>There are more details about the flags that we store in markerData in the aforementioned deep dive on <a href="the_track_verges.html">the track verges</a>, but to summarise, the masked segment flags in markerData contain the following data when we are processing the right verge:</p>
+
+						<ul>
+							<li>Bit 0 (section shape)</li>
+
+							<li>Bit 2 (colour of right verge marks)</li>
+
+							<li>Bit 3 (show right corner markers)</li>
+
+							<li>Bit 5 (corner marker colours)</li>
+						</ul>
+
+						<p>And they contain these bits of data when we are processing the left verge:</p>
+
+						<ul>
+							<li>Bit 0 (section shape)</li>
+
+							<li>Bit 1 (colour of left verge marks)</li>
+
+							<li>Bit 4 (show left corner markers)</li>
+
+							<li>Bit 5 (corner marker colours)</li>
+						</ul>
+
+						<p>Three of these are relevant to the corner marker calculations (the exception being the verge mark colour flags). See the deep dive on <a href="the_track_data_file_format.html">the track data file format</a> for more about the track section and segment flags.</p>
+
+						<p>The last bit of data is (xMarkerHi xMarkerLo), which  contains the verge width, for use when calculating the marker coordinates (see the deep dive on <a href="the_track_verges.html">the track verges</a> for details of the calculations behind this value). For straight sections, the verge width is stored unaltered in (xMarkerHi xMarkerLo), but for curved sections, the verge width is halved before being stored in (xMarkerHi xMarkerLo). The value in (xMarkerHi xMarkerLo) is doubled when it is read in the <a href="/source/main/subroutine/drawcornermarkers.html">DrawCornerMarkers</a> routine, so this means that the single corner markers in the middle of curved sections appear right on the edge of the verge, while the markers for straight sections have a gap between them and the verge, with that gap being equal to the verge width.</p>
+
+						<p>When drawing the corner markers, the DrawCornerMarkers routine sets the correct palette for the marker, depending on the marker's markerData entry, so the marker is drawn in red or white as required. It then takes the coordinates of the associated segment (which are stored at index <a href="/source/main/variable/markerlistindex.html">markerListIndex</a> in the track segment list), and adds the value in (xMarkerHi xMarkerLo), doubled, to get the x-coordinate of the marker. It then gets the y-coordinate from the segment's <a href="/source/main/variable/yvergeright.html">yVergeRight</a> value in the track segment buffer, and calls <a href="/source/main/subroutine/drawobject.html">DrawObject</a> to draw an object of type 6.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="road_signs.html">Road signs</a><a class="next" rel="next" title="Next deep dive" href="data_structures_for_the_track_calculations.html">Data structures for the track calculations</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,95 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_lander_memory_map.html", "The Lander memory map", "The Lander memory map", "A deep dive into the memory map in Archimedes Lander", "lander", "deep_dives_structure", "the_lander_memory_map");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="index.html">Index of deep dives</a><a class="next" rel="next" title="Next page" href="main_game_loop.html">The main game loop</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Memory usage and squeezing Lander into the unexpanded Archimedes 305</h2>
+
+						<p>Compared to the memory-intensive Elite, David Braben's previous game, the memory available to Lander feels positively spacious - the BBC Micro had just 32K compared to 512K in the smallest model in the original Archimedes range. But even with all this extra RAM, Lander has to be careful with how it consumes its memory. Here we take a look at the memory map for Lander.</p>
+
+						<p>In the Archimedes, any physical RAM installed in the machine is mapped by the memory controller (MEMC) into various parts of the first 32MB of the memory map, which runs from 0 to &amp;2000000. As the maximum amount of physical RAM on an Archimedes is only 4MB, there is plenty of space in the 32MB memory map that isn't mapped to physical memory, and trying to access this will give the "Abort on data transfer" error that is familiar to anyone who has done any coding on the early ARM chips.</p>
+
+						<p>The currently running application is always mapped to &amp;00008000 - so in terms of Lander, that's the main game code and all of its workspace and buffer RAM, including the game's own stack. Screen memory is mapped to the top of the memory map, ending at &amp;01FFFFFF. As Lander needs two banks of screen memory with 80K for each bank, this means the two screen memory banks live at &amp;01FD8000 and &amp;01FEC000. The operating system allocates various other memory blocks on top of these, such as the system heap, the sprite area and so on, and the first 32K of the memory map from 0 to &amp;00007FFF is always reserved for the system workspace.</p>
+
+						<p>The application is allocated whatever memory is left once everything else has taken a bite. As a result, when running Lander on the Archimedes A305 with its relatively modest 512K of memory, you have to quit the desktop and run a utility called USEGAME before the game will run. USEGAME unplugs the modules containing the font and window managers, disables the desktop and sets the screen size to exactly 160K, thereby leaving just enough free memory for the game itself. Lander itself requires a minimum of 172K of application RAM, as the game takes up memory from &amp;00008000 to &amp;00032FF0, which is just eight bytes shy of 172K.</p>
+
+						<p>Here's the memory map for Lander:</p>
+
+<pre class="articleIndented">  +--------------------------------------+   &amp;01FFFFFF
+  |                                      |
+  | Screen bank 1                        |
+  |                                      |
+  +--------------------------------------+   &amp;01FEC000
+  |                                      |
+  | Screen bank 2                        |
+  |                                      |
+  +--------------------------------------+   &amp;01FD8000
+  |                                      |
+  .                                      .
+  .                                      .
+  .                                      .
+  .                                      .
+  .                                      .
+  |                                      |
+  +--------------------------------------+   &amp;00032FF0
+  |                                      |
+  | Graphics buffers (12 * 4308 bytes)   |
+  |                                      |
+  +--------------------------------------+   &amp;00026600
+  |                                      |
+  | Object map (256 * 256 bytes)         |
+  |                                      |
+  +--------------------------------------+   &amp;00016600 = objectMap
+  |                                      |
+  | &amp;00016580 - &amp;000165FC unused         |
+  |                                      |
+  +--------------------------------------+   &amp;00016580
+  |                                      |
+  | Particle data buffer (484 * 8 words) |
+  |                                      |
+  +--------------------------------------+   &amp;00012900 = particleData
+  |                                      |
+  | Variable workspace                   |
+  |                                      |
+  +--------------------------------------+   &amp;00012200 = workspace
+  |                                      |
+  | Descending stack (128 words)         |
+  |                                      |
+  +--------------------------------------+   &amp;00012000
+  |                                      |
+  | &amp;00011A10 - &amp;00011FFC unused         |
+  |                                      |
+  +--------------------------------------+   &amp;00011A10 = end of <a href="/source/main/variable/divisiontable.html">divisionTable</a>
+  |                                      |
+  | Main game code                       |
+  |                                      |
+  +--------------------------------------+   &amp;00008000 = <a href="/source/main/variable/landscapeoffset.html">landscapeOffset</a>
+  |                                      |
+  | System workspace                     |
+  |                                      |
+  +--------------------------------------+   &amp;00000000
+</pre>
+
+						<p>There isn't a lot of unused space in there, though there are some unused routines in the code, and a block of unused memory after the main game code and before the stack.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="index.html">Index of deep dives</a><a class="next" rel="next" title="Next page" href="main_game_loop.html">The main game loop</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

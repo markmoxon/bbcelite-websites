@@ -1,0 +1,107 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("hacks", "teletext_elite.html", "Technical information for Teletext Elite", "Technical information for Teletext Elite", "Details of how Elite was converted to use teletext", "elite", "hacks_teletext_elite", "technical_information");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="teletext_elite_instructions.html">Instructions for Teletext Elite</a><a class="next" rel="next" title="Next page" href="bbc_elite_with_music.html">BBC Micro Elite... with music!</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Details of how Elite was converted to use teletext</h2>
+
+						<img class="titleImage" style="width: 310px" src="/images/teletext_elite/station_view.png" alt="Teletext Elite rear space view" />
+
+						<p>Under the hood, Teletext Elite is identical to the disc version of BBC Micro Elite, but instead of setting up a mode 4/5 split-screen mode and poking pixels into screen memory, we stay in mode 7 and poke sixels and text characters into screen memory.</p>
+
+						<p>To make this process easier, we can scale from the original mode 4/5 screen pixels to mode 7 sixels as follows:</p>
+
+						<ul>
+							<li>The original Elite screen mode is 256x248 pixels, with 256x192 pixels for the space view and 256x56 pixels for the dashboard (see the deep dive on <a href="/deep_dives/the_split-screen_mode.html">the split-screen mode</a> for details).</li>
+
+							<li>Mode 7 is 40x25 characters, with columns 0 to 39 and rows 0 to 24. Each character is three sixels high by two sixels wide, so that gives us a resolution of 80x75 sixels.</li>
+
+							<li>A quick divide-by-4 converts the 256x192 pixels of the space view into 64x48 sixels (i.e. 16 mode 7 character rows of 32 characters each).</li>
+
+							<li>This leaves nine mode 7 character rows, which I split between the title, message bar and dashboard. This gives seven character rows for the dashboard, which works out at exactly one character row for each of the seven controls.</li>
+
+							<li>The space view is not a full screen width - it's 32 characters out of 40 - but because it is sandwiched between two full-width blue title bars, it feels a lot wider than 64 sixels.</li>
+
+							<li>The space view in the original game is 192 pixels high, which equates to 24 standard character rows in mode 4, so to accommodate screens like the Status Mode screen and Market Prices screen, we have to use the whole mode 7 screen height.</li>
+						</ul>
+
+						<p>Here's a summary of the mode 7 screen structure in the space view, during flight:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th style="width: 16ch">Character row</th><th>Contents</th></tr>
+							<tr><td>0</td><td>Title row showing the space view name and hyperspace countdown</td></tr>
+							<tr><td>1-16</td><td>16 rows for the space view (48 vertical sixels mapped to 192 pixels via a factor of 4)</td></tr>
+							<tr><td>17</td><td>Message row showing current in-flight message</td></tr>
+							<tr><td>18-24</td><td>7 rows for the dashboard (one row per control)</td></tr>
+						</table>
+
+						<p>And here's the structure of the trade screens and charts:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th style="width: 16ch">Character row</th><th>Contents</th></tr>
+							<tr><td>0</td><td>Galfax header</td></tr>
+							<tr><td>2</td><td>Title row showing the current screen name</td></tr>
+							<tr><td>3-24</td><td>Contents (text and graphics)</td></tr>
+						</table>
+
+						<p>Next, here's a full list of routines that poke into screen memory; these are the core routines that have been modified in Teletext Elite to poke sixels and text instead of pixels. The links will take you to the source code for the original disc version, without the Teletext modifications (to see the latter, see below for information on <a href="#source">exploring the Teletext Elite source code</a>).</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Routine</th><th>Purpose</th></tr>
+							<tr><td><a href="/disc/flight/subroutine/loin_part_1_of_7.html">LOIN</a></td><td>Draw a line</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/hloin.html">HLOIN</a></td><td>Draw a horizontal line</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/px3.html">PX3</a></td><td>Plot a single pixel at (X, Y) within a character block</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/pixel.html">PIXEL</a></td><td>Draw a 1-pixel dot, 2-pixel dash or 4-pixel square</td></tr>
+							<tr><td><a href="/disc/docked/subroutine/chpr.html">CHPR</a></td><td>Print a character at the text cursor (docked)</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/tt26.html">TT26</a></td><td>Print a character at the text cursor (flight)</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/clyns.html">CLYNS</a>/<a href="/disc/flight/subroutine/lyn.html">LYN</a></td><td>Clear the bottom three text rows of the mode 4 screen</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/cpix2.html">CPIX2</a></td><td>Draw a single-height dash on the dashboard</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/dilx.html">DILX</a></td><td>Update a bar-based indicator on the dashboard</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/dil2.html">DIL2</a></td><td>Update the roll or pitch indicator on the dashboard</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/msbar.html">MSBAR</a></td><td>Draw a specific indicator in the dashboard's missile bar</td></tr>
+							<tr><td><a href="/disc/docked/subroutine/hanger.html">HANGER</a></td><td>Display the ship hangar</td></tr>
+							<tr><td><a href="/disc/docked/subroutine/has2.html">HAS2</a></td><td>Draw a hangar background line from left to right</td></tr>
+							<tr><td><a href="/disc/docked/subroutine/has3.html">HAS3</a></td><td>Draw a hangar background line from right to left</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/scan.html">SCAN</a></td><td>Display the current ship on the scanner</td></tr>
+							<tr><td><a href="/disc/flight/subroutine/shppt.html">SHPPT</a></td><td>Draw a distant ship as a point rather than a full wireframe</td></tr>
+						</table>
+
+						<p>Finally, in addition to the above, the loader has been updated in a few important places, to disable the split-screen mode and plot sixels for the Saturn loading screen instead of pixels:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Routine</th><th>Purpose</th></tr>
+							<tr><td><a href="/disc/loader_3/variable/b_per_cent.html">B%</a></td><td>VDU commands for setting the square mode 4 screen</td></tr>
+							<tr><td><a href="/disc/loader_3/subroutine/irq1.html">IRQ1</a></td><td>The main screen-mode interrupt handler</td></tr>
+							<tr><td><a href="/disc/loader_3/subroutine/pix.html">PIX</a></td><td>Draw a single pixel at a specific coordinate</td></tr>
+						</table>
+
+						<p>You can see every single modification made in Teletext Elite in the source code (see the next section).</p>
+
+						<h2 class="articleSubheader"><a name="source" id="source" class="anchor"></a>Exploring the Teletext Elite source code<br />
+													 ----------------------------------------</h2>
+
+						<p>The source code for Teletext Elite is available for you to explore. It is fully documented and fully buildable on modern computers, and includes labelled modifications in the main game's source code so you can see exactly how I modified the original disc version of Elite to bring it into the world of sixels.</p>
+
+						<p>To see the source and learn how to build Teletext Elite on your own machine, visit the project's <a href="https://github.com/markmoxon/teletext-elite">GitHub repository</a>.</p>
+						
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="teletext_elite_instructions.html">Instructions for Teletext Elite</a><a class="next" rel="next" title="Next page" href="bbc_elite_with_music.html">BBC Micro Elite... with music!</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

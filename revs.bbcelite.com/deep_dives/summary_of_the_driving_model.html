@@ -1,0 +1,545 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "summary_of_the_driving_model.html", "An overview of the driving model", "An overview of the driving model", "A deep dive into the driving model in BBC Micro Revs", "revs", "deep_dives_driving_model", "summary_of_the_driving_model");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_snetterton_track.html">The Snetterton track</a><a class="next" rel="next" title="Next deep dive" href="the_core_driving_model.html">The core driving model</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Secrets of the sophisticated driving simulation that powers Revs</h2>
+
+						<p>When it was released in 1985, Revs boasted a number of features that were pretty unusual for their time, but which are now staples of the racing sim genre. The slick 3D graphics and low-slung cockpit view weren't unique - 1982's Chequered Flag on the ZX Spectrum can claim to have pioneered both of these - but their implementation in Revs was more impressive than most. Then you have the working wing mirrors, which was a very novel feature, and the game's support for analogue input, which was particularly rare in a world dominated by arcade games... though not many home computers of the era had a built-in analogue port like the BBC Micro, so perhaps that's more of a unique platform feature than anything else.</p>
+
+						<p>The addition of computer assisted steering in the 1986 Superior Software version was a genuine innovation, introducing a feature that would become a staple of keyboard-controlled racing sims for years to come, but hands-down the most ground-breaking feature of Revs was its sophisticated driving model. </p>
+
+						<p>Nobody had modelled the physics of motor racing to the extent that Geoff Crammond managed in Revs, and the access that he had to David Hunt and his racing team through Acorn's Formula 3 sponsorship deal meant he could really knuckle down on the engineering detail. Revs was by far the most realistic racing sim of its day, and its driving model still holds up today; check out this video on YouTube from GPLaps showing <a href="https://www.youtube.com/watch?v=vbe-xqGdqvw">how Revs performs when hooked up to a modern driving wheel</a> - the driving model still holds its own.</p>
+
+						<p>It's because of this sophisticated physics engine that Revs is regarded as the grandfather of the modern racing sim, so let's take a deeper look at what makes the driving model so special.</p>
+
+						<h2 class="articleSubheader">Summary of the driving model<br />
+													 ----------------------------</h2>
+
+						<p>In this deep dive and related articles, we're going to explore a detailed breakdown of the driving model, which is implemented in the <a href="/source/main/subroutine/applydrivingmodel.html">ApplyDrivingModel</a> routine. The model's calculations are complex and involve a number of stages, all of which are outlined in the table below.</p>
+
+						<p>Click on the description links to read more details about each stage, or click on the code links to see the relevant code. The description links will take you to the deep dive on <a href="the_core_driving_model.html">the core driving model</a>, which looks at the main parts of the model in detail. From there you will find links through to the other deep dives into the driving model, which cover <a href="driving_on_grass.html">driving on grass</a>, <a href="skidding.html">skidding</a>, <a href="jumps_and_drops.html">jumps and drops</a> and <a href="modelling_the_engine.html">modelling the engine</a>.</p>
+
+						<p>For now, though, here is the Revs driving model, in all its glory.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Stage</th><th>Description</th><th>Code</th></tr>
+							<tr><td><p>1</p></td><td><p><a href="the_core_driving_model.html#calculation1">Calculate the rotation matrix</a></p><p>Calculate the sin and cos of the player's yaw angle</p></td><td><p><a href="/source/main/subroutine/getrotationmatrix_part_1_of_5.html">GetRotationMatrix</a></p></td></tr>
+							<tr><td><p>2</p></td><td><p><a href="the_core_driving_model.html#calculation2">Rotate velocity into car's frame of reference</a></p><p>Apply a rotation matrix with these values to rotate the player's velocity vector into the car's frame of reference</p></td><td><p><a href="/source/main/subroutine/rotatecoordtocar.html">RotateCoordToCar</a></p></td></tr>
+							<tr><td><p>3</p></td><td><p><a href="the_core_driving_model.html#calculation3">Set speed-related variables</a></p><p>Set the player's speed and moving flag, and store the sideways velocity for later use</p></td><td><p><a href="/source/main/subroutine/applydrivingmodel.html">ApplyDrivingModel</a></p></td></tr>
+							<tr><td><p>4</p></td><td><p><a href="the_core_driving_model.html#calculation4">Set spin-related variables</a></p><p>Store the spin velocity for later use</p></td><td><p><a href="/source/main/subroutine/applyspinyaw.html">ApplySpinYaw</a></p></td></tr>
+							<tr><td><p>5</p></td><td><p><a href="the_core_driving_model.html#calculation5">Calculate height of bumpy grass</a></p><p>If we just hit the verge, jump the car, and if we are driving on grass, calculate the height of the bumpy ground</p></td><td><p><a href="/source/main/subroutine/applygrassortrack.html">ApplyGrassOrTrack</a></p></td></tr>
+							<tr><td><p>6</p></td><td><p><a href="the_core_driving_model.html#calculation6">Calculate wing and brake downward forces</a></p><p>Calculate the downward forces due to the wings and the brakes (if applied)</p></td><td><p><a href="/source/main/subroutine/applygrassortrack.html">ApplyGrassOrTrack</a></p></td></tr>
+							<tr><td><p>7</p></td><td><p><a href="the_core_driving_model.html#calculation7">Calculate engine torque</a></p><p>If the engine is not running, process the engine start, otherwise calculate the engine torque and revs, depending on the gear and throttle</p></td><td><p><a href="/source/main/subroutine/applyengine.html">ApplyEngine</a></p></td></tr>
+							<tr><td><p>8</p></td><td><p><a href="the_core_driving_model.html#calculation8">Calculate rear tyre forces</a></p><p>Calculate the forces due to the rear tyres, and whether the tyres are skidding</p></td><td><p><a href="/source/main/subroutine/applyspinyaw.html">ApplySpinYaw</a></p></td></tr>
+							<tr><td><p>9</p></td><td><p><a href="the_core_driving_model.html#calculation9">Apply rear tyre skidding</a></p><p>If the rear tyres are skidding, make the tyres squeal and update the tyre forces</p></td><td><p><a href="/source/main/subroutine/applytyresandskids.html">ApplyTyresAndSkids</a></p></td></tr>
+							<tr><td><p>10</p></td><td><p><a href="the_core_driving_model.html#calculation10">Calculate front tyre forces</a></p><p>Calculate the forces due to the front tyres, and whether the tyres are skidding</p></td><td><p><a href="/source/main/subroutine/applydrivingmodel.html">ApplyDrivingModel</a></p></td></tr>
+							<tr><td><p>11</p></td><td><p><a href="the_core_driving_model.html#calculation11">Apply front tyre skidding</a></p><p>If the front tyres are skidding, make the tyres squeal and update the tyre forces</p></td><td><p><a href="/source/main/subroutine/applysteeringspeed.html">ApplySteeringSpeed</a></p></td></tr>
+							<tr><td><p>12</p></td><td><p><a href="the_core_driving_model.html#calculation12">Apply resistance due to steering</a></p><p>Add the effect of steering to the forces on the front tyres</p></td><td><p><a href="/source/main/subroutine/applysteeringforce.html">ApplySteeringForce</a></p></td></tr>
+							<tr><td><p>13</p></td><td><p><a href="the_core_driving_model.html#calculation13">Calculate the spin delta</a></p><p>Calculate the amount of spin caused by the difference in the front and rear tyre forces</p></td><td><p><a href="/source/main/subroutine/scaletyreforces.html">ScaleTyreForces</a></p></td></tr>
+							<tr><td><p>14</p></td><td><p><a href="the_core_driving_model.html#calculation14">Scale the forces</a></p><p>Scale the tyre forces and store the results for use in the braking calculations in the next iteration of the main loop</p></td><td><p><a href="/source/main/subroutine/scaletyreforces.html">ScaleTyreForces</a></p></td></tr>
+							<tr><td><p>15</p></td><td><p><a href="the_core_driving_model.html#calculation15">Convert tyre and wing forces into acceleration</a></p><p>Apply Newton's second law of motion to convert the tyre forces into acceleration</p></td><td><p><a href="/source/main/subroutine/scaletyreforces.html">ScaleTyreForces</a></p></td></tr>
+							<tr><td><p>16</p></td><td><p><a href="the_core_driving_model.html#calculation16">Zero acceleration when jumping</a></p><p>If the car is jumping and not touching the ground, zero the acceleration and spin</p></td><td><p><a href="/source/main/subroutine/applydrivingmodel.html">ApplyDrivingModel</a></p></td></tr>
+							<tr><td><p>17</p></td><td><p><a href="the_core_driving_model.html#calculation17">Apply drag</a></p><p>Apply drag to the acceleration calculation from the car passing through the air</p></td><td><p><a href="/source/main/subroutine/applywingbalance.html">ApplyWingBalance</a></p></td></tr>
+							<tr><td><p>18</p></td><td><p><a href="the_core_driving_model.html#calculation18">Rotate velocity into world's frame of reference</a></p><p>Rotate the acceleration vector back into the world's 3D coordinate system, so we can apply it to the car's coordinates and velocity</p></td><td><p><a href="/source/main/subroutine/rotatecartocoord.html">RotateCarToCoord</a></p></td></tr>
+							<tr><td><p>19</p></td><td><p><a href="the_core_driving_model.html#calculation19">Update player velocity</a></p><p>Apply the calculated acceleration to the player's velocity in the 3D world</p></td><td><p><a href="/source/main/subroutine/updatevelocity.html">UpdateVelocity</a></p></td></tr>
+							<tr><td><p>20</p></td><td><p><a href="the_core_driving_model.html#calculation20">Update player coordinates</a></p><p>Apply the updated velocity to the player's coordinates in the 3D world</p></td><td><p><a href="/source/main/subroutine/applydeltas.html">ApplyDeltas</a></p></td></tr>
+							<tr><td><p>21</p></td><td><p><a href="the_core_driving_model.html#calculation21">Apply jumps and drops</a></p><p>Calculate the car's height above the ground, set the position of the horizon line, set the car's y-coordinate and pitch angle, and if we are jumping, apply gravity so the car drops and bounces when it hits the ground</p></td><td><p><a href="/source/main/subroutine/applyelevation_part_1_of_5.html">ApplyElevation</a></p></td></tr>
+						</table>
+
+						<p>To continue exploring, check out the deep dive on <a href="the_core_driving_model.html">the core driving model</a>.</p>
+
+<!--
+						<h2 class="articleSubheader">A summary of the whole routine<br />
+													 ------------------------------</h2>
+
+						<p>Here's a breakdown of the entire driving model, for reference. The comments here reflect those in the source code. For an explanation of the code, I recommend you follow the links from the table above, as this part is a bit terse.</p>
+
+						<p><a href="/source/main/subroutine/getrotationmatrix_part_1_of_5.html">GetRotationMatrix</a></p>
+
+						<ul>
+							<li>Calculate the cos and sin of the player's yaw angle into cosYawAngle and sinYawAngle</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/rotatecoordtocar.html">RotateCoordToCar</a></p>
+
+						<ul>
+							<li>Rotate the player's speed vector from the 3D world coordinate system to the frame of reference of the player's car:
+
+<pre class="articleIndented">[ xVelocity ]   [ cosYawAngle   0   -sinYawAngle ]   [ xPlayerSpeed ]
+[     -     ] = [      0        1         0      ] . [ yPlayerSpeed ]
+[ zVelocity ]   [ sinYawAngle   0    cosYawAngle ]   [ zPlayerSpeed ]
+</pre>
+							</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applydrivingmodel.html">ApplyDrivingModel</a></p>
+
+						<ul>
+							<li>(xPrevVelocityHi xPrevVelocityLo) = (xVelocityHi xVelocityLo)</li>
+
+							<li>(playerSpeedHi playerSpeedLo) = |zVelocity|</li>
+
+							<li>playerMoving =
+
+								<ul>
+									<li>0 if not moving</li>
+
+									<li>non-zero if moving (i.e. playerSpeedHi > 0 or playerSpeedLo AND %11110000 > 0)</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applyspinyaw.html">ApplySpinYaw</a></p>
+
+						<ul>
+							<li>xVelocity = xVelocity - (spinYawAngle * 0.34)</li>
+
+							<li>xSpinVelocity = spinYawAngle * 0.52</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applygrassortrack.html">ApplyGrassOrTrack</a></p>
+
+						<ul>
+							<li>If all the following are true:
+
+								<ul>
+									<li>There is grass under at least one side of the car</li>
+
+									<li>bumpyGrassHeight = 0</li>
+
+									<li>heightAboveTrack = 0</li>
+
+									<li>Bit 7 of playerDrift is set</li>
+								</ul>
+
+								then calculate the following to make the car jump when it hits the verge:
+
+								<ul>
+									<li>yGravityDelta = playerSpeedHi / 2</li>
+
+									<li>yJumpHeight = playerSpeedHi / 4</li>
+
+									<li>heightAboveTrack = heightAboveTrack + 1</li>
+
+									<li>spinYawAngleHi = spinYawAngleHi &gt;&gt; 1 with bit 7 set</li>
+								</ul>
+
+								and make the crash/contact sound
+							</li>
+
+							<li>If there is grass under at least one side of the car, then:
+
+								<ul>
+									<li>bumpyGrassHeight = random number in the range 1 to 7 that is higher with higher speeds</li>
+								</ul>
+
+								otherwise:
+
+								<ul>
+									<li>bumpyGrassHeight = 0</li>
+								</ul>
+							</li>
+
+							<li>For each wing, calculate the following:
+
+								<ul>
+									<li>If the brakes are not being applied, set brakeForce = 0, otherwise set:
+										<ul>
+											<li>brakeForce = -zTyreForceBoth / 8    (front wing)</li>
+
+											<li>brakeForce =  zTyreForceBoth / 8    (rear wing)</li>
+										</ul>
+									</li>
+
+									<li>If we are driving on grass on both sides of the car, then set:
+
+										<ul>
+											<li>wingForce = wingForceGrass + brakeForce</li>
+										</ul>
+
+										otherwise calculate:
+
+										<ul>
+											<li>wingForce = wingSetting * min(53, playerSpeedHi) * abs(zVelocity) + wingForceTrack + brakeForce</li>
+										</ul>
+									</li>
+
+									<li>wingForce95 = wingForce * 243 / 256 = wingForce * 0.95</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applyengine.html">ApplyEngine</a></p>
+
+						<ul>
+							<li>If the engine is not on, jump to <a href="/source/main/subroutine/processenginestart.html">ProcessEngineStart</a> to check for the "T" key press and start the engine</li>
+
+							<li>If heightAboveTrack &lt;&gt; 0, calculate the rev count and zero the engine torque</li>
+
+							<li>If a gear change key is being pressed, set bit 7 of clutchEngaged to indicate that the clutch is not engaged, calculate the rev count and zero the engine torque</li>
+
+							<li>If we are in neutral, calculate the rev count and zero the engine torque</li>
+
+							<li>Otherwise, calculate the engine torque based on gear ratio, power and revs, setting the engineTorque, revCount and soundRevTarget variables accordingly, including stalling the engine</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applytyresandskids.html">ApplyTyresAndSkids for tyre 1 (rear)</a></p>
+
+						<ul>
+							<li>If heightAboveTrack >= 2, stop the tyres from squealing</li>
+
+							<li>If heightAboveTrack < 2:
+
+								<ul>
+									<li>Call <a href="/source/main/subroutine/applytyreforces.html">ApplyTyreForces</a>:
+
+										<ul>
+											<li>If xVelocity is non-zero and xVelocity and xTyreForceNose for tyre X have the same sign, rotate a 1 into bit 7 of tyreSqueal for tyre X and finish</li>
+
+											<li>xTyreForceNose = -xVelocity * 2^5</li>
+
+											<li>Call <a href="/source/main/subroutine/gettyreforces.html">GetTyreForces</a>:
+
+												<ul>
+													<li>If the throttle is not being applied:
+
+														<ul>
+															<li>(NN MM) = scaled up zVelocity</li>
+
+															<li>H = zVelocityHi with the sign flipped</li>
+
+															<li>When we are processing the front tyres:
+
+																<ul>
+																	<li>(A T) = throttleBrake * wingForce * 3 / 4</li>
+																</ul>
+															</li>
+
+															<li>When we are processing the rear tyres:
+
+																<ul>
+																	<li>(A T) = throttleBrake * wingForce</li>
+																</ul>
+															</li>
+
+															<li>C flag clear</li>
+														</ul>
+													</li>
+
+													<li>If the throttle is being applied:
+
+														<ul>
+															<li>When we are processing the front tyres:
+
+																<ul>
+																	<li>C flag set</li>
+																</ul>
+															</li>
+
+															<li>When we are processing the rear tyres:
+
+																<ul>
+																	<li>H = gearNumber - 1</li>
+
+																	<li>(A T) = (throttleBrake * engineTorque) / 2</li>
+
+																	<li>C flag clear</li>
+																</ul>
+															</li>
+														</ul>
+													</li>
+												</ul>
+											</li>
+
+											<li>If the throttle is being applied and we are processing the front tyres, set:
+
+												<ul>
+													<li>zTyreForceNose = 0</li>
+
+													<li>A = |xTyreForceNoseHi|</li>
+												</ul>
+
+												otherwise:
+
+												<ul>
+													<li>If the throttle is being applied, then:
+
+														<ul>
+															<li>zTyreForceNose or zTyreForceRear = (A T) * abs(H)</li>
+														</ul>
+
+														otherwise set:
+
+														<ul>
+															<li>zTyreForceNose or zTyreForceRear = max((A T, (NN MM)) * abs(H)</li>
+														</ul>
+													</li>
+
+													<li>If |xTyreForceNoseHi| &lt; |zTyreForceNoseHi| (for tyre X):
+
+														<ul>
+															<li>A = |xTyreForceNoseHi| / 2 + |zTyreForceNoseHi|</li>
+														</ul>
+
+														or if |xTyreForceNoseHi| >= |zTyreForceNoseHi| (for tyre X):
+
+														<ul>
+															<li>A = |xTyreForceNoseHi| + |zTyreForceNoseHi| / 2</li>
+														</ul>
+													</li>
+												</ul>
+											</li>
+
+											<li>Rotate a new bit 7 into tyreSqueal for tyre X as follows:
+
+												<ul>
+													<li>Clear if A &lt;= wingForce for tyre X</li>
+
+													<li>Set if A > wingForce for tyre X</li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+
+									<li>If bits 6 and 7 are both clear in tyreSqueal for tyre X:
+
+										<ul>
+											<li>On every other main loop iteration, stop the tyres from squealing</li>
+										</ul>
+
+										otherwise:
+
+										<ul>
+											<li>Call <a href="/source/main/subroutine/applyskidforces.html">ApplySkidForces</a> and make the tyres squeal:
+
+												<ul>
+													<li>Set xTyreForceNose or xTyreForceRear = max(wingForce95 &lt;&lt; 8, scaled |xVelocity|) * abs(-xVelocity)</li>
+
+													<li>Call <a href="/source/main/subroutine/gettyreforces.html">GetTyreForces</a> to set (A T), H and (NN MM), depending on engineTorque</li>
+
+													<li>If the throttle is being applied and we are processing the front tyres, return from the subroutine</li>
+
+													<li>If A &lt; wingForce95, then:
+
+														<ul>
+															<li>If the throttle is being applied, then:
+
+																<ul>
+																	<li>zTyreForceNose or zTyreForceRear = (A T) * abs(H)</li>
+																</ul>
+
+																otherwise set:
+
+																<ul>
+																	<li>zTyreForceNose or zTyreForceRear = max((A T, (NN MM)) * abs(H)</li>
+																</ul>
+															</li>
+														</ul>
+													</li>
+
+													<li>If A >= wingForce95, then:
+
+														<ul>
+															<li>Set (A T) = wingForce95 &lt;&lt; 8</li>
+
+															<li>If the throttle is being applied, then
+
+																<ul>
+																	<li>zTyreForceNose or zTyreForceRear = (A T) * abs(H)</li>
+																</ul>
+
+																otherwise set:
+
+																<ul>
+																	<li>zTyreForceNose or zTyreForceRear = max((A T, (NN MM)) * abs(H)</li>
+																</ul>
+															</li>
+
+															<li>If the throttle is being applied and we are processing the rear tyres, set:
+
+																<ul>
+																	<li>xTyreForceNose or xTyreForceRear = 0</li>
+																</ul>
+															</li>
+														</ul>
+													</li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applydrivingmodel.html">ApplyDrivingModel</a></p>
+
+						<ul>
+							<li>(xVelocityHi xVelocityLo) = (xPrevVelocityHi xPrevVelocityLo) + (xSpinVelocityHi xSpinVelocityLo)</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applysteeringspeed.html">ApplySteeringSpeed</a></p>
+
+						<ul>
+							<li>zVelocity = zVelocity + xVelocity * steering</li>
+
+							<li>xVelocity = xVelocity - zVelocity * steering</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applytyresandskids.html">ApplyTyresAndSkids for tyre 0 (front)</a></p>
+
+
+						<ul>
+							<li>See ApplyTyresAndSkids above, but with X = 0 for the front tyres</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applysteeringforce.html">ApplySteeringForce</a></p>
+
+						<ul>
+							<li>xTyreForceNose = xTyreForceNose + zTyreForceNose * steering</li>
+
+							<li>zTyreForceNose = zTyreForceNose - xTyreForceNose * steering</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/scaletyreforces.html">ScaleTyreForces</a></p>
+
+						<ul>
+							<li>spinYawDelta = (xTyreForceNose - xTyreForceRear) * 0.3</li>
+
+							<li>xTyreForceNose = xTyreForceNose &gt;&gt; 2</li>
+
+							<li>xTyreForceRear = xTyreForceRear &gt;&gt; 2</li>
+
+							<li>zTyreForceNose = zTyreForceNose &gt;&gt; 2</li>
+
+							<li>zTyreForceRear = zTyreForceRear &gt;&gt; 2</li>
+
+							<li>xPlayerAccel = (xTyreForceRear * 1.5 + xTyreForceNose) * 1.6</li>
+
+							<li>zPlayerAccel = (zTyreForceRear * 1.5 + zTyreForceNose) * 1.6</li>
+
+							<li>zTyreForceBoth = zPlayerAccelHi</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applydrivingmodel.html">ApplyDrivingModel</a></p>
+
+						<ul>
+							<li>If heightAboveTrack >= 2, set spinYawDelta, xPlayerAccel, zPlayerAccel = 0</li>
+						</ul>
+
+
+						<p><a href="/source/main/subroutine/applywingbalance.html">ApplyWingBalance</a></p>
+
+						<ul>
+							<li>xPlayerAccel = xPlayerAccel - scaledSpeed * xPrevVelocityHi</li>
+
+							<li>zPlayerAccel = zPlayerAccel - scaledSpeed * (wingBalance * playerSpeedHi + 2048) * abs(zVelocity)</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/rotatecartocoord.html">RotateCarToCoord</a></p>
+
+						<ul>
+							<li>Rotate vector xPlayerAccel from the frame of reference of the player's car into the 3D world coordinate system, putting the result into xAcceleration:
+
+<pre class="articleIndented">[ xAcceleration ]   [  cosYawAngle   0   sinYawAngle ]   [ xPlayerAccel ]
+[       -       ] = [       0        1        0      ] . [       -      ]
+[ zAcceleration ]   [ -sinYawAngle   0   cosYawAngle ]   [ zPlayerAccel ]
+</pre>
+							</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/updatevelocity.html">UpdateVelocity</a></p>
+
+						<ul>
+							<li>xPlayerSpeed = xPlayerSpeed + xAcceleration &lt;&lt; 5</li>
+
+							<li>zPlayerSpeed = zPlayerSpeed + zAcceleration &lt;&lt; 3</li>
+
+							<li>spinYawAngle = spinYawAngle + spinYawDelta &lt;&lt; 3</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applydeltas.html">ApplyDeltas</a></p>
+
+						<ul>
+							<li>xPlayerCoord = xPlayerCoord + xPlayerSpeed * 2</li>
+
+							<li>zPlayerCoord = zPlayerCoord + zPlayerSpeed * 2</li>
+
+							<li>playerYawAngle = playerYawAngle + spinYawAngle</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/applyelevation_part_1_of_5.html">ApplyElevation</a></p>
+
+						<ul>
+							<li>liftFromTorque = the lift of the front of the car caused by accelerating or braking</li>
+
+							<li>playerHeading, which is the player's yaw angle, relative to the direction of the track, where a heading of 0 means the player is pointing straight along the track</li>
+
+							<li>playerSideways, which contains the following information:
+
+								<ul>
+									<li>If playerSideways < 40, then the player's car is facing forwards or backwards along the track</li>
+
+									<li>If playerSideways >= 40, then the player's car is facing sideways, relative to the direction of the track</li>
+								</ul>
+							</li>
+
+							<li>playerPitchAngle, which we calculate as follows:
+
+								<ul>
+									<li>Set A to the elevation change of the car due to the sideways angle of the car in the current segment</li>
+
+									<li>playerPitchAngle = (A + bumpyGrassHeight + liftFromTorque + yJumpHeight + playerPitchAngle) / 2</li>
+								</ul>
+
+								So playerPitchAngle contains its previous value, plus four factors that affect the car height, and then we halve the sum before storing the result in playerPitchAngle. This approach slows down the rate of change in playerPitchAngle by 50%,so the horizon doesn't judder as much as it would if we just set playerPitchAngle to the sum of the four other factors
+							</li>
+
+							<li>spinPitchAngle = playerPitchAngle - previous value of playerPitchAngle</li>
+
+							<li>yGravityDelta = max(yGravityDelta - 4, -56)</li>
+
+							<li>If the car falls past ground level, calculate the following to make the car bounce upwards by half the rate that it's falling:
+
+								<ul>
+									<li>yGravityDelta = |yGravityDelta| / 2</li>
+
+									<li>yJumpHeight = |yGravityDelta| / 4</li>
+
+									<li>spinYawAngleHi = spinYawAngleHi &gt;&gt; 1 with bit 7 set</li>
+
+									<li>heightAboveTrack = 1</li>
+								</ul>
+
+								and make the crash/contact sound
+							</li>
+
+							<li>Clip heightAboveTrack to the range 0 to 127</li>
+
+							<li>(yPlayerCoordTop yPlayerCoordHi) = (ySegmentCoordIHi ySegmentCoordILo) + carProgress * yTrackSegmentI + heightAboveTrack * 4 + 172</li>
+
+							<li>carSpeedHi for the player's car = playerSpeedHi * 2.13</li>
+						</ul>
+-->
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_snetterton_track.html">The Snetterton track</a><a class="next" rel="next" title="Next deep dive" href="the_core_driving_model.html">The core driving model</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

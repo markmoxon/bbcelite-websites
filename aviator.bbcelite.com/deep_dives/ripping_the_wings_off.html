@@ -1,0 +1,70 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "ripping_the_wings_off.html", "Ripping the wings off", "Ripping the wings off", "A deep dive into ripping the wings off in BBC Micro Aviator", "aviator", "deep_dives_flight_model", "ripping_the_wings_off");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="stalling_and_recovery.html">Stalling and recovery</a><a class="next" rel="next" title="Next deep dive" href="take-offs_and_landings.html">Take-offs and landings</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Modelling the high g-forces that can rip the wings clean off</h2>
+
+						<p>In Aviator, when it comes to high g-forces and what it means for your Spitfire, the simulation wizard's curtain slips a tiny bit. Here's the relevant passage from the game manual:</p>
+
+						<blockquote class="articleIndented">
+							<p>The elevators become very sensitive at high speed and you have to guard against excessive sharp movements of the joystick backwards or forwards since you may overstress the aircraft by trying to pitch too rapidly. This causes large forces to develop, normally referred to as "g-forces", which could result in the pilot blacking out or the wings breaking off. In the simulation, if you exceed too many "g"s, you will hear a continuous, medium-pitch tone and will also notice a serious loss of lift as the wings come off.</p>
+
+						<p>In a real life situation, the pilot has an advantage over you as he will be physically aware of the forces acting on his plane. The simulator therefore gives you the opportunity of retrieving your wings by readjusting the elevators in order to reduce the g-forces. Once your wings are re-attached, the audible tone will cease and you will regain your lift.</p>
+						</blockquote>
+
+						<p>Replaceable wings? This part of Aviator's otherwise accurate flight model might represent an uncharacteristic departure from real physics, but the underlying calculations are still accurate. Let's take a look at how g-forces work in the flight model.</p>
+
+						<h2 class="articleSubheader">Calculating g-forces<br />
+													 --------------------</h2>
+
+						<p>The g-force checks are performed by the <a href="/source/main/subroutine/scaleflightforces.html">ScaleFlightForces</a> routine, which is where the main flight forces on the plane are scaled up by individual force factors (see the deep dive on <a href="the_flight_model.html">the flight model</a> for details of the force factor scaling system).</p>
+
+						<p>One of the forces that gets scaled is the vertical force on the wing that's caused by the wing trying to travel up or down through the air (note that this isn't the same as the vertical force of the wing lift, which is caused by the wing travelling forwards through the air, not vertically). At this point in the flight model calculations, this force is in yLiftDrag, and by the time we get to the scaling routine, this has already been set as follows:</p>
+
+<pre class="articleIndented">  yLiftDrag = yVelocityP * 2 * 4 * maxv * airDensity
+</pre>
+
+						<p>where:</p>
+
+<pre class="articleIndented">  airDensity = ~yPlaneHi * 2
+
+  maxv = max(|xVelocityP|, |yVelocityP|, |zVelocityP|)
+</pre>
+
+						<p>So the vertical force on the wing in yLiftDrag is higher with higher vertical velocities, and is scaled down by the effect of less dense air at high altitudes. This all makes sense, as the force is down to the resistance of the air that the wing is trying to move through.</p>
+
+						<p>As part of its calculations, the ScaleFlightForces routine then performs this check (see the deep dive on <a href="stalling_and_recovery.html">stalling and recovery</a> for more details of the flight model calculations around stalling):</p>
+
+<pre class="articleIndented">  |yLiftDrag| > 53 if we are stalling
+
+  |yLiftDrag| > 13 if we are not stalling
+</pre>
+
+						<p>Given that the calculated value of yLiftDrag is proportional to the vertical airspeed in yVelocityP, as well as the maximum velocity in any of the axes in maxv, it makes sense that the g-forces acting on the wings will rip them off when the vertical force is above a certain value. Interestingly, when it is stalling, the plane can cope with a much higher vertical force on the wings before they fall off, when compared to normal flight.</p>
+
+						<p>The above equation shows why the best way to recover from your wings is to adjust your elevators - in other words, to stop pulling back on the stick so much. This reduces the value of yVelocityP, as pulling back the stick increases the vertical airspeed, and letting the stick go reduces the vertical airspeed. And that in turn reduces the vertical forces on your wings.</p>
+
+						<p>And that, apparently, lets you reattach your wings, though perhaps that part isn't quite as realistic as the calculations...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="stalling_and_recovery.html">Stalling and recovery</a><a class="next" rel="next" title="Next deep dive" href="take-offs_and_landings.html">Take-offs and landings</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

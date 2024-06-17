@@ -1,0 +1,606 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "tactics_of_the_non-player_drivers.html", "Tactics of the non-player drivers", "Tactics of the non-player drivers", "A deep dive into the tactics of the non-player drivers in BBC Micro Revs", "revs", "deep_dives_tactics", "tactics_of_the_non-player_drivers");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="matching_the_code_to_the_driving_model.html">Matching the code to the driving model</a><a class="next" rel="next" title="Next deep dive" href="computer_assisted_steering.html">Computer assisted steering (CAS)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the computer-controlled drivers deal with corners, crashes and competitors</h2>
+
+						<p>When Revs hit the shelves in 1985, it was celebrated for having relatively sophisticated non-player drivers to compete against. The algorithms underlying the opposition drivers' tactics are complicated and involve a lot of data and calculations, but understanding the way that your opponents drive is key to winning races.</p>
+
+						<p>In this article I'm going to explore how this all works, though I should warn you that this is a seriously complex and dense part of the Revs codebase, and I do assume a fair amount of prior knowledge in the following. In particular there is quite a bit of track-related terminology, so if you haven't already, you should take a look at the deep dives on <a href="building_a_3d_track_from_sections_and_segments.html">building a 3D track from sections and segments</a> (for information on how the track is constructed) and <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> (for an introduction to the track segment buffer).</p>
+
+						<p>There are also quite a few aspects that I don't fully understand. I've tried to extract enough information to give you an idea of how the other drivers handle their cars, but there are definitely parts of the algorithm that remain a mystery. Perhaps that's as it should be; I wouldn't want to end up spoiling the magic...</p>
+
+						<h2 class="articleSubheader">An overview of the algorithm<br />
+													 ----------------------------</h2>
+
+						<p>There is a great deal of subtlety in the non-player driver tactics in Revs, but the overall approach is fairly simple:</p>
+
+						<ul>
+							<li>Non-player drivers spend most of their time trying to drive around the track at their individual target speeds, taking any maximum speeds into consideration.</li>
+							<li>If a driver is close enough to us to be visible, then they also apply the optimum steering for the track segment they are in.</li>
+							<li>If they get close enough to the driver in front, then they can move into position to attempt an overtaking manoeuvre.</li>
+							<li>Collisions can cause deviations from the above, and cars can even be knocked out of the race and left stranded on the track.</p>
+							</ul>
+
+						<p>There are quite a few different steps we have to run through when implementing this algorithm, but the goal is always the same - to calculate these two values:</p>
+
+						<ul>
+							<li>The change in each car's speed (i.e. acceleration or braking); this is simplified by the fact that non-player drivers always point forwards along the track, so their speed as stored in the (carSpeedHi carSpeedLo) table is always in that direction.</li>
+
+							<li>The change in each car's racing line (i.e. steering); each car's racing line gives us the left-right position of the car on the track, as stored in the carRacingLine table, so cars can steer by changing this value.</li>
+						</ul>
+
+						<p>The whole algorithm is therefore based around calculating the speed changes and the amount of steering that should be applied to each non-player car. This process is split across various routines, which we'll investigate over the course of this deep dive, but here are the core steps:</p>
+
+						<ol>
+							<li>First, we need to calculate how fast each driver can go. Target driver speeds are calculated by the <a href="/source/main/subroutine/setdriverspeed.html">SetDriverSpeed</a> routine and are stored in the <a href="/source/main/workspace/stack_variables.html#driverspeed">driverSpeed</a> table, with one entry per driver. The driver speeds are calculated before each race, and because we include a random factor in the calculation, they are recalculated regularly throughout each race, to add a bit of variety to each driver's racing speed.</li>
+
+							<li>Next, we need to calculate the optimum steering to apply when driving along each track section. This is calculated by the <a href="/source/main/subroutine/getsectionsteering.html">GetSectionSteering</a> routine and the results are stored in the <a href="/source/main/variable/sectionsteering.html">sectionSteering</a> table, with one entry per track section. Optimum section steering values are calculated once, just before each race.</li>
+
+							<li>We also need to calculate the optimum steering to apply when driving along each track segment. This is calculated by the <a href="/source/main/subroutine/getsegmentsteering.html">GetSegmentSteering</a> routine whenever a new segment is added to the front of the track segment buffer in <a href="/source/main/subroutine/gettracksegment_part_3_of_3.html">part 3 of GetTrackSegment</a>. Each segment's optimum steering value is stored in the segment buffer at <a href="/source/main/workspace/main_variable_workspace.html#segmentsteering">segmentSteering</a>.</li>
+
+							<li>The next step is to check whether the car is in a position to perform an overtaking manoeuvre, and if so, move into position and execute it. This is calculated by the <a href="/source/main/subroutine/processovertaking_part_1_of_3.html">ProcessOvertaking</a> routine, and it's done on every iteration of the main loop.</li>
+
+							<li>We apply the calculated acceleration and braking to each driver's car in <a href="/source/main/subroutine/movecars_part_1_of_2.html">part 1 of the MoveCars routine</a>. This is done on every iteration of the main loop.</li>
+
+							<li>We apply steering to each driver's car in <a href="/source/main/subroutine/movecars_part_2_of_2.html">part 2 of the MoveCars routine</a>. This is also done on every iteration of the main loop.</li>
+						</ol>
+
+						<p>Incidentally, the optimum steering values that we calculate for each track section and segment are also used by the computer assisted steering (CAS) feature that was added in the Superior Software release of Revs. This feature gives drivers a helping hand, using the optimum steering values as a guide, and you can read about how it works in the deep dive on <a href="computer_assisted_steering.html">computer assisted steering (CAS)</a>.</p>
+
+						<p>We'll spend the rest of this article looking at each of these stages in more detail, but first, let's look at the variables used by the above, as these are pretty vital to any understanding of the algorithm.</p>
+
+						<h2 class="articleSubheader">Key variables<br />
+													 -------------</h2>
+
+						<p>The algorithms behind the non-player driver tactics use a number of variables. We've already mentioned a few of them, but as these variables are absolutely key to the way the tactics system works, let's take a look at all the relevant variables before moving on to the algorithm itself.</p>
+
+						<ul>
+							<li><a href="/source/main/workspace/stack_variables.html#driverspeed">driverSpeed</a>: Driver speeds are calculated before each race, and are recalculated every 32 iterations of the main driving loop (in both cases by the <a href="/source/main/subroutine/setdriverspeed.html">SetDriverSpeed</a> routine). Driver speeds are effectively target speeds for the non-player drivers, in that each driver will try to reach their target speed by accelerating or braking, though other factors may take priority, such as corners with maximum speeds or having to deal with other drivers. Drivers who are higher up the leaderboard tend to have faster driver speeds, though as there is a random factor in the calculation, this isn't always the case.</li>
+
+							<li><a href="/source/main/workspace/stack_variables.html#carstatus">carStatus</a>: Each non-player driver has a status byte that stores information about the car. The status byte is built as follows:
+
+								<ul>
+									<li>Bit 7 determines whether the car is braking (1 = braking, 0 = not braking).</li>
+
+									<li>Bit 6 determines whether the car is accelerating (1 = accelerating, 0 = not accelerating).</li>
+
+									<li>Bit 4 is only relevant when a car is visible. It controls the steering that gets applied to the car when the car's 3D object is built by the <a href="/source/main/subroutine/buildvisiblecar.html">BuildVisibleCar</a> routine (1 = apply the value in carSteering, 0 = apply the value from segmentSteering).
+
+									<li>Bit 0 controls whether the carStatus byte gets updated in the ProcessOvertaking routine (0 = do update, 1 = don't update). This enables us to "switch off" a driver's tactics.</li>
+								</ul>
+
+								Bit 4 is important, as we set it when we want to override the car's default steering (which is to apply the segment's optimum steering). If we calculate an overtaking manoeuvre that involves steering, as we do in the <a href="/source/main/subroutine/processovertaking_part_1_of_3.html">ProcessOvertaking</a> routine, then setting bit 4 ensures that the calculated steering gets applied to the car (or, more accurately, that it doesn't get overwritten by the default). Similarly, clearing bit 4 ensures that the car sticks to the optimum segment steering in segmentSteering.<br /><br />
+
+								Cars can also get knocked out of the race, in which case we set bit 4 of carStatus to stop the car from following the optimum racing line. In this case, we also set bit 0 of carStatus, which prevents carStatus from being updated again. Together, these two bits effectively stop the car from being able to steer, leaving it stranded on the track. You can see this being done in the <a href="/source/main/subroutine/pushcarofftrack.html">PushCarOffTrack</a> routine, for example.
+							</li>
+
+							<li><a href="/source/main/workspace/stack_variables.html#carsteering">carSteering</a>: Each non-player driver has a steering value, with one byte per driver. This determines the steering that we need to apply to each car on each iteration of the main loop. The steering byte is built as follows:
+
+								<ul>
+									<li>Bit 7 is the steering direction (0 for steering left, 1 for steering right).</li>
+
+									<li>Bit 6 determines how this steering value should be applied to the driver in <a href="/source/main/subroutine/movecars_part_2_of_2.html">part 2 of the MoveCars routine</a> (0 means this steering is always applied to the car, 1 means it is only applied if there is enough room on the track).</li>
+
+									<li>Bits 0 to 5 contain the amount of steering, expressed in terms of the change in racing line. The range in racing line is 0 (full right) to 255 (full left), so steering by 26 would steer the car sideways by 10% of the track width.</li>
+								</ul>
+							</li>
+
+							<li><a href="/source/main/variable/sectionsteering.html">sectionSteering</a>: This table contains the optimum steering to apply when driving through each track section. The format is the same as carSteering, though bit 6 is always clear (so it can be overridden). This value is used to create the optimum segment steering value in segmentSteering.</li>
+
+							<li><a href="/source/main/workspace/main_variable_workspace.html#segmentsteering">segmentSteering</a>: This table contains the optimum steering to apply when driving through each track segment. This is calculated for each segment in the track segment buffer, when new segments are added to the front of the buffer. The format is the same as carSteering, and by default, carSteering gets set to the relevant segmentSteering value to make drivers aim for the optimum racing line (though this can be overridden by calculated steering when bit 4 of carStatus is set, as described above).</li>
+						</ul>
+
+
+						<p>Now that we've documented the variables, let's look at each of the algorithm steps in more detail.</p>
+
+						<h2 class="articleSubheader">1. Calculating driver speeds<br />
+													 ----------------------------</h2>
+
+						<p>The speed for each non-player driver is set in the <a href="/source/main/subroutine/setdriverspeed.html">SetDriverSpeed</a> routine and stored in the <a href="/source/main/workspace/stack_variables.html#driverspeed">driverSpeed</a> table. This doesn't mean that each driver sticks to a constant speed around the track; instead, the driver speed is used when calculating target speeds for acceleration and braking, so it's more of an average speed for each driver, rather than a speed that they stick to.</p>
+
+						<p>Driver speeds are recalculated every 32 iterations around the main driving loop, via the <a href="/source/main/subroutine/processtime.html">ProcessTime</a> routine. This means that drivers can speed up or slow down as they progress through the race, as there is an element of randomness in the calculation.</p>
+
+						<p>The calculation generates a speed in a certain range, which is based on a number of elements:</p>
+
+						<ul>
+							<li>There's a random element that is weighted to being small, but can sometimes be larger. Specifically, the random element is in the range -14 to +14, and we're three times more likely to get a number in the range -6 to +6 than in the range -14 to -7 or 7 to 14.</li>
+
+							<li>The speed range is affected by the driver's position on the grid: cars at the front of the grid are faster than those at the back. Specifically, the random number we calculated above is reduced by the grid row, which is 0 for the first two cars, 1 for the next two cars, and so on, so we get the following ranges:
+
+								<ul>
+									<li>-14 to +14 for the front two cars</li>
+									<li>-15 to +13 for the next two cars<br/><br/>...</li>
+									<li>-23 to +4 for the last two cars</li>
+								</ul>
+							</li>
+
+							<li>The speed range is affected by the race class, with the range of different driver speeds being tighter in Professional races than in Amateur races, which in turn are tighter than Novice races. Specifically, the number from above is doubled for Novice races, left alone for Amateur races, and halved for Professional races.</li>
+						</ul>
+
+						<p>The result of this calculation is then added to the track's base speed, which is stored as part of the track data, and the result is stored in the <a href="/source/main/workspace/stack_variables.html#driverspeed">driverSpeed</a> table, with one for each non-player driver. The track's base speed is different depending on the race class, so taking <a href="/deep_dives/the_silverstone_track.html">Silverstone</a> as an example, we get these final ranges for the front two cars:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Class</th><th>Base speed</th><th>Range</th><th>Resulting speed</th></tr>
+							<tr><td>Novice</td><td>134</td><td>-28 to +28</td><td>106 to 162</td></tr>
+							<tr><td>Amateur</td><td>146</td><td>-14 to +14</td><td>132 to 160</td></tr>
+							<tr><td>Professional</td><td>153</td><td>-7 to +7</td><td>146 to 160</td></tr>
+						</table>
+
+						<p>and these final ranges for the two cars at the back:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Class</th><th>Base speed</th><th>Range</th><th>Resulting speed</th></tr>
+							<tr><td>Novice</td><td>134</td><td>-46 to +8</td><td>88 to 142</td></tr>
+							<tr><td>Amateur</td><td>146</td><td>-23 to +4</td><td>123 to 150</td></tr>
+							<tr><td>Professional</td><td>153</td><td>-12 to +2</td><td>141 to 155</td></tr>
+						</table>
+
+						<p>So in Silverstone, the cars on the front of the grid in a Novice race can actually be faster than those on the front of the grid in a Professional race, though it's unlikely.</p>
+
+						<h2 class="articleSubheader">2. Calculating section steering<br />
+													 -------------------------------</h2>
+
+						<p>The optimum steering values for sections and segments are only used to control cars that are visible on-screen; cars that are off-screen don't bother to apply steering, though they do still vary their speeds and perform overtaking manoeuvres, so their lap times still vary as if they were racing properly. This saves a lot of calculation time, but it means the section and segment steering algorithms only apply to visible cars.</p>
+
+						<p>This also means that section and segment steering values are not used at all once we have finished racing, or have retired to the pits and are waiting for the race to finish. Once we have finished the last lap, or we've pressed SHIFT-f7 to return to the pits, the rest of the race is run by the <a href="/source/main/subroutine/finishrace.html">FinishRace</a> routine, instead of the main driving loop. This routine keeps moving the non-player cars round the track, so that every driver gets to finish with an accurate lap time, but FinishRace doesn't call any of the car-drawing routines and sets all cars to be hidden, so none of the following applies. We only use section and segment steering values for cars within our line of sight, and while we are still driving the race, so once we've finished driving, they get ignored.</p>
+
+						<p>The optimum steering value for each track section is calculated just before each race. The calculation is done by the <a href="/source/main/subroutine/getsectionsteering.html">GetSectionSteering</a> routine, and the results are stored in the <a href="/source/main/variable/sectionsteering.html">sectionSteering</a> table, with one entry per track section. The calculation is based on the race class and the trackSteering setting for each section (which comes from the track data file - see the <a href="/source/silverstone/variable/tracksteering.html">trackSteering</a> table in Silverstone, for example).</p>
+
+ 						<p>The optimum steering is calculated from the trackSteering table by a slightly convoluted algorithm. The reason for the algorithm is that the values in sectionSteering are used to generate the values in carSteering, and they use the same data format. As noted above, carSteering stores the steering direction in bit 7, a control bit in bit 6, and the amount of steering in bits 0 to 5, so the algorithm makes sure these individual bits are set correctly while also performing scaling that depends on the race class.</p>
+
+						<p>To generate the optimum steering for each section, we copy each track section's entry from trackSteering, process it and store the result in sectionSteering. We  process each byte as follows:</p>
+
+						<ul>
+							<li>Bit 7 of sectionSteering is set to bit 0 of trackSteering (so this determines left or right steering, for 0 or 1 respectively).</li>
+
+							<li>Bit 6 of sectionSteering is set to 0 (so by default, this steering always gets applied by the MoveCars routine, though this can be overridden).</li>
+
+							<li>Bits 0 to 5 of sectionSteering are set to bits 2 to 7 of trackSteering, and if bit 1 of trackSteering is clear, then this value is multiplied by the track's base speed / 256 for the chosen race class.</li>
+						</ul>
+
+						<p>The last part needs a bit more explanation. Bit 1 of <a href="/source/silverstone/variable/tracksteering.html">trackSteering</a> is clear for straight sections and gentle curves, and is only set for sharp corners, so this means we multiply the amount of steering for straighter sections by the track's base speed / 256, but leave the amount of steering alone for sharp corners. This means that drivers in higher class races steer more sharply on straight sections than those in lower class races, but all classes steer in the same way around tough corners.</p>
+
+						<p>Once the above process is completed, the <a href="/source/main/variable/sectionsteering.html">sectionSteering</a> table contains a steering amount for each track section that we can use in our calculations, particularly the calculation for segment steering, which we look at next.</p>
+
+						<h2 class="articleSubheader">3. Calculating segment steering<br />
+													 -------------------------------</h2>
+
+						<p>Now that we've calculated the optimum steering for each track section, it's time to do the same for each track segment. As noted above, segment steering is only calculated for segments that are within our line of sight - in other words, for segments in the track segment buffer (see the deep dive on <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> to read all about the segment buffer).</p>
+
+						<p>As noted above, cars that are out of sight don't bother to apply steering, but for cars that we might be able to see, we need rather more finesse if they are to look like competent drivers, so we calculate the optimum steering to apply for all 40 segments in the track segment buffer. Specifically, the steering for a track segment is calculated when that segment is added to the front of the track segment buffer.</p>
+
+						<p>The calculation is done by the <a href="/source/main/subroutine/getsegmentsteering.html">GetSegmentSteering</a> routine, which is called by <a href="/source/main/subroutine/gettracksegment_part_3_of_3.html">part 3 of GetTrackSegment</a> whenever a new segment is added to the buffer. The segment racing line is stored in the track segment buffer at <a href="/source/main/workspace/main_variable_workspace.html#segmentsteering">segmentSteering</a>.</p>
+
+						<p>I have to confess that the algorithm behind this calculation is a tricky one to fathom, and the following might employ a bit of handwavium. It should certainly be taken with a pinch of salt, though hopefully it's enough to give you a hint of how this all works. More investigative work is needed here...</p>
+
+						<p>The steering that is applied when a non-player driver passes through a specific track segment looks like this:</p>
+						
+						<ul>
+							<li>If the segment is in a straight section, and is before the segment number given in trackSectionTurn:
+
+								<ul>
+									<li>Steer straight ahead</li>
+								</ul>
+							</li>
+
+							<li>If the segment is in a straight section, and is after the segment number given in trackSectionTurn:
+
+								<ul>
+									<li>Start a turn, whose length is given by the value of trackSectionTurn from the next section</li>
+								</ul>
+							</li>
+
+							<li>If the segment is in a curved section, and bit 7 of the previous turn's trackDriverSpeed was set (which I think means there was a fast approach to this curved section of 128 or more):
+
+								<ul>
+									<li>Start a turn, whose length is given by the value of trackSectionTurn from the next section</li>
+								</ul>
+							</li>
+
+							<li>If the segment is in a curved section, and bit 7 of the previous turn's trackDriverSpeed was clear (which I think means there was a slow approach to this curved section of 127 or less):
+
+								<ul>
+									<li>Start a turn, whose length is given by the value of trackSectionTurn from this section</li>
+								</ul>
+							 </li>
+						</ul>
+
+						<p>So this logic determines when we drive straight, and when we perform a turn (though I confess, I don't fully understand the logic). Once we have started a turn, we no longer apply the above tests, and instead the turn runs for the specified number of segments, continuing while that number of segments gets added to the segment buffer.</p>
+
+						<p>Each turn is broken down in three parts: we start by applying a steer of sectionSteering, then we steer dead ahead for a while, and then we steer by sectionSteering, but in the opposite direction. Progress through a turn is monitored by a counter in turnCounter, which starts at the trackSectionTurn value mentioned above, and counts down by one for each segment that is added to the segment buffer.</p>
+
+						<p>The three parts to each turn work as follows:</p>
+
+						<ul>
+							<li>While turnCounter &gt;= prevDriverSpeed06, we steer by sectionSteering</li>
+
+							<li>While turnCounter &gt;= 0.89 * prevDriverSpeed06, we steer straight ahead</li>
+
+							<li>While turnCounter &lt; 0.89 * prevDriverSpeed06, we steer by sectionSteering, but in the opposite direction (i.e. with bit 7 flipped)</li>
+						</ul>
+
+						<p>Bits 0 to 6 of the previous turn's trackDriverSpeed value (which is stored in prevDriverSpeed06 during the previous turn) determine the switchover points between steering into the corner, steering straight and steering out of the corner. I don't understand why this works, as elsewhere in the code, trackDriverSpeed is treated as a normal speed in the range 0 to 255, rather than having bits 0 to 6 extracted. This needs more investigation.</p>
+
+						<p>What's clear is that corners are taken by steering into the corner, then steering straight, and then steering in the opposite direction to come out of the corner. My racing car technique is a bit shaky, but I think this approach to cornering is designed to correct any oversteer by counter-steering with the opposite lock, as described in this <a href="https://drivingfast.net/oversteer/">guide to oversteering</a>. It turns out that the non-player drivers take corners in a pretty sophisticated manner - at least, the do when they're being watched.</p>
+
+						<p>To be specific about how this all works, the algorithm in <a href="/source/main/subroutine/getsegmentsteering.html">GetSegmentSteering</a> is structured like this:</p>
+
+						<ul>
+							<li>If turnCounter = 0, then we are not already processing a turn from when we calculated the previous segment's steering, so:
+
+								<ul>
+									<li>If this is straight section:
+
+										<ul>
+											<li>If the segment is before segment number trackSectionTurn, just keep driving straight, by setting segmentSteering = sectionSteering with bit 6 set (which means MoveCars will only apply this steering if the car is in a safe place on the track), and return from the subroutine</li>
+
+											<li>If the segment is after segment number trackSectionTurn, fetch values for the next track section from now on, skipping the next bullet point (i.e. go to the test for trackSectionTurn = 0)</li>
+										</ul>
+									</li>
+
+									<li>If this is a curved section and bit 7 of prevDriverSpeed7 is clear (i.e. the previous section had a low speed), fetch values for the next track section from now on</li>
+
+									<li>If trackSectionTurn = 0, just keep driving straight (as above) and return from the subroutine</li>
+
+									<li>If we get here, start processing a new turn by setting the following variables:
+
+<pre class="articleIndented">  turnCounter = trackSectionTurn
+
+  prevDriverSpeed7 = bit 7 of trackDriverSpeed
+
+  prevDriverSpeed06 = bits 0-6 of trackDriverSpeed
+
+  previousSteering = sectionSteering
+
+  segmentSteering = previousSteering
+</pre>
+
+										So the prev variables are set to those values from the section where the turn starts, turnCounter is set to the length of the turn in trackSectionTurn, and the segment's steering is set to the section's steering. Return from the subroutine
+									</li>
+								</ul>
+							</li>
+						
+							<li>If turnCounter > 0, we are already processing a turn, so we do the following:
+
+								<ul>
+									<li>Decrement turnCounter</li>
+
+									<li>Steer the optimum racing line, so in the turn we start with a steer of previousSteering, then we steer dead ahead, then we steer by previousSteering in the opposite direction:
+
+										<ul>
+											<li>If turnCounter >= prevDriverSpeed06, set segmentSteering = previousSteering and return from the subroutine</li>
+					
+											<li>If turnCounter * 1.125 >= prevDriverSpeed06, set segmentSteering = 0 and return from the subroutine</li>
+					
+											<li>Otherwise set segmentSteering = previousSteering with bit 7 flipped</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>The end result is a value that's stored in segmentSteering, and which defines the amount of steering that should be applied by drivers when they reach this segment. This ensures that all visible cars have a default segment steering value they can apply to stay on the track, for when they aren't overtaking or crashing.</p>
+
+						<p>This value of segmentSteering is used in just two routines:</p>
+
+						<ul>
+							<li><a href="/source/main/subroutine/buildvisiblecar.html">BuildVisibleCar</a> builds 3D objects for all the visible cars, and as part of this it can override the value of carSteering for each visible car with the value of segmentSteering for the segment containing the car. It only does this if we haven't already calculated steering for an overtaking manoeuvre, and it only applies the default if the car is going faster than a speed of 50.</li>
+
+							<li><a href="/source/main/subroutine/assiststeering.html">AssistSteering</a>, meanwhile, implements computer assisted steering (CAS), and is the subject of <a href="computer_assisted_steering.html">its own deep dive</a>.</li>
+						</ul>
+
+						<p>Now that we have calculated optimum steering for sections and segments, let's move on to the process of overtaking.</p>
+
+						<h2 class="articleSubheader">4. Overtaking in ProcessOvertaking<br />
+													 ----------------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/processovertaking_part_1_of_3.html">ProcessOvertaking</a> routine implements overtaking manoeuvres, from getting in position to making the move. Overtaking is performed differently by different kinds of driver - better, faster drivers near the front of the race overtake differently to slower, less experienced drivers at the back.</p>
+
+						<p>The routine works through each car in the race, from first to last place, and if a car can overtake the car in front, or it's already in the process of overtaking, then the routine calculates the appropriate steering and speed changes for the overtaking manoeuvre. Initially the routine sets carSteering to 0, which means driving dead ahead, with no steering either way. It then decides whether or not to apply any steering to the car, and whether to update the car's status in carStatus, which stores details of whether the car is accelerating or braking.</p>
+
+						<p>Let's look at the algorithm in detail.</p>
+
+						<p>The routine goes through each driver in the race (let's call them driver X) and compares them with the driver in the race position in front (let's call them driver Y). We set carSteering to 0 for driver X, and the rest of the routine looks into updating this value (and carStatus) for driver X.</p>
+
+						<p>If driver X is ahead of driver Y on the track, then we need to check whether this means a change in the leaderboard:</p>
+
+						<ul>
+							<li>If driver X is at least 10 segments ahead of Y, then we can safely say that driver X has overtaken driver Y, so:
+
+								<ul>
+									<li>Swap their race positions</li>
+
+									<li>Update the info text at the top of the page</li>
+
+									<li>Set carStatus for driver X to 0, so that driver X doesn't change speed, and applies the optimum segment steering (when visible)</li>
+								</ul>
+							</li>
+
+							<li>End checks and move on to the next driver</li>
+						</ul>
+
+						<p>If driver Y is still ahead of driver X:</p>
+
+						<ul>
+							<li>If the cars are not very close (i.e. there's a gap of five or more segments between them), or the cars are very close but driver Y is going faster than driver X, then:
+
+								<ul>
+									<li>Set carStatus for driver X to 0, so that driver X doesn't change speed, and applies the optimum segment steering (when visible)</li>
+
+									<li>End checks and move on to the next driver</li>
+								</ul>
+							</li>
+
+							<li>If the cars are very close (i.e. the gap is four segments or fewer) and driver X is going faster than driver Y, then we need to process an overtaking manoeuvre:
+
+								<ul>
+									<li>Set bit 7 of V if driver X is going faster than driver Y, clear otherwise. This value can be used below to slam on the brakes, but only if driver X is going faster than driver Y</li>
+
+									<li>Set SS to the high byte of the speed difference, halved and clipped to the range 4 to 30, to get the steering amount (so the bigger the speed difference, the sharper the steering in the overtaking manoeuvre, as driver X is pulling up to driver Y really fast, and therefore has less time to steer around them)</li>
+
+									<li>If driver Y is accelerating, then we steer driver X into their slipstream, to bide our time:
+
+										<ul>
+											<li>If X = 0 to 3, then this fight is near the front of the pack, so set N so driver X brakes; otherwise set N so driver X accelerates (so the faster drivers at the front of the pack brake into the slipstream, while slower drivers accelerate into the slipstream)</li>
+
+											<li>Configure bit 7 of T to steer driver X into driver Y's slipstream (as bit 7 controls the steering direction)</li>
+
+											<li>Apply bit 7 of T to the steering amount in SS and apply it to driver X, so driver X steers into the slipstream with the amount of steering we calculated above</li>
+
+											<li>Set N as driver X's status byte, to apply the braking or accelerating</li>
+
+											<li>End checks and move on to the next driver</li>
+										</ul>
+									</li>
+
+									<li>If driver Y is not accelerating, then we start trying to overtake:
+
+										<ul>
+											<li>If X = 0 to 3 (i.e. this fight is near the front of the pack):
+
+												<ul>
+													<li>Configure bit 7 of T to steer driver X into an overtaking position, away from driver Y's racing line</li>
+
+													<li>Set bit 6 of N, so driver X accelerates when we apply this to carStatus</li>
+
+													<li>If driver Y is close to the verge, change bit 7 of T so driver X steers to the opposite half of the track to driver Y, as there is no room between the verge and driver Y for overtaking on that side</li>
+												</ul>
+											</li>
+
+											<li>If X &gt;= 4 (i.e. this fight is in the middle or back of the pack):
+
+												<ul>
+													<li>Clear bit 7 of V, so we do not apply any braking in the following steps</li>
+
+													<li>Configure bit 7 of T so driver X always steers to the opposite half of the track to driver Y (so slower drivers will always overtake in the opposite half to the track, unlike the faster drivers who only switch sides if there's no room to overtake)</li>
+												</ul>
+											</li>
+
+											<li>If driver X is not visible:
+
+												<ul>
+													<li>97% of the time, set carStatus for driver X to N, to implement the speed change calculated above</li>
+
+													<li>3% of the time, set bit 7 of N to bit 7 of V, to potentially slam on the brakes (though this only happens if driver X is going faster than driver Y, and if we haven't cleared bit 7 of V above)</li>
+												</ul>
+											</li>
+
+											<li>If driver X is visible:
+
+												<ul>
+													<li>Calculate how far apart the cars are in the left-right direction, by calculating the difference in racing line, and then apply all of the following steps that apply:
+
+														<ul>
+															<li>If the difference is 0-99, set bit 4 of the car status in N so the value of carSteering that we have calculated above is used for this car, rather than being overridden by the segment steering in BuildVisibleCar</li>
+
+															<li>If the difference is 0-79, steer driver X according to the direction in T and the steering amount in SS</li>
+
+															<li>If the difference is 0-59, set bit 7 of N to bit 7 of V, which will potentially slam on the brakes (though this only happens if driver X is going faster than driver Y, and if we haven't cleared bit 7 of V above)</li>
+														</ul>
+													</li>
+												</ul>
+											</li>
+
+											<li>Set status to N for driver X</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>This algorithm therefore implements the overtaking tactics for driver X, by setting carStatus and carSteering for that driver. We then move on to the next driver in the race, working backwards through the field until we have processed all the cars in the race.</p>
+
+						<p>Next, let's look at how the calculated speed and steering are actually applied to the cars.</p>
+
+						<h2 class="articleSubheader">5. Updating car speed in MoveCars<br />
+													 ---------------------------------</h2>
+
+						<p>Having calculated the correct acceleration, braking and steering for each car, we need to loop through all the drivers and move them around the track. This is done in the MoveCars routine, which is split into two parts:</p>
+
+						<ul>
+							<li><a href="/source/main/subroutine/movecars_part_1_of_2.html">Part 1</a> updates each car's speed (i.e. it applies acceleration or braking)</li>
+
+							<li><a href="/source/main/subroutine/movecars_part_2_of_2.html">Part 2</a> updates each car's racing line (i.e. it applies steering)</li>
+						</ul>
+
+						<p>We'll look at how the steering is applied in the next section, but for now let's concentrate on the acceleration and braking, which are determined by the acceleration and braking bits in carStatus. <a href="/source/main/subroutine/movecars_part_1_of_2.html">Part 1 of MoveCars</a> takes these values and plugs them into an algorithm that calculates the correct speed changes for the car, depending on the track section and the car's position within that section. It then updates the values of carSectionSpeed and carSpeed for each car, and adjusts the car's position on the track by adding the speed to carProgress, to actually move the car along the track (and into the next segment if required).</li>
+
+						<p>Changes to the car's speed are calculated according to the following algorithm, which works out the speed change in (U A) and applies it to the car's speed in carSpeed.</p>
+
+						<ul>
+							<li>If bit 7 of driver X's carStatus is set, then this means we need to apply the brakes, so set (U A) = -256 and skip to the last bullet point below to apply the brakes.</li>
+
+							<li>If bit 7 of trackSectionFlag for this track section is set, then this section has a maximum speed limit. By this point we have already set the value of carSectionSpeed to the value of trackDriverSpeed from the last straight section that we processed (see the next bullet point), so carSectionSpeed contains the maximum speed allowed.<br /><br />
+
+								If the high byte of the car's current speed is faster than the car's carSectionSpeed, then we jump to part 2 of MoveCars without changing the driver's speed, as it is already going fast enough (otherwise we keep going to change the speed below).<br /><br />
+
+								In <a href="/deep_dives/the_silverstone_track.html">Silverstone</a>, bit 7 of trackSectionFlag is set for sections 1, 5, 12, 18 and 20, i.e. the corners at Woodcote, Copse, Becketts, Stowe and Club. The above logic means that the car's speed is only altered when it is less than the car's carSectionSpeed, so this means the carSectionSpeed acts as a maximum speed for the current corner, as the car will stop accelerating towards its fastest speed once it passes the speed in carSectionSpeed.<br /><br />
+
+								Due to the way that carSectionSpeed is set, the maximum speeds are taken from the sections <i>before</i> the sections that have bit 7 of trackSectionFlag set, so let's take Woodcote Corner in Silverstone as an example. The corner is section 1, and it has bit 7 of trackSectionFlag set, so we take trackDriverSpeed from section 0 to give us the maximum speed, which is 136. The corners with maximum speeds in Silverstone are therefore:
+
+								<ul>
+									<li>Woodcote Corner (section 1) = 136 mph</li>
+
+									<li>Copse Corner (section 5) = 125 mph</li>
+
+									<li>Becketts Corner (section 12) = 116 mph</li>
+
+									<li>Stowe Corner (section 18) = 139 mph</li>
+
+									<li>Club Corner (section 20) = 151 mph</li>
+								</ul>
+
+								The other corners don't have maximum speeds, as bit 7 of trackSectionFlag is clear. As noted above, this maximum speed is applied by preventing any more acceleration if the car is going faster than the maximum (so the maximum speed effectively means "don't accelerate if you're going faster than the limit").
+							</li>
+
+							<li>If both bit 0 and 7 of trackSectionFlag for this track section are clear, then this is a straight track section and this section has no maximum speed (in <a href="/deep_dives/the_silverstone_track.html">Silverstone</a>, this applies to sections 0, 4, 6, 8, 10, 11, 13, 15, 17, 19, 21 and 23). For these sections, we do the following:
+
+								<ul>
+									<li>To support the cornering speed limit we discussed above, we set carSectionSpeed for this driver to trackDriverSpeed for this track section. This sets carSectionSpeed to the correct maximum speed for the next section, though this is only used if the next section has a maximum speed.</li>
+
+									<li>If carSpeedHi &gt;= trackDriverSpeed, then we might need to consider braking as the car is going faster than the optimum speed for this section:
+
+										<ul>
+											<li>If objSectionSegmt &gt;= trackSectionTurn, then we are already past the point where we turn the car to approach the next section, so jump to part 2 without changing the driver's speed.</li>
+
+										    <li>If objSectionSegmt &lt; trackSectionTurn, then we are still in the first part of the section before the turning point in trackSectionTurn, so we try to adjust our speed to be closer to the optimum speed for this section in trackDriverSpeed (this means that we sort out our speed before the turning point, so we can concentrate on the steering after the turning point). To change speed, we calculate the following, both of which are negative:
+
+<pre class="articleIndented">  A = objSectionSegmt - trackSectionTurn
+
+  T = (trackDriverSpeed - carSpeedHi - 1) / 4
+</pre>
+
+												If A >= T (which is the same as saying |A| &lt; |T|, as both are negative), then the distance to the turning point is smaller than the difference in speed between the current speed (carSpeedHi) and the optimum speed (trackDriverSpeed), so we need to apply the brakes, which we do by setting (U A) = -256 and skipping to the last bullet point below to apply this to the car's speed.
+											</li>
+										</ul>
+								</ul>
+							</li>
+
+							<li>If we get here then we haven't decided to apply the brakes to reach the optimum speed, so instead we calculate the acceleration in (U A) to bring us closer to the target speed for this driver, which is in driverSpeed. We do this as follows:
+
+								<ul>
+									<li>If carSpeedHi &lt; 60:
+
+<pre class="articleIndented">  (U A) = driverSpeed - 22
+</pre>
+
+    									otherwise:
+
+<pre class="articleIndented">  (U A) = driverSpeed - carSpeedHi
+</pre>
+
+										carSpeedHi is the current speed, while driverSpeed is the speed we should be aiming for, so:
+
+<pre class="articleIndented">  (U A) = driverSpeed - carSpeedHi
+</pre>
+
+										will give us the delta that we need to apply to the car's current speed to get to the new speed, with the acceleration being much higher when the car's current speed is &lt; 60 (when carSpeedHi is reduced to 22 in the subtraction).
+									</li>
+
+									<li>If bit 6 of driver X's carStatus is set, then the car is accelerating, so add some acceleration to (U A):
+
+<pre class="articleIndented">  (U A) = (U A) + 5
+</pre>
+									</li>
+
+									<li>If this is a race, reduce the speed change by trackRaceSlowdown:
+
+<pre class="articleIndented">  (U A) = (U A) - trackRaceSlowdown
+</pre>
+
+									All the tracks have trackRaceSlowdown set to 0, so this has no effect, but changing this value would allow us to slow down all the other cars in the race, so perhaps this was used for testing (it certainly makes it a lot easier to win races when everyone else is being slowed down apart from you).</li>
+								</ul>
+							</li>
+
+							<li>By this point we have set (U A) to contain the change in the car's speed - positive for acceleration or negative for braking - so now we multiply it by 4 and apply it:
+
+<pre class="articleIndented">  (carSpeedHi carSpeedLo) = (carSpeedHi carSpeedLo) + (U A) * 4
+</pre>
+
+								If the result is negative, then we set (carSpeedHi carSpeedLo) = 0, so the car's speed is always positive.</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>Having updated the car's speed, we move the car along the track by adding carSpeedHi to carProgress, as the latter determines the car's position within the current segment. If the value of carProgress overflows, we move on to the next segment. See the deep dive on <a href="placing_cars_on_the_track.html">placing cars on the track</a> for details of how carProgress works.</p>
+
+						<h2 class="articleSubheader">6. Updating car steering in MoveCars<br />
+													 ------------------------------------</h2>
+
+						<p>Having applied changes to the car's speed in part 1 of MoveCars, we now apply steering in <a href="/source/main/subroutine/movecars_part_2_of_2.html">part 2 of the same routine</a>. We do this by updating the car's racing line in carRacingLine, according to the value of carSteering (which either contains the steering that we calculated in the ProcessOvertaking routine above, or the segment's steering value).</p>
+
+						<p>Note that, as discussed above, steering is only applied to cars that are set to be visible, so that's cars in our line of sight or just behind us (as they might appear in the wing mirrors). This means that cars that are elsewhere on the track don't steer around each other or around corners, they just move along the track at their calculated speeds while ignoring the shape of the track. This saves a lot of calculation time, while still ensuring that whenever we see a non-player driver, they look convincing. If we finish the race, or retire to the pits to wait for the race to finish, then all drivers are set to be hidden, so they all stop steering and the race is finished in the background using the speed calculations only.</p>
+
+						<p>Assuming the car is visible, the steering algorithm works as follows:</p>
+
+						<ul>
+							<li>If any of the following are true, apply the amount of steering given in carSteering:
+
+								<ul>
+									<li>Bit 6 of the car's objectStatus is set (which means the car has finished the race, so we keep steering visible cars once they have finished racing)</li>
+
+									<li>Bit 6 of the car's carSteering is clear (so we can clear this bit to ensure that the steering value is always applied, or we can set it to ensure that the steering only gets applied if one of the other tests is true, i.e. if it is safe to apply the steering)</li>
+
+									<li>Bit 7 of the car's racing line = bit 7 of carSteering, so:
+
+										<ul>
+											<li>The car is in the right half and is steering left (when bit 7 is clear)</li>
+
+											<li>The car is in the left half and is steering right (when bit 7 is set)</li>
+										</ul>
+									</li>
+
+									<li>The car is not within 30 of either verge: 30 &lt;= carRacingLine &lt; 226</li>
+								</ul>
+							</li>
+
+							<li>Otherwise, if the car's racing line is within 20 of either verge, steer away from the verge by a magnitude of 1, to keep the car on the road</li>
+						</ul>
+
+						<p>To put this another way, we only apply the steering in carSteering to cars that are safely in the middle of the track, or cars that are near the verges but steering away from them, or cars that have finished the race, or cars for whom we have cleared bit 6 of carSteering. If none of these apply, then we simply apply minimal steering control, by gently steering cars away from the verge if they get too close. This ensures that cars still stay on the track, even if they aren't actively steering.</p>
+
+						<p>The value of carSteering is applied to the car's racing line in carRacingLine by converting the value of carSteering into a signed integer, and simply adding the result to carRacingLine. This adjusts carRacingLine by the amount of steering, and in the correct direction, which is what we want.</p>
+
+						<h2 class="articleSubheader">Execution order<br />
+													 ---------------</h2>
+
+						<p>I ordered the above steps to make sense when reading them through, so I talked about setting the speed and steering changes before talking about applying them, because that makes sense. However, this isn't the whole story.</p>
+
+						<p>The tactics are actually applied in the reverse order, in that the changes are applied by the <a href="/source/main/subroutine/movecars_part_1_of_2.html">MoveCars</a> routine before the <a href="/source/main/subroutine/processovertaking_part_1_of_3.html">ProcessOvertaking</a> routine is called; indeed these routines are always called one after the other, and in that order. When we are racing, they are called from <a href="/source/main/subroutine/maindrivingloop_part_2_of_5.html">part 2 of the main driving loop</a>, and when we have either finished racing or have retired to the pits and are waiting for the race to finish, they are called from the <a href="/source/main/subroutine/finishrace.html">FinishRace</a> routine.</p>
+
+						<p>It's a bit strange that the speed and steering changes are applied first, and then recalculated afterwards (ready to be applied in the next iteration of the main loop), but that's the order in which it's done. The order of execution during the main driving loop is therefore:</p>
+
+						<ol>
+							<li>BuildVisibleCar</li>
+							<li>MoveCars</li>
+							<li>ProcessOvertaking</li>
+							<li>... and loop back again</li>
+						</ol>
+
+						<p>This order allows the BuildVisibleCar routine to override any values of carSteering that we calculate in ProcessOvertaking, though we can prevent this override by setting bit 4 of carStatus to force through the calculated steering. If the ProcessOvertaking routine was called before MoveCars, then this override wouldn't be quite so easy to achieve.</p>
+
+						<p>It's another twist in this deeply complicated part of the Revs code. What a journey...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="matching_the_code_to_the_driving_model.html">Matching the code to the driving model</a><a class="next" rel="next" title="Next deep dive" href="computer_assisted_steering.html">Computer assisted steering (CAS)</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,160 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "sprite_usage_in_nes_elite.html", "Sprite usage in NES Elite", "Sprite usage in NES Elite", "A deep dive into sprite usage in NES Elite", "elite", "deep_dives_nes", "sprite_usage_in_nes_elite");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="displaying_two-layer_images.html">Displaying two-layer images</a><a class="next" rel="next" title="Next deep dive" href="the_nes_combat_demo.html">The NES combat demo</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Stardust, scanners, images, crosshairs and more</h2>
+
+						<p>When Elite was ported to the Commodore 64 in 1985, the authors took advantage of the new system's hardware sprite system. Commodore 64 Elite therefore has differently coloured and shaped laser sights depending on the type of laser fitted, there's a colourful explosion burst that flashes briefly when ships are destroyed, and the new Trumbles mission smothers the screen with oversized cuddly critters (which none of the other 6502 versions do - the Trumbles in the Apple and NES versions don't manage to crawl out onto the cockpit canopy, thankfully). The original BBC Micro version doesn't have any sprites as the BBC Micro doesn't support them, so while these new sprite-based features are nice additions, they don't really change any core aspects of the game.</p>
+
+						<p>Sprites in NES Elite are much more important, and they play a vital role in getting Elite to work on the tile-based console. Let's take a look at sprite usage in the NES version.</p>
+
+						<h2 class="articleSubheader">Sprites in the flight screen<br />
+													 ----------------------------</h2>
+
+						<p>The wireframe space view in NES Elite is monochrome, with cyan lines on a black background, and truth be told it is slightly bland; the 6502 Second Processor version from 1985 introduced four colours into the space view, and the BBC Master continued that tradition, so to find the 1991 NES version going back to monochrome space is a bit of a surprise. There are important technical reasons for this, as explained in the deep dive on <a href="drawing_vector_graphics_using_nes_tiles.html">drawing vector graphics using NES tiles</a>, but luckily there's an easy way to bring a small splash of colour back into the space view: by using sprites.</p>
+
+						<p>When flying our Cobra Mk III through space, there are quite a few sprites on-screen. Consider this in-flight screenshot:</p>
+
+						<img class="titleImage" src="/images/nes/bitplanes/planet_asteroid.png" alt="A deep space view showing a planet and an asteroid in NES Elite" />
+
+						<p>If we hide the background and zoom in on the sprites, this is what they look like:</p>
+
+						<img class="titleImage lightBorder" style="width: 512px" src="/images/nes/sprites/flight_sprites.png" alt="Sprites on the flight screen in NES Elite" />
+
+						<p>The sprites that you can see on-screen include the green laser sights in the middle of the space view, four yellow stardust particles, five cyan stardust particles, the pink icon bar pointer, the purple blob of sprite 0 just to the right of that, the green blobs of the compass and condition indicators just below the pointer, the two pink pitch and roll indicator bars, and in the middle of the 3D scanner, a solitary ship indicator for the asteroid.</p>
+
+						<p>The rest of the sprites are tucked away on the bottom row of the screen. These sprites are at a pixel y-coordinate of 240, which moves them off the bottom of the screen; this is the easiest way to remove sprites from view on the NES. In this off-screen collection of sprites, you can see a whole set of green 3D scanner sticks waiting their turn, as things can get a lot more hectic on the scanner. For example, here's a slightly more interesting example:</p>
+
+						<img class="titleImage lightBorder" style="width: 270px" src="/images/nes/sprites/scanner.png" alt="The 3D scanner in NES Elite" />
+
+						<p>For this one, there are six sprites on the scanner, showing five ships (with one ship needing two sprites of a possible three):</p>
+
+						<img class="titleImage lightBorder" style="width: 144px" src="/images/nes/sprites/scanner_sprites.png" alt="Sprites on the scanner in NES Elite" />
+
+						<p>In terms of sprite numbers, the flight screen uses the 64 available sprites like this:</p>
+
+						<ul>
+							<li>Sprite 0 is always used to implement the split screen (see the deep dive on <a href="the_split-screen_mode_nes.html">the split-screen mode in NES Elite</a> for details)</li>
+
+							<li>Sprites 1 to 4 are always used for the pink icon bar pointer (<a href="/nes/bank_7/subroutine/moveiconbarpointer.html">see MoveIconBarPointer</a>)</li>
+
+							<li>Sprites 5 to 8 are used for the laser sights (see <a href="/nes/bank_3/subroutine/sight.html">SIGHT</a>)</li>
+
+							<li>Sprite 10 is the status indicator on the dashboard (see <a href="/nes/bank_6/subroutine/dials.html">DIALS</a>)</li>
+
+							<li>Sprites 11 and 12 are the roll and pitch indicator bars (see <a href="/nes/bank_6/subroutine/dials.html">DIALS</a>)</li>
+
+							<li>Sprite 13 is the compass dot (see <a href="/nes/bank_0/subroutine/compas.html">COMPAS</a>)</li>
+
+							<li>Sprites 14 to 37 are for up to eight ships on the 3D scanner, with three sprites allocated to each ship - the taller the stick, the larger the number of sprites required for that ship (see <a href="/nes/bank_1/subroutine/scan.html">SCAN</a>)</li>
+
+							<li>Sprites 38 to 57 are stardust particles, which can be shown in pale yellow and dark cyan (see <a href="/nes/bank_1/subroutine/stars1.html">STARS</a> and <a href="/nes/bank_1/subroutine/pixel2.html">PIXEL2</a>)</li>
+
+							<li>Sprites 59 to 62 are used to show a colourful explosion burst when a ship explodes (see <a href="/nes/bank_1/subroutine/drawexplosionburst.html">DrawExplosionBurst</a>)</li>
+						</ul>
+
+						<p>Sprite 9, 58 and 63 are not used in the space view, and sprite 0 is always hidden behind the box edges, but the other 60 sprites can all appear on-screen during flight, bringing a much-needed splash of colour to the monochrome space view.</p>
+
+						<h2 class="articleSubheader">Sprite-based images<br />
+													 -------------------</h2>
+
+						<p>Sprites are also used to create beautiful images throughout the game. The poster child for sprite usage is the two-layer image system, which is used to draw beautiful system and commander images like this:</p>
+
+						<img class="titleImage lightBorder" src="/images/nes/two-layer_images/systemImage14_0.png" alt="An example system image in NES Elite">
+
+						<p>These images are so pretty that they have their own deep dive: see <a href="displaying_two-layer_images.html">displaying two-layer images</a> for details.</p>
+
+						<p>Another great use of sprites is in the Equip Ship screen, which shows our ship's loadout on an image of the Cobra Mk III:
+
+						<img class="titleImage" src="/images/nes/commander/max_equipment.png" alt="The Cobra Mk III with a full loadout on the NES Elite Equip Ship screen" />
+
+						<p>The Cobra image is drawn using background tiles, but all of the pieces of equipment are drawn on top of the spaceship using sprites. Here's a zoomed-in sprite layout for the above screen, showing all the individual pieces of equipment that are fitted to our maxed-out ship:</p>
+
+						<img class="titleImage lightBorder" style="width: 512px" src="/images/nes/sprites/equipment_sprites.png" alt="Sprites on the Equip Ship screen in NES Elite" />
+
+						<p>Let's try to label each piece of equipment in the above image, with each letter representing one 8x8-pixel sprite:</p>
+
+<pre class="articleIndented">
+                         a                    e     ff
+                                      b       e     ff       c
+                      ff    g            ki      a      hj
+                      ff      e               l  mm  l
+                h       n n       i
+              j                     k
+            b         oo              c
+                        ppp
+                         d
+</pre>
+
+						<p>Here's the equipment that each sprite represents:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Key</th><th>Equipment</th></tr>
+							<tr><td>a</td><td>Front laser</td></tr>
+							<tr><td>b</td><td>Left laser</td></tr>
+							<tr><td>c</td><td>Right laser</td></tr>
+							<tr><td>d</td><td>Rear laser</td></tr>
+							<tr><td>e</td><td>E.C.M.</td></tr>
+							<tr><td>f</td><td>Docking computer</td></tr>
+							<tr><td>g</td><td>Escape pod</td></tr>
+							<tr><td>h</td><td>Missile 1</td></tr>
+							<tr><td>i</td><td>Missile 2</td></tr>
+							<tr><td>j</td><td>Missile 3</td></tr>
+							<tr><td>k</td><td>Missile 4</td></tr>
+							<tr><td>l</td><td>Large cargo bay</td></tr>
+							<tr><td>m</td><td>Fuel scoops</td></tr>
+							<tr><td>n</td><td>Galactic hyperdrive</td></tr>
+							<tr><td>o</td><td>Energy unit</td></tr>
+							<tr><td>p</td><td>Energy bomb</td></tr>
+						</table>
+
+						<p>The <a href="/nes/bank_6/subroutine/drawequipment.html">DrawEquipment</a> routine is responsible for drawing the relevant sprites, depending on the loadout. The patterns for both the Cobra and all the bits of equipment are in the packed image at <a href="/nes/bank_3/variable/cobraimage.html">cobraImage</a>, and the <a href="/nes/bank_6/variable/equipsprites.html">equipSprites</a> table maps each piece of equipment to its respective sprites and patterns, along with all the coordinates and attributes needed to display the equipment sprites on the ship.</p>
+
+						<p>When actually playing the game, it isn't particularly easy to match the equipment to the sprites, but there's fun to be had trying to work out what changes on your ship following a shopping spree...</p>
+
+						<h2 class="articleSubheader">Other sprites<br />
+													 -------------</h2>
+
+						<p>Outside of the two-layer images and equipment sprites, there other some images are drawn entirely out of sprites. The biggest of these is the Elite logo shown on the Save and Load screen, which is drawn using the <a href="/nes/bank_6/subroutine/drawspriteimage.html">DrawSpriteImage</a> routine:</p>
+
+						<img class="titleImage" src="/images/nes/general/save_and_load.png" alt="The Save and Load screen in NES Elite" />
+
+						<p>The brackets and position markers on this screen are also sprites.</p>
+
+						<p>Sprites are also used in the following places:</p>
+
+						<ul>
+							<li>The square crosshair reticles on the system charts are shown using sprites, as are the systems on the Short-range Chart:
+
+								<img class="titleImage" src="/images/nes/general/short_range_chart.png" alt="The Short-range Chart in NES Elite">
+							</li>
+
+							<li>The Inventory icon on the icon bar in the Market Prices screen is overlaid onto the icon bar using a sprite - that's the button under the pink icon bar pointer in the following shot:
+
+								<img class="titleImage" src="/images/nes/general/market_lave.png" alt="The Lave market prices screen in NES Elite" />
+							</li>
+						</ul>
+
+						<p>Incidentally, sprite patterns only ever come from pattern table 0 in Elite. Specifically, bit 3 of PPU_CTRL is only ever clear, and this maps the sprite pattern table to $0000 in the PPU, for pattern table 0.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="displaying_two-layer_images.html">Displaying two-layer images</a><a class="next" rel="next" title="Next deep dive" href="the_nes_combat_demo.html">The NES combat demo</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

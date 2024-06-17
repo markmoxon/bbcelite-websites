@@ -1,0 +1,118 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "pitching_and_rolling_by_a_fixed_angle.html", "Pitching and rolling by a fixed angle", "Pitching and rolling by a fixed angle", "A deep dive into pitching and rolling by a fixed angle in BBC Micro Elite", "elite", "deep_dives_moving_and_rotating_in_space", "pitching_and_rolling_by_a_fixed_angle");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="pitching_and_rolling.html">Pitching and rolling</a><a class="next" rel="next" title="Next deep dive" href="program_flow_of_the_ship-moving_routine.html">Program flow of the ship-moving routine</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How other ships manage to pitch and roll in space</h2>
+
+						<p>We can pitch and roll our ship by varying amounts, as shown by the dashboard's DC and RL indicators, but enemy ships don't have such a luxury - it turns out they can only orientate themselves at a fixed speed. Specifically, they can only pitch or roll by a fixed amount each iteration of the main loop - by an angle of 1/16 radians, or 3.6 degrees.</p>
+
+						<p>For example, here's a video showing the space station rotating around its central axis, which is achieved by rotating the station by a small, fixed amount on each iteration of the main loop:</p>
+
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/general/rotating_station.mp4" type="video/mp4">
+						</video>
+
+						<p>This fixed rotation speed makes life simpler for the game code, not only because the angle is small enough to apply the small angle approximation, but also because 1/16 is a power of 2. Let's see how this helps by looking at the calculation in MVS5 in more detail.</p>
+
+						<h2 class="articleSubheader">Fixed angle calculations<br />
+													 ------------------------</h2>
+
+						<p>The <a href="/cassette/main/subroutine/mvs5.html">MVS5</a> routine applies the same trigonometry as described in routine MVS4 (see the deep dive on <a href="rotating_the_universe.html">rotating the universe</a> for details). In MVS5 we rotated the ship's orientation vectors by our own pitch and roll, but this time the angle is fixed at a very small 1/16 radians (around 3.6 degrees) so the maths is rather simpler. If you refer to the documentation for MVS4, you can see that the equations for rolling a point (x, y, z) through an angle a to (x´, y´, z´) are:</p>
+
+<pre class="articleIndented">  x´ = x * cos(a) - y * sin(a)
+  y´ = y * cos(a) + x * sin(a)
+  z´ = z
+</pre>
+
+						<p>In this case, angle a is fixed at 1/16 radians, so we can take the small angle approximations described in MVS4, and reduce them like this:</p>
+
+<pre class="articleIndented">  sin a ~= a
+         = 1/16
+
+  cos a ~= 1 - (a * a) / 2
+         = 1 - (1/16 * 1/16) / 2
+         = 1 - (1/256) / 2
+         = 1 - 1/512
+</pre>
+
+						<p>Plugging these into the above equations, we get:</p>
+
+<pre class="articleIndented">  x´ = x * cos(a) - y * sin(a)
+     = x * (1 - 1/512) - y / 16
+
+  y´ = y * cos(a) + x * sin(a)
+     = y * (1 - 1/512) + x / 16
+
+  z´ = z
+</pre>
+
+						<p>so this is what routine MVS5 implements.</p>
+
+						<p>To clarify further, let's consider the example when X = 15 (roofv_x) and Y = 21 (sidev_x), which applies roll to the ship. If we consider the orientation vectors, this is how the three vectors look if we're sitting in in the ship's cockpit:</p>
+
+<pre class="articleIndented">  roofv (points up out of the ship's sunroof...
+  ^       or it would if it had one)
+  |
+  |
+  |
+  |    nosev (points forward out of the ship's nose
+  |   /        and into the screen)
+  |  /
+  | /
+  |/
+  +-----------------------&gt; sidev (points out of the
+                                   ship's right view)
+</pre>
+
+						<p>If we are doing a roll, then the nosev vector won't change, but roofv and sidev will rotate around, so let's just consider the x-y plane (i.e. the screen) and ignore the z-axis. It looks like this when we roll to the left by angle a, rotating roofv to roofv´ and sidev to sidev´:</p>
+
+<pre class="articleIndented">            roofv
+               ^
+  roofv´       |
+        \      |
+         \     |
+          \    |
+           \   |
+            \  |                 __ sidev´     &lt;-.
+             \ |         __..--''                a`.
+              \| __..--''                          |
+               +-----------------------&gt; sidev
+</pre>
+
+						<p>Applying trigonometry to the above diagram, we get:</p>
+
+<pre class="articleIndented">  roofv´ = roofv * cos(a) - sidev * sin(a)
+
+  sidev´ = sidev * cos(a) + roofv * sin(a)
+</pre>
+
+						<p>so calling MVS5 with X = 15 (roofv_x) and Y = 21 (sidev_x) and a negative RAT2 (as the roll angle a is anti-clockwise in our example), we get the following if we do the calculation for the x coordinates in-place:</p>
+
+<pre class="articleIndented">  roofv_x = roofv_x * (1 - 1/512) - sidev_x / 16
+
+  sidev_x = sidev_x * (1 - 1/512) + roofv_x / 16
+</pre>
+
+						<p>Subsequent calls with X = 17, Y = 23 and X = 19, Y = 25 cover the y and z coordinates, so that's exactly what the roll section of routine MVS5 does, with the pitch section doing the same maths, but on roofv and nosev.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="pitching_and_rolling.html">Pitching and rolling</a><a class="next" rel="next" title="Next deep dive" href="program_flow_of_the_ship-moving_routine.html">Program flow of the ship-moving routine</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

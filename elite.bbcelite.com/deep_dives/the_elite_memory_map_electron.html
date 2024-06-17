@@ -1,0 +1,129 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_elite_memory_map_electron.html", "Acorn Electron Elite memory map", "Acorn Electron Elite memory map", "A deep dive into the memory map of the 6502 Second Processor version of BBC Micro Elite", "elite", "deep_dives_memory_maps", "the_elite_memory_map_electron");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_memory_map_master.html">BBC Master Elite memory map</a><a class="next" rel="next" title="Next deep dive" href="the_elite_memory_map_nes.html">NES Elite memory map</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Memory usage in the smallest and most basic version of Elite</h2>
+
+						<p>Memory might be tight in the <a href="the_elite_memory_map.html">BBC Micro cassette version of Elite</a>, but things get really problematic in the Electron version. The Electron has the same 32K of user RAM as the BBC, but it's missing one vital feature that the BBC versions use to reduce screen memory, and which can't be implemented on the Electron.</p>
+
+						<p>The BBC versions reprogram the 6845 CRTC chip to create a <a href="drawing_monochrome_pixels_in_mode_4.html">square screen mode</a>. This new mode is based on mode 4 (in the disc and cassette versions) or mode 1 (in the colour versions), but with a reduced width and height - it has 32 character columns and 31 character rows, compared to 40 columns and 32 rows in the standard mode 4/mode 1 screen. This custom screen mode is not only much easier to work with, as it's exactly 256 pixels wide, but is also takes up less memory than the standard mode 4: 2,304 bytes fewer, to be exact.</li>
+
+						<p>Unfortunately, the Electron doesn't contain a 6845 CRTC chip. Instead there is one huge custom ULA that controls the whole system - including the screen - and we can't reprogram this in the same way. This means we have to stick to standard mode 4 instead of the BBC's smaller screen mode, and somehow absorb the loss of 2,304 bytes compared to the already cramped <a href="the_elite_memory_map.html">memory map of the BBC cassette version</a>.</p>
+
+						<h2 class="articleSubheader">Electron memory map<br />
+													 -------------------</h2>
+
+						<p>This is why Electron Elite doesn't support suns, planet meridians or craters, Thargoids, Thargons or witchspace - the authors had to drop functionality to squeeze everything in. 2,304 bytes is around 10% of the game code, and even without these features, it's an incredibly tight fit.</p>
+
+						<p>Here's the memory map for Electron Elite.</p>
+
+<pre class="articleIndented">  +-----------------------------------+   &amp;FFFF
+  |                                   |
+  | Machine Operating System (MOS)    |
+  |                                   |
+  +-----------------------------------+   &amp;C000
+  |                                   |
+  | Paged ROMs                        |
+  |                                   |
+  +-----------------------------------+   &amp;8000
+  |                                   |
+  | Memory for the mode 4 screen      |
+  |                                   |
+  +-----------------------------------+   &amp;5800
+  |                                   |
+  | Ship blueprints (SHIPS.bin)       |
+  |                                   |
+  +-----------------------------------+   &amp;4ED4 = <a href="/electron/main/variable/xx21.html">XX21</a>
+  |                                   |
+  | Main game code (ELITECO.bin)      |
+  |                                   |
+  +-----------------------------------+   &amp;0D00 = <a href="/electron/main/workspace/s_per_cent_part_1_of_2.html">S%</a>
+  |                                   |
+  | &amp;0CF3-&amp;0CFF unused                |
+  |                                   |
+  +-----------------------------------+   &amp;0CF3
+  |                                   |
+  | WP workspace                      |
+  |                                   |
+  +-----------------------------------+   &amp;0BE0 = <a href="/electron/main/workspace/wp.html">WP</a>
+  |                                   |
+  | Ship line heap descends from WP   |
+  |                                   |
+  +-----------------------------------+   SLSP
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  | Ship data blocks ascend from K%   |
+  |                                   |
+  +-----------------------------------+   &amp;0900 = <a href="/electron/main/workspace/k_per_cent.html">K%</a>
+  |                                   |
+  | MOS sound/printer workspace       |
+  |                                   |
+  +-----------------------------------+   &amp;0800
+  |                                   |
+  | Recursive tokens (WORDS9.bin)     |
+  |                                   |
+  +-----------------------------------+   &amp;0400 = <a href="/electron/main/variable/qq18.html">QQ18</a>
+  |                                   |
+  | MOS tape filing system workspace  |
+  |                                   |
+  +-----------------------------------+   &amp;036C
+  |                                   |
+  | T% workspace                      |
+  |                                   |
+  +-----------------------------------+   &amp;0300 = <a href="/electron/main/workspace/t_per_cent.html">T%</a>
+  |                                   |
+  | MOS general workspace             |
+  |                                   |
+  +-----------------------------------+   &amp;0200
+  |                                   |
+  | 6502 stack descends from &amp;01FF    |
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  | Heap space ascends from XX3       |
+  |                                   |
+  +-----------------------------------+   &amp;0100 = <a href="/electron/main/workspace/xx3.html">XX3</a>
+  |                                   |
+  | Zero page workspace               |
+  |                                   |
+  +-----------------------------------+   &amp;0000 = <a href="/electron/main/workspace/zp.html">ZP</a>
+</pre>
+
+						<p>Apart from the 13 unused bytes from &amp;0CF3 to &amp;0CFF, every location is used. That said, the Electron version does still contain the same unused multiplication routines as the BBC Micro (a duplicate of MULTU and the unused MUT3 routine), so there are at least 28 unused bytes that could be reused... and on top of that, the authors left the ARCTAN routine (70 bytes) and ACT table (32 bytes) intact, even though they are only ever used to draw meridians and equators on planets, a feature that isn't present in the Electron version. In terms of the game binary that was released, though, it's even more of a squeeze than in the BBC version. In this version, more than any other, every byte counts.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_memory_map_master.html">BBC Master Elite memory map</a><a class="next" rel="next" title="Next deep dive" href="the_elite_memory_map_nes.html">NES Elite memory map</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,159 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_extra_tracks_data_file_format.html", "The extra tracks data file format", "The extra tracks data file format", "A deep dive into the extra tracks data file format in BBC Micro Revs", "revs", "deep_dives_extra_tracks", "the_extra_tracks_data_file_format");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="dynamic_track_generation_in_the_extra_tracks.html">Dynamic track generation</a><a class="next" rel="next" title="Next deep dive" href="backporting_the_nurburgring_track.html">Backporting the N&uuml;rburgring track</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Differences between the standard Silverstone track and the extra track files</h2>
+
+						<p>The extra track files in the Revs 4 Tracks expansion pack are designed to be drop-in replacements for the original game's Silverstone track file. The expansion pack doesn't actually include Revs itself - it just includes the four extra track files, plus a simple menu program that loads one of the new tracks into memory before running the game from the original disc or cassette. The only difference when driving Brands Hatch instead of Silverstone is the track data file; the game itself is exactly the same.</p>
+
+						<p>You might assume, then, that the extra track files are simply variants of the Silverstone file format, with different data for the new tracks, but it turns out that the majority of the content in the extra track files is completely different to Silverstone. The extra tracks aren't variants of the original format, they are a major redesign.</p>
+
+						<p> For an introduction to the differences in the extra tracks, see the deep dive on <a href="secrets_of_the_extra_tracks.html">secrets of the extra tracks</a>. In this article we're going to take a closer look at the structure of the extra track files, when compared to the original.</p>
+
+						<h2 class="articleSubheader">Comparing the track files<br />
+													 -------------------------</h2>
+
+ 						<p>Below, you can see a breakdown of the structure of the extra track files, compared with the Silverstone track file (I've chosen to compare the Donington Park track with Silverstone, as it contains the most differences, but all the extra track files are broadly similar). The two file formats are the same size, with 1,849 bytes of data for each track, though the extra track files are padded out to be 2,000 bytes long, and include a block of unused memory at the end. This extra block is ignored and has no effect on the game, so for now we're just going to concentrate on the data (though see below for an analysis of these extra bytes, as they don't just contain random noise).</p>
+
+						<p>Once the loading process has finished (as described in the deep dive on <a href="the_jigsaw_puzzle_binary.html">the jigsaw puzzle binary</a>), the track file can be found at address &amp;5300, with the final entry being the CallTrackHook routine. The track data files also contain the track's checksum and name, but these are discarded once the track has been loaded and verified.</p>
+
+						<p>It's worth noting that all of the labels in the Silverstone track also appear in the extra track file, though some of them are in different places. In the table below, asterisks (*) denote labels that are only used while the extra track is loading; once the track has loaded, these labels are discarded, and are replaced by the labels from the Silverstone side. So, once the extra track has finished loading, xTrackSegmentI will be at &amp;5400, yTrackSegmentI will be at &amp;5500, and so on, just like in the Silverstone track.</p>
+
+						<p>As with the Silverstone track, data names that start with "track" (or, in the case of axis-based coordinates or vectors, with "xTrack", "yTrack" or "zTrack") denote read-only data, so the new data block at trackSubCount in the extra tracks is read-only, for example. However, this convention no longer applies to the segment vector tables in xTrackSegmentI, yTrackSegmentI, zTrackSegmentI, xTrackSegmentO and zTrackSegmentO, as in the extra tracks these are dynamically generated rather than being hard-coded; I've left the variable names as they are, to avoid confusion.</p>
+
+						<p>Here is the comparison of the two different file structures:</p>
+
+<pre class="articleIndented">
+                   Donington Park   Address    Silverstone
+                   --------------   -------    -----------
+
+ Track section data (Part 1 of 2)    &amp;5300    Track section data (Part 1 of 2)
+                Multiply80Percent    &amp;53D0    xTrackSignVector
+                 HookFlipAbsolute    &amp;53D7
+       HookJoystick (Part 3 of 3)    &amp;53DC
+                                     &amp;53E0    zTrackSignVector
+                      HookForward    &amp;53E9
+                                     &amp;53F0    yTrackSignVector
+     ModifyGameCode (Part 4 of 4)    &amp;53F3
+                       subSection    &amp;53FA
+                    trackSubCount    &amp;53FB
+                       yawAngleLo    &amp;53FC
+                       yawAngleHi    &amp;53FD
+                     segmentSlope    &amp;53FE
+                subSectionSegment    &amp;53FF
+                * modifyAddressLo    &amp;5400    xTrackSegmentI
+                * modifyAddressHi    &amp;5414
+                  trackYawDeltaHi    &amp;5428
+                    trackSignData    &amp;5462
+                CalcSegmentVector    &amp;5472
+                Multiply8x8Signed    &amp;54EB
+                 HookDataPointers    &amp;54EF
+                   * newContentLo    &amp;5500    yTrackSegmentI
+                   * newContentHi    &amp;5514
+                  trackYawDeltaLo    &amp;5528
+                 xTrackSignVector    &amp;5562
+                HookSegmentVector    &amp;5572
+                 MoveToNextVector    &amp;557F
+               UpdateDataPointers    &amp;5582
+                     HookMoveBack    &amp;55BD
+                 SetSegmentVector    &amp;55C4
+   * ModifyGameCode (Part 3 of 4)    &amp;5600    zTrackSegmentI
+                  trackSlopeDelta    &amp;5628
+                 yTrackSignVector    &amp;5662
+                  HookSectionFrom    &amp;5672
+                HookUpdateHorizon    &amp;56AF
+                  HookFieldOfView    &amp;56BC
+                 HookFlattenHills    &amp;56C8
+   * ModifyGameCode (Part 1 of 4)    &amp;5700    xTrackSegmentO
+                     trackSubSize    &amp;5728
+                 zTrackSignVector    &amp;5762
+                   HookFixHorizon    &amp;5772
+       HookJoystick (Part 1 of 3)    &amp;5779
+                    Hook80Percent    &amp;57B6
+                      xTrackCurve    &amp;57BF
+   * ModifyGameCode (Part 2 of 4)    &amp;5800    zTrackSegmentO
+                       trackSlope    &amp;5828
+                  trackYawAngleLo    &amp;5846
+                  trackYawAngleHi    &amp;5864
+                   trackSubConfig    &amp;5882
+                    trackSteering    &amp;58A0
+                      zTrackCurve    &amp;58BF
+ Track section data (Part 2 of 2)    &amp;5900    Track section data (Part 2 of 2)
+                    HookSlopeJump    &amp;59C9
+                                     &amp;59D0    trackSteering
+       HookJoystick (Part 2 of 3)    &amp;59D8
+                                     &amp;59EA    trackSignData
+                   HookBackground    &amp;59ED
+                trackSectionCount    &amp;59FA    trackSectionCount
+                 trackVectorCount    &amp;59FB    trackVectorCount
+                      trackLength    &amp;59FC    trackLength
+                   trackStartLine    &amp;59FE    trackStartLine
+                  trackLapTimeSec    &amp;5A00    trackLapTimeSec
+                  trackLapTimeMin    &amp;5A03    trackLapTimeMin
+                   trackGearRatio    &amp;5A06    trackGearRatio
+                   trackGearPower    &amp;5A0D    trackGearPower
+                   trackBaseSpeed    &amp;5A14    trackBaseSpeed
+               trackStartPosition    &amp;5A17    trackStartPosition
+                  trackCarSpacing    &amp;5A18    trackCarSpacing
+                 trackTimerAdjust    &amp;5A19    trackTimerAdjust
+                trackRaceSlowdown    &amp;5A1A    trackRaceSlowdown
+                 HookFirstSegment    &amp;5A1B
+                    CallTrackHook    &amp;5A22    CallTrackHook
+
+                    trackChecksum    &amp;7800    trackChecksum
+                    trackGameName    &amp;7804    trackGameName
+                        trackName    &amp;7808    trackName
+</pre>
+
+						<p>To summarise the differences between the file structures:</p>
+
+						<ul>
+							<li>The following data are unchanged between the two formats: the two blocks of track section data, all the data from trackSectionCount to trackRaceSlowdown, the CallTrackHook routine, and the track's checksum and names.</li>
+
+							<li>The following data have moved in the extra track file: xTrackSignVector, yTrackSignVector, zTrackSignVector, trackSteering and trackSignData.</li>
+
+							<li>The segment vector blocks at xTrackSegmentI, yTrackSegmentI, zTrackSegmentI, xTrackSegmentO and zTrackSegmentO contain 256 bytes each in Silverstone, but only 40 bytes each in the extra tracks (and in the latter they are dynamically generated rather than hard-coded).</li>
+
+							<li>Everything else in the extra track data file is new and does not appear in the Silverstone track.</li>
+						</ul>
+
+						<p>For information on the entries in the Silverstone track, see the deep dive on <a href="the_track_data_file_format.html">the track data file format</a>, while for details of the variables and routines in the extra tracks, see the deep dive on <a href="secrets_of_the_extra_tracks.html">secrets of the extra tracks</a>.</p>
+
+						<h2 class="articleSubheader">Source code clues in the extra track files<br />
+													 ------------------------------------------</h2>
+
+						<p>As is often the case with BBC Micro assembly programs, Revs contains snippets of "background noise", left over from the compilation process. There's a great example of this in Aviator, Geoff Crammond's previous game - you can read all about this, and the concept of noise, in <a href="https://aviator.bbcelite.com/deep_dives/source_code_clues_hidden_in_the_game_binary.html">this deep dive in my Aviator project</a>.</p>
+
+						<p>Unfortunately, the main game binary in Revs doesn't contain any interesting source code clues, but the extra tracks do contain a tiny snippet of interest, bolted on to the end of the file. This extra content is ignored and is presumably only there because the extra track files were saved out to be exactly 2,000 bytes long (of which only 1,849 bytes is data). It does, however, contain a bit of BBC BASIC code, in tokenised form, which we can expand to the following:
+
+<pre class="articleIndented">  DATA " BRANDS HATCH"," DONINGTON PARK"," OULTON PARK   "," SNETTERTON    "
+  DATA""
+  REM Programs on the disc or tape
+  DATAB ,D ,O ,S
+  DATA""
+</pre>
+
+						<p>I haven't converted the tokenised line numbers, as that's a really fiddly process, but this is still a genuine snippet of Geoff Crammond's original source code. It's clearly something to do with the Revs 4 Tracks expansion, and it doesn't tell us an awful lot, but it's still interesting to see a genuine artefact from the development process, however small.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="dynamic_track_generation_in_the_extra_tracks.html">Dynamic track generation</a><a class="next" rel="next" title="Next deep dive" href="backporting_the_nurburgring_track.html">Backporting the N&uuml;rburgring track</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,131 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_sine_cosine_and_arctan_tables.html", "The sine, cosine and arctan tables", "The sine, cosine and arctan tables", "A deep dive into the sine, cosine and arctan tables in BBC Micro Elite", "elite", "deep_dives_maths", "the_sine_cosine_and_arctan_tables");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="shift-and-subtract_division.html">Shift-and-subtract division</a><a class="next" rel="next" title="Next deep dive" href="generating_random_numbers.html">Generating random numbers</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The lookup tables used for the planet-drawing trigonometric functions</h2>
+
+						<p>As described in the deep dives on <a href="drawing_circles.html">drawing circles</a> and <a href="drawing_ellipses.html">drawing ellipses</a>, Elite's circle and ellipse routines use lookup tables to implement the required trigonometric functions. The result is some beautifully smooth planets and craters, like this:</p>
+
+						<img class="titleImage" src="/images/ellipses/diso.png" alt="A view of Diso in BBC Micro Elite" />
+
+						<p>The circle and ellipse routines use two trigonometric lookup tables, as follows:</p>
+
+						<ul>
+							<li>The <a href="/cassette/main/variable/sne.html">SNE</a> table contains lookup values for sine and cosine. These values are used when drawing circles and ellipses, as the small angle approximation that we use when rotating ships in space isn't accurate enough for describing entire circles. For this, we need to be able to look up the sine and cosine of any angle, not just small ones, and for that we need a lookup table.</li>
+
+							<li>The <a href="/cassette/main/variable/act.html">ACT</a> table, meanwhile, contains lookup values for arctan, and is used by the <a href="/cassette/main/subroutine/arctan.html">ARCTAN</a> routine. This is used when drawing the meridians and equators on planets in part 2 of PL9.</li>
+						</ul>
+
+						<p>Let's have a look at how these tables work.</p>
+
+						<p>(Note that this approach is different to the trigonometry used in the rotation routines, which use the small angle approximation for speed - see the deep dive on <a href="pitching_and_rolling.html">pitching and rolling</a> for details).</p>
+
+						<h2 class="articleSubheader">Sine table<br />
+													 ----------</h2>
+
+						<p>We use the sine table like this. To calculate the following:</p>
+
+<pre class="articleIndented">  sin(theta) * 256
+</pre>
+
+						<p>where theta is in radians, we look up the value in:</p>
+
+<pre class="articleIndented">  SNE + (theta * 10)
+</pre>
+
+						<p>Here's how this works. The value at byte number (theta * 10) is:</p>
+
+<pre class="articleIndented">  256 * ABS(SIN((theta * 10 / 64) * 2 * PI))
+</pre>
+
+						<p>rounded to the nearest integer. If we expand the part that we pass to SIN():</p>
+
+<pre class="articleIndented">  (theta * 10 / 64) * 2 * PI =  (theta / 6.4) * 2 * PI
+                             =~ (theta / 6.4) * 6.28
+                             =~ theta
+</pre>
+
+						<p>then substituting this into the above, we can see that the value at byte (theta * 10) is approximately:</p>
+
+<pre class="articleIndented">  256 * ABS(SIN(theta))
+</pre>             <h2 class="articleSubheader">Cosine table<br />
+            							 ------------</h2>
+
+						<p>So that's the sine lookup, but what about the cosine? To calculate the following:</p>
+
+<pre class="articleIndented">  cos(theta) * 256
+</pre>
+
+						<p>where theta is in radians, we look up the value in:</p>
+
+<pre class="articleIndented">  SNE + ((theta * 10) + 16) mod 32
+</pre>
+
+						<p>How does this work? Well, because of the way sine and cosine work in terms of right-angled triangles, the following holds true (using degrees for a second as it's easier to picture):</p>
+
+<pre class="articleIndented">  cos(theta) = sin(90 - theta) = sin(90 + theta)
+</pre>
+
+						<p>So to get the cosine value, we just need to look up the sine of 90 + theta.</p>
+
+						<p>The 32 entries in the sine table cover half a circle, as they go from sin(0) to sin(31/64 * 2 * PI) and there are 2 * PI radians in a circle, so if 32 entries covers half a circle, 90 degrees is a half of that, or 16.</p>
+
+						<p>So to get the cosine, we look up the following value, applying mod 32 so the table lookup wraps around correctly if the index falls over the end:</p>
+
+<pre class="articleIndented">  SNE + ((theta * 10) + 16) mod 32
+</pre>
+
+						<p>It's not 100% accurate, but it's easily good enough for our needs.</p>
+
+						<h2 class="articleSubheader">Arctan table<br />
+													 ------------</h2>
+
+						<p>To calculate the following:</p>
+
+<pre class="articleIndented">  theta = arctan(t)
+</pre>
+
+						<p>where 0 &lt;= t &lt; 1, we look up the value in:</p>
+
+<pre class="articleIndented">  ACT + (t * 32)
+</pre>
+
+						<p>The result will be an integer representing the angle in radians, with 256 representing a full circle of 2 * PI radians.</p>
+
+						<p>The ACT table contains arctan values for arguments less than one - in other words, it contains values for arctan(0) through arctan(31/32), or angles in triangles where the length of the opposite is less than the length of the adjacent, so the angle is less than 45 degrees. This means the table contains values in the range 0 to 31.</p>
+
+						<p>The table does not support values of t &gt;= 1 or t &lt; 0 directly, but we can use the following calculations instead:</p>
+
+						<ul>
+							<li>For t &gt; 1, arctan(t) = 64 - arctan(1 / t)</li>
+
+							<li>For t &lt; 0, arctan(-t) = 128 - arctan(t)</li>
+						</ul>
+
+						<p>If t &lt; -1, we can do the first one to get arctan(|t|), then the second to get arctan(-|t|).</p>
+
+						<p>The first one follows from the fact that arctan(t) + arctan(1 / t) = PI / 2, and we represent PI / 2 by 64 in our model.</p>
+
+						<p>The second one follows from the fact that arctan(-t) = PI - arctan(t) for the range 0 &lt; arctan(t) &lt; PI, and we represent PI by 128 in our model.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="shift-and-subtract_division.html">Shift-and-subtract division</a><a class="next" rel="next" title="Next deep dive" href="generating_random_numbers.html">Generating random numbers</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

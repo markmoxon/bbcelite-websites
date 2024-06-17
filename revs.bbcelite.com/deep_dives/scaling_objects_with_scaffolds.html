@@ -1,0 +1,350 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "scaling_objects_with_scaffolds.html", "Scaling objects with scaffolds", "Scaling objects with scaffolds", "A deep dive into scaling objects with scaffolds in BBC Micro Revs", "revs", "deep_dives_objects", "scaling_objects_with_scaffolds");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_a_3d_car_from_2d_parts.html">Drawing a 3D car from 2D parts</a><a class="next" rel="next" title="Next deep dive" href="creating_objects_from_edges.html">Creating objects from edges</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Scaling the vector-based objects in Revs using scaffolds</h2>
+
+						<p>One of the big challenges of building a fast and furious racing simulation like Revs is the fidelity of the graphics. If there's one thing that's bound to break your immersion, it's overtaking a competitor, only to watch their car turn into a pixelated mess as the sprites used to draw the car suffer under too much magnification.</p>
+
+						<p>Revs sidesteps this issue by avoiding the use of bitmap sprites for the cars, road signs and corner markers; indeed, there are no sprites anywhere in Revs. Instead, the game's objects are stored as vector graphics, albeit vector graphics that are restricted to a specific grid size and only vertical and horizontal struts. Despite these restrictions, these vectors still enable the game to scale its objects to practically any size without suffering from pixelation, and to do this scaling in a very efficient manner.</p>
+
+						<p>For an introduction to the object system, see the deep dive on <a href="object_definitions.html">object definitions</a>, but if you're already familiar with the basics, let's take a detailed look at how the objects in Revs support scaling.</p>
+
+						<h2 class="articleSubheader">The scaffold system<br />
+													 -------------------</h2>
+
+						<p>First, a quick recap on how objects are stored in Revs. Each object is made up of one or more object parts, with each object part being a rectangle with either two or four edges. The shape and size of each object part is defined in the object data tables at <a href="/source/main/variable/objecttop.html">objectTop</a>, <a href="/source/main/variable/objectbottom.html">objectBottom</a>, <a href="/source/main/variable/objectleft.html">objectLeft</a> and <a href="/source/main/variable/objectright.html">objectRight</a>, and the part's colours are defined in the <a href="/source/main/variable/objectColour.html">objectColour</a> table. So far so good.</p>
+
+						<p>The interesting thing is how the object part's dimensions are stored in these tables. The tables don't contain direct measurements; instead, they use a scaffold system.</p>
+
+						<p>Each object has its own scaffold, which contains all the measurements that we need to build all the different parts of that object. The object's dimensions are defined using the scaffold rather than direct measurements, so if we want to scale the object, we can just scale the scaffold. The <a href="/source/main/variable/objectscaffold.html">objectScaffold</a> table contains all the object scaffolds, indexed by <a href="/source/main/variable/scaffoldindex.html">scaffoldIndex</a>, and these are scaled by the <a href="/source/main/subroutine/scaleobject.html">ScaleObject</a> routine into the <a href="/source/main/variable/scaledscaffold.html">scaledScaffold</a> table.</p>
+
+						<p>As an example, consider object type 7, the sign that indicates a straight part of the track. It looks like this at a reasonable distance (top), and close up (bottom):</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/small/object_7.png" alt="Object 7 at a distance" />
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_7.png" alt="Object 7 at close quarters" />
+
+						<p>This is how the object is designed:</p>
+
+<pre class="articleIndented">
+                  -28                  0                  +28
+
+                   +---------------------------------------+     +20
+                   |                                       |
+                   |                                       |
+  Part 0 ->        |                                       |
+                   |                                       |
+                   |                   *                   |       0
+                   |                                       |
+                   +-------+---+---------------+---+-------+      -8
+                           |   |               |   |
+  Parts 1, 2 ->            |   |               |   |
+                           |   |               |   |
+                           +---+               +---+             -18
+
+                         -20   -16           +16   +20
+</pre>
+
+						<p>All the objects in Revs are laid out on a 65-by-65 grid, with the axes ranging from -32 to +32. So the top edge of the sign above is at +20 above the centre of the object (which is shown by the *), while the left edge of the sign is at -28. These aren't the values that are stored in objectTop and objectLeft, however. Instead, for each object, we collect all the different measurements used in the design, store those measurements as the object's scaffold, and store references to the scaffold in the data tables.</p>
+
+						<p>In the case of our example object, then if we ignore signs, the various measurements are 28, 20, 18, 16 and 8. We therefore store five entries in the object's scaffold, with each measurement being given a scaffold number, starting from 0 with the largest measurements first. Specifically, the scaffold for this object looks like this:</p>
+
+						<ul>
+							<li>Scaffold measurement 0 = 28</li>
+
+							<li>Scaffold measurement 1 = 20</li>
+
+							<li>Scaffold measurement 2 = 18</li>
+
+							<li>Scaffold measurement 3 = 16</li>
+
+							<li>Scaffold measurement 4 = 8</li>
+						</ul>
+
+						<p>In the object data tables like objectTop and objectLeft, we store the object's dimensions as scaffold numbers, rather than actual measurements. For example, if we consider part 0 of our object above, i.e. the main rectangle of the sign, the measurements are:</p>
+
+						<ul>
+							<li>Top = 20</li>
+
+							<li>Bottom = -8</li>
+
+							<li>Left = -28</li>
+
+							<li>Right = 28</li>
+						</ul>
+
+						<p>So these dimensions get stored in the object data tables as follows:</p>
+
+						<ul>
+							<li>objectTop = scaffold measurement 1</li>
+
+							<li>objectBottom = scaffold measurement 4, negated</li>
+
+							<li>objectLeft = scaffold measurement 0, negated</li>
+
+							<li>objectRight = scaffold measurement 0</li>
+						</ul>
+
+						<p>We'll cover this example in more detail below, as the above is a slight simplification, but first let's look at why the objects in Revs are stored using this scaffold technique, rather than as a simple series of measurements.</p>
+
+						<h2 class="articleSubheader">Scaling the scaffold<br />
+													 --------------------</h2>
+
+						<p>The main advantage of storing object measurements as a scaffold is that it's much easier to scale the object: all we need to do is scale the scaffold, and because the object's measurements are stored as scaffold numbers, this automatically scales the object. If we can design the scaffold system to be easy to scale, then we not only do we get scalable objects, but we get efficiently scalable objects.</p>
+
+						<p>To help with this efficiency, scaffold measurements are actually stored in multiples of 1/32, so a scaffold measurement might be 28/32, or 5/32, or whatever (I omitted this part in the section above, for clarity). Then, to get the actual dimensions of an object on-screen, each scaffold measurement is multiplied by two scale factors to get the size of the object to draw. These scale factors depend on the object's size and distance, so objects that are further away are smaller, for example.</p>
+
+						<p>Let's look at the scaffold system in more detail. As mentioned above, each object has a number of entries in the objectScaffold table, one for each scaffold measurement, and they are stored in decreasing order of size (so the largest measurements come first). In the above example, the various measurements we noted were 28, 20, 18, 16 and 8, which we store as the following scaffold:</p>
+
+						<ul>
+							<li>Scaffold measurement 0 = 28/32</li>
+
+							<li>Scaffold measurement 1 = 20/32</li>
+
+							<li>Scaffold measurement 2 = 18/32</li>
+
+							<li>Scaffold measurement 3 = 16/32</li>
+
+							<li>Scaffold measurement 4 = 8/32</li>
+						</ul>
+
+						<p>Each scaffold measurement is stored in the objectScaffold table in one of these two binary formats, which are differentiated on the value of bit 7:</p>
+
+<pre class="articleIndented">  %00000ccc
+
+  %1abbbccc
+</pre>
+
+						<p>Let's extract the various bits as follows:</p>
+
+<pre class="articleIndented">  a = %a
+
+  b = %bbb
+
+  c = %ccc
+</pre>
+
+						<p>The logic in the ScaleObject routine interprets these scaffold values as follows. The scaffold value represented by %00000ccc is this:</p>
+
+<pre class="articleIndented">      1
+  ---------
+  2^(c - 2)
+</pre>
+
+						<p>and the scaffold value represented by %1abbbccc is this:</p>
+
+<pre class="articleIndented">  a         1             1
+  -  +  ---------  +  ---------
+  2     2^(b - 2)     2^(c - 2)
+</pre>
+
+						<p>In both cases, the result is a multiple of 1/32, so each of these entries represents a fraction of the form n/32 (see the comments in the ScaleObject routine for an explanation of the maths behind this). We therefore have a way of storing all possible n/32 scaffold values in the objectScaffold table, but in a way that lends itself to very fast scaling.</p>
+
+						<p>Let's take a couple of examples to see how this works. For example, the very first scaffold entry in objectScaffold is %10011100, which matches the second format above. Extracting the bit values gives us the following:</p>
+
+<pre class="articleIndented">  %1 0 011 100
+  %1 a bbb ccc
+
+  a = %a = 0
+
+  b = %bbb = %011 = 3
+
+  c = %ccc = %100 = 4
+</pre>
+
+						<p>If we plug these values into the above equation, we get:</p>
+
+<pre class="articleIndented">     a         1             1
+     -  +  ---------  +  ---------
+     2     2^(b - 2)     2^(c - 2)
+
+     0         1             1
+  =  -  +  ---------  +  ---------
+     2     2^(3 - 2)     2^(4 - 2)
+
+     0     1     1
+  =  -  +  -  +  -
+     2     2     4
+
+     24
+  =  --
+     32
+</pre>
+
+						<p>So a value of %10011100 in objectScaffold represents a scaffold of 24/32, which can be mapped to an edge coordinate of -24 or +24.</p>
+
+						<p>As another example, consider the scaffold measurement %00000011. This matches the first format above, so we get:</p>
+
+<pre class="articleIndented">  %0 0000 011
+  %0 0000 ccc
+
+  c = %ccc = %011 = 3
+</pre>
+
+						<p>If we plug these values into the above equation, we get:</p>
+
+<pre class="articleIndented">         1
+     ---------
+     2^(c - 2)
+
+         1
+  =  ---------
+     2^(3 - 2)
+
+     1
+  =  -
+     2
+
+     16
+  =  --
+     32
+</pre>
+
+						<p>So a value of %00000011 in objectScaffold represents a scaffold of 16/32, which can be mapped to an edge coordinate of -16 or +16.</p>
+
+						<p>Now for the scaling part. The ScaleObject routine takes the scaffold entry for a specific object and scales it by multiplying each scaffold measurement by the following scale factor:</p>
+
+<pre class="articleIndented">    scaleUp
+  -----------
+  2^scaleDown
+</pre>
+
+						<p>The resulting values are stored in the scaledScaffold table, which uses the same structure as the objectScaffold table, but contains the scaled scaffold to use when drawing the scaled object.</p>
+
+						<p>This might sound like a lot of work, but because of the way the scaffold measurements are stored, the ScaleObject routine is extremely efficient, using nothing more than a few shifts and additions. There is no need for a complex multiplication or division routine here, and the only loop is one that does multiple right-shifts, which is a very efficient process.</p>
+
+						<p>On top of this, the number of scaffold entries that need to be scaled for each object is small compared to the complexity of the object. The most complex object is the standard car in object type 4, which contains six object parts, one of which is a four-edge object, but this all boils down to just eight scaffold entries. To scale the car, then, we just need to scale eight highly optimised scale factors, and we're done.</p>
+
+						<p>In this way, storing objects as scaffolds enables us to scale those objects fast, and without needing to store multiple object definitions for different magnifications. In this sense, the objects in Revs are vector objects rather than bitmap sprites, and the result is a slick game where the cars and signs look good both in the distance and close up.</p>
+
+						<h2 class="articleSubheader">A detailed look at an object definition<br />
+													 ---------------------------------------</h2>
+
+						<p>Not only are scaffolds time-efficient when scaling, they are space-efficient too, so let's go through the structure of object type 7 in full detail to see what just how much memory scaffolded objects need for storage. To recap, object type 7 is the road sign by the side of the track when you start a practice lap of Silverstone, and it indicates a straight portion of track. Here's the object on-screen:</p>
+
+						<img class="titleImage" style="width: auto" src="/images/objects/big/object_7.png" alt="Object 7 at close quarters" />
+
+						<p>And here's the object design again:</p>
+
+<pre class="articleIndented">
+                  -28                  0                  +28
+
+                   +---------------------------------------+     +20
+                   |                                       |
+                   |                                       |
+  Part 0 ->        |                                       |
+                   |                                       |
+                   |                   *                   |       0
+                   |                                       |
+                   +-------+---+---------------+---+-------+      -8
+                           |   |               |   |
+  Parts 1, 2 ->            |   |               |   |
+                           |   |               |   |
+                           +---+               +---+             -18
+
+                         -20   -16           +16   +20
+</pre>
+
+						<p>The sign is made up of three parts:</p>
+
+						<ul>
+							<li>Part 0 is the large rectangular part of the sign, with a black centre and white stripes down the sides</li>
+
+							<li>Part 1 is the left leg, made up of a black edge on the left and a red fill, with no edge on the right</li>
+
+							<li>Part 2 is the right leg, which is also made up of a black edge on the left and a red fill, with no edge on the right</li>
+						</ul>
+
+						<p>The objectScaffold table defines the following scaffold measurements for the object's scaffold:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Scaffold number</th><th>objectScaffold entry</th><th>Measurement</th></tr>
+							<tr><td>0</td><td>%11100101</td><td>28/32</td></tr>
+							<tr><td>1</td><td>%10011101</td><td>20/32</td></tr>
+							<tr><td>2</td><td>%10011110</td><td>18/32</td></tr>
+							<tr><td>3</td><td>%00000011</td><td>16/32</td></tr>
+							<tr><td>4</td><td>%00000100</td><td>8/32</td></tr>
+						</table>
+
+						<p>Part 0 has the following specification in the object data tables:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Table</th><th>Table entry</th><th>Scaffold</th><th>Measurement</th></tr>
+							<tr><td>objectTop</td><td>1</td><td>1</td><td>20/32</td></tr>
+							<tr><td>objectBottom</td><td>4 + 8</td><td>4 negated</td><td>-8/32</td></tr>
+							<tr><td>objectLeft</td><td>0 + 8</td><td>0 negated</td><td>-28/32</td></tr>
+							<tr><td>objectRight</td><td>0</td><td>0</td><td>28/32</td></tr>
+						</table>
+
+						<p>Note that in the data tables, adding 8 to an entry (i.e. setting bit 3) means we use a negative scaffold value for the measurement.</p>
+
+						<p>Part 1 has the following specification in the object data tables:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Table</th><th>Table entry</th><th>Scaffold</th><th>Measurement</th></tr>
+							<tr><td>objectTop</td><td>4 + 8</td><td>4 negated</td><td>-8/32</td></tr>
+							<tr><td>objectBottom</td><td>2 + 8</td><td>2 negated</td><td>-18/32</td></tr>
+							<tr><td>objectLeft</td><td>1 + 8</td><td>1 negated</td><td>-20/32</td></tr>
+							<tr><td>objectRight</td><td>3</td><td>0</td><td>16/32</td></tr>
+						</table>
+
+						<p>Part 2 has the following specification in the object data tables:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Table</th><th>Table entry</th><th>Scaffold</th><th>Measurement</th></tr>
+							<tr><td>objectTop</td><td>4 + 8</td><td>4 negated</td><td>-8/32</td></tr>
+							<tr><td>objectBottom</td><td>2 + 8</td><td>2 negated</td><td>-18/32</td></tr>
+							<tr><td>objectLeft</td><td>3 + 8</td><td>3 negated</td><td>-16/32</td></tr>
+							<tr><td>objectRight</td><td>1</td><td>1</td><td>20/32</td></tr>
+						</table>
+
+						<p>To complete the picture, the colour information for the object is stored in the objectColour table. Colour information is stored as follows:
+
+						<ul>
+							<li>Bits 0-1 contain the logical number of the fill colour</li>
+
+							<li>Bits 2-3 contain the logical number of the edge colour</li>
+
+							<li>Bit 4 set = hide this edge when it's on the outside</li>
+
+							<li>Bit 7 set = this is a four-edge object part</li>
+						</ul>
+
+						<p>For object type 7, all this information takes up just three bytes, with one byte for each part, as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Part</th><th>Edge</th><th>Fill</th><th>Hide outside edge</th><th>Four-edge part</th></tr>
+							<tr><td>0</td><td>0 (black)</td><td>2 (white)</td><td>0 (no)</td><td>0 (no)</td></tr>
+							<tr><td>1</td><td>1 (red)</td><td>0 (black)</td><td>1 (yes)</td><td>0 (no)</td></tr>
+							<tr><td>2</td><td>1 (red)</td><td>0 (black)</td><td>1 (yes)</td><td>0 (no)</td></tr>
+						</table>
+
+						<p>The outside edge settings for the two legs give the legs their distinctive edges, with the black edge only appearing on the inside edges, and no visible edge on the outside (as the edge is drawn using the fill colour).</p>
+
+						<p>And that's all the object data required to implement the sign. Each of the three parts requires one objectColour byte, plus one scaffold number in each of objectTop, objectBottom, objectLeft and objectRight; so that's a total of five bytes for each of the three parts, giving a total of 15 bytes. We also need to store the scaffold in objectScaffold, which for object type 7 is another five bytes... and that's it. An entire road sign, stored as a scalable vector object in just 20 bytes.</p>
+
+						<p>It's not only time-efficient, it's space-efficient too. How very elegant.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_a_3d_car_from_2d_parts.html">Drawing a 3D car from 2D parts</a><a class="next" rel="next" title="Next deep dive" href="creating_objects_from_edges.html">Creating objects from edges</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

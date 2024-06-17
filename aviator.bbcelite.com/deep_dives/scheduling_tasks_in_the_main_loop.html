@@ -1,0 +1,123 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "scheduling_tasks_in_the_main_loop.html", "Scheduling tasks in the main loop", "Scheduling tasks in the main loop", "A deep dive into scheduling tasks in the main loop in BBC Micro Aviator", "aviator", "deep_dives_main_loop", "scheduling_tasks_in_the_main_loop");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="program_flow_of_the_main_game_loop.html">Program flow of the main game loop</a><a class="next" rel="next" title="Next deep dive" href="times_tables_and_nibble_arithmetic.html">Times tables and nibble arithmetic</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Aviator does the right thing at the right time</h2>
+
+						<p>With great power comes great responsibility... but with limited power comes the need for even <i>greater</i> responsibility. This is particularly true in 8-bit games, where overloading the CPU can make a game unplayable, something that is less likely to be a problem with a word processor or spreadsheet or whatever else people used to run on BBC Micros when they weren't playing games. With a complicated simulation like Aviator, which has to do an awful lot of <a href="the_flight_model.html">sophisticated maths</a> every time we want to update the screen, remaining responsive is essential.</p>
+
+						<p>Aviator employs three different devices that let it spread out the workload, while still managing to retain smooth graphics and a stutter-free flying experience. Let's take a look at them in turn.</p>
+
+						<h2 class="articleSubheader">The main loop counter<br />
+													 ---------------------</h2>
+
+						<p>The most obvious way that Aviator schedules its different tasks is via the main loop counter, which is stored in the <a href="/source/main/variable/mainloopcounter.html">mainLoopCounter</a> variable. This counter is set to zero at the start of each game by the <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> routine, and is incremented on each iteration of the main game loop, in <a href="/source/main/subroutine/mainloop_part_5_of_15.html">part 5 of the main loop</a>.</p>
+
+						<p>The loop counter is used as follows:</p>
+
+						<ul>
+							<li>In <a href="/source/main/subroutine/mainloop_part_5_of_15.html">part 5 of the main loop</a>, just after the counter is incremented, we update the radar, but only when mainLoopCounter is 4 plus a multiple of 8 (so that's every 8 iterations, when the loop counter is 4, 12, 20 and so on). So that's 32 out of every 256 iterations, and on different iterations to the fuel gauge and alien-feeding updates (see the next two points).</li>
+
+							<li>In the <a href="/source/main/subroutine/updatefuelgauge.html">UpdateFuelGauge</a> routine, we only update the dashboard's fuel gauge when mainLoopCounter is a multiple of 16, so that's every 16 iterations of the main loop, or 16 out of every 256 iterations (i.e. iterations 0, 16, 32 and so on).</li>
+
+							<li>In the UpdateAliens routine, we only update the aliens' states when mainLoopCounter is a multiple of 128, so that's on 2 out of every 256 iterations (i.e. iterations 0 and 128). When we do, then in <a href="/source/main/subroutine/updatealiens_part_1_of_5.html">part 1</a> we move any feeding aliens on to the next feeding state, and then in <a href="/source/main/subroutine/updatealiens_part_4_of_5.html">part 4</a> we check whether any feeding aliens have progressed to the next feeding stage, and if so, we double their size.</li>
+
+							<li>In the <a href="/source/main/subroutine/fillupfueltank.html">FillUpFuelTank</a> routine, the fuel tank is only topped up when we are on the runway, and mainLoopCounter is a multiple of four, so that's every four iterations around the main loop, or 64 out of every 256 iterations (i.e. iterations 0, 4, 8, 16 and so on). This is the only time the counter is used to control the speed of a feature, rather than to manage the workload.</li>
+						</ul>
+
+						<p>The main loop counter isn't used anywhere else, but we have two other scheduling systems that complement it.</p>
+
+						<h2 class="articleSubheader">Timeboxing<br />
+													 ----------</h2>
+
+						<p>Aviator takes an interesting approach when deciding which objects to show on screen (or, more, specifically their lines). You can read all about it in the deep dives on <a href="3d_objects.html">3D objects</a> and <a href="visibility_checks.html">visibility checks</a>, but the part we're interested in is how Aviator decides when it should start drawing an object that is not currently visible.</p>
+
+						<p>Instead of scanning the set of all objects to see if any of them are close enough to draw, or perhaps looking to see which objects are in the line of sight and deciding which ones to process, Aviator takes a much simpler approach. Every iteration of the main loop, it simply works through a few of the currently hidden lines in the linesToHide list, checking this batch of lines to see if they are visible, and moving them to the linesToShow list if they are. It's a simple way of ensuring that objects that come into view will get spotted, eventually, and drawn.</p>
+
+						<p>The logic behind this system is in <a href="/source/main/subroutine/mainloop_part_12_of_15.html">part 12 of the main loop</a>. As checking lines for visibility can be a time-consuming task, the code first checks that there aren't too many points on the relatedPoints list; if there are, then these points are already feeding into the visibility checking process, so the game skips any processing of the hidden line list, as there's already enough checking to do.</p>
+
+						<p>Assuming we are not already being swamped by related point checks, the main loop calls the <a href="/source/main/subroutine/processlinestohide.html">ProcessLinesToHide</a> routine three times, to process the next three lines in the linesToHide list. It then implements a timeboxing method, where it calls OSWORD to get the current value of the system clock, and then loops back to process three more lines, but only if it has spent less than a total of 9 centiseconds on processing lines in this iteration of the main loop.</p>
+
+						<p>In this way, the essential work of checking for objects coming into view is done on every iteration of the main loop, but only for a set amount of time. After all, some line calculations will take longer than others - some lines are easy to discard as "not visible" pretty quickly, such as those that are far away, while others may take a lot more maths. This timeboxing approach stops the line-checking process from slowing things down, even if the queue is suddenly full of lines with difficult visibility calculations.</p>
+
+						<h2 class="articleSubheader">Prioritising the dashboard indicators<br />
+													 -------------------------------------</h2>
+
+						<p>The final scheduling system in Aviator controls the updating of the dashboard. There are lots of different on-screen indicators in the dashboard, and while they are all important, some are more important than others, so Aviator updates them all with varying priorities.</p>
+
+						<p>The core logic is in the <a href="/source/main/subroutine/updatedashboard.html">UpdateDashboard</a> routine. This routine updates two indicators on the dashboard, one from indicators 0 to 6, and one from indicators 7 to 11. It cycles through each group of indicators with each subsequent call, so if it updates indicators 2 and 8 in one call, then it will update indicators 3 and 9 on the next call. The current indicator from the first group is stored in the <a href="/source/main/variable/indicator0to6.html">indicator0To6</a> variable, while the current indicator from the second group is stored in the <a href="/source/main/variable/indicator7to11.html">indicator7To11</a> variable ("current" in this context meaning "last updated").</p>
+
+						<p>As we iterate round the main loop, we <a href="/source/main/subroutine/updateflightmodel_part_4_of_4.html">reach part 4 of UpdateFlightModel</a>, which calls UpdateDashboard, and then calls the same routine's entry point UpdateDash7To11, which updates the next indicator from 7 to 11. So on each iteration around the main loop, we do the following:</p>
+
+						<ul>
+							<li>Update the next indicator from 0 to 6:
+
+								<ul>
+									<li>0 = Compass</li>
+
+									<li>1 = Airspeed indicator</li>
+
+									<li>2 = Altimeter (small "hour" hand)</li>
+
+									<li>3 = Altimeter (large "minute" hand)</li>
+
+									<li>4 = Vertical speed indicator</li>
+
+									<li>5 = Turn indicator</li>
+
+									<li>6 = Slip indicator</li>
+								</ul>
+							</li>
+
+							<li>Update the next two indicators from 7 to 11:
+
+								<ul>
+									<li>7 = Artificial horizon</li>
+
+									<li>8 = Joystick position display</li>
+
+									<li>9 = Rudder indicator</li>
+
+									<li>10 = Joystick position display</li>
+
+									<li>11 = Thrust indicator</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>You'll notice that the joystick position display appears twice, at positions 8 and 10, so it gets updated more often than any other indicator, on two out of every five iterations of the main loop. Meanwhile the other indicators in the second group do pretty well too, and are updated on one out of every five iterations. Meanwhile, the first group contains the less vital indicators, and they get updated on one out of every seven iterations.</p>
+					
+						<p>Putting those in terms of percentages:</p>
+
+						<ul>
+							<li>The joystick position display is updated on 40% of iterations around the main loop.</li>
+
+							<li>The artificial horizon, rudder and thrust indicators are updated on 20% of iterations.</li>
+
+							<li>The rest are updated on 14.3% of iterations.</li>
+						</ul>
+
+						<p>So this is the third way that Aviator makes sure that the important parts of the system run smoothly, by spending more time on the important indicators, and less time on those that can react more slowly.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="program_flow_of_the_main_game_loop.html">Program flow of the main game loop</a><a class="next" rel="next" title="Next deep dive" href="times_tables_and_nibble_arithmetic.html">Times tables and nibble arithmetic</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

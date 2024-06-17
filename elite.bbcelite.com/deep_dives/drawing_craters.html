@@ -1,0 +1,127 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "drawing_craters.html", "Drawing craters", "Drawing craters", "A deep dive into drawing craters in BBC Micro Elite", "elite", "deep_dives_drawing_planets", "drawing_craters");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_ellipses.html">Drawing ellipses</a><a class="next" rel="next" title="Next deep dive" href="drawing_meridians_and_equators.html">Drawing meridians and equators</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The algorithms behind the huge craters of planets like Diso</h2>
+
+						<p>There is some debate around planets like Diso and Leesti. As Lave's closest neighbours, with each one an easy 3.6-light-year hop from the starting point, these two systems are most players' first experience of a cratered planet. Leesti, for example, looks like this:</p>
+
+						<img class="titleImage" src="/images/craters/leesti.png" alt="A view of Leesti in BBC Micro Elite" />
+
+						<p>Now, some people believe this circle that races around the planet is a giant storm cloud on a gaseous giant, like Jupiter's famous Red Spot. There isn't enough detail in the game's graphics to dispel this notion, and there are no clues in either the <a href="/cassette/articles/map_of_the_source_code.html">source code</a>, the <a href="http://www.elitehomepage.org/manual.htm">manual</a>, the <a href="http://www.elitehomepage.org/dkwheel.htm">novella</a> or <a href="http://www.elitehomepage.org/">Ian Bell's Elite website</a>. But personally, I think this feature is a crater, because Diso is populated by Black Furry Felines enjoying an agricultural economy on a planet with a radius of just 6155km, while Leesti has a human population living on a tiny planet of radius 3085km. Jupiter, in contrast, is over twenty times the size, and even black cats would run out of lives in that kind of atmosphere.</p>
+
+						<p>Also, to my eyes, both planets look just like Saturn's moon Mimas that was so memorably photographed by Voyager 1 back in November 1980:</p>
+
+						<img class="titleImage themeLight lightBorder photo" style="width: 480px" src="/images/craters/mimas.jpg" alt="Saturn's moon Mimas, taken by Voyager 1" /><img class="titleImage themeDark lightBorder photo" style="width: 480px" src="/images/craters/mimas.jpg" alt="Saturn's moon Mimas, taken by Voyager 1" /><img class="titleImage themeElite lightBorder photo" style="width: 480px" src="/images/craters/mimas.jpg" alt="Saturn's moon Mimas, taken by Voyager 1" />
+
+						<p>Surely Diso's design was inspired by this epic image, which came out at exactly the right time to influence the game's authors. And everyone who's seen <cite>Star Wars</cite> and has hyperspaced into Leesti has surely thought at some point, "That's no moon!" After all, Elite was developed during the classic <cite>Star Wars</cite> run between 1977 and 1983, and there must be an influence there; heck, the 6502 Second Processor version even includes a <cite>Star Wars</cite> scroll text (see the deep dive on the <a href="/deep_dives/6502sp_demo_mode.html">6502 Second Processor demo mode</a> for the details).</p>
+
+						<p>So, on this site at least, Diso and Leesti have craters rather than giant storms, so that's what we're going to look at here.</p>
+
+						<h2 class="articleSubheader">Planet types<br />
+													 ------------</h2>
+
+						<p>In the BBC version of Elite, planets come in two types - those with craters (like Diso and Leesti, as shown above) and those with meridians and equators (like Lave, as shown in the deep dive on <a href="drawing_meridians_and_equators.html">drawing meridians and equators</a>).</p>
+
+						<p>The planet's type depends on its tech level, and it is set in the <a href="/cassette/main/subroutine/sos1.html">SOS1</a> routine that creates the planet's ship data block. Each system has a procedurally generated tech level in the range 0 to 14, which is incremented by the <a href="/cassette/main/subroutine/tt25.html">TT25</a> routine to give a final on-screen tech level in the range 1 to 15 (see the deep dive on <a href="generating_system_data.html">generating system data</a> for details). The rule is simple: if bit 1 of the generated tech level (0 to 14) is set then the planet has a crater, otherwise it has a meridian and an equator.
+
+						<p>This means that planets with a generated tech level ending in %10 or %11 will have craters, so that's 2, 3, 6, 7, 10, 11 and 14. When shown in the Data on System screen, this means that planets with tech levels 3, 4, 7, 8, 11, 12 and 15 will have craters, while tech levels 1, 2, 5, 6, 9, 10, 13 and 14 will have meridians and equators. In this deep dive, we're going to focus on planets with craters.</p>
+
+						<h2 class="articleSubheader">Orientation vectors<br />
+													 -------------------</h2>
+
+						<p>Craters are drawn as complete ellipses on the planet's surface. To understand how these ellipses are calculated, we first need to talk about how planets are stored.</p>
+
+						<p>Just like ships, each planet has an orthogonal set of unit vectors - roofv, nosev and sidev - that describe its orientation (see the deep dive on <a href="orientation_vectors.html">orientation vectors</a> for details). It might seem odd at first why a spherical object such as a planet should need three orthogonal vectors, but they are used to project the circular crater efficiently into the required ellipse, and they also allow the same rotation and 3D projection routines to be used to rotate and display both planets and ships.</p>
+
+						<p>Let's see how the orientation vectors are used to calculate the planet's crater.</p>
+
+						<h2 class="articleSubheader">Calculating the ellipse coordinates<br />
+													 -----------------------------------</h2>
+
+						<p>The heavy lifting for calculating the crater's ellipse coordinates is done by <a href="/cassette/main/subroutine/pl9_part_3_of_3.html">part 3 of the PL9 routine</a>. This routine calculates the following, and then calls the ellipse routine at <a href="/cassette/main/subroutine/pls22.html">PLS22</a> to do the actual plotting.</p>
+
+						<p>We start by calculating the centre of the on-screen ellipse, in pixel coordinates:</p>
+
+<pre class="articleIndented">
+  x  =  K3(1 0)  =  0.87  *  roofv_x  +  pixel x-coordinate of planet centre
+                             -------
+                                z
+
+  y  =  K4(1 0)  =  0.87  *  roofv_y  -  pixel y-coordinate of planet centre
+                             -------
+                                z
+</pre>
+
+						<p>In the above, z is the z-coordinate of the planet's centre in 3D space, i.e. how far in front of us the planet is, as the z-axis points into the screen (see the deep dive on <a href="/deep_dives/pitching_and_rolling.html">pitching and rolling</a> for more on this). The planet's orientation vectors are in roofv, nosev and sidev, and they describe the orientation of the planet (see the deep dive on <a href="orientation_vectors.html">orientation vectors</a>).</p>
+
+						<p>The centre of the ellipse is displaced by a factor of 0.87 of the planet's radius towards the centre of the planet, which is calculated by multiplying by 222 and dividing by 256. This means the crater's ellipse is always drawn just slightly inside the planet's two-dimensional circle outline, so it looks like it is on the planet's surface rather than floating above it.</p>
+
+						<p>Note that the pixel y-coordinate is negated in the second calculation above because pixel y-coordinates increase as we move down the screen, while 3D y-coordinates increase as we move up in 3D space, so we need to negate the pixel y-coordinate before we can combine it with the vector y-coordinate.</p>
+
+						<p>As described in the deep-dive on <a href="drawing_ellipses.html">drawing ellipses</a>, we define our ellipse using two conjugate radius vectors, u and v. For the crater ellipse we calculate these as follows, starting with the first conjugate radius vector in u:</p>
+
+<pre class="articleIndented">  u = [  XX16   K2  ] = [ nosev_x / 2z ]
+      [ XX16+1 K2+1 ]   [ nosev_y / 2z ]
+</pre>
+
+						<p>and then the second conjugate radius vector in v:</p>
+
+<pre class="articleIndented">  v = [ XX16+2 K2+2 ] = [ sidev_x / 2z ]
+      [ XX16+3 K2+3 ]   [ sidev_y / 2z ]
+</pre>
+
+						<p>Amazingly, these two simple calculations produce valid u and v vectors that define a realistic-looking elliptical crater on the planet's surface. The division by 2z ensures that the crater's diameter is half that of the planet.</p>
+
+						<p>The results of the above calculations in K3, K4, XX16 and K2 are passed as arguments to the <a href="/cassette/main/subroutine/pls22.html">PLS22</a> routine, which draws the ellipse. The argument TGT is set to 64, which tells the ellipse routine to plot a full ellipse with these details.</p>
+
+						<p>The end result looks like this:</p>
+
+						<img class="titleImage themeLight noBorder photo" style="width: 640px" src="/images/craters/w_planet_crater.gif" alt="A rotating planet with crater" /><img class="titleImage themeDark noBorder photo" style="width: 640px" src="/images/craters/b_planet_crater.gif" alt="A rotating planet with crater" /><img class="titleImage themeElite noBorder photo" style="width: 640px" src="/images/craters/b_planet_crater.gif" alt="A rotating planet with crater" />
+
+						<h2 class="articleSubheader">Further analysis<br />
+													 ----------------</h2>
+
+						<p>The crater ellipse is only drawn when the roofv vector is positive (i.e. when it is pointing away from us). This check is made at the very start of <a href="/cassette/main/subroutine/pl9_part_3_of_3.html">part 3 of the PL9 routine</a>, and when roofv is negative and pointing towards us, the crater code is skipped and the crater is therefore not drawn. The net effect of this logic is that the crater only appears on one side of the planet, as you would expect from a solid planet.</p>
+
+						<p>To make the planet rotate forever, we set the pitch and roll counters to 127 in the <a href="/cassette/main/subroutine/sos1.html">SOS1</a> routine. This ensures that the counters don't count down, so the planet rotates on every iteration around the main loop, pitching around the sidev vector and rolling around the nosev vector by the same small angle on each iteration. This rotation is handled by the exact same code that handles pitching and rolling of ships - see the deep dive on <a href="/deep_dives/pitching_and_rolling_by_a_fixed_angle.html">pitching and rolling by a fixed angle</a> for details.</p>
+
+						<p>The 3D vectors sidev and nosev are projected into the 2D u and v vectors by simply ignoring their z-components (i.e. only sidev_x and sidev_y contribute to the v vector above, and sidev_z is ignored). This projects the crater from a 3D circle into a 2D ellipse; technically it is an orthographic projection onto the plane through the centre of the planet, where z is constant and equal to the z-coordinate of the planet's centre (so this is the plane through the planet's centre that is parallel to the screen). In other words, the variation in z-coordinates between the front and the back of the crater, or between the front and back of the planet, is ignored. But the whole ellipse image is rescaled by a single 1/2z factor, to make the ellipse appear an appropriate size compared to the planet, so we get away with this approximation.</p>
+
+						<p>It seems amazingly convenient that the u and v vectors from this projection are sufficient to define a realistic-looking ellipse. Mathematically, you need a centre of an ellipse and three points on the ellipse's circumference to define an ellipse. But here we have a centre and only two points on the ellipse's circumference (marked by u and v). However, given that these are also conjugate radius vectors, there is enough information to uniquely define an ellipse (see the <a href="https://en.wikipedia.org/wiki/Conjugate_diameters">Wikipedia entry on conjugate diameters</a> for details).</p>
+
+						<p>There is actually a degree of freedom in the choice of sidev and nosev here - we could rotate them both around the red roofv vector shown in the above animation, and this would change u and v; but would this adversely affect the ellipse that gets drawn? Fortunately, it turns out that it does not make any difference to the final ellipse drawn, as demonstrated here:</p>
+
+						<img class="titleImage themeLight noBorder photo" style="width: 430px" src="/images/craters/w_orthographic_projection_circle.gif" alt="A circle projected onto an ellipse" /><img class="titleImage themeDark noBorder photo" style="width: 430px" src="/images/craters/b_orthographic_projection_circle.gif" alt="A circle projected onto an ellipse" /><img class="titleImage themeElite noBorder photo" style="width: 430px" src="/images/craters/b_orthographic_projection_circle.gif" alt="A circle projected onto an ellipse" />
+
+						<p>The fact that the ellipse drawn is stable in the animation above - despite it being repeatedly redrawn in each animation frame with the <a href="drawing_ellipses.html">ellipse-drawing algorithm</a> - demonstrates the degree of freedom there is in rotating the green and yellow sidev and nosev vectors about the red roofv vector.</p>
+
+						<p>The above animation also shows that the two valid points on the original circle's circumference (u and v) go through an orthographic projection, and so must end up as two valid points on the orthographically projected ellipse. Hence the ellipse required must pass through these two projected points (which it does!). The animation also shows that the bounding square of the original circle becomes a parallelogram in this projection. The parallelogram touches the ends of the u and v vectors, which confirms that those u and v vectors are valid conjugate radii of the ellipse. This means the u and v projections do indeed form two valid conjugate radii of the required ellipse; and hence the ellipse finally drawn is the correct projected ellipse.</p>
+
+						<p>All these benefits come from handling the nosev, roofv and sidev vectors for a planet in the same way as we handle them for ships. Along with some clever maths and simplifications in <a href="/cassette/main/subroutine/pl9_part_3_of_3.html">part 3 of the PL9 routine</a>, these benefits - plus the elegant way ellipses are defined in Elite - make the final crater-plotting routine very fast and compact.</p>
+
+						<p>A final efficiency of the crater code is that the same STP argument that was used to draw the planet can simply be reused when drawing the ellipse. The STP argument is the angular step rate that we use when plotting a circle or ellipse. The <a href="/cassette/main/subroutine/circle.html">CIRCLE</a> routine intelligently adjusts the STP argument so that planets that are further in the distance, and hence smaller, use a larger STP argument. This means that more distant planets require fewer calculations and fewer lines, resulting in a much faster drawing speed. The calculated STP argument for the planet's circle is reused when drawing the crater ellipse, so that more distant craters are also drawn more quickly.</p>
+
+						<p>So that's no moon... but it is a stroke of mathematical genius from the original authors (and in particular Ian Bell, who <a href="http://www.elitehomepage.org/faq.htm#A3">wrote the planet-plotting and ship-rotation routines</a> discussed above).</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_ellipses.html">Drawing ellipses</a><a class="next" rel="next" title="Next deep dive" href="drawing_meridians_and_equators.html">Drawing meridians and equators</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

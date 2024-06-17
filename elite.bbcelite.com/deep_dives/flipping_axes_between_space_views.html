@@ -1,0 +1,199 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "flipping_axes_between_space_views.html", "Flipping axes between space views", "Flipping axes between space views", "A deep dive into flipping axes between space views in BBC Micro Elite", "elite", "deep_dives_flight", "flipping_axes_between_space_views");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_docking_computer.html">The docking computer</a><a class="next" rel="next" title="Next deep dive" href="the_key_logger.html">The key logger</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Details of how the different space views are implemented</h2>
+
+						<p>Switching space views in Elite is one of those seemingly simple ideas that ends up adding so much to the believability of the game universe. When you're in deep space and an asteroid or a peaceful trader appears in the distance up ahead, the ability to flick to the side view and then the rear view to watch it speed past your windows is truly immersive; you really feel you're inside a spaceship powering through space. And docking without being able to use the side views to line up for your approach run? Forget it. Those space views are an essential aspect of the game.</p>
+
+						<p>But do we really have to write four different display routines for the four views? Luckily we don't, as the authors came up with a mathematical solution that is both wonderfully elegant and extremely efficient. The solution, implemented in the <a href="/cassette/main/subroutine/plut.html">PLUT</a> routine, is to flip the axes for everything we want to display in the space view, so the axes used in the drawing routines will still work.</p>
+
+						<p>The axis-flipping is quite a quick process. Indeed, there were originally six views, with up and down thrown into the mix, but they ended up being dropped to save space. It would only have taken a few extra instructions to implement their flipped axes and stardust views, so the space would most likely have been saved by removing the code supporting the extra laser mounts in the Equip Ship screen).</p>
+
+						<p>Let's see what axis-flipping actually means.</p>
+
+						<h2 class="articleSubheader">Flipping the axes<br />
+													 -----------------</h2>
+
+						<p>The solution to having multiple views is similar in concept to the way we process pitch and roll. When we rotate our ship, we don't actually move our ship at all - instead, we rotate the entire universe around us, in the opposite direction to our movement (see the deep dives on "Pitching and rolling" and "Rotating the universe" for more details on this process). We do a similar kind of thing when we switch views, but instead of rotating all the other ships and planets around us, we flip the axes instead, which is a much quicker process.</p>
+
+						<p>How do we do this? First, we need to talk about the three axes. In terms of our relationship to the universe, the z-axis always points into the screen, the y-axis always points up, and the x-axis always points to the right, like this:</p>
+
+<pre class="articleIndented">    y
+    ^
+    |   z (into screen)
+    |  /
+    | /
+    |/
+    +---------&gt; x
+</pre>
+
+						<p>This rule always applies, whichever view we are looking through. So when we're looking through the front view, the z-axis is into the screen, which is also the direction of travel - but if we switch to the left view, then the z-axis is still into the screen, but the direction of travel is now to our right, along the x-axis. So what was the z-axis is now the x-axis... so the axes just flipped. That flipping process is essentially what the PLUT routine does.</p>
+
+						<p>It's important to note that the local universe is stored in the ship data blocks at K% as if we are looking forward, so as far as the stored coordinates are concerned, the z-axis is always in the direction of travel. As part of the main flight loop, each ship data block is copied on turn into the INWK workspace, where the movement routines in MVEIT are applied, before the block is copied back into K% with the position of the ship updated.</p>
+
+						<p>It's after all the data has been copied back to K% that we start flipping axes to fit the current space view, but this flipped version of the ship doesn't get stored anywhere - the flipped data is only used for working out missile and laser lock, and for drawing the ship, as these are the parts that are affected by the view we're looking through.</p>
+
+						<p>Anyway, back to the process of flipping axes. If we are looking through the front view then there is no flipping to be done, as the ship coordinates in INWK are already using the correct axes, as mentioned above. If, however, we are looking to the sides or rear, then the PLUT routine takes the ship coordinates from INWK and switches the axes around, so that we can use the same routines to display what's in that view.</p>
+
+						<p>For example, take the z-axis, which points into the screen for the front view. We move it to point out of the screen if we are looking backwards, to the right if we're looking out of the left view, or to the left if we are looking out of the right view.</p>
+
+						<p>For the front view, then, we change nothing. Let's look at the other views in more detail, because this is one of those concepts that makes a lot more sense when you draw pretty diagrams.</p>
+
+						<h2 class="articleSubheader">Rear view<br />
+													 ---------</h2>
+
+						<p>For the rear view, this is what our original universe axes look like when we are looking backwards:</p>
+
+<pre class="articleIndented">                y
+                ^
+                |
+                |
+                |
+                |
+    x &lt;---------+
+               /
+              z (out of screen)
+</pre>
+
+						<p>so to convert these axes into the standard "up, right, into-the-screen" set of axes we need for drawing to the screen, we need to do the changes on the left (with the original set of axes on the right for comparison):</p>
+
+<pre class="articleIndented">  y                                           y
+  ^                                           ^
+  |   -z (into screen)                        |   z (into screen)
+  |  /                                        |  /
+  | /                                         | /
+  |/                                          |/
+  +---------&gt; -x                              +---------&gt; x
+</pre>
+
+						<p>So to change the INWK workspace from the original axes on the right to the new set on the left, we need to change the signs of the x and z coordinates and vectors in INWK, which we can do by flipping the signs of the following:</p>
+
+						<ul class="tightList">
+							<li>x_sign, z_sign</li>
+							<li>nosev_x_hi, nosev_z_hi</li>
+							<li>roofv_x_hi, roofv_z_hi</li>
+							<li>sidev_x_hi, sidev_z_hi</li>
+						</ul>
+
+						<p> So this is what we do in the PLUT routine for the rear view.</p>
+
+						<h2 class="articleSubheader">Left view<br />
+													 ---------</h2>
+
+						<p>For the left view, this is what our original universe axes look like when we are looking to the left:</p>
+
+<pre class="articleIndented">      y
+      ^
+      |
+      |
+      |
+      |
+      +---------&gt; z
+     /
+    /
+   /
+  x (out of screen)
+</pre>
+
+						<p>so to convert these axes into the standard "up, right, into-the-screen" set of axes we need for drawing to the screen, we need to do the changes on the left (with the original set of axes on the right for comparison):</p>
+
+<pre class="articleIndented">  y                                           y
+  ^                                           ^
+  |   -x (into screen)                        |   z (into screen)
+  |  /                                        |  /
+  | /                                         | /
+  |/                                          |/
+  +---------&gt; z                               +---------&gt; x
+</pre>
+
+						<p>In other words, to go from the original set of axes on the right to the new set of axes on the left, we need to swap the x- and z-axes around, and flip the sign of the one now going in and out of the screen (i.e. the new z-axis). In other words, we swap the following values in INWK:</p>
+
+						<ul class="tightList">
+							<li>x_lo and z_lo</li>
+							<li>x_hi and z_hi</li>
+							<li>x_sign and z_sign</li>
+							<li>nosev_x_lo and nosev_z_lo</li>
+							<li>roofv_x_lo and roofv_z_lo</li>
+							<li>sidev_x_lo and sidev_z_lo</li>
+						</ul>
+
+						<p>and then change the sign of the axis going in and out of the screen by flipping the signs of the following:</p>
+
+						<ul class="tightList">
+							<li>z_sign</li>
+							<li>nosev_z_hi</li>
+							<li>roofv_z_hi</li>
+							<li>sidev_z_hi</li>
+						</ul>
+
+						<p>So this is what we do in the PLUT routine for the left view.</p>
+
+						<h2 class="articleSubheader">Right view<br />
+													 ---------</h2>
+
+						<p>For the right view, this is what our original universe axes look like when we are looking to the right:</p>
+
+<pre class="articleIndented">              y
+              ^
+              |   x (into screen)
+              |  /
+              | /
+              |/
+  z &lt;---------+
+</pre>
+
+						<p>so to convert these axes into the standard "up, right, into-the-screen" set of axes we need for drawing to the screen, we need to do the changes on the left (with the original set of axes on the right for comparison):</p>
+
+<pre class="articleIndented">  y                                           y
+  ^                                           ^
+  |   x (into screen)                         |   z (into screen)
+  |  /                                        |  /
+  | /                                         | /
+  |/                                          |/
+  +---------&gt; -z                              +---------&gt; x
+</pre>
+
+						<p>In other words, to go from the original set of axes on the right to the new set of axes on the left, we need to swap the x- and z-axes around, and flip the sign of the one now going to the right (i.e. the new x-axis). In other words, we swap the following values in INWK:</p>
+
+						<ul class="tightList">
+							<li>x_lo and z_lo</li>
+							<li>x_hi and z_hi</li>
+							<li>x_sign and z_sign</li>
+							<li>nosev_x_lo and nosev_z_lo</li>
+							<li>roofv_x_lo and roofv_z_lo</li>
+							<li>sidev_x_lo and sidev_z_lo</li>
+						</ul>
+
+						<p>and then change the sign of the axis going to the right by flipping the signs of the following:</p>
+
+						<ul class="tightList">
+							<li>x_sign</li>
+							<li>nosev_x_hi</li>
+							<li>roofv_x_hi</li>
+							<li>sidev_x_hi</li>
+						</ul>
+
+						<p>So this is what we do in the PLUT routine for the right view.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_docking_computer.html">The docking computer</a><a class="next" rel="next" title="Next deep dive" href="the_key_logger.html">The key logger</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

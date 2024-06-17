@@ -1,0 +1,74 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "placing_cars_on_the_track.html", "Placing cars on the track", "Placing cars on the track", "A deep dive into placing cars on the track in BBC Micro Revs", "revs", "deep_dives_3d_geometry", "placing_cars_on_the_track");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="pitch_and_yaw_angles.html">Pitch and yaw angles</a><a class="next" rel="next" title="Next deep dive" href="trigonometry.html">Trigonometry</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Pinpointing the positions of cars on the track by progress and racing line</h2>
+
+						<p>As you would expect from a simulation of cars chasing each other round a track, Revs needs to maintain an accurate record of each car's position. In theory we could just use a set of 3D coordinates to store each car's position on the 3D track, and this would appear to make sense, given that the track sections and segments are stored in this way (see the deep dive on <a href="building_a_3d_track_from_sections_and_segments.html">building a 3D track from sections and segments</a>).</p>
+
+						<p>However, calculations for things like collisions and overtaking are fairly difficult and time-consuming when you're dealing with a fully three-dimensional coordinate system, not least when the directions of "forwards" and "backwards" change completely as cars move around the track. So instead, car positions are stored in terms of segment numbers and progress. The advantage here is that it's a lot easier to manage a car's progress and then use that calculate its 3D coordinates, than it is to keep updating a car's 3D coordinates with its position round a track that twists and turns through 3D space.</p>
+
+						<p>Let's see what's involved</p>
+
+						<h2 class="articleSubheader">Progress and segment numbers<br />
+													 ----------------------------</h2>
+
+						<p>Each car's progress around the track, including that of the current player's car, is stored in the following tables, with one entry for each car:</p>
+
+						<ul>
+							<li><a href="/source/main/workspace/main_variable_workspace.html#objtracksection">objTrackSection</a> contains the section number containing the car (from 0 to 23 in Silverstone, as given in <a href="/source/silverstone/variable/tracksectioncount.html">trackSectionCount</a>)</li>
+
+							<li><a href="/source/main/workspace/main_variable_workspace.html#objsectionsegmt">objSectionSegmt</a> contains the segment number containing the car within the current section (starting from 0 at the start of each new section, and going up to the number of segments in the section, as given in the section's <a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">trackSectionSize</a>)</li>
+
+							<li>(<a href="/source/main/workspace/main_variable_workspace.html#objectsegmenthi">objectSegmentHi</a> <a href="/source/main/workspace/main_variable_workspace.html#objectsegmentlo">objectSegmentLo</a>) contains the segment number containing the car, as the total number of segments from the starting line (from 0 to 1023 in Silverstone, as given in <a href="/source/silverstone/variable/tracklength.html">trackLength</a>)</li>
+
+							<li><a href="/source/main/workspace/stack_variables.html#carprogress">carProgress</a> is effectively a fractional part of the car's progress through the segment, with 0 being the start of the segment and 255 the end of the segment</li>
+						</ul>
+
+                        <p>These values are all related. As the car drives around the track, the value of carProgress is updated, increasing if the car is moving forwards along the track, and decreasing is it's moving backwards. Each iteration around the main driving loop, carProgress is updated by adding carSpeedHi each time, where carSpeedHi is the high byte of the car's current speed in (carSpeedHi carSpeedLo). As carProgress is effectively the progress fraction through one segment, carSpeedHi is therefore the speed of the car in terms of 1/256-ths of a segment.</p>
+
+						<p>When carProgress rolls over from 255 to 0, both objSectionSegmt and (objectSegmentHi objectSegmentLo) are incremented by one segment. If objSectionSegmt reaches the number of segments in this section, which is given in trackSectionSize, then it wraps round to zero to start counting from the next section, and objTrackSection is incremented to move on the next section (and if the section number reaches the total number of sections in trackSectionCount, it too wraps round to zero). Meanwhile, (objectSegmentHi objectSegmentLo) keeps counting segments until it reaches trackLength (1024 for Silverstone), at which point it also wraps around to zero.</p>
+
+						<p>See the <a href="/source/main/subroutine/moveplayersegment.html">MovePlayerSegment</a> routine for details of how the car is moved between segments, and <a href="/source/main/subroutine/movecars_part_2_of_2.html">part 2 of the MoveCars</a> routine for the code that applies the forward speed. The <a href="/source/main/subroutine/comparecarsegments.html">CompareCarSegments</a> routine works out the order of cars by working with progress and segment numbers, and demonstrates just how simple it is to work out car orders using this approach - it's much easier than it would be if we were having to work it out in 3D geometry.</p>
+
+						<h2 class="articleSubheader">Racing line<br />
+													 -----------</h2>
+
+						<p>On top of the forward progress, each car has a value in the <a href="/source/main/workspace/stack_variables.html#carracingline">carRacingLine</a> table, which determines the left-right position of the car on the track - in essence, this is the value of the left-right x-coordinate when seen from the point of view of the driver. As it determines how far each car is to the left or right on the track, it's effectively the car's racing line. It has a value between 0 and 255, as follows:</p>
+
+						<ul>
+							<li>0 is full right</li>
+
+							<li>128 is the centre line</li>
+
+							<li>255 is full left</li>
+						</ul>
+
+						<p>Bit 7 of carRacingLine is therefore set if the car is in the left half the track, and clear if it's in the right half.</p>
+
+						<p>Between the car's progress and the car's racing line, we can place cars on the track with pinpoint accuracy, to within 1/256 of the segment size. In the deep dive on <a href="building_a_3d_track_from_sections_and_segments.html">building a 3D track from sections and segments</a> we estimated that the average segment is around 4.6m long, so the cars are placed with an accuracy of 4.6m / 256 = 0.018m, or just under 2cm. This fits nicely within the 3.8cm grid of 16-bit coordinates, so technically speaking, the progress system places cars within the segment to twice the accuracy of the underlying coordinate system.</p>
+
+						<p>In other words, if you keep bumping into other cars in Revs, you can't blame inaccuracies in the collision code. Revs knows exactly where its cars are, even if you don't...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="pitch_and_yaw_angles.html">Pitch and yaw angles</a><a class="next" rel="next" title="Next deep dive" href="trigonometry.html">Trigonometry</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

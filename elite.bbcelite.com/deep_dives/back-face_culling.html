@@ -1,0 +1,154 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "back-face_culling.html", "Back-face culling", "Back-face culling", "A deep dive into back-face culling in BBC Micro Elite", "elite", "deep_dives_drawing_ships", "back-face_culling");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_ships.html">Drawing ships</a><a class="next" rel="next" title="Next deep dive" href="calculating_vertex_coordinates.html">Calculating vertex coordinates</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Elite draws solid-looking 3D ships by only drawing visible faces</h2>
+
+						<p>One of the reasons that Elite's 3D wireframe ships look so good is because you can't see through them - they look genuinely solid. This is down to a process called "back-face culling", a mathematical process that works out which faces of the ship are visible to the viewer and which ones aren't. It then discards (or "culls") any faces that aren't visible and only draws those that we can actually see. This prevents the wireframes from being see-through, and this gives the ships and space stations a real sense of solidity:</p>
+
+						<img class="titleImage" src="/images/cassette/station.png" alt="A space station in BBC Micro cassette Elite" />
+
+						<p>Back-face culling is implemented in <a href="/cassette/main/subroutine/ll9_part_5_of_12.html">part 5 of LL9</a> as part of the ship-drawing routine.</p>
+
+						<p>The main principle behind back-face culling is the dot product. This simple mathematical operation takes two vectors and produces a scalar value that is in essence a kind of mathematical application of one vector to the other, of taking the "essence" of one vector and applying it to another. For the purposes of back-face culling in Elite, we use the dot product in two distinct ways.</p>
+
+						<h2 class="articleSubheader">Direction of the face normal<br />
+													 ----------------------------</h2>
+
+						<p>The first use is to calculate whether a face is pointing towards us or away from us, so we can decide whether to draw it. For this we use a property of the dot product that's almost tailor-made for solving this problem: if the dot product of two vectors is negative, then the angle between them is greater than 90 degrees (and by extension, if it is positive then the angle is less than 90 degrees, while a dot product of 0 means they are at exactly 90 degrees to each other).</p>
+
+						<p>Now, consider a face of one of our ships, and take the surface normal vector of that face. This is the vector that sticks out of the surface of the face at 90 degrees to the surface (so a ship with its face normals attached would look like a strange, space-faring hedgehog). Now think about rotating that face in space, and you can see that if that face normal is pointing towards us - in other words if the spike is pointing in our general direction, more towards us than away from us - then we can see the front of the face, while if the face normal (the spike) is pointing away from us, then the face is also pointing away from us and we can't see it.</p>
+
+						<p>The normal is effectively pointing in the direction of the face, so if it is pointing in our general direction, then the face is pointing towards us and we can see it; similarly, if the normal is pointing away from us, then the face is also pointing away from us, and we can't see it. Finally, if the face is exactly side on to us, it's on the cusp of being visible and invisible to us.</p>
+
+						<p>It looks like this (though you'll have to imagine that the normals are at 90 degrees, as that's pretty difficult to do in ASCII):</p>
+
+<pre class="articleIndented">                               /                        `.   /   normal points
+                              /      normal points        `./    towards us,
+  line of sight -----&gt;       /`.     away, face            /     face visible
+                            /   `.   not visible          /
+</pre>
+
+						<p>The solid lines represent the faces, while the dotted lines represent the normals. On the left the normal is pointing away from us and the face is turned away from us, so it's not visible, while on the right the normal is pointing towards us and so is the face, so it's visible.</p>
+
+						<p>So, when the face normal is pointing away from us, the face is hidden from us. To put this another way, when the angle between the face normal and our line of sight is greater than 90 degrees, then the face normal is pointing away from us and the face is not visible. Similarly, when the angle is less than 90 degrees, the normal is pointing towards us, so the face is visible.</p>
+
+						<p>This means that we can calculate the visibility of a face by calculating the following dot product:</p>
+
+<pre class="articleIndented">  line of sight vector . face normal vector
+</pre>
+
+						<p>If the result of this dot product is negative, then the face is visible; if it's positive, it isn't visible; and if it's zero it's edge on to us.</p>
+
+						<h2 class="articleSubheader">Line of sight vector<br />
+													 --------------------</h2>
+
+						<p>We already have the face normal vector, as that's how faces are stored in the memory (see the ship blueprints documentation at XX21 for more information on this). So how can we calculate the line of sight vector?</p>
+
+						<p>The first solution that springs to mind is to use the vector from our position to the ship we are trying to draw. Our ship is always at the origin (0, 0, 0), so this would mean the line of sight vector would be the vector from the origin to the ship at (x, y, z), or [x y z]. This is close, but it isn't quite right as the line of sight we are interested in is towards the face, not the centre of the ship.</p>
+
+						<p>Luckily, any point on the face will do for our calculation, so we just need to find the vector from our position to any point on the face, and the dot product will work fine. Indeed, we can extend that to say that any point on the plane containing the face will suffice; if you think about it, extending the face in all directions wouldn't change its visibility to us, so it won't change the calculation if we pick a point that is outside the limits of the actual face we want to draw. It just has to be in the same plane as the face for this to work.</p>
+
+						<p>Given this, perhaps we can get hold of a vector that goes from the ship's centre to a point on the extended face plane? As then we could define our line of sight vector by adding the vector to the ship's centre, and the vector from the ship's centre to the extended face plane.</p>
+
+						<p>Luckily - well, it isn't luck, it's by design, but it feels lucky - this is exactly how faces are stored in Elite. Each face is stored as a face normal vector, but that normal is specifically designed to be the vector from the centre of the ship to the nearest point on the extended face plane. The direction of the vector stored in the ship's blueprint is parallel to the face normal (the hedgehog spike), but its magnitude (i.e. the vector's length) is set to the distance from the ship's centre to the extended face plane. So, by design, we can add this vector to the ship's position in space to get the line of sight vector from our ship to a point on the face plane, like so:</p>
+
+<pre class="articleIndented">  line of sight vector = [x y z] + face normal vector
+</pre>
+
+						<p>and we can then calculate the dot product of this vector with the face normal vector to get our positive or negative result, which determines whether this face is hidden or visible.</p>
+
+						<p>(Incidentally, the face normal vector that's stored in the ship's blueprint goes from the ship's centre to the nearest point on the extended face plane, as the vector is a normal, though we don't need to use this fact, it's just an interesting consequence of how this is all set up.)</p>
+
+						<h2 class="articleSubheader">Projecting onto the orientation vector space<br />
+													 --------------------------------------------</h2>
+
+						<p>So are we done? Not quite. The maths is all good, but the way the coordinates and vectors are stored means we have to do a bit more geometry before we can plug the values into our dot product equation.</p>
+
+						<p>The problem is that the vector from our position to the ship we're displaying uses a different set of axes to the ship's blueprint. As we cavort through space, pitching and rolling away, the x-axis is always pointing to the right on screen, the y-axis always points up, and the z-axis always points into the screen. This is always the case, even if we switch views (this is where the PLUT routine comes in, as it switches the axes around to maintain this relationship between the screen and the axes). When we roll, pitch and travel through space, we don't actually roll or pitch, but instead we rotate the universe around us (this is done in the MVEIT routine). On top of this, each ship has its own set of orientation vectors - nosev, roofv and sidev - that determine the direction that the ship is pointing.</p>
+
+						<p>The problem is that the face normal vector in the ship's blueprint is stored in terms of an unrotated ship. Ship coordinates are stored with the x, y and z axes along the orientation vectors, so if we were sitting in the ship, the x-coordinate of the face normal vector would be pointing to our right, the y-coordinate would be pointing up, and the z-coordinate would be pointing forward, because that's how the coordinates are stored. This intentionally coincides with the way the orientation vectors point; from the perspective of the pilot of the other ship, sidev is the x-axis going off to the right, roofv is the y-axis going up, and the z-axis is nosev, heading forward. The face normal vectors are stored with reference to these orientation vectors as axes; mathematically speaking, the ship's orientation vectors form an orthonormal basis for the Euclidean space in which the face normals are expressed.</p>
+
+						<p>So somehow we need to merge these two coordinate systems - the orientation of the universe from the perspective of our ship vs the orientation of the universe from the perspective of the other ship. Luckily there's an easy solution, and again it involves the dot product.</p>
+
+						<p>The feature of the dot product that we use to merge the coordinate systems is called "scalar projection". This says that given a vector and a unit vector, we can calculate the projection of the vector onto the unit vector by simply calculating the dot product. If we do this with a vector and three unit vectors, then the dot product gives us that vector, expressed in terms of the three unit vectors - in other words, this is how we convert coordinates from one set of axes to another.</p>
+
+						<p>In our case, we have the following equation to calculate:</p>
+
+<pre class="articleIndented">  line of sight vector . face normal vector
+</pre>
+
+						<p>where:</p>
+
+<pre class="articleIndented">  line of sight vector = [x y z] + face normal vector
+</pre>
+
+						<p>so if we can convert [x y z] to use the same axes as the face normal vector, then we can do our calculation. As discussed above, the face normal vector uses the ship's orientation vectors as its axes, and we know that the orientation vectors are unit vectors because they are orthonormal (and we keep calling the TIDY routine to ensure that they stay this way). So we can project the [x y z] vector onto each of the orientation vectors in turn, like this:</p>
+
+<pre class="articleIndented">  [x y z] projected onto sidev = [x y z] . sidev
+  [x y z] projected onto roofv = [x y z] . roofv
+  [x y z] projected onto nosev = [x y z] . nosev
+</pre>
+
+						<p>and because the orientation vectors are effectively the x, y and z axes for the ship's space, we can combine them into our projected line of sight vector like this:</p>
+
+<pre class="articleIndented">                             [ [x y z] . sidev ]
+  projected [x y z] vector = [ [x y z] . roofv ]
+                             [ [x y z] . nosev ]
+</pre>
+
+						<p>The final step is to combine all of the above into our final equation. This is the value we want to calculate:</p>
+
+<pre class="articleIndented">  line of sight vector . face normal vector
+</pre>
+
+						<p>and we know that:</p>
+
+<pre class="articleIndented">  line of sight vector = [x y z] + face normal vector
+</pre>
+
+						<p>so if we now project the [x y z] vector into the same space as the face normals so we can combine them properly, we get:</p>
+
+<pre class="articleIndented">  line of sight vector = projected [x y z] vector + face normal vector
+
+                         [ [x y z] . sidev ]   [ normal_x ]
+                       = [ [x y z] . roofv ] + [ normal_y ]
+                         [ [x y z] . nosev ]   [ normal_z ]
+
+                         [ [x y z] . sidev + normal_x ]
+                       = [ [x y z] . roofv + normal_y ]
+                         [ [x y z] . nosev + normal_z ]
+</pre>
+
+						<p>and if we substitute this into our final calculation, we can calculate the dot product as follows:</p>
+
+<pre class="articleIndented">               [ [x y z] . sidev + normal_x ]   [ normal_x ]
+  visibility = [ [x y z] . roofv + normal_y ] . [ normal_y ]
+               [ [x y z] . nosev + normal_z ]   [ normal_z ]
+</pre>
+
+						<p>If the result is negative the face is visible, otherwise it is not visible.</p>
+
+						<p>This is exactly what happens in <a href="/cassette/main/subroutine/ll9_part_5_of_12.html">part 5 of the LL9 routine</a>. We set the block of memory at XX15 to the left-hand side of the final calculation and the block at XX12 block to the right-hand side, and calculate the dot product XX12 . XX15 to tell us whether or not this face is visible, which we store in the table at XX2. This gets repeated for all the faces until XX2 contains the visibilities of all the faces for this ship.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_ships.html">Drawing ships</a><a class="next" rel="next" title="Next deep dive" href="calculating_vertex_coordinates.html">Calculating vertex coordinates</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

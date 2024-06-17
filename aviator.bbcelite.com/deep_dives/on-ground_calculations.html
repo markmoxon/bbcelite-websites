@@ -1,0 +1,154 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "on-ground_calculations.html", "On-ground calculations", "On-ground calculations", "A deep dive into the on-ground calculations in BBC Micro Aviator", "aviator", "deep_dives_flight_model", "on-ground_calculations");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="take-offs_and_landings.html">Take-offs and landings</a><a class="next" rel="next" title="Next deep dive" href="flying_skills.html">Flying skills</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The calculations behind the plane's behaviour on the ground</h2>
+
+						<p>Not surprisingly, most of Aviator's flight model is dedicated to calculating the aerodynamics of the plane when it's in the air (see the deep dive on <a href="the_flight_model.html">the flight model</a> for details). However, the plane's behaviour on the ground is also simulated, where most of the usual aerodynamic forces still apply, and so do various ground-specific calculations. We take a look at these extra calculations here.</p>
+
+						<p>Most of the on-ground calculations described below are applied in <a href="/source/main/subroutine/applyflightmodel_part_5_of_7.html">part 5 of the ApplyFlightModel routine</a>, after the flight forces have been calculated but before they are applied to the plane. That's because being on the ground cancels out some of the forces (such as roll and pitch), so the following can be thought of as an extra step inserted into the <a href="the_flight_model.html">flight model calculations</a> between <a href="the_flight_model.html#calculation5">calculation 5</a> and <a href="the_flight_model.html#calculation6">calculation 6</a>.</p>
+
+						<p>Note that this deep dive looks at the ground-specific parts of the flight model. There is also a totally separate section of the code that deals with the question of whether we are landing, touching down or taxiing, which isn't a part of the flight model as such, but is very relevant to the calculations discussed here. In particular, a key value in the on-ground calculations is the <a href="/source/main/workspace/main_variable_workspace.html#onground">onGround</a> flag, which is 0 if we are not on the ground, and 1 if we are on the ground, with the latter effectively meaning "we have landed", as opposed to "we are touching the ground". The onGround variable is updated by the ProcessLanding routine, and is described in the deep dive on <a href="take-offs_and_landings.html">take-offs and landings</a>. For our purposes, the calculations in this deep dive only apply when onGround is 1.</p>
+
+						<h2 class="articleSubheader">Pitching moment from the undercarriage<br />
+													 --------------------------------------</h2>
+
+						<p>The first difference made by being on the ground is in the calculation of the gravity vector in <a href="/source/main/subroutine/applyflightmodel_part_1_of_7.html">part 1 of the ApplyFlightModel routine</a>. This vector is used to calculate the pitching moment due to the centre of gravity, which takes the gravitational force in yGravity and applies it as an angular force around the x-axis, giving us our pitching moment (see <a href="the_flight_model.html#calculation4">calculation 4 in the flight model</a> for details).</p>
+
+						<p>When the plane is in the air, the gravity vector is set like this:</p>
+
+<pre class="articleIndented">  [ xGravity ]             [   0  ]
+  [ yGravity ] = matrix4 x [ -512 ]
+  [ zGravity ]             [   0  ]
+</pre>
+
+						<p>but if we are on the ground, with the undercarriage down and a negative value in dyVelocity, then it set like this:</p>
+
+<pre class="articleIndented">  [ xGravity ]             [              0              ]
+  [ yGravity ] = matrix4 x [ -512 - (dyVelocity / 2 + 1) ]
+  [ zGravity ]             [              0              ]
+</pre>
+
+							<p>At this point the value of dyVelocity is the one that's left over from the previous iteration of the main loop, and it represents the current vertical acceleration (i.e. the change in vertical velocity). So if it is negative, it means the plane is accelerating downwards, but we find ourselves on the ground with the undercarriage down. The undercarriage therefore pushes back, so this calculation simulates the springs in the undercarriage, making sure their push-back effect is incorporated when calculating the pitching moment due to the centre of gravity later on.</p>
+
+						<h2 class="articleSubheader">Ground steering<br />
+													 ---------------</h2>
+
+						<p>Next up, the <a href="/source/main/subroutine/applyflightcontrol.html">ApplyFlightControl</a> routine gets called from <a href="/source/main/subroutine/applyflightmodel_part_2_of_7.html">part 2 of ApplyFlightModel</a>, and it calculates the forces from the three flight controls: elevators, rudder and aileron. The same routine is called when the plane is on the ground, but there is one difference: on the ground, the rudder controls are used to control ground steering via the wheel brakes, rather than controlling the rudder.</p>
+
+						<p>Luckily for the flight model, the linear forces applied by the rudder and ground steering are the same - both of them apply yaw to the plane - but the difference is that the "instant centre" feature that the aileron controls enjoy in the air is also applied to the rudder when ground steering (but it isn't applied to the rudder when in the air). The "instant centre" feature is for keyboard users only, and instantly centres the control when you press the key for the opposite direction.</p>
+
+						<p>So if we're in the air and we press "S" to roll left using the ailerons, then pressing "D" will instantly centre the joystick before rolling to the right. The same is true for ground steering: if we are on the ground and press "A" to steer left, then pressing "+" to steer right will instantly start steering us in that direction.</p>
+
+						<p>The actual effect of the ground steering is applied in <a href="/source/main/subroutine/applyflightmodel_part_5_of_7.html">part 5 of the ApplyFlightModel routine</a>, where we calculate the force of the steering as follows:</p>
+
+                        <ul>
+							<li>0 if the forward airspeed is negative or &lt; 20</li>
+
+							<li><a href="/source/main/workspace/main_variable_workspace.html#rudderposition">rudderPosition</a> otherwise</li>
+						</ul>
+
+						<p>If we call this figure groundSteering, then we turn the plane with the rudder controls as follows:</p>
+
+<pre class="articleIndented">  yTurn = groundSteering * 4
+</pre>
+
+						<p>This simulates using the plane's left and right brakes to steer the plane, which is why we can only steer when moving forwards above a minimum speed.</p>
+
+						<h2 class="articleSubheader">Taxiing<br />
+													 -------</h2>
+
+						<p>The next batch of code in <a href="/source/main/subroutine/applyflightmodel_part_5_of_7.html">part 5 of the ApplyFlightModel routine</a> looks at the effect of the ground surface on the plane.</p>
+
+						<p>First, the roll rate in dzTurn is set to 0, so if the flight model has calculated a change to the roll rate, it gets cancelled, as the plane can't roll when it's on the ground.</p>
+
+						<p>Next, if the undercarriage is up, we prevent the plane from pitching forward below the level of the ground by setting dxTurn to 0. So if the flight model has calculated a change to the pitch rate, it gets cancelled, as the plane can't pitch when its belly is flat on the ground.</p>
+
+						<p>We now calculate the effect of being on the ground on the calculated linear forces in (xLinear yLinear zLinear).</p>
+
+						<ul>
+							<li>If the plane is stationary, set landingStatus = %01000000 and skip to the next section without changing the linear forces.</li>
+
+							<li>If the plane is travelling forwards at a speed of 10 or less, set zLinear = -256 to simulate the friction of the wheels and slow the plane down gently, set landingStatus = %01000000 and skip to the next section.</li>
+
+							<li>If the plane is on the runway, the undercarriage is down and the brakes are off, set landingStatus = 0 and skip to the next section without changing the linear forces.</li>
+
+							<li>Otherwise, set landingStatus = 0 and subtract the following from zLinearHi (from the least slowdown to the biggest slowdown):
+
+								<ul>
+									<li>7 if the plane is not on the runway and:
+
+										<ul>
+											<li>The undercarriage is down and the brakes are off</li>
+										</ul>
+									</li>
+
+									<li>11 if the plane is on the runway and:
+
+										<ul>
+											<li>The undercarriage is up</li>
+
+											<li>Or the undercarriage is down and the brakes are on</li>
+										</ul>
+									</li>
+
+									<li>50 if the plane is not on the runway and:
+
+										<ul>
+											<li>The undercarriage is up</li>
+
+											<li>Or the undercarriage is down and the brakes are on</li>
+										</ul>
+									</li>
+
+									<li>248 if the plane is going backwards (zVelocityP &lt; 0)</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>In other words, the following factors slow us down when travelling forwards along the ground:</p>
+
+						<ul>
+							<li>Having the brakes on</li>
+
+							<li>Having the undercarriage up</li>
+
+							<li>Not being on the runway</li>
+						</ul>
+
+						<p>All of which is pretty logical.</p>
+
+						<h2 class="articleSubheader">Sideways frictional forces of wheels<br />
+													 ------------------------------------</h2>
+
+						<p>The final calculation for when the plane is on the ground is also performed by <a href="/source/main/subroutine/applyflightmodel_part_5_of_7.html">part 5 of the ApplyFlightModel routine</a>. This applies a sideways force due to the friction of the wheels. When the wheels are on the ground, the plane can move forwards and backwards without extra friction, but trying to move the plane sideways is much harder, and it's this frictional force that is modelled here.</p>
+
+						<p>The sideways friction is calculated as follows:
+
+<pre class="articleIndented">  xLinear = -xVelocityPLo * 128
+</pre>
+
+						<p>So the friction is proportional to the sideways speed, as you would expect.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="take-offs_and_landings.html">Take-offs and landings</a><a class="next" rel="next" title="Next deep dive" href="flying_skills.html">Flying skills</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,172 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "program_flow_of_the_main_game_loop.html", "Program flow of the main game loop", "Program flow of the main game loop", "A deep dive into the main game loop in BBC Micro Revs", "revs", "deep_dives_main_loop", "program_flow_of_the_main_game_loop");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="major_variable_blocks.html">Major variable blocks</a><a class="next" rel="next" title="Next deep dive" href="scheduling_tasks_in_the_main_loop.html">Scheduling tasks in the main loop</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The sequence of events in the main game loop</h2>
+
+						<p>Here is a high-level look at the main program flow, from the first menu to the end of a race. For more information on the loading process that precedes the first menu, see the deep dive on <a href="the_jigsaw_puzzle_binary.html">the jigsaw puzzle binary</a>.</p>
+
+						<p>Each section is broken down into parts that mirror the structure of the source code, so it should be easy enough to find the relevant parts mentioned below.</p>
+
+						<h2 class="articleSubheader">Main game loop<br />
+													 --------------</h2>
+
+						<p>The main game loop starts when we begin a new game, and restarts when we press SHIFT and right arrow.</p>
+
+						<p><a href="/source/main/subroutine/mainloop_part_1_of_6.html">1/6: Main game loop (Part 1 of 6)</a></p>
+
+						<ul>
+							<li>Initialise the grid positions, race positions and points for all 20 non-player drivers</li>
+							<li>Set up the optimum steering for each section for the Novice class, storing the results in sectionSteering</li>
+							<li>Print the "practice/competition" menu</li>
+							<li>If practice is chosen, reset the lap times and jump to the <a href="/source/main/subroutine/headtotrack.html">HeadToTrack</a> routine to get the wing settings and go to the track</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/mainloop_part_2_of_6.html">2/6: Main game loop (Part 2 of 6)</a></p>
+
+						<ul>
+							<li>If we get here then we chose "competition" in part 1</li>
+							<li>Print the "class of race" menu and process the choice</li>
+							<li>Print the "duration of qualifying laps" menu and process the choice</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/mainloop_part_3_of_6.html">3/6: Main game loop (Part 3 of 6)</a></p>
+
+						<ul>
+							<li>Reset the best lap times for each driver</li>
+							<li>If we are starting a new competition, ask for the player's name</li>
+							<li>Call the <a href="/source/main/subroutine/headtotrack.html">HeadToTrack</a> routine to get the wing settings and go to the track for the qualifying lap, returning here when done</li>
+							<li>Ask whether there are any other players, and if so, get their names and run their qualifying laps too</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/mainloop_part_4_of_6.html">4/6: Main game loop (Part 4 of 6)</a></p>
+
+						<ul>
+							<li>Check the slowest qualifying lap times against the trackLapTimeMin and trackLapTimeSec values from the track data file</li>
+							<li>If the player times are too slow for the chosen class, make the game easier by changing the race class</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/mainloop_part_5_of_6.html">5/6: Main game loop (Part 5 of 6)</a></p>
+
+						<ul>
+							<li>Set up the optimum steering for each section for the current race class (which may have been amended in the previous step), storing the results in sectionSteering</li>
+							<li>Print the current race class and wait for SPACE to be pressed</li>
+							<li>Print the driver table and wait for SPACE to be pressed</li>
+							<li>Print the "number of laps" menu and process the choice</li>
+							<li>Print the player's name and wait for SPACE to be pressed</li>
+							<li>Call the <a href="/source/main/subroutine/headtotrack.html">HeadToTrack</a> routine to get the wing settings and run the race, returning here when done</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/mainloop_part_6_of_6.html">6/6: Main game loop (Part 6 of 6)</a></p>
+
+						<ul>
+							<li>Sort the drivers by total race time</li>
+							<li>Call the <a href="/source/main/subroutine/awardracepoints.html">AwardRacePoints</a> routine to award race points</li>
+							<li>Sort the driver table by calling the <a href="/source/main/subroutine/sortdrivers.html">SortDrivers</a> routine</li>
+							<li>Print the driver table, ordered by best lap times, and wait for SPACE to be pressed</li>
+							<li>Print the driver table, ordered by accumulated points, and wait for SPACE or RETURN to be pressed (re-showing the driver tables for the latter)</li>
+							<li>If there are other players, jump back to part 5 to print the next driver's name and run their race</li>
+							<li>This race is run, so jump back to part 2 to print the  "duration of qualifying laps" menu, ready for the next race in the championship</li>
+						</ul>
+
+						<h2 class="articleSubheader">Main driving loop<br />
+													 -----------------</h2>
+
+						<p>The main driving loop takes over when we go to the track to do a practice lap or join a race.</p>
+
+						<p>It is joined from the main game loop by calling the <a href="/source/main/subroutine/headtotrack.html">HeadToTrack</a> routine, which asks for the wing settings and calls the main driving loop at <a href="/source/main/subroutine/maindrivingloop_part_1_of_5.html">MainDrivingLoop</a>. It also deals with the exit from the main driving loop, whether we choose to return to the pits (in which case it shows the wing settings menu again), or when the race has ended (in which case it returns to the main game loop).</p>
+
+						<p><a href="/source/main/subroutine/maindrivingloop_part_1_of_5.html">1/5: Main driving loop (Part 1 of 5)</a></p>
+
+						<ul>
+							<li>Switch from mode 7 to the custom screen mode</li>
+							<li>Copy the dash data from the main game code to screen memory</li>
+							<li>Copy the data from the dash data blocks to the screen to draw the track view</li>
+							<li>Zero the timer (we jump back here when restarting practice laps)</li>
+							<li>Reset the driving variables by calling the <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> routine (we jump back here when restarting qualifying laps)</li>
+							<li>Build the 3D objects for the player's car (we jump back here when restarting a Novice race)</li>
+							<li>Call <a href="/source/main/subroutine/scalewingsettings.html">ScaleWingSettings</a> to scale the wing settings</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/maindrivingloop_part_2_of_5.html">2/5: Main driving loop (Part 2 of 5)</a></p>
+
+						<ul>
+							<li>This is the main driving loop, which consists of a long sequence of subroutine calls that implement the vast majority of the game functionality</li>
+							<li>Call <a href="/source/main/subroutine/processtime.html">ProcessTime</a> to increment the timers and the main loop counter, and recalculate the driver speeds for the non-player drivers (every 32 iterations only)</li>
+							<li>Call <a href="/source/main/subroutine/showstartinglights.html">ShowStartingLights</a> to show the starting lights on the right of the screen, if this is the start of a race</li>
+							<li>Call <a href="/source/main/subroutine/processdrivingkeys_part_1_of_6.html">ProcessDrivingKeys</a> to check for and process the main driving keys</li>
+							<li>Call <a href="/source/main/subroutine/applydrivingmodel.html">ApplyDrivingModel</a> to apply the driving model to the player's car</li>
+							<li>Call <a href="/source/main/subroutine/gettrackandmarkers.html">GetTrackAndMarkers</a> to calculate the coordinates for the track verges and corner markers</li>
+							<li>Call <a href="/source/main/subroutine/moveplayerontrack.html">MovePlayerOnTrack</a> to update the position of the player's car within the current track segment</li>
+							<li>Call <a href="/source/main/subroutine/moveplayersegment.html">MovePlayerSegment</a> to move the player's car into the correct segment</li>
+							<li>Call <a href="/source/main/subroutine/updatelaptimers.html">UpdateLapTimers</a> to update the lap timers and display timer-related messages at the top of the screen</li>
+							<li>Call <a href="/source/main/subroutine/makedrivingsounds.html">MakeDrivingSounds</a> to make the relevant sounds for the engine and tyres (for the first time)</li>
+							<li>Call <a href="/source/main/subroutine/resettracklines.html">ResetTrackLines</a> to reset the track lines below the horizon in the track view</li>
+							<li>Call <a href="/source/main/subroutine/drawtrack.html">DrawTrack</a> to draw the track into the screen buffer</li>
+							<li>Call <a href="/source/main/subroutine/makedrivingsounds.html">MakeDrivingSounds</a> to make the relevant sounds for the engine and tyres (for the second time)</li>
+							<li>Call <a href="/source/main/subroutine/setbackground.html">SetBackground</a> to set the background colour for any track lines in the track view that do not currently have a background set</li>
+							<li>Call <a href="/source/main/subroutine/buildroadsign.html">BuildRoadSign</a> to build the road sign, if one is visible</li>
+							<li>Call <a href="/source/main/subroutine/drawcarorsign.html">DrawCarOrSign</a> to draw the road sign we just built</li>
+							<li>Call <a href="/source/main/subroutine/drawcornermarkers.html">DrawCornerMarkers</a> to draw any visible corner markers</li>
+							<li>Call <a href="/source/main/subroutine/moveanddrawcars.html">MoveAndDrawCars</a> to move the cars around the track and draw any that are visible, up to a maximum of five</li>
+							<li>Call <a href="/source/main/subroutine/copytyredashedges.html">CopyTyreDashEdges</a> to copy the pixels from the edges of the left tyre and right dashboard so they can be used when drawing the track view around the tyres and dashboard, and fill the blocks to the right of the edges with the appropriate content</li>
+							<li>Call <a href="/source/main/subroutine/updatemirrors.html">UpdateMirrors</a> to update the view in the wing mirrors</li>
+							<li>Call <a href="/source/main/subroutine/makedrivingsounds.html">MakeDrivingSounds</a> to make the relevant sounds for the engine and tyres (for the third time)</li>
+							<li>Call <a href="/source/main/subroutine/movehorizon.html">MoveHorizon</a> to move the position of the horizon palette switch up or down, depending on the current track pitch angle</li>
+							<li>Call <a href="/source/main/subroutine/processcontact.html">ProcessContact</a> to process any car-on-car contact, if there has been any</li>
+							<li>Call <a href="/source/main/subroutine/checkforcrash.html">CheckForCrash</a> to check to see if we have crashed into the fence, and if so, display the fence, make the crash sound and set the height of the car above the track to 127 (so if this is a Novice race, we get dropped back onto the track by the crane in part 3)</li>
+							<li>Call <a href="/source/main/subroutine/drawtrackview_part_1_of_4.html">DrawTrackView</a> to copy the data from the dash data blocks to the screen to draw the track view, fitting it around the tyres and dashboard</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/maindrivingloop_part_3_of_5.html">3/5: Main driving loop (Part 3 of 5)</a></p>
+
+						<ul>
+							<li>If we crashed into the fence in part 2 and this is a Novice race, we are practising or we are driving a qualifying lap, then rejoin the race by jumping back to the relevant point in part 1</li>
+							<li>If we didn't crash, jump to part 5 to keep driving</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/maindrivingloop_part_4_of_5.html">4/5: Main driving loop (Part 4 of 5)</a></p>
+
+						<ul>
+							<li>If we get here then we have either quit the race (via SHIFT-f4), or we crashed during an Amateur or a Professional race, or the track timer ran down</li>
+							<li>In all cases, we are done racing and need to leave the track</li>
+							<li>But first, we print a "please wait" message and call the <a href="/source/main/subroutine/finishrace.html">FinishRace</a> routine to finish racing all the non-player drivers around the track</li>
+							<li>And then we jump to the end of part 5 to return to the menus</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/maindrivingloop_part_5_of_5.html">5/5: Main driving loop (Part 5 of 5)</a></p>
+
+						<ul>
+							<li>Process all shifted keys by calling <a href="/source/main/subroutine/processshiftedkeys.html">ProcessShiftedKeys</a></li>
+							<li>If we have pressed a key that makes us leave the track, jump to part 4 to process it</li>
+							<li>Call <a href="/source/main/subroutine/makedrivingsounds.html">MakeDrivingSounds</a> to make the relevant sounds for the engine and tyres (for the fourth time)</li>
+							<li>Call <a href="/source/main/subroutine/updatedashboard.html">UpdateDashboard</a> to update the rev counter on the dashboard</li>
+							<li>Loop back to part 2 to keep driving</li>
+							<li>If we get here then we need to leave the track and return to the game menu</li>
+							<li>Copy the dash data from screen memory back to the main game code</li>
+							<li>Disable the custom screen mode and switch to mode 7</li>
+							<li>Return from the main driving loop, which returns us to the <a href="/source/main/subroutine/headtotrack.html">HeadToTrack</a> routine</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="major_variable_blocks.html">Major variable blocks</a><a class="next" rel="next" title="Next deep dive" href="scheduling_tasks_in_the_main_loop.html">Scheduling tasks in the main loop</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

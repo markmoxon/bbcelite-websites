@@ -1,0 +1,97 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "explosions_and_turbulence.html", "Explosions and turbulence", "Explosions and turbulence", "A deep dive into explosions and turbulence in BBC Micro Aviator", "aviator", "deep_dives_the_theme", "explosions_and_turbulence");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="detecting_alien_hits.html">Detecting alien hits</a><a class="next" rel="next" title="Next deep dive" href="flicker-free_animation_through_colour_cycling.html">Flicker-free animation through colour cycling</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Destroying aliens at close range can have serious consequences</h2>
+
+						<p>When we destroy an alien, two things happen: an explosion, and turbulence. Let's look at how these are implemented.</p>
+
+						<h2 class="articleSubheader">Explosions<br />
+													 ----------</h2>
+
+						<p>Alien explosions are handled by the <a href="/source/main/subroutine/explodealien.html">ExplodeAlien</a> routine, which is called from <a href="/source/main/subroutine/mainloop_part_5_of_15.html">part 5 of the main loop</a> on every iteration around the loop. When we kill an alien, the <a href="/source/main/variable/hittimer.html">hitTimer</a> variable is used as a timer that counts down for the duration of the explosion, so the first thing the explosion routine does is to confirm that this timer is non-zero.</p>
+
+						<p>Assuming we do indeed have an exploding alien on our hands, the next step is to make the sound of an alien exploding, and then we move onto the process of splitting the alien's lines apart on-screen.</p>
+
+						<p>There are four different 3D objects used for the various stages of alien. Object 30 contains dormant aliens, objects 31 and 32 are feeding aliens, and object 33 is the attacking alien. These alien objects consist of the following object points:</p>
+
+						<ul>
+							<li>Object 30 consists of points 178 to 180</li>
+
+							<li>Object 31 consists of points 183 to 186</li>
+
+							<li>Object 32 consists of points 188 to 191</li>
+
+							<li>Object 33 consists of points 193 to 200</li>
+						</ul>
+
+						<p>These point ranges are stored in the <a href="/source/main/variable/explodefrom.html">explodeFrom</a> and <a href="/source/main/variable/explodeto.html">explodeTo</a> tables. The point IDs are stored in explicit tables as there's no way to extract the points in an object from <a href="/source/main/variable/objectpoints.html">objectPoints</a> given the object ID. See the deep dive on <a href="3d_objects.html">3D objects</a> for more on this.</p>
+
+						<p>To explode one of these alien objects, we can alter the coordinates for the relevant points, and this will make the object change on-screen. Note that we don't change the object definitions in the (xObjectPoint, yObjectPoint, zObjectPoint) table, as that would mean we couldn't spawn new objects based on that design; instead we change the projected points in the (xPoint, yPoint, zPoint) table for this specific object.</p>
+
+						<p>The first step is to extract the alien's feeding state, so we know how much to move the points (as aliens in later feeding stages are bigger). Once we have this scale factor, we generate a random number for each axis, scaled according to the alien's size, and randomly add or subtract it to the point's coordinate in that axis. Working our way through all the points, we end up randomising all the lines that make up the alien.</p>
+
+						<p>This process is repeated by the <a href="/source/main/subroutine/explodealien.html">ExplodeAlien</a> routine on every iteration of the main loop, for the duration of the explosion. As mentioned above, the explosion is tracked via the <a href="/source/main/variable/hittimer.html">hitTimer</a> variable, so the last step is to decrement hitTimer to progress the explosion. If it hits zero, then we call the <a href="/source/main/subroutine/scorehitpoints.html">ScoreHitPoints</a> routine to award the correct number of points, depending on the alien's feeding stage (and the next time we call ExplodeAlien, it won't do anything).</p>
+
+						<h2 class="articleSubheader">Near or far<br />
+													 -----------</h2>
+
+						<p>If this is the first stage of the explosion, there is one more task to do. We talk about applying turbulence to the plane in the next section, and the closer we are to the exploding alien, the more powerful the turbulence. We therefore need to calculate the distance to the explosion, and we do this at the end of the <a href="/source/main/subroutine/explodealien.html">ExplodeAlien</a> routine, on the first call of a new explosion.</p>
+
+						<p>The distance is calculated by taking the z-coordinate of the last point that we applied a random movement to. These coordinates have already been rotated into the plane's frame of reference, so they are relative to the plane, so this gives us the distance between that point of the exploding alien and the plane, in the z-axis (with the z-axis pointing out of the plane's nose, as we are in the plane's frame of reference).</p>
+
+						<p>To put it another way, this measures how far the explosion is in front of the plane - we ignore how far to the side the explosion is. If the alien is flying rather than sitting in a field, we subtract 8 from this value to make the turbulence even greater, and then we store the result in <a href="/source/main/variable/distancefromhit.html">distanceFromHit</a>, for use in the next section.</p>
+
+						<h2 class="articleSubheader">Turbulence<br />
+													 ----------</h2>
+
+						<p>The closer we are to an exploding alien, the more intense the turbulence from the explosion. Turbulence is applied to the plane as part of the flight model calculations, in <a href="/source/main/subroutine/applyflightmodel_part_3_of_7.html">part 3 of the ApplyFlightModel routine</a>.</p>
+
+						<p>There are two parts to the calculation. First we set the level of turbulence in the range 0 to 1920, to be inversely proportional to the distance from the explosion in <a href="/source/main/variable/distancefromhit.html">distanceFromHit</a>, which gets set in the explosion routine described above. This means the level of turbulence is set to 0 if we are far away, or 1920 if we are very close.</p>
+
+						<p>We then randomly add or subtract this amount from the angular forces from the plane's controls, one axis at a time, with the sign of each axis calculation being individually randomised. This gives the following:</p>
+
+<pre class="articleIndented">  xControlsSc = xControlsSc +/- turbulence / 2
+
+  yControlsSc = yControlsSc +/- turbulence / 2
+
+  zControlsSc = zControlsSc +/- turbulence / 2
+</pre>
+
+						<p>These variables contain the following angular forces, after they have been scaled as part of the flight model calculations:</p>
+
+						<ul>
+							<li>xControlsSc: Pitching moment due to elevator deflection</li>
+
+							<li>yControlsSc: Yawing moment due to rudder demand</li>
+
+							<li>zControlsSc: Rolling moment due to aileron deflection</li>
+						</ul>
+
+
+						<p>Updating these variables with the effects of turbulence can be thought of as an extra step inserted into the <a href="the_flight_model.html">flight model calculations</a> between <a href="the_flight_model.html#calculation3">calculation 3</a> and <a href="the_flight_model.html#calculation4">calculation 4</a>.</p>
+
+						<p>In terms of the flight model, then, turbulence is applied to the plane as if someone has grabbed the stick and rudder pedals and randomly thrown them around. This goes on for the duration of the explosion, so if we're close to the ground when we take out an alien, things can get very hairy indeed...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="detecting_alien_hits.html">Detecting alien hits</a><a class="next" rel="next" title="Next deep dive" href="flicker-free_animation_through_colour_cycling.html">Flicker-free animation through colour cycling</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

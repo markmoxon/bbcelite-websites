@@ -1,0 +1,110 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "commander_save_files.html", "Commander save files", "Commander save files", "A deep dive into commander save files in BBC Micro Elite", "elite", "deep_dives_saving_and_loading", "commander_save_files");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="generating_random_numbers.html">Generating random numbers</a><a class="next" rel="next" title="Next deep dive" href="the_competition_code.html">The competition code</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">A description of each and every byte in the saved commander file</h2>
+
+						<p>Elite maintains two separate copies of your commander's status in memory. The current commander data block in the <a href="/cassette/main/workspace/t_per_cent.html">T% workspace</a> gets updated every time you do something in game, so when you finally destroy that pesky pirate that's been hounding you for ages, your combat rating in <a href="/cassette/main/workspace/t_per_cent.html#tally">TALLY</a> gets increased, and your bounty gets paid into your cash pot in <a href="/cassette/main/workspace/t_per_cent.html#cash">CASH</a>. If you die, however, you lose all this progress, which is why you should save your game regularly. Saving your game not only writes to cassette or disc, but it also copies all the commander data to <a href="/cassette/main/variable/na_per_cent.html">the last saved commander data block at NA%</a>, so if you die, the game can reload the commander data from this point.</p>
+
+						<img class="titleImage" src="/images/disc/disk_access_menu.png" alt="The disk access menu in BBC Micro disc Elite" />
+
+						<p>To save a commander file, Elite simply saves the block of memory between NA%+8 and CHK (the first 8 bytes of NA% contain the commander name and a carriage return, which isn't saved as part of the file, but is used as the filename). Before doing the save, it calculates two checksums and puts them in CHK and CHK2, to make it harder to for crackers to manipulate commander files manually, and then it just saves out that clock of memory. Let's take a look at the format of this saved file.</p>
+
+						<h2 class="articleSubheader">The save file format<br />
+													 --------------------</h2>
+
+						<p>Each commander file is exactly 256 bytes long, though only the first 75 (&amp;4B) bytes contain any data (the rest are zeroed out). Those 75 bytes are shown in the table below, along with links to the relevant variables in the current commander data block, and the corresponding value in the default JAMESON commander from when you start a brand new game.</p>
+
+						<p>Note that the NES version of Elite has a slightly different file structure to the following and encrypts its save files differently; see the <a href="/nes/bank_6/variable/na2_per_cent.html">NA2%</a> variable for the file structure, and the <a href="/nes/bank_6/subroutine/saveloadcommander.html">SaveLoadCommander</a> routine for the encryption.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Byte #</th><th>In hex</th><th>Variable</th><th>Description</th><th class="right">Default</th></tr>
+							<tr><td>#1</td><td>&amp;01</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq0">QQ0</a></td><td>Current system X-coordinate (Lave)</td><td class="right">20</td></tr>
+							<tr><td>#2</td><td>&amp;02</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq1">QQ1</a></td><td>Current system Y-coordinate (Lave)</td><td class="right">173</td></tr>
+							<tr><td>#3-4</td><td>&amp;03-&amp;04</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq21">QQ21</a></td><td>Seed s0 for system 0, galaxy 0 (Tibedied)</td><td class="right">&amp;5A4A</td></tr>
+							<tr><td>#5-6</td><td>&amp;05-&amp;06</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq21">QQ21+2</a></td><td>Seed s1 for system 0, galaxy 0 (Tibedied)</td><td class="right">&amp;0248</td></tr>
+							<tr><td>#7-8</td><td>&amp;07-&amp;08</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq21">QQ21+4</a></td><td>Seed s2 for system 0, galaxy 0 (Tibedied)</td><td class="right">&amp;B753</td></tr>
+							<tr><td>#9-12</td><td>&amp;09-&amp;0C</td><td><a href="/cassette/main/workspace/t_per_cent.html#cash">CASH</a></td><td>Amount of cash (100 Cr)</td><td class="right">&amp;E8030000</td></tr>
+							<tr><td>#13</td><td>&amp;0D</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq14">QQ14</a></td><td>Fuel level</td><td class="right">70</td></tr>
+							<tr><td>#14</td><td>&amp;0E</td><td><a href="/cassette/main/workspace/t_per_cent.html#cok">COK</a></td><td>Competition flags</td><td class="right">0</td></tr>
+							<tr><td>#15</td><td>&amp;0F</td><td><a href="/cassette/main/workspace/t_per_cent.html#gcnt">GCNT</a></td><td>Galaxy number, 0-7</td><td class="right">0</td></tr>
+							<tr><td>#16</td><td>&amp;10</td><td><a href="/cassette/main/workspace/t_per_cent.html#laser">LASER</a></td><td>Front laser</td><td class="right">POW</td></tr>
+							<tr><td>#17</td><td>&amp;11</td><td><a href="/cassette/main/workspace/t_per_cent.html#laser">LASER+1</a></td><td>Rear laser</td><td class="right">0</td></tr>
+							<tr><td>#18</td><td>&amp;12</td><td><a href="/cassette/main/workspace/t_per_cent.html#laser">LASER+2</a></td><td>Left laser</td><td class="right">0</td></tr>
+							<tr><td>#19</td><td>&amp;13</td><td><a href="/cassette/main/workspace/t_per_cent.html#laser">LASER+3</a></td><td>Right laser</td><td class="right">0</td></tr>
+							<tr><td>#20-21</td><td>&amp;14-&amp;15</td><td></td><td>These two bytes are unused (they were originally used for up/down lasers, but they were dropped)</td><td class="right">0</td></tr>
+							<tr><td>#22</td><td>&amp;16</td><td><a href="/cassette/main/workspace/t_per_cent.html#crgo">CRGO</a></td><td>Cargo capacity</td><td class="right">22</td></tr>
+							<tr><td>#23</td><td>&amp;17</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+0</a></td><td>Amount of Food in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#24</td><td>&amp;18</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+1</a></td><td>Amount of Textiles in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#25</td><td>&amp;19</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+2</a></td><td>Amount of Radioactives in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#26</td><td>&amp;1A</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+3</a></td><td>Amount of Slaves in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#27</td><td>&amp;1B</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+4</a></td><td>Amount of Liquor/Wines in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#28</td><td>&amp;1C</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+5</a></td><td>Amount of Luxuries in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#29</td><td>&amp;1D</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+6</a></td><td>Amount of Narcotics in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#30</td><td>&amp;1E</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+7</a></td><td>Amount of Computers in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#31</td><td>&amp;1F</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+8</a></td><td>Amount of Machinery in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#32</td><td>&amp;20</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+9</a></td><td>Amount of Alloys in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#33</td><td>&amp;21</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+10</a></td><td>Amount of Firearms in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#34</td><td>&amp;22</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+11</a></td><td>Amount of Furs in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#35</td><td>&amp;23</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+12</a></td><td>Amount of Minerals in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#36</td><td>&amp;24</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+13</a></td><td>Amount of Gold in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#37</td><td>&amp;25</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+14</a></td><td>Amount of Platinum in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#38</td><td>&amp;26</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+15</a></td><td>Amount of Gem-Stones in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#39</td><td>&amp;27</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq20">QQ20+16</a></td><td>Amount of Alien Items in cargo hold</td><td class="right">0</td></tr>
+							<tr><td>#40</td><td>&amp;28</td><td><a href="/cassette/main/workspace/t_per_cent.html#ecm">ECM</a></td><td>E.C.M.</td><td class="right">0</td></tr>
+							<tr><td>#41</td><td>&amp;29</td><td><a href="/cassette/main/workspace/t_per_cent.html#bst">BST</a></td><td>Fuel scoops ("barrel status")</td><td class="right">0</td></tr>
+							<tr><td>#42</td><td>&amp;2A</td><td><a href="/cassette/main/workspace/t_per_cent.html#bomb">BOMB</a></td><td>Energy bomb</td><td class="right">0</td></tr>
+							<tr><td>#43</td><td>&amp;2B</td><td><a href="/cassette/main/workspace/t_per_cent.html#engy">ENGY</a></td><td>Energy/shield level</td><td class="right">0</td></tr>
+							<tr><td>#44</td><td>&amp;2C</td><td><a href="/cassette/main/workspace/t_per_cent.html#dkcmp">DKCMP</a></td><td>Docking computer</td><td class="right">0</td></tr>
+							<tr><td>#45</td><td>&amp;2D</td><td><a href="/cassette/main/workspace/t_per_cent.html#ghyp">GHYP</a></td><td>Galactic hyperdrive</td><td class="right">0</td></tr>
+							<tr><td>#46</td><td>&amp;2E</td><td><a href="/cassette/main/workspace/t_per_cent.html#escp">ESCP</a></td><td>Escape pod</td><td class="right">0</td></tr>
+							<tr><td>#47-50</td><td>&amp;2F-&amp;32</td><td></td><td>These four bytes are unused</td><td class="right">0</td></tr>
+							<tr><td>#51</td><td>&amp;33</td><td><a href="/cassette/main/workspace/t_per_cent.html#nomsl">NOMSL</a></td><td>Number of missiles</td><td class="right">3</td></tr>
+							<tr><td>#52</td><td>&amp;34</td><td><a href="/cassette/main/workspace/t_per_cent.html#fist">FIST</a></td><td>Legal status ("fugitive/innocent status")</td><td class="right">0</td></tr>
+							<tr><td>#53</td><td>&amp;35</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+0</a></td><td>Market availability of Food</td><td class="right">16</td></tr>
+							<tr><td>#54</td><td>&amp;36</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+1</a></td><td>Market availability of Textiles</td><td class="right">15</td></tr>
+							<tr><td>#55</td><td>&amp;37</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+2</a></td><td>Market availability of Radioactives</td><td class="right">17</td></tr>
+							<tr><td>#56</td><td>&amp;38</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+3</a></td><td>Market availability of Slaves</td><td class="right">0</td></tr>
+							<tr><td>#57</td><td>&amp;39</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+4</a></td><td>Market availability of Liquor/Wines</td><td class="right">3</td></tr>
+							<tr><td>#58</td><td>&amp;3A</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+5</a></td><td>Market availability of Luxuries</td><td class="right">28</td></tr>
+							<tr><td>#59</td><td>&amp;3B</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+6</a></td><td>Market availability of Narcotics</td><td class="right">14</td></tr>
+							<tr><td>#60</td><td>&amp;3C</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+7</a></td><td>Market availability of Computers</td><td class="right">0</td></tr>
+							<tr><td>#61</td><td>&amp;3D</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+8</a></td><td>Market availability of Machinery</td><td class="right">0</td></tr>
+							<tr><td>#62</td><td>&amp;3E</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+9</a></td><td>Market availability of Alloys</td><td class="right">10</td></tr>
+							<tr><td>#63</td><td>&amp;3F</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+10</a></td><td>Market availability of Firearms</td><td class="right">0</td></tr>
+							<tr><td>#64</td><td>&amp;40</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+11</a></td><td>Market availability of Furs</td><td class="right">17</td></tr>
+							<tr><td>#65</td><td>&amp;41</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+12</a></td><td>Market availability of Minerals</td><td class="right">58</td></tr>
+							<tr><td>#66</td><td>&amp;42</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+13</a></td><td>Market availability of Gold</td><td class="right">7</td></tr>
+							<tr><td>#67</td><td>&amp;43</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+14</a></td><td>Market availability of Platinum</td><td class="right">9</td></tr>
+							<tr><td>#68</td><td>&amp;44</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+15</a></td><td>Market availability of Gem-Stones</td><td class="right">8</td></tr>
+							<tr><td>#69</td><td>&amp;45</td><td><a href="/cassette/main/workspace/t_per_cent.html#avl">AVL+16</a></td><td>Market availability of Alien Items</td><td class="right">0</td></tr>
+							<tr><td>#70</td><td>&amp;46</td><td><a href="/cassette/main/workspace/t_per_cent.html#qq26">QQ26</a></td><td>Random byte that changes for each visit to a system, for randomising market prices</td><td class="right">0</td></tr>
+							<tr><td>#71-72</td><td>&amp;47-&amp;48</td><td><a href="/cassette/main/workspace/t_per_cent.html#tally">TALLY</a></td><td>Number of kills (low byte then high byte)</td><td class="right">0</td></tr>
+							<tr><td>#73</td><td>&amp;49</td><td><a href="/cassette/main/workspace/t_per_cent.html#svc">SVC</a></td><td>Save count</td><td class="right">128</td></tr>
+							<tr><td>#74</td><td>&amp;4A</td><td><a href="/cassette/main/variable/chk2.html">CHK2</a></td><td>Secondary checksum</td><td class="right">&amp;AA</td></tr>
+							<tr><td>#75</td><td>&amp;4B</td><td><a href="/cassette/main/variable/chk.html">CHK</a></td><td>Primary checksum</td><td class="right">&amp;03</td></tr>
+						</table>
+
+						<p>There are various programs from back in the day that let you edit your commander save file; the only complicated part is calculating the CHK checksum, which is done by the <a href="/cassette/main/subroutine/check.html">CHECK</a> routine. You can also find this same algorithm implemented in Python in the elite-checksum.py script, as part of the build process (see the page on <a href="/about_site/building_elite.html">Building Elite from the source</a> for more details).</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="generating_random_numbers.html">Generating random numbers</a><a class="next" rel="next" title="Next deep dive" href="the_competition_code.html">The competition code</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

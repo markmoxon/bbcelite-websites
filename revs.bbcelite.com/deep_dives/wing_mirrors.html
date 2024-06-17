@@ -1,0 +1,308 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "A deep dive into the wing mirrors in BBC Micro Revs", "revs", "deep_dives_dashboard", "wing_mirrors");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="computer_assisted_steering.html">Computer assisted steering (CAS)</a><a class="next" rel="next" title="Next deep dive" href="starting_lights.html">Starting lights</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Revs shows what's behind you, with a dash of shudder from the engines</h2>
+
+						<p>Unlike most contemporary driving games, the wing mirrors in Revs actually work. Sure, the display is fairly blocky, but in terms of showing what's behind you and where, they do a surprisingly good job. Add in a bit of shudder from the engines, and the wing mirrors not only turn out to be an important part of the driving experience, but they also turn out to be an important part of the game's immersion.</p>
+
+						<p>Let's see how they work.</p>
+
+						<h2 class="articleSubheader">Mirror segments<br />
+													 ---------------</h2>
+
+						<p>There are two wing mirrors, one on each side of the car, and the reflective part of each mirror is split into three segments: outer, middle and inner. Each of these segments corresponds to one character column in the screen mode, so they are each four pixels wide.</p>
+
+						<p>The three segments are different heights, with the inner segment being 13 pixels high, the middle segment being 21 pixels high, and the outer segment being 25 pixel high. Each segment is vertically centred along a horizontal line through the middle of each mirror, to match the shape of the mirror casing.</p>
+
+						<p>If we colour the mirror, then we can see which parts are covered by each segment. Here's what that looks like, with each segment shown in blue and the centre alignment lines in black:</p>
+
+						<table class="spacedTable">
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 184px; height: 150px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/wing_mirrors/left_outer.png" alt="Outer segment in the left wing mirror" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Outer segment in the left wing mirror</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 184px; height: 150px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/wing_mirrors/left_middle.png" alt="Middle segment in the left wing mirror" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Middle segment in the left wing mirror</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 184px; height: 150px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/wing_mirrors/left_inner.png" alt="Inner segment in the left wing mirror" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Inner segment in the left wing mirror</td></tr>
+						</table>
+
+						<p>If we combine these into one image, we can see all the parts of the mirror that can be drawn:</p>
+
+<img class="titleImage" style="width: 184px; height: 150px; image-rendering: crisp-edges; border: 1px solid grey;" src="/images/wing_mirrors/left_combined.png" alt="All segments in the left wing mirror" />
+
+						<p>The segments in the right mirror are laid out in a similar fashion, they're just reflected in the y-axis.</p>
+
+						<p>When drawing a car in the mirror, we poke directly into screen memory rather than into the game's screen buffer, as the mirrors are outside the track view, and only the track view uses the screen buffer (see the deep dive on <a href="drawing_the_track_view.html">drawing the track view</a> for more on the screen buffer). There can be only one car in the mirror at any one time - the car just behind us, assuming it's close enough - and we draw this car as a four-pixel-wide block within just one of the six mirror segments, with the height of the block being proportional to the size of the car object that's behind us (so the more distant the car, the lower the height of the block).</p>
+
+						<p>The block is always drawn so that it is vertically centred on the centre line; it doesn't move up or down within each segment in the wing mirror, it only varies in height and in the segment in which it appears. So as a car overtakes us, its block will move along the centre line, from the inner segment to the outer segment, growing in size as the car gets closer, but always remaining centred on the horizontal centre line. The segment is chosen depending on the relative position of the car behind us, so although there are only three segments on each side, the mirrors give a realistic sense of exactly where our nearest competitor is, and how they are driving.</p>
+
+						<p>Let's see how the mirror calculations work in more detail.
+
+						<h2 class="articleSubheader">Working out what to show in the mirrors<br />
+													 ---------------------------------------</h2>
+
+						<p>There are two mirror-drawing routines that take care of everything. The main routine is <a href="/source/main/subroutine/updatemirrors.html">UpdateMirrors</a>, which is called from <a href="/source/main/subroutine/maindrivingloop_part_2_of_5.html">part 2 of MainDrivingLoop</a> on every iteration of the main driving loop. This routine works out what to draw in the mirror, and it then calls the <a href="/source/main/subroutine/drawcarinmirror.html">DrawCarInMirror</a> routine to do the actual drawing. We'll take a look at UpdateMirrors here, and DrawCarInMirror below.</p>
+
+						<p>The first step in UpdateMirrors is to check whether the closest car behind us is visible. If it isn't, then we check to see if any of the segments are currently displaying a car, and if so, we clear those segments by calling the DrawCarInMirror routine with A set to 0. This draws the entire mirror segment in white, thus clearing any existing reflections.</p>
+
+						<p>If the car behind is close enough to be visible, then the rest of the routine works out which mirror segment should show that car, if any. The first step is to calculate the size of the car that needs to be drawn in the mirror, which we can then pass to DrawCarInMirror as the non-zero height of the block to draw in A.</p>
+
+						<p>Earlier in the main driving loop, before we get to the wing mirrors, the object size for each car in the vicinity gets calculated and put into the objectSize table, as part of the car-building process in the <a href="/source/main/subroutine/buildcarobjects_part_1_of_3.html">BuildCarObjects</a> routine. We can therefore calculate the size of the car in the mirror by taking the size of the car's object from the objectSize table, dividing it by 8 and putting it in variable T, as follows:</p>
+
+<pre class="articleIndented">  T = objectSize / 8
+</pre>
+
+						<p>This gives us half the number of pixel lines to draw in the mirror, so if T = 1, we will end up drawing a block that's two pixels high, and if T = 4, we'll draw a block that's eight pixels high.</p>
+
+						<p>We then calculate the upper and lower offsets of the car block within the mirror segment, by taking the offset of the middle row in the segment, and adding and subtracting T to give us T rows either side of the centre line. The offset for the centre line is defined as &amp;B6, so we can calculate the upper and lower offsets of the car block in TT and N as follows:</p>
+
+<pre class="articleIndented">  TT = &amp;B6 + T
+
+  N = &amp;B6 - T
+</pre>
+
+						<p>If we decide to draw the car, then we can pass N and TT (the latter via A) into the <a href="/source/main/subroutine/drawcarinmirror.html">DrawCarInMirror</a> routine to draw the block in the mirror; see the "Drawing a car in the mirror" section below for details of how they are used. Before then, we need to work out if the car is visible in the mirror, which we do by calculating which segment the car might appear in, so let's look at that next.</p>
+
+						<h2 class="articleSubheader">Calculating the mirror segment<br />
+													 ------------------------------</h2>
+
+						<p>By now we know that the car behind is close enough to be visible, and we've calculated the car's height in the mirror, but before doing any drawing, we need to work out which mirror segment the car should appear in (or whether it is too far to the side to be visible).</p>
+
+						<p>We do this by calculating the yaw angle between the player's car and the car behind, but before diving into the maths behind this, let's remind ourselves how yaw angles are measured in Revs. You can read all about them in the deep dive on <a href="pitch_and_yaw_angles.html">pitch and yaw angles</a>, but this sums up the important parts:</p>
+
+<pre class="articleIndented">           0
+     -32   |   +32
+        \  |  /
+         \ | /                 ^
+          \|/                  |
+  -64 -----+----- +64          +   Overhead view of car, looking forward
+          /|\
+         / | \
+        /  |  \
+     -96   |   +96
+          128
+</pre>
+
+						<p>This diagram shows yaw angles that are relative to the player's car, so a yaw angle of 0 is dead ahead, while a yaw angle of -32 is at 45 degrees to the left of centre. Positive angles are clockwise from dead ahead, while negative angles are anti-clockwise, and a single byte describes an entire circle.</p>
+
+						<p>Coming back to the mirror segment calculation, we want to work out the yaw angle between the player and the car behind. The player's current yaw angle in (playerYawAngleHi playerYawAngleLo) is the angle in which the player's car is pointing, relative to the direction of the track, so a yaw angle of 0 means the player is pointing dead ahead. The other driver's yaw angle in (objYawAngleHi objYawAngleLo) is also stored relative to the direction of the track, and denotes the angle between the player and the other driver. So we now calculate the following:</p>
+
+<pre class="articleIndented">  A = (objYawAngleHi - playerYawAngleHi - 4) / 8
+</pre>
+
+						<p>This gives us the difference in yaw angle between the direction that the player is facing along the track, and the angle between the player and the car behind. This is a bit difficult to visualise, but if you imagine that the player's car is facing dead straight along the track, then playerYawAngleHi is 0 and we only need to consider the value of objYawAngleHi, so the angle we want would look like this for positive values of objYawAngleHi:</p>
+
+<pre class="articleIndented">                            ^
+                            |
+                            |        -.
+                            |          `.  objYawAngleHi
+                          Player        | 
+                             \          v
+                              \
+                               \
+                                \
+                              Car behind
+</pre>
+
+						<p>or like this if objYawAngleHi were negative:</p>
+
+<pre class="articleIndented">                            ^
+                            |
+                   .-       |
+  objYawAngleHi  .´         |
+                 |        Player
+                 v         /
+                          /
+                         /
+                        /
+                   Car behind
+</pre>
+
+
+						<p>If playerYawAngleHi is non-zero, then the player is not pointing straight along the track, so we subtract the angles to get the relative yaw. For example, if playerYawAngleHi is positive, then the player is pointing to the right and we have the following:</p>
+
+<pre class="articleIndented">              playerYawAngleHi
+                              |
+                              v
+                            :   /
+                            :  /
+                            : /      -.
+                            :/         `.  objYawAngleHi - playerYawAngleHi
+                          Player        | 
+                             \          v
+                              \
+                               \
+                                \
+                              Car behind
+</pre>
+
+						<p>Note that we divide the angle by 8 in our calculation above, but only after subtracting 4, which rounds the result down to the integer below (as we simply ignore the fractional part in what would be the low byte of the calculation). This division and rounding converts the standard set of angles to the following:</p>
+
+<pre class="articleIndented">           0
+    -4     |   +3
+        \  |  /
+         \ | /                 ^
+          \|/                  |
+   -8 -----+----- +7           +   Overhead view of car, looking forward
+          /|\
+         / | \
+        /  |  \
+     -12   |   +11
+          +15
+</pre>
+
+						<p>It's worth noting that a side effect of this rounding is that the negative angles now have a magnitude of one greater than their positive equivalents, as you can see above.</p>
+
+						<p>Overall, the above calculation gives us a signed integer that describes the angle of the car behind the player from the perspective of the player. This integer is rounded so that each integer value represents an angle arc of that integer plus or minus 0.5.</p>
+
+						<p>We can now map this result to the segments in each mirror, which we do using the <a href="/source/main/variable/mirrorsegment.html">mirrorSegment</a> table. This table maps the divided and rounded yaw angle to the mirror segments as follows:</p>
+
+<pre class="articleIndented">    | left  |  left  | left  |                | right | right  | right |
+    | outer | middle | inner |                | outer | middle | inner |
+    |       |        |       |                |       |        |       |
+    |       |        |       |                |       |        |       |
+       -14     -15      -16         ....         +15     +14      +13
+</pre>
+
+						<p>If we consider how this would work if we used the unrounded yaw angle in (objYawAngleHi - playerYawAngleHi) / 8, we would get the following ranges for each segment:</p>
+
+<pre class="articleIndented">    | left  |  left  | left  |                | right | right  | right |
+    | outer | middle | inner |                | outer | middle | inner |
+    |       |        |       |                |       |        |       |
+    |       |        |       |                |       |        |       |
+   -13     -14      -15     -16    ....      +16     +15      +14     +13
+</pre>
+
+						<p>In other words, each segment maps to a range of size 1 in our divided yaw angle, which is the equivalent of an undivided angle of 8. Given that 128 is equivalent to 180 degrees, that means that each mirror segment covers an arc of 180 * (8 / 128) = 11.25 degrees. So in terms of degrees, the mirror segments cover the angles behind the driver as follows:</p>
+
+<pre class="articleIndented">    | left  |  left  | left  |                | right | right  | right |
+    | outer | middle | inner |                | outer | middle | inner |
+    |       |        |       |                |       |        |       |
+    |       |        |       |                |       |        |       |
+  -33.75  -22.5    -11.25    0     ....       0     +11.25   +22.5   +33.75
+</pre>
+
+						<p>So the mirrors show what's behind the player, covering a 67.5 degree arc from the back of the car that's split into six segments of 11.25 degrees each, and we now have a corresponding integer in A that maps to the mirrorSegment table to tell us which of those segments should reflect the image of the car behind us.</p>
+
+						<p>The next step is to draw the car in the mirror, so let's take a look at what's involved.</p>
+
+						<h2 class="articleSubheader">Drawing a car in the mirror<br />
+													 ---------------------------</h2>
+
+						<p>Now that we know which segment the car behind us should appear in, we loop through the six mirror segments in turn, iterating from the right outer segment to the left outer segment. For each one, we decide whether to call the <a href="/source/main/subroutine/drawcarinmirror.html">DrawCarInMirror</a> routine to clear or draw the segment as appropriate.</p>
+
+						<p>We pass the following values to the routine:</p>
+
+						<ul>
+							<li>Y contains the segment number (0 for the left outer segment, 5 for the right outer segment).</li>
+
+							<li>N contains the start offset within the segment for the car lines, as calculated above.</li>
+
+							<li>A contains one of the following:
+								<ul>
+									<li>If we are drawing a car in this segment, it contains the non-zero end offset within the segment for the car lines, from the value of TT that we calculated above</li>
+
+									<li>If we need to clear this segment, because it is still showing a car from the previous iteration that has since moved on, it contains 0</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>The routine draws all the pixel lines in the specified mirror segment, drawing either white or black lines depending on this calculation:</p>
+
+<pre class="articleIndented">  If N &lt;= offset &lt; A              then draw a black line (draw a car)
+
+  If N &gt; offset or offset &gt;= A    then draw a white line (clear the mirror)
+</pre>
+
+						<p>where offset runs from the <a href="/source/main/variable/startmirror.html">startMirror</a> value for this segment to the <a href="/source/main/variable/endmirror.html">endMirror</a> value for this segment. In other words, when we draw a car, we draw it between offset N and offset A - 1, and if A = 0, then we end up clearing the mirror segment, as the offset is always greater or equal to zero.</p>
+
+						<p>A reminder that we calculated A and N above, from the car size in T, as follows (we passed TT to the DrawCarInMirror in A):</p>
+
+<pre class="articleIndented">  TT</td><td> = &amp;B6 + T
+
+  N</td><td> = &amp;B6 - T
+</pre>
+
+						<p>Offset &amp;B6 is the centre line of each mirror, so our calculations above work out the top and bottom of the car block, with larger values of T (i.e. bigger car objects) giving larger blocks.</p>
+
+						<p>So, for example, segment 2 (the inner segment of the left mirror) has a startMirror value of &amp;B0 and an endMirror value of &amp;BC, so the offset will run from &amp;BC down to &amp;B0, one for each of the 13 pixel lines in the segment. If this value is between A and N, then we draw a black pixel line, otherwise we draw a white pixel line to clear that line in the mirror. In other words, we restrict the size of the car that's drawn by setting A and N to values within the range for this segment.</p>
+
+						<p>This process is made slightly more complicated because the segments cover multiple character rows, so we have to factor that in when drawing each pixel byte in the car block (and when clearing the mirrors). There are &amp;140 bytes in each character row and we draw each segment from the bottom character row upwards, so when we want to move from the top of the character block on the current row to the bottom of the character block on the row above, we subtract &amp;140 to go up to the top of the character block on the row above, and then add 8 to jump down to the bottom row. In all, we subtract &amp;140 - 8</td><td> = &amp;138, as we do this subtraction after we have already moved out of the top of the current character row.</p>
+
+						<p>The base screen address for each mirror segment is stored in the configuration variables mirror0 through mirror5. To calculate the screen address for the bottom of each mirror segment, we take the base address and add the offset (e.g. &amp;B6 for the centre line), making sure we subtract the relevant number of &amp;138s to cater for the character rows. Putting this all together, the segments are defined as follows, moving from left outer (segment 0) to right outer (segment 5):</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>#</th><th>From</th><th>To</th><th>Rows</th><th>Base address</th><th>Centre line address</th><th></th></tr>
+
+							<tr><td>0</td><td>&amp;AA</td><td>&amp;C2</td><td>25</td><td>&amp;7540</td><td>&amp;7540 - &amp;138 - &amp;138 + &amp;B6</td><td> = &amp;7386</td></tr>
+
+							<tr><td>1</td><td>&amp;AC</td><td>&amp;C0</td><td>21</td><td>&amp;7548</td><td>&amp;7548 - &amp;138 - &amp;138 + &amp;B6</td><td> = &amp;738E</td></tr>
+
+							<tr><td>2</td><td>&amp;B0</td><td>&amp;BC</td><td>13</td><td>&amp;7418</td><td>&amp;7418 - &amp;138 + &amp;B6</td><td> = &amp;7396</td></tr>
+
+							<tr><td>3</td><td>&amp;B0</td><td>&amp;BC</td><td>13</td><td>&amp;7530</td><td>&amp;7530 - &amp;138 + &amp;B6</td><td> = &amp;74AE</td></tr>
+
+							<tr><td>4</td><td>&amp;AC</td><td>&amp;C0</td><td>21</td><td>&amp;7670</td><td>&amp;7670 - &amp;138 - &amp;138 + &amp;B6</td><td> = &amp;74B6</td></tr>
+
+							<tr><td>5</td><td>&amp;AA</td><td>&amp;C2</td><td>25</td><td>&amp;7678</td><td>&amp;7678 - &amp;138 - &amp;138 + &amp;B6</td><td> = &amp;74BE</td></tr>
+						</table>
+
+						<p>The last column in this table shows how we can calculate the screen address of the centre line from the base address, offset and character row subtractions. You can see that for the inner segments (2 and 3), we have to cross one character row boundary to get from the bottom of the segment to the centre line, while for the other segments we have to cross two character row boundaries.</p>
+
+						<p>Specifically, the segments cover the following spans, working from the bottom of the segment to the top:</p>
+
+						<ul>
+							<li>The inner segments (2 and 3) span 5 lines in the bottom character row (offsets &amp;BC down to &amp;B8), then 8 lines in the top character row (offsets &amp;B7 down to &amp;B0), giving a total of 13 pixels.</li>
+
+							<li>The middle segments (1 and 4) span 1 line in the bottom character row (offset &amp;C0), then 8 lines in the next character row up (offsets &amp;BF down to &amp;B8), then 8 lines in the next character row up (offsets &amp;B7 down to &amp;B0), then 4 lines in the top character row (offsets &amp;AF down to &amp;AC), giving a total of 21 pixels.</li>
+
+							<li>The outer segments (0 and 5) span 3 lines in the bottom character row (offsets &amp;C2 down to &amp;C0), then 8 lines in the next character row up (offsets &amp;BF down to &amp;B8), then 8 lines in the next character row up (offsets &amp;B7 down to &amp;B0), then 6 lines in the next character row (offsets &amp;AF down to &amp;AA), giving a total of 25 pixels.</li>
+						</ul>
+
+						<p>The mirror maths a bit of a mind-bender, but the end result is a block, drawn horizontally centred on the centre line and in the correct segment, and with a height that's proportional to the size of the car object, so closer objects appear larger in the mirror.</p>
+
+						<p>The final touch is to add engine shudder, and we're done.</p>
+
+						<h2 class="articleSubheader">Applying engine shudder<br />
+													 -----------------------</h2>
+
+						<p>When the engine is turned off, cars in the wing mirrors appear as solid black blocks. When the engine is on, however, they shudder into a mess of black and white pixels that's only vaguely in the same shape, as the engine shakes the mirrors and blurs the reflection.</p>
+
+						<p>This is a small touch, and a brilliant one... but even more impressive is just how tiny the code is that implements this detail. These are the instructions in the <a href="/source/main/subroutine/drawcarinmirror.html">DrawCarInMirror</a> routine that apply the magic:</p>
+
+<pre class="articleIndented">  LDX VIA+&amp;68
+  AND &amp;2000,X
+  AND engineStatus
+</pre>
+
+						<p>These lines are run when A already contains a value of %11110000, to represent four pixels of colour 2 (white) in screen memory. This is left over from the logic that checks whether we are clearing the mirror, which we do by filling the segment with white, hence setting A to four white pixels. In this case we don't clear the mirror, but we still have this value left over in A.</p>
+
+						<p>The first line above sets X to a random number by reading the 6522 User VIA T1C-L timer 2 low-order counter (SHEILA &amp;68), which decrements one million times a second and will therefore be pretty random.</p>
+
+						<p>The second line then ANDs the value of A with the X-th byte from location &amp;2000. This contains game code - specifically parts of the <a href="/source/main/subroutine/drawobject.html">DrawObject</a>, <a href="/source/main/subroutine/scaleobject.html">ScaleObject</a> and <a href="/source/main/subroutine/drawobjectedges.html">DrawObjectEdges</a> routines - so this randomly switches some of the white pixels (colour 2) to black (colour 0) in the pixel byte in A. If we just used the value of X from the 6522 timer for our engine judder, then there's a risk that the random values for sequential pixel bytes in the mirror wouldn't be random, but would actually count downwards in sequence, as that's what the 6522 timer does; by AND'ing with the game code, this relationship gets broken.</p>
+
+						<p>The third line then either zeroes the entire byte (when engineStatus is zero, which is the case when the engine is off), or it leaves it alone (when engineStatus is &amp;FF, which is the case when the engine is on). This leaves us with a value in A that gets poked into screen memory to update the relevant pixel byte in the correct mirror segment, and once the process is repeated for each pixel line in the segment, we're done.</p>
+
+						<p>So these three instructions ensure that cars in the mirror are shown in solid black when the engine is off, or as randomised versions of their original shape when the engine is on. In other words, they implement randomised engine shudder into the reflections in the wing mirrors, in just three instructions that together take up a grand total of eight bytes.<p>
+
+						<p>For fans of the concise nature of 8-bit assembly language - myself included - this is very elegant stuff indeed.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="computer_assisted_steering.html">Computer assisted steering (CAS)</a><a class="next" rel="next" title="Next deep dive" href="starting_lights.html">Starting lights</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

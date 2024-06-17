@@ -1,0 +1,134 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "combat_rank.html", "Combat rank", "Combat rank", "A deep dive into combat rank in BBC Micro Elite", "elite", "deep_dives_tactics_and_combat", "combat_rank");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="bolting_nes_controllers_onto_the_key_logger.html">Bolting NES controllers onto the key logger</a><a class="next" rel="next" title="Next deep dive" href="in_the_crosshairs.html">In the crosshairs</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The long, long road from Harmless to Elite</h2>
+
+						<p>Elite is famous for being one of the first open-world games. It doesn't hold your hand or tell you what to do. You can fly wherever you like and take on a role of your own choosing, from humble trader or isolated asteroid miner, to tenacious bounty hunter or vicious pirate. Elite is whatever you want it to be, and it's all part of its charm.</p>
+
+						<p>There is, however, an overarching "point" to the game, and that's to increase your combat rank from Harmless to Elite by destroying other ships. It's part of the lure that makes players keep coming back to the game, and part of the reason that people play this game for months on end. That gradual creep towards the ultimate accolade is key to Elite's appeal; there's a reason that it's literally the name of the game, and a prominent part of the Status Mode screen:</p>
+
+						<img class="titleImage" src="/images/disc/status_mode.png" alt="The Status Mode screen in the BBC Micro disc version of Elite" />
+
+						<p>These are the ranks that are burned into the memories of anyone who's played this game seriously:</p>
+
+						<ul class="tightList">
+							<li>Harmless</li>
+							<li>Mostly Harmless</li>
+							<li>Poor</li>
+							<li>Average</li>
+							<li>Above Average</li>
+							<li>Competent</li>
+							<li>Dangerous</li>
+							<li>Deadly</li>
+							<li>Elite</li>
+						</ul>
+
+						<p>Let's take a deeper look at what's involved in progressing from Harmless to the heady heights of Elite.</p>
+
+						<h2 class="articleSubheader">Keeping track of the combat rank<br />
+													 --------------------------------</h2>
+
+						<p>The current combat rank is stored as the number of kills, in a 16-bit variable at <a href="/cassette/main/workspace/t_per_cent.html#tally">TALLY(1 0)</a> in the <a href="/cassette/main/workspace/t_per_cent.html">T% workspace</a> - so the high byte is in TALLY+1 and the low byte in TALLY.</p>
+
+						<p>If the high byte in TALLY+1 is 0 then we have between 0 and 255 kills, so our rank is Harmless, Mostly Harmless, Poor, Average or Above Average, according to the value of the low byte in TALLY. This is how the lower ranks pan out:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Rank</th><th>Number of kills</th><th>From</th><th>To</th><th>NES kills</th></tr>
+							<tr><td>Harmless</td><td>0 to 3</td><td>%00000000</td><td>%00000011</td><td>0 to 1</td></tr>
+							<tr><td>Mostly Harmless</td><td>4 to 7</td><td>%00000100</td><td>%00000111</td><td>2 to 7</td></tr>
+							<tr><td>Poor</td><td>8 to 15</td><td>%00001000</td><td>%00001111</td><td>8 to 23</td></tr>
+							<tr><td>Average</td><td>16 to 31</td><td>%00010000</td><td>%00011111</td><td>24 to 43</td></tr>
+							<tr><td>Above Average</td><td>32 to 255</td><td>%00100000</td><td>%11111111</td><td>44 to 129</td></tr>
+						</table>
+
+						<p>For the NES version, the ranks were tweaked slightly to space them out a bit more evenly, and Competent starts at 130, which is rather earlier than in the other versions. the higher ranks are the same, though.</p>
+
+						<p>For the other 6502 versions, if you look at the binary equivalents to these ranks, you can see that if we are Harmless then bits 2-7 are clear, if we are Mostly Harmless or below then bits 3-7 are clear, if we are Above Average or below then bits 4-7 are clear, and if we are Average or below then bits 5-7 are clear. This is no coincidence, as it allows the <a href="/cassette/main/subroutine/status.html">STATUS</a> routine to calculate the lower ranks with a simple loop that shifts the low byte of TALLY to the right until the result is zero, after which the number of shifts gives us the rank.</p>
+
+						<p>It isn't quite so convenient with the higher ranks, which are given in the high byte of the kill count in TALLY+1. If the high byte is non-zero then we are Competent, Dangerous, Deadly or Elite, according to the following values of the high byte:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Rank</th><th>High byte</th><th>Number of kills</th></tr>
+							<tr><td>Competent</td><td>1</td><td>256 to 511 kills (130 to 511 in NES)</td></tr>
+							<tr><td>Dangerous</td><td>2 to 9</td><td>512 to 2559 kills</td></tr>
+							<tr><td>Deadly</td><td>10 to 24</td><td>2560 to 6399 kills</td></tr>
+							<tr><td>Elite</td><td>25 and up</td><td>6400 kills and up</td></tr>
+						</table>
+
+						<p>These ranges don't have shift-friendly binary values, so the <a href="/cassette/main/subroutine/status.html">STATUS</a> routine calculates the higher ranks with a sequence of CMP instructions.</p>
+
+						<h2 class="articleSubheader">Right On Commander!<br />
+													 -------------------</h2>
+
+						<p>The lower ranks come and go fairly quickly, once you've got the hang of combat, but although reaching Competent with 256 kills feels like an achievement - and it is! - it's still only 4% of the way to Elite, despite being the sixth rank of ten. To encourage players to keep on grinding through the ranks, the game flashes up the encouraging message "Right On Commander!" on-screen every 256 kills - in other words, every time the high byte of TALLY gets incremented. The checks for this are done in the <a href="/cassette/main/subroutine/exno2.html">EXNO2</a> routine, which is called after every kill to increment the tally.</p>
+
+						<p>The first "Right On Commander!" shows when you go from Above Average to Competent, and happens every 256 kills until you reach Elite, and it keeps on going beyond that. When you become Elite in Elite Dangerous, the message from the Pilots Federation starts off with "Right on Commander!", and although the phrase isn't quite so important in the later games, it's still a popular sign-off amongst Elite veterans, along with "See you in the black" and "o7" (the latter representing a commander saluting).</p>
+
+						<h2 class="articleSubheader">Combat rank on the BBC Master and NES<br />
+													 -------------------------------------</h2>
+
+						<p>In the BBC Micro, 6502 Second Processor and Electron versions of Elite, you get one kill for each ship you destroy. It doesn't actually matter what you kill, you still get one point towards your combat rank. Asteroids: one kill point. Harmless traders: one kill point. Cargo canisters: one kill point. This led to people sitting outside space stations, armed to the teeth with military lasers, where they would simply point their sights at the docking slot and wipe out the police as they launched; after all, even for mass murderers, your legal status eventually cools down, and you're still left with one kill point per Viper. It's easy pickings.</p>
+
+						<p>This all changed with the Commodore 64 version, which the authors started work on once the BBC versions had proven such a success. Instead of one point per kill, the authors implemented different kill points for each ship type, along with support for fractional kills. This same approach was carried over into the BBC Master, Apple II and NES versions of Elite, where the kill points are as follows (with the most lucrative shown first):</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Ship</th><th>Points awarded</th></tr>
+							<tr><td>Constrictor</td><td>5.33203125</td></tr>
+							<tr><td>Cougar</td><td>5.33203125</td></tr>
+							<tr><td>Thargoid</td><td>2.6640625</td></tr>
+							<tr><td>Fer-de-lance</td><td>1.25</td></tr>
+							<tr><td>Cobra Mk III (pirate)</td><td>1.1640625</td></tr>
+							<tr><td>Python (pirate)</td><td>1.1640625</td></tr>
+							<tr><td>Asp Mk II</td><td>1.08203125</td></tr>
+							<tr><td>Anaconda</td><td>1.0</td></tr>
+							<tr><td>Cobra Mk III</td><td>0.9140625</td></tr>
+							<tr><td>Boa</td><td>0.83203125</td></tr>
+							<tr><td>Moray</td><td>0.75</td></tr>
+							<tr><td>Python</td><td>0.6640625</td></tr>
+							<tr><td>Cobra Mk I</td><td>0.6640625</td></tr>
+							<tr><td>Missile</td><td>0.58203125</td></tr>
+							<tr><td>Mamba</td><td>0.5</td></tr>
+							<tr><td>Adder</td><td>0.3515625</td></tr>
+							<tr><td>Rock hermit (asteroid)</td><td>0.33203125</td></tr>
+							<tr><td>Sidewinder</td><td>0.33203125</td></tr>
+							<tr><td>Krait</td><td>0.33203125</td></tr>
+							<tr><td>Gecko</td><td>0.33203125</td></tr>
+							<tr><td>Worm</td><td>0.1953125</td></tr>
+							<tr><td>Thargon</td><td>0.12890625</td></tr>
+							<tr><td>Viper</td><td>0.1015625</td></tr>
+							<tr><td>Transporter</td><td>0.06640625</td></tr>
+							<tr><td>Escape pod</td><td>0.0625</td></tr>
+							<tr><td>Shuttle</td><td>0.0625</td></tr>
+							<tr><td>Alloy plate</td><td>0.0390625</td></tr>
+							<tr><td>Cargo canister</td><td>0.0390625</td></tr>
+							<tr><td>Splinter</td><td>0.0390625</td></tr>
+							<tr><td>Asteroid</td><td>0.03125</td></tr>
+							<tr><td>Boulder</td><td>0.0234375</td></tr>
+						</table>
+
+						<p>In this more sophisticated system, it's worth tracking down Thargoids, Fer-de-lances and pirates, but it's far less profitable to incinerate police Vipers, cargo canisters or more harmless ships like shuttles and transporters. Sure, you can still sit outside a space station, vaporising Vipers until your lasers are raw, but it's probably easier just to learn how to fight.</p>
+
+						<p>Also, on the NES version only, the commander image changes with rank. See the deep dive on <a href="displaying_two-layer_images.html">displaying two-layer images</a> for details.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="bolting_nes_controllers_onto_the_key_logger.html">Bolting NES controllers onto the key logger</a><a class="next" rel="next" title="Next deep dive" href="in_the_crosshairs.html">In the crosshairs</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

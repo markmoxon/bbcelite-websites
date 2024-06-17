@@ -1,0 +1,114 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "starting_lights.html", "Starting lights", "Starting lights", "A deep dive into the starting lights in BBC Micro Revs", "revs", "deep_dives_dashboard", "starting_lights");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="wing_mirrors.html">Wing mirrors</a><a class="next" rel="next" title="Next deep dive" href="text_tokens.html">Text tokens</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">All about the starting lights schedule, and how they use the screen buffer</h2>
+
+						<p>Getting a good start can be crucial to winning a race, and there's no doubt that leaving your competitors in the dust is an art. Riding the clutch is an essential skill, and hitting the optimum rev count is vital, but it's not just about knowing your car. It also pays to know how the starting lights work, so you can be poised on the keyboard, ready to screech off the starting line the second the lights turn green.</p>
+
+						<p>Let's take a closer look at the timing of the starting lights, and how they are drawn on-screen.</p>
+
+						<h2 class="articleSubheader">The starting lights pattern<br />
+													 ---------------------------</h2>
+
+                        <p>The starting lights are implemented by the <a href="/source/main/subroutine/showstartinglights.html">ShowStartingLights</a> routine, which is called from <a href="/source/main/subroutine/maindrivingloop_part_2_of_5.html">part 2 of MainDrivingLoop</a> on every iteration of the main driving loop. If this is a practice or qualifying lap, or it's a race and we have already started, then the routine just returns control straight back to the main loop, but if this is a race that hasn't started yet, things swing into action to display the starting lights.</p>
+
+						<p>The lights shown at the start of each race follow the same pattern, which looks like this (the lights are in the top-right corner, just above the horizon):</p>
+
+						<table class="spacedTable">
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 156px; height: 117px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_black.png" alt="Black starting lights" /></div></td><td style="vertical-align: middle; padding-left: 2ch">The lights are shown but are initially off, so they appear as three lights with a white border and dark interior.</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 156px; height: 117px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_blue.png" alt="Blue starting lights" /></div></td><td style="vertical-align: middle; padding-left: 2ch">Once we have started our engine, the timer starts and after a pause the lights turn blue. During this time we can't move, but we can rev the engine.</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 156px; height: 117px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_green.png" alt="Green starting lights" /></div></td><td style="vertical-align: middle; padding-left: 2ch">After a nail-biting countdown, they finally turn green to start the race, and we can pull away.</td></tr>
+							<tr><td><div style="border: 1px solid grey; padding: 10px; margin: 20px 0 20px 0;"><img style="width: 156px; height: 117px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_none.png" alt="No starting lights" /></div></td><td style="vertical-align: middle; padding-left: 2ch">And then after another pause, the lights disappear.</td></tr>
+						</table>
+
+						<p>This process is implemented using a counter in the raceStarting variable. It works like this.</p>
+
+						<ul>
+							<li>When a race is about to start, raceStarting is set to 128</li>
+
+							<li>128 = show black lights</li>
+
+							<li>raceStarting stays on this value until the engine is started, at which point it jumps to 240 and starts to count down, with one tick per iteration of the main driving loop</p>
+
+							<li>240-192 = show black lights</li>
+
+							<li>191-161 = show blue lights, so we are under starter's orders</li>
+
+							<li>At 160, keep showing the blue lights and stop counting down until the main loop counter is a multiple of 64</li>
+
+							<li>At which point we set raceStarting to 40 and start counting down again</li>
+
+							<li>40-1 = show green lights, so the race has started</li>
+
+							<li>0 = stop showing the lights, as the race is fully underway</li>
+						</ul>
+
+						<p>The raceStarting counter is also used to control the point at which we can slip the clutch while on the starting grid. See the deep dive on <a href="modelling_the_engine.html">modelling the engine</a> for details.</p>
+
+						<h2 class="articleSubheader">Drawing the starting lights<br />
+													 ---------------------------</h2>
+
+						<p>The three starting lights are drawn in a way that takes advantage of the way the screen buffer works. The screen buffer implements a fast filling process, which is described in detail in the deep dive on <a href="drawing_the_track_view.html">drawing the track view</a>, but essentially, when drawing the screen buffer on the screen, non-zero bytes in the buffer are replicated to the right until we come across another non-zero value.</p>
+
+						<p>It's this process that fills in parts of the screen like the sky and grass, but with minimal drawing - you just need to poke a single fill byte into the buffer, and every byte to the right of it will automatically be filled with the same fill pattern, up to the first non-zero value (or the edge of the screen if there isn't one).</p>
+
+						<p>Most of the fills in the track view use a solid colour - the sky and grass verges are pure blue and pure green, so the fill bytes contain four pixels of blue or four pixels of green. The starting lights, however, use the screen buffer's fill process to replicate a fully patterned ten-by-four-pixel light, to give three identical lights, two of which are copies produced by the screen buffer.</p>
+
+						<p>The dash data blocks in the screen buffer go from 0 to 39, in columns from left to right across the screen, so to draw three starting lights, we only need to draw one light in dash data block 37. We draw the lights in the sky, so we know that the dash data blocks will contain zeroes, so the screen buffer's fast fill process will replicate our light into dash data blocks 38 and 39 for free - we don't need to draw them, as the screen buffer drawing routines simply fill everything to the right of the light in dash data block 37. This means the lights not only line up neatly, but they also change at exactly the same time.</p>
+
+						<p>Here's how it works. We draw in block 37, and the screen buffer replicates the same design into blocks 38 and 39, like this:</p>
+
+						<table class="spacedTable">
+							<tr>
+								<td class="center">37</td>
+								<td class="center">38</td>
+								<td class="center">39</td>
+								<td class="center">Result</td>
+							</tr>
+							<tr>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 32px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_black_bulb.png" alt="A single black light" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 32px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_black_bulb.png" alt="A single black light" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 32px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_black_bulb.png" alt="A single black light" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 96px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_black_bulb_3.png" alt="Three black lights" /></div></td>
+							</tr>
+							<tr>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 32px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_blue_bulb.png" alt="A single blue light" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 32px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_blue_bulb.png" alt="A single blue light" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 32px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_blue_bulb.png" alt="A single blue light" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 96px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_blue_bulb_3.png" alt="Three blue lights" /></div></td>
+							</tr>
+							<tr>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 32px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_green_bulb.png" alt="A single green light" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 32px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_green_bulb.png" alt="A single green light" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 32px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_green_bulb.png" alt="A single green light" /></div></td>
+								<td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 96px; height: 40px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block; border: 1px solid grey;" src="/images/starting_lights/lights_green_bulb_3.png" alt="Three green lights" /></div></td>
+							</tr>
+						</table>
+
+						<p>Each light is designed to be four pixels wide - one pixel byte - with the first pixel in each line forming a vertical white line, and the other three containing the light pattern. In this way, replicating the lights three times will create the effect of having three lights, each separated by a white vertical line. Add in a white horizontal line at the top and bottom, and we end up with a row of three starting lights, and we only need to poke ten pixel bytes into one dash data block in the screen buffer to get all three.</p>
+
+						<p>It's a small touch, but a clever one.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="wing_mirrors.html">Wing mirrors</a><a class="next" rel="next" title="Next deep dive" href="text_tokens.html">Text tokens</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

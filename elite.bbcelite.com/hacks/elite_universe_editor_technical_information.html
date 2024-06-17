@@ -1,0 +1,281 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("hacks", "elite_universe_editor_technical_information.html", "Technical information for the Elite Universe Editor", "Technical information for the Elite Universe Editor", "Details of how the Elite Universe Editor works under the bonnet", "elite", "hacks_elite_universe_editor", "technical_information");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="elite_universe_editor_instructions_commodore_64.html">Instructions for the Commodore 64 version</a><a class="next" rel="next" title="Next page" href="flicker-free_elite.html">Flicker-free Elite</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Details of how the Elite Universe Editor works under the bonnet</h2>
+
+						<p>This page contains various bits of technical information about the Elite Universe Editor. Click on any of the following to jump down to the relevant section:</p>
+
+						<ul class="tightList">
+							<li><a href="#source">Exploring the Universe Editor source code</a></li>
+
+							<li><a href="#file">The universe file format</a></li>
+
+							<li><a href="#master">Creating universes for the Master and Commodore 64 versions</a></li>
+
+							<li><a href="#bbc_map">Squeezing the Universe Editor into BBC Elite</a></li>
+
+							<li><a href="#commodore64_map">Squeezing the Universe Editor into Commodore 64 Elite</a></li>
+						</ul>
+
+						<p>When reading this section, it is pretty useful to have the source code to hand, so let's start with that.</p>
+
+						<h2 class="articleSubheader"><a name="source" id="source" class="anchor"></a>Exploring the Universe Editor source code<br />
+													 -----------------------------------------</h2>
+
+						<p>The source code for the Universe Editor is available for you to explore. It is fully documented and fully buildable on modern computers, and includes labelled modifications in the main game's source code so you can see exactly how the mod gets hooked into the game code.</p>
+
+						<p>To see the source and learn how to build the Universe Editor on your own machine, visit the project's <a href="https://github.com/markmoxon/elite-universe-editor">GitHub repository</a>.</p>
+
+						<h2 class="articleSubheader"><a name="file" id="file" class="anchor"></a>The universe file format<br />
+													 ------------------------</h2>
+
+						<p>The universe file format is essentially a concatenated memory dump of the relevant parts of the workspace from the 6502 Second Processor version. When loaded into the BBC Master or Commodore 64, the file is converted to address any differences in the memory map, but the file format is the same across both platforms.</p>
+
+						<p>The file length is &amp;0321 bytes and consists of the following (the links will take you to those variables in the 6502 Second Processor source code):</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Offset</th><th>Size</th><th>Contents</th></tr>
+							<tr><td>&amp;000 to &amp;001</td><td>2 bytes</td><td>&amp;F900 (Commodore 64 PRG, see below)</td></tr>
+							<tr><td>&amp;002 to &amp;2E5</td><td>&amp;2E4 (740) bytes</td><td><a href="/6502sp/main/workspace/k_per_cent.html">K%</a> block (20 ships, 37 bytes each)</td></tr>
+							<tr><td>&amp;2E6 to &amp;2FA</td><td>&amp;15 (21) bytes</td><td><a href="/6502sp/main/workspace/up.html#frin">FRIN</a> block</td></tr>
+							<tr><td>&amp;2FB to &amp;31D</td><td>&amp;23 (35) bytes</td><td><a href="/6502sp/main/workspace/up.html#many">MANY</a> block</td></tr>
+							<tr><td>&amp;31E</td><td>1 byte</td><td><a href="/6502sp/main/workspace/up.html#junk">JUNK</a> byte</td></tr>
+							<tr><td>&amp;31F to &amp;320</td><td>2 bytes</td><td><a href="/6502sp/main/workspace/up.html#slsp">SLSP(1 0)</a> address</td></tr>
+						</table>
+
+						<p>The file format supports up to 20 ships in the bubble, as per the 6502 Second Processor version, with 37 bytes of ship data per slot. When a file is loaded into a BBC Master, only the first 12 ship slots are used, and the rest are ignored; when loaded into a Commodore 64, only the first 10 ship slots are used. Ship heap memory addresses in INWK(34 33) are updated to work on the Master and Commodore 64, but if the bottom of the ship heap at SLSP is at a lower address than the top of the K% ship data blocks, then the ship data and the ship heap will overlap, and the file will crash. See the <a href="/deep_dives/the_elite_memory_map_master.html">BBC Master memory map</a> for a diagram that shows this.</p>
+
+						<p>The first two bytes are only used by the Commodore 64. On the Commodore 64, file load addresses are stored in the first two bytes of the file (for PRG files), so they are always set to &amp;F900 (0 in the first byte, &amp;F9 in the second byte). The original Elite saves commander files as PRG files, so the Universe Editor does the same. You can load the same files into both the BBC and Commodore versions of the Universe Editor, and the BBC versions simply ignore the first two bytes.</p>
+
+						<p>Note that the first release of the Universe Editor on the BBC Micro and BBC Master (build number 2022-10-27 14:49:14) did not include these two bytes in their universe files; they were added in the second release to support cross-platform loading. As a result, files saved from the first release will not load on later releases, and vice versa. To load these original files into the latest version of the Universe Editor, two new bytes need to be appended to the start of the file, after which they can successfully be loaded on all three platforms. There is a BASIC program called B.CONVERT on the BBC disc image that you can run to update files, or you can do it yourself by using a hex editor to prepend &amp;00 and &amp;F9 to the start of the file.</p>
+
+						<h2 class="articleSubheader"><a name="master" id="master" class="anchor"></a>Creating universes for the Master and Commodore 64 versions<br />
+													 -----------------------------------------------------------</h2>
+
+						<p>If you want to generate universe files that are guaranteed to work on all versions of the Universe Editor, and in particular the BBC Master and Commodore 64 versions, then I recommend you build them on the Master or the Commodore 64. The 6502 Second Processor version supports more ship slots and more types of ship, and although the editor tries to convert these larger files when they are loaded into a BBC Master or Commodore 64, they can cause problems (in particular, the line-drawing routine can go haywire - it's pretty obvious when things don't work!).</p>
+
+						<p>The SHIPID6 file that's included with the BBC version of the Universe Editor is a good example - it works on the 6502 Second Processor, but crashes when loaded into a Master, as it contains more ships than there are slots in the Master version. A quick fix for this kind of issue is to load the file into the 6502 Second Processor version and delete the extra ships, so the smaller file will load into the Master properly. The SHIPID file takes this approach; it contains the same universe as SHIPID6 but with fewer ships, and it works fine on all three versions of the Universe Editor.</p>
+
+						<p>Note that if a universe includes the Elite logo, which is only supported in the 6502 Second Processor version, then if you want to be able to load the same file on a Master or Commodore 64, you should put the logo in the last used slot. When a file containing the logo is loaded into a Master or Commodore 64, the logo is deleted along with any other ships after it. This approach is used in the included BOXART1 file, which loads on all three machines, but only display the logo on the 6502 Second Processor.</p>
+
+						<p>In summary, if you create files on the 6502 Second Processor version that you want to load into the Master or Commodore 64, keep the number and complexity of ships lower to increase your chances of it working, and only include the Elite logo in the last slot.</p>
+
+						<h2 class="articleSubheader"><a name="bbc_map" id="bbc_map" class="anchor"></a>Squeezing the Universe Editor into BBC Elite<br />
+													 --------------------------------------------</h2>
+
+						<p>Elite is famous for using every spare byte in the BBC Micro, and while this is <a href="/deep_dives/the_elite_memory_map.html">pretty much the case</a> in the standard BBC Micro versions, the enhanced versions on the 6502 Second Processor and BBC Master do have some spare memory. It turns out this is just enough free space to squeeze in a Universe Editor.</p>
+
+						<p>If you look at the memory maps for the <a href="/deep_dives/the_elite_memory_map_6502sp.html">6502 Second Processor</a> and <a href="/deep_dives/the_elite_memory_map_master.html">BBC Master</a> versions, there are various unused blocks that are perfect for hosting new functionality, leaving the original game untouched save for a quick key-press check on the title screen and the addition of a "Universe Editor" subtitle.</p>
+
+						<p>That said, although the full game is present in the Universe Editor, I did have to remove the rolling demo from the 6502 Second Processor version, and the music from the Commodore 64 version. Also missing (from all versions) is pause option X, which shows the authors' names on the title screen, as that's been replaced by the subtitle. But apart from the removal of these two Easter eggs, the original game is present and correct.</p>
+
+						<p>In order for me to slot what is essentially the same Universe Editor code into both platforms, I had to split it up into five blocks, which I then packed into the different pockets of free space in each version. The source files for these blocks are called elite-universe-editor-1.asm through elite-universe-editor-4.asm, plus elite-universe-editor-z.asm, and you can see them in the GitHub repository.</p>
+
+						<p>You can see how these various files get slotted into the game code in the memory maps below. Note that the 6502 Second Processor code is split between the I/O Processor and the Parasite - the "z" suffix in elite-universe-editor-z.asm denotes the code that goes in the I/O Processor, as the name of the original game's I/O Processor source file is elite-z.asm.</p>
+
+						<p>First, let's look at the 6502 Second Processor version, starting with the Parasite memory map (which you might like to compare with the <a href="/deep_dives/the_elite_memory_map_6502sp.html">memory map for the unmodified version</a>):</p>
+
+<pre class="articleIndented">  +-----------------------------------+   &amp;FFFF
+  |                                   |
+  | Second Processor OS               |
+  |                                   |
+  +-----------------------------------+   &amp;F800
+  |                                   |
+  | <span class="highlight">elite-universe-editor-4.asm</span>       |
+  |                                   |
+  +-----------------------------------+   &amp;F10C
+  |                                   |
+  | Ship blueprints                   |
+  |                                   |
+  +-----------------------------------+   &amp;D000 = <a href="/6502sp/main/variable/xx21.html">XX21</a>
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  | Ship data blocks ascend from K%   |
+  |                                   |
+  +-----------------------------------+   &amp;8200 = <a href="/6502sp/main/workspace/k_per_cent.html">K%</a>
+  |                                   |
+  | <span class="highlight">elite-universe-editor-3.asm</span>       |
+  |                                   |
+  +-----------------------------------+   &amp;8191
+  |                                   |
+  | Main parasite code (P.CODE)       |
+  |                                   |
+  +-----------------------------------+   &amp;738D
+  |                                   |
+  | <span class="highlight">elite-universe-editor-2.asm</span>       |   Replaces the demo, DEMON to SPEECH  
+  |                                   |
+  +-----------------------------------+   &amp;6E42
+  |                                   |
+  | Main parasite code (P.CODE)       |
+  |                                   |
+  +-----------------------------------+   &amp;1000 = <a href="/6502sp/main/workspace/parasite_variables.html">Parasite variables</a>
+  |                                   |
+  | <span class="highlight">elite-universe-editor-1.asm</span>       |
+  |                                   |
+  +-----------------------------------+   &amp;0E3C
+  |                                   |
+  | WP workspace                      |
+  |                                   |
+  +-----------------------------------+   &amp;0D00 = <a href="/6502sp/main/workspace/wp.html">WP</a>
+  .                                   .
+  .                                   .
+  .                                   .
+</pre>
+
+						<p>Here's the I/O Processor memory map (and for comparison, here's the <a href="/deep_dives/the_elite_memory_map_6502sp.html">memory map for the unmodified version</a>):</p>
+
+<pre class="articleIndented">  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+   &amp;7E00
+  |                                   |
+  | Memory for the split-screen mode  |
+  |                                   |
+  +-----------------------------------+   &amp;4000
+  |                                   |
+  | <span class="highlight">elite-universe-editor-z.asm</span>       |
+  |                                   |
+  +-----------------------------------+   &amp;3D36
+  |                                   |
+  | Main I/O code (I.CODE)            |
+  |                                   |
+  +-----------------------------------+   &amp;2300 = <a href="/6502sp/i_o_processor/variable/table.html">TABLE</a>
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+</pre>
+
+						<p>Finally, here's the BBC Master memory map (which you might like to compare with the <a href="/deep_dives/the_elite_memory_map_master.html">memory map for the unmodified version</a>):</p>
+
+<pre class="articleIndented">  +-----------------------------------+   &amp;FFFF
+  |                                   |
+  | Machine Operating System (MOS)    |
+  |                                   |
+  +-----------------------------------+   &amp;C000
+  |                                   |
+  | <span class="highlight">elite-universe-editor-1, 2, 4.asm</span> |
+  |                                   |
+  +-----------------------------------+   &amp;B200
+  |                                   |
+  | Text tokens, sin/cos tables       |
+  |                                   |
+  +-----------------------------------+   &amp;A000 = <a href="/master/game_data/variable/qq18.html">QQ18</a>
+  |                                   |
+  | <span class="highlight">elite-universe-editor-z.asm</span>       |
+  |                                   |
+  +-----------------------------------+   &amp;9D94
+  |                                   |
+  | Ship blueprints (SHIPS.bin)       |
+  |                                   |
+  +-----------------------------------+   &amp;8000 = <a href="/master/game_data/variable/xx21.html">XX21</a>
+  |                                   |
+  | <span class="highlight">elite-universe-editor-3.asm</span>       |
+  |                                   |
+  +-----------------------------------+   &amp;7F48
+  |                                   |
+  | Main game code (BCODE.bin)        |
+  |                                   |
+  +-----------------------------------+   &amp;1300 = <a href="/master/main/variable/tvt3.html">TVT3</a>
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+</pre>
+
+						<p>In the Master version, I had to make sure all the disc access code was in main memory, as otherwise it would crash on finding a disc error. The only bit of code in main memory is elite-universe-editor-3.asm, so that's where all the saving and loading code appears.</p>
+
+						<p>To see where the Universe Editor source code is added to the game, search the source code for "INCLUDE" to see where BeebAsm adds the files, and to see the modifications to the original code that hook in the new code, search for "Mod:".</p>
+
+						<p>To demonstrate what a squeeze it is to shoehorn the Universe Editor into Elite, here's a summary of the amount of code that sits within each of the blocks across both versions. Let's start with the 6502 Second Processor version, which is the tighter of the two, starting with the addresses of the code within each of the blocks:</p>
+
+<pre class="articleIndented">  1 = CheckShiftCtrl to endUniverseEditor1 = &0E3C to &0FD9 = &019E =  414
+  2 = UniverseEditor to endUniverseEditor2 = &6E42 to &7383 = &0542 = 1346
+  3 = SaveLoadFile   to endUniverseEditor3 = &8191 to &81EF = &005F =   95
+      prgAddress                           = &81FE to &81FF = &0002 =    2
+  4 = UpdateChecksum to endUniverseEditor4 = &F102 to &F7E5 = &06E4 = 1764
+  z = rowOffsets     to endUniverseEditorZ = &3D36 to &3E87 = &0152 =  338
+
+                                            Total code size = &0F77 = 3959
+</pre>
+
+						<p>These are the constraints on the block sizes, as per the memory maps above, showing any free memory at the end of each block:</p>
+
+<pre class="articleIndented">  Block end address    Maximum value   Actual value    Free space
+  -----------------    -------------   ------------    ----------
+  endUniverseEditor1       &1000           &0FD9         38 bytes
+  endUniverseEditor2       &738D           &7383          9 bytes
+  endUniverseEditor3       &81FE           &81EF         14 bytes
+  endUniverseEditor4       &F800           &F7E5         26 bytes
+  endUniverseEditorZ       &4000           &3E87        376 bytes
+</pre>
+
+						<p>Now for the BBC Master version. Here are the addresses of the code within each of the blocks:</p>
+
+<pre class="articleIndented">  1 = CheckShiftCtrl to endUniverseEditor1 = &B200 to &B3CE = &01CF =  463
+  2 = UniverseEditor to endUniverseEditor2 = &B3CF to &B8F1 = &0523 = 1315
+  3 = SaveLoadFile   to endUniverseEditor3 = &7F4F to &7FFF = &00B1 =  177
+  4 = UpdateChecksum to endUniverseEditor4 = &B8F2 to &BFF4 = &0703 = 1795
+  z = rowOffsets     to endUniverseEditorZ = &9D95 to &9F1A = &0186 =  390
+
+                                            Total code size = &102C = 4140
+</pre>
+
+						<p>and these are the constraints on the block sizes, as per the memory map:</p>
+
+<pre class="articleIndented">  Block end address    Maximum value   Actual value    Free space
+  -----------------    -------------   ------------    ----------
+  endUniverseEditor3       &8000           &7FFF          0 bytes
+  endUniverseEditor4       &C000           &BFF4         11 bytes
+  endUniverseEditorZ       &9FFF           &9F1A        228 bytes
+</pre>
+
+						<p>Note that in the Master version, the block that ends at endUniverseEditor4 consists of blocks 1, 2 and 4, one after the other in memory.</p>
+
+						<p>To summarize, the 6502 Second Processor version of the Universe Editor is 3959 bytes of code, while the BBC Master version is 4140 bytes; the extra code is mainly devoted to converting the file format to work with a Master.</p>
+
+						<p>The 6502 Second Processor's parasite has just 87 bytes free, spread across four blocks, while the Master version has 239 bytes free. However, as the codebase is shared between the two platforms, we can't add any more shared functionality, as it would have to go into elite-universe-editor-z.asm (as there are only 11 bytes free in blocks 1-4 on the Master). However, in the 6502 Second Processor version, elite-universe-editor-z.asm runs in the I/O Processor, so any extra shared code we add would to work in the I/O Processor, which isn't that useful for adding functionality to the main codebase across both systems. It could probably be wrapped in an API call, but sometimes you have to know when to stop...</p>
+
+						<p>To put it another way, if we want to maintain a shared codebase, we have only got 11 bytes free, which is an even tighter squeeze than in the <a href="/deep_dives/the_elite_memory_map.html">original BBC Micro version</a>.</p>
+
+						<h2 class="articleSubheader"><a name="commodore64_map" id="commodore64_map" class="anchor"></a>Squeezing the Universe Editor into Commodore 64 Elite<br />
+													 -----------------------------------------------------</h2>
+
+						<p>The Commodore 64 comes with twice the memory of the standard BBC machines (64K vs 32K), so you would assume that there would be lots of free space available for the Universe Editor add-on. However, the additional sprites and music in the Commodore version are pretty memory-hungry, so in the end I had to sacrifice the music in order to fit the Universe Editor routines into memory.</p>
+
+						<p>The music data for the Commodore 64 version lives between addresses $B72D and $CFFF (though there are some spare bytes at the end of this block). If we disable the music, then this gives us $18D3 (6355) bytes of space, which is more than enough for the Universe Editor. The routine that actually plays the music is at address $920D, so we can reclaim all the memory used by the music data by simply injecting an RTS instruction into $920D. This makes the music routines return without doing anything, leaving the music data at $B72D unused.</p>
+
+						<p>This injection process is implemented in the elite-modify.py script, which extracts the game binaries, decrypts them, modifies them with the Universe Editor code, and re-encrypts them. Disabling the music is done as part of this process; see the project's <a href="https://github.com/markmoxon/elite-universe-editor">GitHub repository</a> for details.</p>
+
+						<p>The music data is actually in two parts: the title music is from $B72D to $C163, while the docking music runs from $C164 to $CCD5. Unfortunately, removing just one tune doesn't free up enough memory for the Universe Editor, so sadly they both have to go.</p>
+
+						<p>For more details of the memory layout of the Commodore 64 version, check out the <a href="https://github.com/Kroc/elite-harmless/blob/kroc/docs/MemoryMap.md">memory map in the Elite Harmless repository</a>.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="elite_universe_editor_instructions_commodore_64.html">Instructions for the Commodore 64 version</a><a class="next" rel="next" title="Next page" href="flicker-free_elite.html">Flicker-free Elite</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

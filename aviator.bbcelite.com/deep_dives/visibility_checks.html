@@ -1,0 +1,112 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "visibility_checks.html", "Visibility checks", "Visibility checks", "A deep dive into visibility checks in BBC Micro Aviator", "aviator", "deep_dives_3d_geometry", "visibility_checks");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="rotating_and_translating_points_in_3d_space.html">Rotating and translating points in 3D space</a><a class="next" rel="next" title="Next deep dive" href="the_flight_model.html">The flight model</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Deciding which lines to draw on-screen, and which to hide</h2>
+
+						<p>Lines are at the heart of Aviator's 3D view (see the deep dives on <a href="lines_and_points.html">lines and points</a> and <a href="3d_objects.html">objects</a> for more on this). Only lines from the fixed set get drawn in the 3D canopy view, and specifically, only lines that we can see out of the canopy - in other words, visible lines. Calculating the visibility of lines is therefore absolutely central to Aviator's main loop.</p>
+
+						<p>When the game starts, all 193 lines are marked as hidden; this means their IDs are put into the <a href="/source/main/workspace/main_variable_workspace.html#linestohide">linesToHide</a> list, while the <a href="/source/main/workspace/main_variable_workspace.html#linestoshow">linesToShow</a> list is empty. As part of the setup process, the <a href="/source/main/subroutine/showorhideline.html">ShowOrHideLine</a> routine is called for each line in turn, which checks the visibility of each line and moves any visible lines to the linesToShow list. Then the <a href="/source/main/subroutine/drawcanopyview.html">DrawCanopyView</a> routine draws all the lines from the linesToShow list, and the initial view of the runway appears.</p>
+
+						<p>The <a href="/source/main/subroutine/processlinestohide.html">ProcessLinesToHide</a> routine now takes over responsibility for making sure lines appear when they should (and, along with them, the game's 3D objects). ProcessLinesToHide is called from <a href="/source/main/subroutine/mainloop_part_12_of_15.html">part 12 of the main loop</a>, but only when there are fewer than 35 points in the relatedPoints list (which takes priority as it contains points that we think might be in a currently visible object), and only if there is enough time (the routine is called in batches of three, and the code in the main loop makes sure we never spend more than 9 centiseconds of each main loop iteration processing the lines to hide list).</p>
+
+						<p>Each time the ProcessLinesToHide routine is called, it pulls a line ID from the end of the linesToHide list, and checks the line's visibility. If it is visible, then it moves the line to the linesToShow list so it gets shown on-screen, but if it is not visible, it sticks the line on the end of the linesToHide list and moves on to the next. In this way the game is constantly checking hidden lines to see if they are visible, so when we fly near enough to a line that it should be shown, this is the routine that shows it. (And, if that line is part of an object, then other lines in the object will also be shown, via the <a href="/source/main/workspace/main_variable_workspace.html#relatedpoints">relatedPoints</a> list.)</p>
+
+						<h2 class="articleSubheader">Main loop<br />
+													 ---------</h2>
+
+						<p>Let's take a look at the parts of the main loop that deal with visibility:</p>
+
+						<ul>
+							<li>Part 2: Reset objectStatus for all objects and the relatedPoints list</li>
+
+							<li>Part 4: Call UpdateLinesToShow to go through all the lines in linesToShow, run ProcessLine on each one, and move any lines that aren't visible to linesToHide</li>
+
+							<li>Part 11: If relatedPoints contains 35 lines or fewer, call ProcessLinesToHide at least three times to processes lines from linesToHide and move them to linesToShow if they are visible, so currently hidden lines will eventually be shown when the plane gets close enough</li>
+
+							<li>Part 12: Call ProcessLinesToShow to process the whole linesToShow list, projecting points onto the screen for visible lines, or moving hidden lines to linesToHide</li>
+
+							<li>Part 12: Call DrawCanopyView to draw all the lines in the linesToShow list on-screen</li>
+
+							<li>Part 14: Reset the pointStatus list for the start and end points for any new lines that we added to linesToHide during the loop</li>
+						</ul>
+
+						<p>You can read more about the main loop in the deep dive on <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a>.</p>
+
+						<h2 class="articleSubheader">Processing lines<br />
+													 ----------------</h2>
+
+						<p>In the above, lines get processed at various points to work out their visibility and, if they're visible, we project their 3D coordinates onto the 2D screen. The <a href="/source/main/subroutine/processline_part_1_of_7.html">ProcessLine</a> routine processes an individual line by doing the following, first for the start point, and then for the end point:</p>
+
+						<ul>
+							<li>Expand the point into its associated object point "strand" from the <a href="/source/main/variable/objectpoints.html">objectPoints</a> table, pushing the point IDs onto the stack, and extracting the object ID (see the deep dive on <a href="3d_objects.html">3D objects</a> for more on strands and objectPoints)</li>
+
+							<li>Set the <a href="/source/main/workspace/main_variable_workspace.html#objectanchorpoint">objectAnchorPoint</a> to the last point ID from the extracted strand</li>
+
+							<li>Call <a href="/source/main/subroutine/setobjectcoords_part_1_of_11.html">SetObjectCoords</a> for this object ID (see below), which does the following:
+
+								<ul>
+									<li>Check the distance to the object from the plane</li>
+									<li>If the object is close enough to be visible, call <a href="/source/main/subroutine/setobjpointcoords_part_1_of_2.html">SetObjPointCoords</a> to calculate the 3D coordinates for the object's anchor point</li>
+								</ul>
+							</li>
+
+							<li>Call <a href="/source/main/subroutine/setobjpointcoords_part_1_of_2.html">SetObjPointCoords</a> for each point along the object strand, to calculate the 3D coordinates for each point in the strand. We do this by pulling all the point IDs from the stack, ending with the original start/end point from the line we passed to ProcessLine</li>
+						</ul>
+
+						<h2 class="articleSubheader">Processing objects<br />
+													 ------------------</h2>
+
+						<p>The SetObjectCoords routine calculates the coordinates and visibility for an object, as follows:</p>
+
+						<ul>
+							<li>Pre-process special objects:
+
+								<ul>
+									<li>Bullets (<a href="/source/main/subroutine/setobjectcoords_part_2_of_11.html">part 2</a>): don't check the distance to the bullets, just check whether the back end of the bullet traces are above ground (if not, the bullets are below ground and not visible)</li>
+
+									<li>Object groups 6-9 (<a href="/source/main/subroutine/setobjectcoords_part_4_of_11.html">part 4</a>): cycle through all eight objects in the group, and for each one set xObjectHi, zObjectHi  to the values from xGroupHi, zObjectHi, so the object's anchor point gets set for the current object in the group</li>
+
+									<li>Dormant alien group 30 (<a href="/source/main/subroutine/setobjectcoords_part_6_of_11.html">part 6</a>): if the Theme is enabled, cycle through all eight objects in the group, get the alienState and alienObjectId for the alien in the group, and use them to set the correct xObjectHi, zObjectHi values for that particular alien</li>
+
+									<li>Feeding and flying aliens 31, 32 and 33 (<a href="/source/main/subroutine/setobjectcoords_part_7_of_11.html">part 7</a>): use the alienSlot, alienState, alienObjectId values to find the relevant object IDs for these aliens</li>
+								</ul>
+							</li>
+							
+							<li>Process the object (<a href="/source/main/subroutine/setobjectcoords_part_9_of_11.html">part 9</a>):
+
+								<ul>
+									<li>Calculate the coordinates of the object's anchor point in the world's frame of reference, and store it in point ID = objectId + 216 (or in points 95-98 for the bullets)</li>
+									<li>Check the distance between the object and the plane in each axis, e.g. by doing xPoint = xObject - xPlane</li>
+									<li>If the object is too far away from the plane, move on to the next object in group (if this is an object group or dormant alien group), otherwise we are done</li>
+									<li>If the object is close enough to the plane to be visible, call <a href="/source/main/subroutine/setpointcoords.html">SetPointCoords</a> to rotate the object's anchor point by matrix 1 into the plane's frame of reference, and we are done</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>In this way we can calculate the visibility of individual points and their related strands and object points, and therefore we can calculate the visibility of each individual line. When it's all put together, this forms the core of Aviator's line-based visibility routine.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="rotating_and_translating_points_in_3d_space.html">Rotating and translating points in 3D space</a><a class="next" rel="next" title="Next deep dive" href="the_flight_model.html">The flight model</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

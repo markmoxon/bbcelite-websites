@@ -1,0 +1,78 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("hacks", "bbc_elite_with_music_technical_information.html", "Technical information for musical BBC Micro Elite", "Technical information for musical BBC Micro Elite", "Details of how the Commodore 64's music was ported to Elite on the BBC Micro", "elite", "hacks_bbc_elite_with_music", "technical_information");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="bbc_elite_with_music_downloads.html">Downloading musical BBC Micro Elite</a><a class="next" rel="next" title="Next page" href="bbc_master_disc_elite.html">BBC Micro Elite on the BBC Master</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the Commodore 64's music was ported to Elite on the BBC Micro</h2>
+
+						<p>Most of the heavy lifting in this hack was done by the amazing coders of the <a href="https://bitshifters.github.io/">Bitshifters collective</a>, who created the music player and ported the music. I merged their work into Elite, which I describe in more detail below, but without these guys, none of this would have happened.</p>
+
+						<p>In this article we'll take a look at how this particular plan came together, and how we produced a loading sequence and in-game music like this:</p>
+
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/music/title_sequence.mp4" type="video/mp4">
+							</video>
+
+						<h2 class="articleSubheader">Creating the music ROM<br />
+													 ----------------------</h2>
+
+						<p>The music player in this hack is based on the VGM music player for the BBC Micro by Simon Morris, which you can read all about in the <a href="https://github.com/simondotm/vgm-player-bbc">project's GitHub page</a>. Huffman encoding is not used in this instance, as we need all the memory we can get.</p>
+
+						<p>The idea to use Simon's player in Elite was down to Kieran Connell; he was also the inspiration for <a href="teletext_elite.html">Teletext Elite</a> and <a href="/about_site/about_this_project.html">got me into disassembling Elite in the first place</a>, so he has form! After we had a quick chat about what might be possible, Kieran refactored Simon's player to work in sideways RAM, as there is simply no spare memory when Elite is running, so sideways RAM is the only viable option for storing the music (see the deep dive on the <a href="/deep_dives/the_elite_memory_map.html">Elite memory map</a> to see what I mean).</p>
+
+						<p>Kieran then enlisted help from <a href="https://negativecharge.github.io">Negative Charge</a>, the Bitshifters' resident Beeb music conversion expert, who converted the original Elite tunes from the Amstrad CPC, Atari ST, Commodore 64, Commodore 128 and NES versions of the game. After listening to all the candidates, they decided that the Commodore 64 tunes sounded the best, so those are the ones included in this hack. The conversion doesn't use the player code or music data from the Commodore 64 source, but is a conversion of the data bytes that get sent to the C64's SID sound chip by the game, and these are converted into data bytes that can be sent to the BBC Micro's SN76489 chip. This is all then heavily compressed, but it still comes out as quite a large file because it can't account for repeated patterns like a dedicated music driver could.</p>
+
+						<p>The result of all this work was a ROM image that I could load into sideways RAM, and which provided three addresses that I could call, one to select the title music, one to select the docking music, and another to play the currently selected tune. You can see this ROM in action in Kieran's original <a href="https://github.com/kieranhj/elite-music">elite-music repository</a>, where you can download a disc image that demonstrates both tunes playing.</p>
+
+						<h2 class="articleSubheader">Adding music to BBC Micro disc Elite<br />
+													 ------------------------------------</h2>
+
+						<p>The next stage was to add this music to the game code for the BBC Micro disc version of Elite. I took Kieran's ROM image, loaded it into sideways RAM, and modded the Elite source to incorporate calls to the music player at the relevant points in the game. So I added a set of ROM calls into the docked code to make the title music play alongside the spinning Cobra on the title screen, and I added a second set of calls into the flight code to switch the Blue Danube on and off along with the docking computer.</p>
+
+						<p>That makes it sound easy, but memory is astonishingly tight in Elite, so not only is it a real challenge to add any new code at all, but if that code needs variable storage stage - as is the case with the music ROM - then things can get quite difficult, quite quickly.</p>
+
+						<p>The hardest part of the modding process involved freeing up ten free bytes of storage in zero page; the disc version of Elite uses all but one byte of zero page, so this took some time, but was essential to make the hack work. The music ROM needs eight bytes in zero page for the music player; it needs another byte to store the ROM number where the loading process puts the ROM image; and it needs a further byte to store a flag that records whether or not we should be playing music. The key was to work out how all the zero page variables are used, and to share zero page addresses between variables that are not used at the same time; you can see how I did this in the zero page section of the <a href="https://github.com/markmoxon/disc-elite-beebasm/blob/music/1-source-files/main-sources/elite-source-docked.asm">elite-source-docked.asm</a> and <a href="https://github.com/markmoxon/disc-elite-beebasm/blob/music/1-source-files/main-sources/elite-source-flight.asm">elite-source-flight.asm</a> source files in the <a href="https://github.com/markmoxon/disc-elite-beebasm/tree/music">music branch of the disc-elite-beebasm repository</a> (search the source for "Mod:" to see all the modifications I made).</p>
+
+						<p>I also had to build a routine for calling the music routines in the sideways RAM image (I ended up calling this routine PlayMusic). This routine needs to switch the music ROM into memory at &amp;8000, call the relevant music routine in the ROM, and then switch the music ROM back out, with the switching done by changing the value of ROMSEL in SHEILA &amp;FE30 (and the RAM copy in &amp;F4). The version of the music ROM that Kieran provided had three entry points - &amp;8000 to select the title music, &amp;8003 to select the docking music, and &amp;8006 to play the music - so I figured I could save a few bytes by building a generic PlayMusic routine that would take an argument giving the ROM routine to call. The argument is simply the offset from &amp;8000 of the routine, so that's 0 to select the title music, 3 to select the docking music, and 6 to play the music (which we do as part of the vertical sync interrupt - see below). I also added a new routine at &amp;8009 to let us stop the currently playing music, and another routine at &amp;800C to manage the new music-related game configuration options, and at the same time I repointed the zero space variables used by the ROM routines into the space I'd managed to free up. The resulting Elite-friendly version of the music ROM can be found in <a href="https://github.com/markmoxon/elite-music">my fork of the elite-music repo</a>.</p>
+                       
+                        <p>Next, I had to hook the play routine (i.e. the PlayMusic routine with argument 6) into the vertical sync interrupt handler, so the currently selected music could play in the background. To do this, I patched a jump instruction into the vertical sync handler that's part of Elite's split-screen mode system (see the deep dive on the <a href="/deep_dives/the_split-screen_mode.html">split-screen mode</a> for information); this injected jump instruction calls a new routine called IRQMusic on every vertical sync, which checks whether we are playing music, and if so processes the call to PlayMusic.</p>
+
+						<p>There is one more subtle point to consider. The BBC Micro disc version of Elite flips between the docked and flight code, and in doing so it loads a different game binary. These binaries load at address &amp;11E3, and the interrupt handler and various other routines live below this address, and are therefore unchanged between the two different codebases. However, there is no free space in this section of memory, so I had to add both IRQMusic and PlayMusic above address &amp;11E3, so they are part of both the docked and flight code. I therefore had to make sure they both have the same address in the docked and flight code, so the vertical sync handler keeps working whichever of the two different codebases are loaded.</p>
+
+						<p>Similarly, to support volume control of both music and sound effects on the BBC Micro, I had to move the <a href="/disc/docked/variable/sfx.html">SFX</a> sound effect definitions so they also stay in the same location between the two codebases, as then the music ROM can patch the sound volume according to the current setting (otherwise the sound effects would reset to the default volume settings on each flip between docked and flight). Ensuring that SFX is always at the same address means we can run a routine after switching codebases that updates SFX with the new settings, as we always know where the table is in memory. Luckily the envelope definitions are stored by the MOS at address &amp;08C0, so they can be altered in-place to change volume levels without having to worry about them being overwritten.</p>
+
+						<p>The final step was to put the game code together with a boot loader. The loader confirms the presence of sideways RAM, loads the ROM image into a sideways RAM bank, and stores the ROM number for use by the PlayMusic routine. To get this working, I used a modified version of  <a href="https://stardot.org.uk/forums/viewtopic.php?t=8710&start=30">Tricky's SWRAM detection code</a> to work out whether sideways RAM is present, and I used the <a href="https://mdfs.net/Mirror/Image/JGH/">SRLoad</a> loader from J.G.Harston to actually load the image.</p>
+
+						<h2 class="articleSubheader">Adding music to other versions<br />
+													 ------------------------------</h2>
+
+						<p>There is also a BBC Master version of musical Elite that works in the same way as the disc version, except the code doesn't have to worry about staying in place between the docked and flight code, as the entire game is resident in memory the whole time. On top of this, the loader can use the Master's built-in SRLOAD command to load the ROM. The only other gotcha is that Elite uses sideways RAM bank 6 for the game itself, so we have to make sure not to use that one for the music (though the Master has three other RAM banks, so this isn't much of a problem).</p>
+
+						<p>Also, there's a version for the BBC Micro with 6502 Second Processor and 16K of sideways RAM. Surprisingly there isn't enough spare memory to load the music into main memory, as Elite only leaves 3.2K free in the parasite and 3.7K free in the I/O Processor; the music takes up around 13K, so we still need to have 16K of sideways RAM to load it. The sideways RAM detection and loading routines need to check memory in the I/O Processor, on the other side of the Tube, and the 6502 version's API needs to be extended to support playing music, stopping music, swapping tunes and so on. Luckily there are enough free OSWORD calls to support these new functions, which you can see in the <a href="https://github.com/markmoxon/6502sp-elite-beebasm/blob/music/1-source-files/main-sources/elite-z.asm#L6521-L6525">OSWVECS routine in the elite-z.asm source</a> in the <a href="https://github.com/markmoxon/6502sp-elite-beebasm/tree/music">music branch</a> of the repository.</p>
+
+						<p>It's worth noting that the exact same music ROM image is used on all three platforms. There's a lookup table at the start of the ROM, just after the jump table, that contains various addresses of Elite routines, and internal key numbers for the configuration options. By default these values are set up for the BBC Micro disc version, so the BBC Master and 6502 Second Processor versions patch these values after the ROM image is loaded into sideways RAM, so they point to the correct addresses and key numbers for that version of Elite.</p>
+
+						<p>Finally, the ROM image must be loaded into sideways RAM, as it uses its own space for storing data, and contains a fair amount of self-modifying code. It won't work as a ROM, or in write-protected sideways RAM; it has to be writeable, or it won't work.</p>
+
+						<p>The results, though, are music to BBC players' ears, I'm sure you'll agree.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="bbc_elite_with_music_downloads.html">Downloading musical BBC Micro Elite</a><a class="next" rel="next" title="Next page" href="bbc_master_disc_elite.html">BBC Micro Elite on the BBC Master</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

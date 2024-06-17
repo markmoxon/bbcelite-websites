@@ -1,0 +1,109 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "rotating_and_translating_points_in_3d_space.html", "Rotating and translating points in 3D space", "Rotating and translating points in 3D space", "A deep dive into rotating and translating points in 3D space in BBC Micro Aviator", "aviator", "deep_dives_3d_geometry", "rotating_and_translating_points_in_3d_space");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="rotation_matrices.html">Rotation matrices</a><a class="next" rel="next" title="Next deep dive" href="visibility_checks.html">Visibility checks</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Converting between different frames of reference in 3D</h2>
+
+						<p>The deep dives on <a href="3d_objects.html">3D objects</a> and <a href="rotation_matrices.html">rotation matrices</a> go into a lot of detail about transforming points and vectors between different frames of reference by rotation and translation, but it's probably easier to see what's happening when talking about a concrete example. Here we take a deeper look at how rotation matrices are used when calculating 3D coordinates for points within objects, as this covers all the main parts of the process.</p>
+
+						<h2 class="articleSubheader">Rotating points with SetPointCoords<br />
+													 -----------------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/setpointcoords.html">SetPointCoords</a> routine takes a set of 3D coordinates that define a point in space, and rotates them around the origin to a new set of coordinates. It does this by taking the point's coordinates, multiplying them by one of the four rotation matrices, and storing the result to give us the point's new coordinates. See the deep dive on <a href="rotation_matrices.html">rotation matrices</a> for details of the matrices and how they are calculated.</p>
+
+						<p>Specifically, let's take an example:</p>
+
+						<ul>
+							<li>Say the point is at coordinates (xPoint, yPoint, zPoint), where each coordinate is a 16-bit value, e.g. xPoint = (xPointHi xPointLo)</li>
+
+							<li>Say we want to rotate the object by matrix 1, where:
+
+<pre class="articleIndented">  m0 = (matrix1Hi matrix1Lo)
+  m1 = (matrix1Hi+1 matrix1Lo+1)
+  ...
+  m8 = (matrix1Hi+8 matrix1Lo+8)
+</pre>
+							</li>
+						</ul>
+
+						<p>Given the above, calling the SetPointCoords routine would update the point's coordinates as follows:</p>
+
+<pre class="articleIndented">  [ xPoint ]     [ m0 m1 m2 ]   [ xPoint ]
+  [ yPoint ]  =  [ m3 m4 m5 ] x [ yPoint ]
+  [ zPoint ]     [ m6 m7 m8 ]   [ zPoint ]
+</pre>
+
+						<p>On its own, this simply rotates a point around the origin. Now let's take a look at one example of this in action.</p>
+
+						<h2 class="articleSubheader">Rotating and translating multi-point objects in 3D space<br />
+													 --------------------------------------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/setobjpointcoords_part_1_of_2.html">SetObjPointCoords</a> routine calculates the coordinates for a point within an object (an "object point"). Object points are stored as coordinates that are relative to the object's anchor point, so the definition for the tree object contains the points for a tree, stored as if it were at the origin, in the outside world's frame of reference. To draw the object as seen out of the canopy of the plane, we need to transform these anchor-relative coordinates into coordinates that are relative to the pilot and in the plane's frame of reference.</p>
+
+						<p>We do this by taking the object point's coordinates relative to the object's anchor (i.e. the vector from the anchor to the point), and rotating this vector to the plane's frame of reference by multiplying by matrix 1 (this multiplication is the rotation step). We also take the object's anchor point, and move this to the plane's frame of reference, again by rotating my matrix 1. Finally we add the two together (this addition is the translation step). This gives us the final coordinates of the object point, relative to the pilot, which is the same as saying it's relative to the screen.</p>
+
+						<p>Specifically, let's take an example:</p>
+
+						<ul>
+							<li>Say the object's anchor point is at (xObject, yObject, zObject), relative to the outside world (this value would typically come from the (<a href="/source/main/variable/xobjecthi.html">xObjectHi</a> <a href="/source/main/variable/xobjectlo.html">xObjectLo</a>), (<a href="/source/main/variable/yobjecthi.html">yObjectHi</a> <a href="/source/main/variable/yobjectlo.html">yObjectLo</a>), (<a href="/source/main/variable/zobjecthi.html">zObjectHi</a> <a href="/source/main/variable/zobjectlo.html">zObjectLo</a>) tables)</li>
+
+							<li>Say the object point has coordinates of (<a href="/source/main/variable/xobjectpoint.html">xObjectPoint</a>, <a href="/source/main/variable/yobjectpoint.html">yObjectPoint</a>, <a href="/source/main/variable/zobjectpoint.html">zObjectPoint</a>) relative to the object's anchor (in other words, this is the vector from the anchor to the point)</li>
+
+							<li>Say we want to rotate the object by matrix 1, so:
+
+<pre class="articleIndented">m0 = (matrix1Hi matrix1Lo)
+m1 = (matrix1Hi+1 matrix1Lo+1)
+...
+m8 = (matrix1Hi+8 matrix1Lo+8)
+</pre>
+
+							</li>
+						</ul>
+
+						<p>Given the above, the SetObjPointCoords routine calculates the object point's 3D coordinates as follows:</p>
+
+<pre class="articleIndented">  [ xPoint ]   [ xObjectP ]   [ xObjectPointP ]
+  [ yPoint ] = [ yObjectP ] + [ yObjectPointP ]
+  [ zPoint ]   [ zObjectP ]   [ zObjectPointP ]
+</pre>
+
+						<p>where:</p>
+
+<pre class="articleIndented">  [ xObjectP ]     [ m0 m1 m2 ]   [ xObject ]
+  [ yObjectP ]  =  [ m3 m4 m5 ] x [ yObject ]
+  [ zObjectP ]     [ m6 m7 m8 ]   [ zObject ]
+</pre>
+
+						<p>and:</p>
+
+<pre class="articleIndented">  [ xObjectPointP ]     [ m0 m1 m2 ]   [ xObjectPoint ]
+  [ yObjectPointP ]  =  [ m3 m4 m5 ] x [ yObjectPoint ] x 2^scaleFactor / 16
+  [ zObjectPointP ]     [ m6 m7 m8 ]   [ zObjectPoint ]
+</pre>
+
+						<p>The scale factor is a power of 2 whose exponent is extracted from bits 4 to 7 of zObjectPoint, and in the final result we drop the least significant byte of the calculation, so the result is effectively divided by another 256. Only bits 0 to 3 of xObjectPoint, yObjectPoint and zObjectPoint are used in the matrix multiplication; bits 4 to 7 of xObjectPoint and yObjectPoint are ignored (and happen to be 0).</p>
+
+						<p>The scale factor determines the size of the object, and this is how the alien objects grow in size while feeding - the scale factor is incremented to double the alien's size. Other objects have static scale factors, but it enables the same object point system to be used for all sorts of different object sizes, from trees, runways and fields, all the way to hills, lakes, bridges and towns.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="rotation_matrices.html">Rotation matrices</a><a class="next" rel="next" title="Next deep dive" href="visibility_checks.html">Visibility checks</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

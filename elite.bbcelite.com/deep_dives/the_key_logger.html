@@ -1,0 +1,58 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_key_logger.html", "The key logger", "The key logger", "A deep dive into the key logger in BBC Micro Elite", "elite", "deep_dives_flight", "the_key_logger");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="flipping_axes_between_space_views.html">Flipping axes between space views</a><a class="next" rel="next" title="Next deep dive" href="bolting_nes_controllers_onto_the_key_logger.html">Supporting NES controllers</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Supporting concurrent in-flight key presses using a key logger</h2>
+
+						<p>There's a lot to do when piloting a spaceship. Pitching and rolling while slamming on the brakes to avoid missing the docking slot; firing lasers while activating the E.C.M. and slamming your foot on the accelerator; targeting a missile while switching between space views, trying to track down your foe... it's all in a day's work for your average Cobra Mk III pilot.</p>
+
+						<p>Unfortunately, most 8-bit micros weren't built to handle multiple concurrent key presses. The Machine Operating System (MOS) in the BBC Micro can handle up to two concurrent key presses, on top of the modifier keys; this known as a "two-key rollover", and it's generally fine for typing, as you rarely intend to press more than two letter keys at the same time. However, for a game where you legitimately might want to pitch up, roll right, fire lasers, slow down and launch a missile all at the same time (by pressing "X", "&gt;", "A", "?" and "M" concurrently), a simple two-key rollover just won't do.</p>
+
+						<p>Elite therefore implements its own logging system that listens for key presses for all the important flight controls, and stores their details in a keyboard logger for the main loop to process in its own time. There are 15 of these flight controls, which are split up into the seven primary controls (speed, pitch, roll and lasers) and eight secondary controls (energy bomb, escape pod, missile controls, E.C.M., in-system jump and the docking computer). The key logger effectively implements an eight-key rollover for each of the primary controls, plus one secondary control, which is more than enough to make the game responsive to our every whim.</p>
+
+						<p>Interestingly, the NES conversion of Elite still uses the key logger, even though it doesn't have a keyboard; for details, see the deep dive on <a href="bolting_nes_controllers_onto_the_key_logger.html">bolting NES controllers onto the key logger</a>. The following describes the key logger in the BBC Micro version, but the idea is the same in all the 6502 versions of Elite.</p>
+
+						<h2 class="articleSubheader">How the key logger works<br />
+													 ------------------------</h2>
+
+						<p>The heart of the key logger system is the table at location <a href="/cassette/main/workspace/zp.html#kl">KL</a>. This contains one byte for each of the 15 flight controls listed in the keyboard lookup table at <a href="/cassette/main/variable/kytb.html">KYTB</a>, starting from KL+1 for "?" (slow down) and going through to KL+15 for "C" (which turns on the docking computer). Each key logger location has its own label, so KY1 = KL+1, KY2 = KL+2 up to KY15 = KL+15, where KY1 corresponds to the internal key number in KYTB+1, KY2 to the key number in KYTB+2, and so on.</p>
+
+						<p>The various keyboard scanning routines can set the relevant byte in the KL table to &amp;FF to denote that a particular key is being pressed. The logger is cleared to zero (to denote that no keys are being pressed) by the U% routine.</p>
+
+						<p>The main routines that populate the key logger are:</p>
+
+						<ul>
+							<li><a href="/cassette/main/subroutine/dks4.html">DKS4</a>, which scans the keyboard for a specific key</li>
+
+							<li><a href="/cassette/main/subroutine/dks1.html">DKS1</a>, which calls DKS4 and updates the key logger with the result</li>
+
+							<li><a href="/cassette/main/subroutine/dokey.html">DOKEY</a>, which calls DKS1 for each of the primary flight controls</li>
+
+							<li><a href="/cassette/main/subroutine/dk4.html">DK4</a>, which scans for the secondary flight controls</li>
+						</ul>
+
+						<p>If a key is being pressed that is not in the keyboard table at KYTB, then it can be stored in the first location in the key logger, KL, as this isn't mapped to a KYTB key. This is done in routine DK4, for example, so we almost never miss a key press.</p>
+
+						<p>In addition, the joystick fire button is checked, and if it is pressed, the key logger entry for laser fire ("A") is set, so there is only one location to check when processing laser fire.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="flipping_axes_between_space_views.html">Flipping axes between space views</a><a class="next" rel="next" title="Next deep dive" href="bolting_nes_controllers_onto_the_key_logger.html">Supporting NES controllers</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,76 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "advanced_tactics_with_the_newb_flags.html", "Advanced tactics with the NEWB flags", "Advanced tactics with the NEWB flags", "A deep dive into advanced tactics with the NEWB flags in BBC Micro Elite", "elite", "deep_dives_tactics_and_combat", "advanced_tactics_with_the_newb_flags");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="program_flow_of_the_tactics_routine.html">Program flow of the tactics routine</a><a class="next" rel="next" title="Next deep dive" href="the_3d_scanner.html">The 3D scanner</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How the enhanced versions of Elite give their ships a bit more personality</h2>
+
+						<p>The BBC Micro disc, 6502 Second Processor, BBC Master and NES versions of Elite have a much more sophisticated tactics routine than the original BBC Micro cassette and Electron versions. At the core of this advanced routine is the set of NEWB flags, which were added to the cassette version as it grew into the disc version - "NEWB" stands for "New Byte", which presumably got its name because it's tacked onto the end of the existing 36-byte ship data block, as new byte #37.</p>
+
+						<p>If you've ever sat outside a space station and watched as transporters fly out of the slot and head towards the planet, then you've seen the NEWB flags in action (these transporters are traders, with bit #0 set):</p>
+
+						<img class="titleImage" src="/images/master/transporter_station.png" alt="A transporter in the BBC Master version of Elite" />
+
+						<p>Essentially, the NEWB flags give each newly spawned ship a personality, and they determine how it behaves. For example, traders have the trading flag set (bit #0), and they tend to ply their trade between the space station and the planet; the direction of travel, meanwhile, is determined by the docking flag (bit #4). Some traders might moonlight as bounty hunters (bit #1), which means they will break off their trading runs to attack us if we are a fugitive or a serious offender, at which point they become hostile (bit #2). Other flags cover things like pirate behaviour, whether a ship is a cop or an innocent bystander, and whether a ship has an escape pod fitted.</p>
+
+						<p>It's a fairly simple system, but it manages to add a convincing layer to the universe simulation; it's surprisingly immersive to park yourself outside a station and watch the traders and shuttles head off to the planet while others fly back up, and it's all down to the NEWB flags.</p>
+
+						<h2 class="articleSubheader">The NEWB flags<br />
+													 --------------</h2>
+
+						<p>In the versions of Elite that support advanced tactics, there is a table at <a href="/6502sp/main/variable/e_per_cent.html">E%</a> that contains the default NEWB byte for each ship type. When spawning a new ship, bits #0-3 and #5-6 from this byte are applied to the new ship's NEWB flags in byte #36, so a set bit in the default NEWB byte in E% will set that bit in the spawned ship's NEWB flags. This means that if a ship blueprint has one of the following personality types - trader, bounty hunter, hostile, pirate, innocent bystander or cop - then all spawned ships of that type will have that personality too (so all Geckos are pirates, for example).</p>
+
+						<p>The other bits in the spawned ship's NEWB flags are set as follows:</p>
+
+						<ul>
+							<li>Bit 4 (docking) is set randomly on spawning for traders only, so 50% of traders are trying to dock, while the other 50% fly towards the planet.</li>
+
+							<li>Bit 7 (has been scooped/has docked) is set when the ship docks or is scooped.</li>
+
+							<li>Bit 7 in the blueprint (as opposed to the spawned ship) is looked up during tactics, for when the ship is about to die, to see if that ship type has an escape pod fitted. If it does, then the ship can launch an escape pod before dying.</li>
+						</ul>
+
+						<p>Here's a breakdown of the NEWB flags:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Bit</th><th>Description</th></tr>
+
+							<tr><td>#0</td><td>Trader flag<br /><br />&nbsp;&nbsp;* 0 = not a trader<br />&nbsp;&nbsp;* 1 = trader<br /><br />80% of traders are peaceful and mind their own business plying their trade between the planet and space station, but 20% of them moonlight as bounty hunters (see bit #1)<br /><br />Ships that are traders: Escape pod, Shuttle, Transporter, Anaconda, Rock hermit, Worm</td></tr>
+
+							<tr><td>#1</td><td>Bounty hunter flag<br /><br />&nbsp;&nbsp;* 0 = not a bounty hunter<br />&nbsp;&nbsp;* 1 = bounty hunter<br /><br />If we are a fugitive or a serious offender and we bump into a bounty hunter, they will become hostile and attack us (see bit #2)<br /><br />Ships that are bounty hunters: Viper, Fer-de-lance</td></tr>
+
+							<tr><td>#2</td><td>Hostile flag<br /><br />&nbsp;&nbsp;* 0 = not hostile<br />&nbsp;&nbsp;* 1 = hostile<br /><br />Hostile ships will attack us on sight; there are quite a few of them<br /><br />Ships that are hostile: Sidewinder, Mamba, Krait, Adder, Gecko, Cobra Mk I, Worm, Cobra Mk III, Asp Mk II, Python (pirate), Moray, Thargoid, Thargon, Constrictor</td></tr>
+
+							<tr><td>#3</td><td>Pirate flag<br /><br />&nbsp;&nbsp;* 0 = not a pirate<br />&nbsp;&nbsp;* 1 = pirate<br /><br />Hostile pirates will attack us on sight, but once we get inside the space station safe zone, they will stop<br /><br />Ships that are pirates: Sidewinder, Mamba, Krait, Adder, Gecko, Cobra Mk I, Cobra Mk III, Asp Mk II, Python (pirate), Moray, Thargoid</td></tr>
+
+							<tr><td>#4</td><td>Docking flag<br /><br />&nbsp;&nbsp;* 0 = not docking<br />&nbsp;&nbsp;* 1 = docking<br /><br />Traders with their docking flag set fly towards the space station to try to dock, otherwise they aim for the planet<br /><br />This flag is randomly set for traders when they are spawned<br /><br />Ships that can be docking: Escape pod, Shuttle, Transporter, Anaconda, Rock hermit, Worm</td></tr>
+
+							<tr><td>#5</td><td>Innocent bystander<br /><br />&nbsp;&nbsp;* 0 = normal<br />&nbsp;&nbsp;* 1 = innocent bystander<br /><br />If we attack an innocent ship within the space station safe zone, then the station will get angry with us and start spawning cops<br /><br />Ships that are innocent bystanders: Shuttle, Transporter, Cobra Mk III, Python, Boa, Anaconda, Rock hermit, Cougar</td></tr>
+
+							<tr><td>#6</td><td>Cop flag<br /><br />&nbsp;&nbsp;* 0 = not a cop<br />&nbsp;&nbsp;* 1 = cop<br /><br />If we destroy a cop, then we instantly become a fugitive (the Transporter isn't actually a cop, but it's clearly under police protection)<br /><br />Ships that are cops: Viper, Transporter</td></tr>
+
+							<tr><td>#7</td><td>Scooped, docked, escape pod flag<br /><br />For spawned ships, this flag indicates that the ship been scooped or has docked (bit 7 is always clear on spawning)<br /><br />For blueprints, this flag indicates whether the ship type has an escape pod fitted, so it can launch it when in dire straits<br /><br />Ships that have escape pods: Cobra Mk III, Python, Boa, Anaconda, Rock hermit, Viper, Mamba, Krait, Adder, Cobra Mk I, Cobra Mk III (pirate), Asp Mk II, Python (pirate), Fer-de-lance</td></tr>
+						</table>
+
+						<p>To see the NEWB flags in action, the best place to look is the main <a href="/6502sp/main/subroutine/tactics_part_2_of_7.html">TACTICS</a> routine.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="program_flow_of_the_tactics_routine.html">Program flow of the tactics routine</a><a class="next" rel="next" title="Next deep dive" href="the_3d_scanner.html">The 3D scanner</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

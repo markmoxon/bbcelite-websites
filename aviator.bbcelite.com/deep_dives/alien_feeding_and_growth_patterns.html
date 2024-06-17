@@ -1,0 +1,89 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "alien_feeding_and_growth_patterns.html", "Alien feeding and growth patterns", "Alien feeding and growth patterns", "A deep dive into alien feeding and growth patterns in BBC Micro Aviator", "aviator", "deep_dives_the_theme", "alien_feeding_and_growth_patterns");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="hard-coded_division_in_the_dashboard_routines.html">Hard-coded division in the dashboard routines</a><a class="next" rel="next" title="Next deep dive" href="aliens_attack_acornsville.html">Aliens attack Acornsville!</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The many stages of the alien life cycle</h2>
+
+						<p>The aliens in Aviator have a pretty predictable life cycle, which is important to understand if we're going to defend Acornsville from attack. In this deep dive, we take a look at the typical alien's progression from cute little triangle-shaped baby to tentacle-sprouting harbinger of doom.</p>
+
+						<h2 class="articleSubheader">Spawning baby aliens<br />
+													 --------------------</h2>
+
+						<p>If we activate the Theme by firing the guns while still on the runway, the game gets started on the process of spawning the first wave of eight baby aliens. The routine responsible for this reckless act of midwifery is <a href="/source/main/subroutine/spawnalien.html">SpawnAlien</a>, which is called from <a href="/source/main/subroutine/mainloop_part_1_of_15.html">part 1 of the main loop</a>.</p>
+
+						<p>Aliens are spawned in fields, with no more than one alien per field. There are 14 fields scattered around the map (see the deep dive on <a href="placing_objects_on_the_map.html">placing objects on the map</a> for details), and the SpawnAlien routine tries to spawn one new alien each time it is called, using a brute-force method to find an empty field. This approach doesn't always work, so it's possible for the aliens to spawn sporadically, taking more than eight calls to SpawnAlien to give birth to the first wave.</p>
+
+						<p>At the end of this process, eight aliens have been added to the world. Each of them has a state, stored in the <a href="/source/main/variable/alienstate.html">alienState</a> table, and each of them has an associated field object, whose ID is stored in the <a href="/source/main/variable/alienobjectid.html">alienObjectId</a> table.</p>
+
+						<p>Let's see what happens next...</p>
+
+						<h2 class="articleSubheader">Alien stages<br />
+													 ------------</h2>
+
+						<p>The evolution of aliens is encoded in the <a href="/source/main/subroutine/updatealiens_part_1_of_5.html">UpdateAliens</a> routine. There are four alien slots that map to objects 30 to 33; at the start of each wave, slot 30 contains all eight newly spawned aliens, which work in a similar way to the groups of trees and hills in objects 6 to 9. Slots 31 to 33, meanwhile, start out empty... but not for long.</p>
+
+						<p>All eight aliens in slot 30 start in the dormant state (state 0, which is stored in the <a href="/source/main/variable/alienstate.html">alienState</a> table). Dormant aliens are promoted to state 1 in <a href="/source/main/subroutine/updatealiens_part_2_of_5.html">part 2 of UpdateAliens</a>. One alien will be promoted and will start feeding once there is a vacancy in one of slots 31 and 32 (which both start out as vacant, so straight away we promote two dormant aliens). A vacancy is produced when one of the feeding aliens is promoted into an empty alien slot 33 (see below), or when a feeding alien is destroyed.</p>
+
+						<p>Once an alien is in state 1, the state gets incremented in <a href="/source/main/subroutine/updatealiens_part_1_of_5.html">part 1 of UpdateAliens</a>, but only on 2 of every 256 main loop iterations. The alien's state increases like this, passing through the four feeding stages and growing all the while (see the next section for more on growth patterns). It keeps progressing until it reaches state 22.</p>
+
+						<p>As there can be only one alien flying towards the town at any one time, we have to wait for the attack slot (slot 33) to become vacant, at which point an alien in this state will be put into slot 33, and its state bumped up to 23 in <a href="/source/main/subroutine/updatealiens_part_3_of_5.html">part 3 of UpdateAliens</a>. 
+
+						<p>Once an alien is in state 23, the state gets incremented in the UpdateAliens routine on 2 of every 256 main loop iterations, until it reaches 27, at which point it will take off and head for the town, before eventually descending to the town at state 28.</p>
+
+						<p>Here's a summary of all the alien states:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Stage</th><th>Details</th><th>Aliens</th><th>Slot</th></tr>
+							<tr><td>0</td><td>Dormant</td><td>8</td><td>30</td></tr>
+							<tr><td>1-7</td><td>Feeding stage 1</td><td>2</td><td>31-32</td></tr>
+							<tr><td>8-11</td><td>Feeding stage 2</td><td>2</td><td>31-32</td></tr>
+							<tr><td>12-15</td><td>Feeding stage 3</td><td>2</td><td>31-32</td></tr>
+							<tr><td>16-21</td><td>Feeding stage 4</td><td>2</td><td>31-32</td></tr>
+							<tr><td>22</td><td>Finished feeding</td><td>2</td><td>31-32</td></tr>
+							<tr><td>23-26</td><td>Preparing to take off</td><td>1</td><td>33</td></tr>
+							<tr><td>27</td><td>Flying towards Acornsville</td><td>1</td><td>33</td></tr>
+							<tr><td>28</td><td>Descending towards Acornsville for the final attack</td><td>1</td><td>33</td></tr>
+						</table>
+
+						<p>See the deep dive on <a href="aliens_attack_acornsville.html">Aliens attack Acornsville!</a> to see what happens when an alien reaches the final stages.</p>
+
+						<h2 class="articleSubheader">Alien growth patterns<br />
+													 ---------------------</h2>
+
+						<p>As aliens move through the four feeding stages above, they get bigger. This growth is managed in <a href="/source/main/subroutine/updatealiens_part_4_of_5.html">part 4 of UpdateAliens</a>, which works out if the alien is about to move into a new feeding stage, and if it is, doubling the size of the alien.</p>
+
+						<p>The <a href="/source/main/subroutine/resizefeedingalien.html">ResizeFeedingAlien</a> routine is responsible for changing the alien's size. It can either double the size of an alien, or reset the alien to the dormant stage, depending on the arguments passed to the routine. Specifically, the routine resizes the alien in slot 31 or 32 by changing the object's scale factor. The object points that make up each object are stored relative to the object's anchor point, and they are stored with a scale factor in bits 4 to 7 of the z-coordinate in the <a href="/source/main/variable/zobjectpoint.html">zObjectPoint</a> table. This means we can double the size of the alien by simply adding 1 to the scale factor, which we can do by adding 16 (%00010000) to each z-coordinate. As the scale factor is a power of 2, adding 1 to the scale factor in the top nibble of the z-coordinate will double the size of the object. See the deep dive on <a href="3d_objects.html">3D objects</a> for more about how objects are stored.</p>
+
+						<p>The aliens in slots 30 and 33 doesn't change size, as they are always either small triangles (for slot 30), or fully grown aliens with tentacles (for slot 33). Only the feeding aliens in slots 31 and 32 grow.</p>
+
+						<h2 class="articleSubheader">New wave<br />
+													 --------</h2>
+
+						<p>The final task, which is performed by <a href="/source/main/subroutine/updatealiens_part_5_of_5.html">part 5 of UpdateAliens</a>, is to check whether all eight aliens in the wave have been destroyed, and if they have, to start the spawning process all over again.</p>
+
+						<p>In the process, the <a href="/source/main/subroutine/scorepoints.html">ScorePoints</a> routine is called to make a beep and add 500 points to the score. This is the good news; the bad news is that the value of the <a href="/source/main/workspace/main_variable_workspace.html#alienspeed">alienSpeed</a> variable is increased by 4. This starts out with a value of 10 for each new game, and increases with each new wave to 14, then 18, and finally 22. This variable controls the speed at which the flying alien heads towards the town, so later waves fly more than twice as fast as the initial wave.</p>
+
+						<p>If Aviator contains any influences from Geoff Crammond's previous game, Super Invaders, then this is perhaps the most obvious candidate. The aliens in Aviator are relentless and increasingly aggressive in their attack, just like those in his eponymous debut game... though perhaps with a small step up in sophistication.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="hard-coded_division_in_the_dashboard_routines.html">Hard-coded division in the dashboard routines</a><a class="next" rel="next" title="Next deep dive" href="aliens_attack_acornsville.html">Aliens attack Acornsville!</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

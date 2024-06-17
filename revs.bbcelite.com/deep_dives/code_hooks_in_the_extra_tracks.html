@@ -1,0 +1,640 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "code_hooks_in_the_extra_tracks.html", "Code hooks in the extra tracks", "Code hooks in the extra tracks", "A deep dive into code hooks in the extra tracks in BBC Micro Revs", "revs", "deep_dives_extra_tracks", "code_hooks_in_the_extra_tracks");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="secrets_of_the_extra_tracks.html">Secrets of the extra tracks</a><a class="next" rel="next" title="Next deep dive" href="dynamic_track_generation_in_the_extra_tracks.html">Dynamic track generation in the extra tracks</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+
+						<h2 class="articleSubheader deepDive">Documentation on every modification and code hook in the extra tracks</h2>
+
+						<p>The extra track files in Revs don't only contain track data. They also contain large amounts of code, and a whole smorgasbord of code modifications that are applied to the main game code when the track files are loaded. This article lists all the modifications across all five extra tracks; see the deep dive on <a href="secrets_of_the_extra_tracks.html">secrets of the extra tracks</a> for details of how the code modifications are applied and for an introduction to the extra track hook process.</p>
+
+						<p>The following documentation uses a variation of BBC BASIC terminology to describe two types of code modification. Specifically, 16-bit pokes are shown as:</p>
+
+<pre class="articleIndented">  !&amp;xxxx = y
+</pre>
+
+						<p>while 8-bit pokes are shown as:</p>
+
+<pre class="articleIndented">  ?&amp;xxxx = y
+</pre>
+
+						<p>Each of these pokes the value y into address &amp;xxxx, with the first poking a two-byte 16-bit value, and the second poking a one-byte 8-bit value. (In BBC BASIC, the ! operator actually pokes in a word of four bytes, so it's not quite the same; here I'm using it to mean two bytes, but hopefully the meaning is clear.)</p>
+
+						<p>Each modification is shown in the following format:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr>
+								<td>
+									<p class="highlight">?&lt;address 1&gt; = &lt;new value 1&gt;<br />!&lt;address 2&gt; = &lt;new value 2&gt;</p>
+									<pre class="articleIndented">&lt;instructions before modification&gt;                -> &lt;after modification&gt;</pre>
+								</td>
+							</tr>
+						</table>
+
+						<p>This is followed by a description of the modification, along with links to the relevant parts of the source code.</p>
+
+						<p>Some of the modifications turn parts of the game code into self-modifying code, which are effectively modifications that are applied while the game is running. These are listed at the end, but let's start with the one-off modifications that are applied when an extra track file is loaded.</p>
+
+						<h2 class="articleSubheader">Code modifications<br />
+													 ------------------</h2>
+
+						<p>Here's a list of all modifications applied by the various extra track files when they are loaded from the extra tracks menu.</p>
+
+						<p>Most of these modifications are applied by all five of the extra tracks, but some are specific to particular tracks. For example, not all tracks need to modify the chicane road sign to show a hairpin; only Brands Hatch, the N&uuml;rburgring and Oulton Park have hairpin bends, so only these tracks need to modify the sign. The usage of each modification is noted in the first bullet point.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr>
+								<td>
+									<p class="highlight"><a name="hooksectionfrom" id="hooksectionfrom" class="anchor"></a>?&amp;1248 = &amp;20<br />!&amp;1249 = HookSectionFrom</p>
+									<pre class="articleIndented">1248   B9 05 59   LDA trackSectionFrom,Y          -&gt; JSR HookSectionFrom</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/getsectioncoords.html#getsectioncoords">GetSectionCoords</a> at instruction #10 from the start of the routine</li>
+										<li>The modification inserts a call to the <a href="/source/brands_hatch/subroutine/hooksectionfrom.html">HookSectionFrom</a> routine (which is the same in all extra tracks)</li>
+										<li>The effect of the modification is to initialise and calculate the current segment vector whenever the game code needs to fetch a section coordinate from the track data (see the deep dive on <a href="dynamic_track_generation_in_the_extra_tracks.html">dynamic track generation in the extra tracks</a> for details)</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookfirstsegment" id="hookfirstsegment" class="anchor"></a>!&amp;128A = HookFirstSegment</p>
+									<pre class="articleIndented">1289   20 E0 13   JSR UpdateVectorNumber          -&gt; JSR HookFirstSegment</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/getfirstsegment.html#getf2">GetFirstSegment</a> at instruction #3 from label getf2</li>
+										<li>The modification inserts a call to the <a href="/source/brands_hatch/subroutine/hookfirstsegment.html">HookFirstSegment</a> routine (which is the same in all extra tracks)</li>
+										<li>The effect of the modification is to calculate the relevant segment vector when the game code needs to fetch the first segment in a new section (see the deep dive on <a href="dynamic_track_generation_in_the_extra_tracks.html">dynamic track generation in the extra tracks</a> for details)</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookdatapointers" id="hookdatapointers" class="anchor"></a>?&amp;12FB = &amp;20<br />!&amp;12FC = HookDataPointers</p>
+									<pre class="articleIndented">12FB   18         CLC                             -&gt; JSR HookDataPointers
+12FC   69 03      ADC #3</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/gettracksegment_part_1_of_3.html#gettracksegment">GetTrackSegment part 1</a> at instructions #3 and #4 from the start of the routine</li>
+										<li>The modification inserts a call to the <a href="/source/brands_hatch/subroutine/hookdatapointers.html">HookDataPointers</a> routine (which is the same in all extra tracks)</li>
+										<li>The effect of the modification is to update the data pointers when the game code needs to fetch a segment that is dynamically generated (see the deep dive on <a href="dynamic_track_generation_in_the_extra_tracks.html">dynamic track generation in the extra tracks</a> for details)</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hook1310" id="hook1310" class="anchor"></a>!&amp;1310 = &amp;A9 &amp;88</p>
+									<pre class="articleIndented">1310   29 F8      AND #%11111000                  -&gt; LDA #17*8</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by Donington Park</li>
+										<li>It modifies routine <a href="/source/main/subroutine/gettracksegment_part_1_of_3.html#gets1">GetTrackSegment part 1</a> at instruction #7 from label gets1</li>
+										<li>The modification replaces the calculation of the halfway segment number with an LDA instruction</li>
+										<li>The effect of the modification is to hard-code the halfway point around the Donington Park track to section 17</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight">!&amp;1310 = &amp;A9 &amp;10</p>
+									<pre class="articleIndented">1310   29 F8      AND #%11111000                  -&gt; LDA #2*8</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by Snetterton</li>
+										<li>It modifies routine <a href="/source/main/subroutine/gettracksegment_part_1_of_3.html#gets1">GetTrackSegment part 1</a> at instruction #7 from label gets1</li>
+										<li>The modification replaces the calculation of the halfway segment number with an LDA instruction</li>
+										<li>The effect of the modification is to hard-code the halfway point around the Snetterton track to section 2</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hooksegmentvector" id="hooksegmentvector" class="anchor"></a>!&amp;13CA = HookSegmentVector</p>
+									<pre class="articleIndented">13C9   20 DA 13   JSR UpdateCurveVector           -&gt; JSR HookSegmentVector</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/gettracksegment_part_3_of_3.html#gets12">GetTrackSegment part 3</a> at instruction #11 from label gets12</li>
+										<li>The modification inserts a call to the <a href="/source/brands_hatch/subroutine/hooksegmentvector.html">HookSegmentVector</a> routine (which is the same in all extra tracks)</li>
+										<li>The effect of the modification is to move to the next segment vector, calculate it and store it when the game code needs to fetch a segment that is dynamically generated (see the deep dive on <a href="dynamic_track_generation_in_the_extra_tracks.html">dynamic track generation in the extra tracks</a> for details)</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hooksegmentvector" id="hooksegmentvector" class="anchor"></a>!&amp;1427 = HookSegmentVector</p>
+									<pre class="articleIndented">1426   20 DA 13   JSR UpdateCurveVector           -&gt; JSR HookSegmentVector</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/turnplayeraround.html#turnplayeraround">TurnPlayerAround</a> at instruction #4 from the start of the routine</li>
+										<li>The modification inserts a call to the <a href="/source/brands_hatch/subroutine/hooksegmentvector.html">HookSegmentVector</a> routine (which is the same in all extra tracks)</li>
+										<li>The effect of the modification is to move to the next segment vector, calculate it and store it when the game code turns the player around and needs to fetch a segment that is dynamically generated (see the deep dive on <a href="dynamic_track_generation_in_the_extra_tracks.html">dynamic track generation in the extra tracks</a> for details)</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookjoystick" id="hookjoystick" class="anchor"></a>!&amp;1594 = HookJoystick</p>
+									<pre class="articleIndented">1593   20 00 0C   JSR Multiply8x8                 -&gt; JSR HookJoystick</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/processdrivingkeys_part_1_of_6.html#processdrivingkeys">ProcessDrivingKeys part 1</a> at instruction #13 from the start of the routine</li>
+										<li>The modification inserts a call to the HookJoystick routine, which is tailored for each individual track: <a href="/source/brands_hatch/subroutine/hookjoystick.html">Brands Hatch</a>, <a href="/source/donington_park/subroutine/hookjoystick_part_1_of_3.html">Donington Park</a>, <a href="/source/nurburgring/subroutine/hookjoystick_part_1_of_2.html">the N&uuml;rburgring</a>, <a href="/source/oulton_park/subroutine/hookjoystick_part_1_of_2.html">Oulton Park</a> and <a href="/source/snetterton/subroutine/hookjoystick_part_1_of_3.html">Snetterton</a></li>
+										<li>The effect of the modification is to apply enhanced joystick steering and drifting suppression to specific sections of the track, to support hairpins that would be too sharp for the standard joystick code to cope with; each track has a tailored modification routine that depends on the track design</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookflattenhills" id="hookflattenhills" class="anchor"></a>!&amp;1947 = HookFlattenHills</p>
+									<pre class="articleIndented">1946   20 33 19   JSR CheckVergeOnScreen          -&gt; JSR HookFlattenHills</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/mapsegmentstolines.html#mapsegmentstolines">MapSegmentsToLines</a> at instruction #5 from the start of the routine</li>
+										<li>The modification inserts a call to the HookFlattenHills routine, which differs between tracks: <a href="/source/brands_hatch/subroutine/hookflattenhills.html">Brands Hatch, Donington Park and Oulton Park</a> have the same routine, while <a href="/source/snetterton/subroutine/hookflattenhills_part_1_of_2.html">Snetterton</a> and the <a href="/source/nurburgring/subroutine/hookflattenhills_part_1_of_3.html">N&uuml;rburgring</a> have their own versions</p>
+										<li>The effect of the modification is to flatten any hills in the verge buffer, calculate the hill height and track width, and cut objects off at the hill height<br /><br />
+											In Snetterton and the N&uuml;rburgring, it also sets the verge edge to visible when the car is pointing along the track and the nose is pointing downwards<br /><br />
+											In the N&uuml;rburgring, it also flags the verge coordinate at index X as being visible on-screen, but only when the track section at the front of the segment buffer is one of sections 0 to 5</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hook1fe9" id="hook1fe9" class="anchor"></a>?&amp;1FE9 = &amp;A2</p>
+									<pre class="articleIndented">1FE9   A6 1F      LDX horizonLine                 -&gt; LDX #&amp;1F</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/drawobject.html#dobj3">DrawObject</a> at instruction #6 from label dobj3</li>
+										<li>The modification changes an LDX instruction from absolute addressing (i.e. loading from an address) to immediate addressing (i.e. loading a constant)</li>
+										<li>The effect of the modification is to modify the DrawObject routine so it can be modified at run-time (see the section on self-modifying code below for details)</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hook231b" id="hook231b" class="anchor"></a>?&amp;231B = 0</p>
+									<pre class="articleIndented">231A   F0 0F      BEQ gsec3                       -&gt; BEQ 0 (i.e. NOP)</pre></pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by Donington Park and Snetterton</li>
+										<li>It modifies routine <a href="/source/main/subroutine/getsectionangles_part_1_of_3.html#gsec2">GetSectionAngles part 1</a> at instruction #2 from label gsec2</li>
+										<li>The modification disables a BEQ by setting the branch destination to point to the next instruction</li>
+										<li>The effect of the modification is to avoid skipping entry number sectionListPointer when updating the entries in the track section list</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookfieldofview" id="hookfieldofview" class="anchor"></a>?&amp;248B = &amp;4C<br />!&amp;248C = HookFieldOfView</p>
+									<pre class="articleIndented">248B   B0 2B      BCS gseg16                      -&gt; JMP HookFieldOfView
+248D   4C 03 24   JMP gseg4                          EQUB &amp;03, &amp;24</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/getsegmentangles_part_3_of_3.html#gseg12">GetSegmentAngles part 3</a> at instructions #2 and #3 from label gseg12</li>
+										<li>The modification inserts a call to the <a href="/source/brands_hatch/subroutine/hookfieldofview.html">HookFieldOfView</a> routine (which is the same in all extra tracks)</li>
+										<li>The effect of the modification is that when we populate the verge buffer in GetSegmentAngles, we don't give up so easily if we get segments outside the field of view, which prevents segments from disappearing when we're driving around sharp corners</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookforward" id="hookforward" class="anchor"></a>!&amp;24DF = HookForward</p>
+									<pre class="articleIndented">24DE   20 F3 12   JSR MovePlayerForward           -&gt; JSR HookForward</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by Donington Park</li>
+										<li>It modifies routine <a href="/source/main/subroutine/moveplayersegment.html#mpla3">MovePlayerSegment</a> at instruction #5 from label mpla3</li>
+										<li>The modification inserts a call to the <a href="/source/donington_park/subroutine/hookforward.html">HookForward</a> routine (which is unique to Donington Park)</li>
+										<li>The effect of the modification is to move the player forward by an extra segment when edgeSegmentNumber is 10</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hook24ea" id="hook24ea" class="anchor"></a>?&amp;24EA = 13</p>
+									<pre class="articleIndented">24E9   C9 0E      CMP #14                         -&gt; CMP #13</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/moveplayersegment.html#mpla5">MovePlayerSegment</a> at instruction #1 from label mpla5</li>
+										<li>The modification changes the number to which the segment number is compared</li>
+										<li>The effect of the modification is to move the player back a segment if edgeSegmentNumber = 13 (rather than 14), or back by two segments if edgeSegmentNumber &gt; 13 (i.e. 14 or 15, rather than just 15)</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookmoveback" id="hookmoveback" class="anchor"></a>!&amp;24F3 = HookMoveBack</p>
+									<pre class="articleIndented">24F2   20 0B 14   JSR MovePlayerBack              -&gt; JSR HookMoveBack</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/moveplayersegment.html#mpla6">MovePlayerSegment</a> at instruction #1 from label mpla6</li>
+										<li>The modification inserts a call to the <a href="/source/brands_hatch/subroutine/hookmoveback.html">HookMoveBack</a> routine (which is the same in all extra tracks)</li>
+										<li>The effect of the modification is to only move the player backwards if the player has not yet driven past the segment</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookfixhorizon" id="hookfixhorizon" class="anchor"></a>!&amp;2539 = HookFixHorizon<br />?&amp;2538 = &amp;20</p>
+									<pre class="articleIndented">2538   99 48 5F   STA yVergeLeft,Y                -&gt; JSR HookFixHorizon</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/gettrackandmarkers.html#gtrm2">GetTrackAndMarkers</a> at instruction #2 from label gtrm2</li>
+										<li>The modification inserts a call to the HookFixHorizon routine, which differs between tracks: <a href="/source/brands_hatch/subroutine/hookfixhorizon.html">Brands Hatch, Oulton Park and Snetterton</a> have the same routine, while <a href="/source/donington_park/subroutine/hookfixhorizon.html">Donington Park</a> and <a href="/source/nurburgring/subroutine/hookfixhorizon.html">the N&uuml;rburgring</a> have their own versions</p>
+										<li>The effect of the modification is to cut objects off at the track line in A rather than horizonLine<br /><br />
+											In Brands Hatch, Oulton Park and Snetterton, it also collapses the left verge of the track into the right verge, but only for the track section list and the first three entries in the track segment list<br /><br />
+											In the N&uuml;rburgring, if the track section at the horizon is one of sections 0 to 5, it also hides the verge</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hook80percent" id="hook80percent" class="anchor"></a>!&amp;2543 = Hook80Percent<br />?&amp;2545 = &amp;EA</p>
+									<pre class="articleIndented">2542   20 50 34   JSR Absolute8Bit                -&gt; JSR Hook80Percent
+2545   4A         LSR A                              NOP</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/gettrackandmarkers.html#gtrm2">GetTrackAndMarkers</a> at instructions #6 and #7 from label gtrm2</li>
+										<li>The modification inserts a call to the Hook80Percent routine, which differs between tracks: <a href="/source/brands_hatch/subroutine/hook80percent.html">Brands Hatch, the N&uuml;rburgring, Oulton Park and Snetterton</a> have the same routine, while <a href="/source/donington_park/subroutine/hook80percent.html">Donington Park</a> has its own version</p>
+										<li>The effect of the modification is to set the horizonTrackWidth to 80% of the width of the track on the horizon<br /><br />
+											In Donington Park, it also calls Absolute8Bit at the start of the hook routine</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookupdatehorizon" id="hookupdatehorizon" class="anchor"></a>?&amp;261A = &amp;4C<br />!&amp;261B = HookUpdateHorizon</p>
+									<pre class="articleIndented">261A   85 1F      STA horizonLine                 -&gt; JMP HookUpdateHorizon
+261C   84 51      STY horizonListIndex               EQUB &amp;51</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/getvergeandmarkers_part_4_of_4.html#gmar11">GetVergeAndMarkers part 4</a> at instructions #9 and #10 from label gmar11</li>
+										<li>The modification inserts a call to the <a href="/source/brands_hatch/subroutine/hookupdatehorizon.html">HookUpdateHorizon</a> routine (which is the same in all extra tracks)</li>
+										<li>The effect of the modification is to only update the horizon if we have found fewer than 12 visible segments</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hook2772" id="hook2772" class="anchor"></a>?&amp;2772 = 75</p>
+									<pre class="articleIndented">2771   C9 3C      CMP #60                         -&gt; CMP #75</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/processovertaking_part_2_of_3.html#tact14">ProcessOvertaking part 2</a> at instruction #5 from label tact14</li>
+										<li>The modification changes the comparison value for the distance between cars</li>
+										<li>The effect of the modification is to make cars apply the brakes when they're within a distance of 75 of each other, rather than 60</li>
+									</ul>
+								</td>
+							</tr>
+
+							<tr>
+								<td>
+									<p class="highlight"><a name="hook298e" id="hook298e" class="anchor"></a>?&amp;298E = &amp;FF</p>
+									<pre class="articleIndented">298D   29 1F      AND #&amp;1F                        -&gt; AND #&amp;FF</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by the N&uuml;rburgring</li>
+										<li>It modifies routine <a href="/source/main/subroutine/buildcarobjects_part_1_of_3.html#bcar3">BuildCarObjects part 1</a> at instruction #8 from label bcar3</li>
+										<li>The modification disables an AND instruction by changing the operand to &amp;FF, so it leaves the value of A untouched</li>
+										<li>The effect of the modification is to remove the height restriction on ySegmentCoordIHi, which is implemented with a mod 32 instruction that this modification disables, so segment y-coordinates are no longer capped to a maximum of 8,192</li>
+									</ul>
+								</td>
+							</tr>
+
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookbackground" id="hookbackground" class="anchor"></a>?&amp;2F23 = &amp;20<br/>!&amp;2F24 = HookBackground</p>
+									<pre class="articleIndented">2F23   B9 60 5F   LDA backgroundColour,Y          -&gt; JSR HookBackground</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by Donington Park and Snetterton</li>
+										<li>It modifies routine <a href="/source/main/subroutine/updatebackground.html#upba1">UpdateBackground</a> at instruction #2 from label upba1</li>
+										<li>The modification inserts a call to the <a href="/source/donington_park/subroutine/hookbackground.html">HookBackground</a> routine (which is the same in both tracks)</li>
+										<li>The effect of the modification is to avoid updating the background colour when the track line above is showing green for the leftTrackStart verge</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hook3574" id="hook3574" class="anchor"></a>?&amp;3574 = 4<br/>?&amp;35F4 = 11 = 3 + 8</p>
+									<pre class="articleIndented">Object 10, Part 2: Scaffolds: (0, 3, 1, 0)        -&gt; (4, -3, 1, 0)
+                   Coordinates: (10, 4, 9, 10)       (1, -4, 9, 10)</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by Brands Hatch, the N&uuml;rburgring and Oulton Park</li>
+										<li>It modifies variables <a href="/source/main/variable/objecttop.html">objectTop</a> and <a href="/source/main/variable/objectbottom.html">objectBottom</a>, in part 2 of object 10</li>
+										<li>The modification moves part 2 of object 10 (the chicane road sign) so the right-hand vertical bar is below the horizontal line rather than above it</li>
+										<li>The effect of the modification is to change the design of the chicane road sign into a hairpin bend, as follows:
+											<div class="center">
+												<img class="titleImage" style="width: auto; height: auto; display: inline; left: 0; margin: 2ch 0 0 0" src="/images/objects/big/object_10.png" alt="Object 10 at close quarters" />
+												<span style="position: relative; bottom: 50px; margin: 0 30px;">-&gt;</span>
+												<img class="titleImage" style="width: auto; height: auto; display: inline; left: 0; margin: 2ch 0 0 0" src="/images/objects/big/hairpin.png" alt="Object 10 hairpin at close quarters" />
+											</div>
+										</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hooktracksteering" id="hooktracksteering" class="anchor"></a>!&amp;44D6 = trackSteering</p>
+									<pre class="articleIndented">44D5   B9 D0 59   LDA trackSteering,Y             -&gt; LDA trackSteering,Y</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/getsectionsteering.html#slin1">GetSectionSteering</a> at instruction #1 from label slin1</li>
+										<li>The modification changes the address of an LDA instruction so it loads from the new location of trackSteering within the track data file</li>
+										<li>The effect of the modification is to read racing line data from the new location of trackSteering</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookslopejump" id="hookslopejump" class="anchor"></a>?&amp;45CB = &amp;20<br />!&amp;45CC = HookSlopeJump</p>
+									<pre class="articleIndented">45CB   0A         ASL A                           -&gt; JSR HookSlopeJump
+45CC   26 77      ROL W</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/ApplyElevation_part_5_of_5.html">ApplyElevation part 5</a> at instruction #1 from the start of the routine</li>
+										<li>The modification inserts a call to the <a href="/source/brands_hatch/subroutine/hookslopejump.html">HookSlopeJump</a> routine (which is the same in all extra tracks)</li>
+										<li>The effect of the modification is to make the car jump when driving fast over sloping segments</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookflipabsolute" id="hookflipabsolute" class="anchor"></a>!&amp;462C = HookFlipAbsolute</p>
+									<pre class="articleIndented">462B   20 50 34   JSR Absolute8Bit                -&gt; JSR HookFlipAbsolute</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/moveplayerontrack.html#moveplayerontrack">MovePlayerOnTrack</a> at instruction #4 from the start of the routine</li>
+										<li>The modification inserts a call to the <a href="/source/brands_hatch/subroutine/hookflipabsolute.html">HookFlipAbsolute</a> routine (which is the same in all extra tracks)</li>
+										<li>The effect of the modification is to set the sign of A according to the direction we are facing along the track</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookztracksignvector" id="hookztracksignvector" class="anchor"></a>!&amp;4CC1 = zTrackSignVector</p>
+									<pre class="articleIndented">4CC0   BD E0 53   LDA zTrackSignVector,X          -&gt; LDA zTrackSignVector,X</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/buildroadsign.html#sign1">BuildRoadSign</a> at instruction #4 from label sign1</li>
+										<li>The modification changes the address of an LDA instruction so it loads from the new location of zTrackSignVector within the track data file</li>
+										<li>The effect of the modification is to read sign vector z-coordinates from the new location of zTrackSignVector</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookytracksignvector" id="hookytracksignvector" class="anchor"></a>!&amp;4CC9 = yTrackSignVector</p>
+									<pre class="articleIndented">4CC8   BD F0 53   LDA yTrackSignVector,X          -&gt; LDA yTrackSignVector,X</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/buildroadsign.html#sign1">BuildRoadSign</a> at instruction #7 from label sign1</li>
+										<li>The modification changes the address of an LDA instruction so it loads from the new location of yTrackSignVector within the track data file</li>
+										<li>The effect of the modification is to read sign vector y-coordinates from the new location of yTrackSignVector</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hookxtracksignvector" id="hookxtracksignvector" class="anchor"></a>!&amp;4CD1 = xTrackSignVector</p>
+									<pre class="articleIndented">4CD0   BD D0 53   LDA xTrackSignVector,X          -&gt; LDA xTrackSignVector,X</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/buildroadsign.html#sign1">BuildRoadSign</a> at instruction #10 from label sign1</li>
+										<li>The modification changes the address of an LDA instruction so it loads from the new location of xTrackSignVector within the track data file</li>
+										<li>The effect of the modification is to read sign vector x-coordinates from the new location of xTrackSignVector</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hooktracksigndata" id="hooktracksigndata" class="anchor"></a>!&amp;4CD7 = trackSignData</p>
+									<pre class="articleIndented">4CD6   BD EA 59   LDA trackSignData,X             -&gt; LDA trackSignData,X</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/buildroadsign.html#sign1">BuildRoadSign</a> at instruction #12 from label sign1</li>
+										<li>The modification changes the address of an LDA instruction so it loads from the new location of trackSignData within the track data file</li>
+										<li>The effect of the modification is to read sign data from the new location of trackSignData</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hooktracksigndata2" id="hooktracksigndata2" class="anchor"></a>!&amp;4CE1 = trackSignData</p>
+									<pre class="articleIndented">4CE0   BD EA 59   LDA trackSignData,X             -&gt; LDA trackSignData,X</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/buildroadsign.html#sign1">BuildRoadSign</a> at instruction #17 from label sign1</li>
+										<li>The modification changes the address of an LDA instruction so it loads from the new location of trackSignData within the track data file</li>
+										<li>The effect of the modification is to read sign data from the new location of trackSignData</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight"><a name="hook4f55" id="hook4f55" class="anchor"></a>?&amp;4F55 = 22<br />?&amp;4F59 = 22</p>
+									<pre class="articleIndented">4F54   C9 12      CMP #18                         -&gt; CMP #22
+4F56   90 03      BCC hori2                          BCC hori2
+4F58   A9 12      LDA #18                            LDA #22</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by all five tracks</li>
+										<li>It modifies routine <a href="/source/main/subroutine/movehorizon.html#hori1">MoveHorizon</a> at instructions #1 and #3 from label hori1</li>
+										<li>The modification increases the maximum allowed value of A, which is used to calculate the value of screen timer 1</li>
+										<li>The effect of the modification is to change the maximum value of screenTimer1 (i.e. when we are on a hill) from &amp;04D8 + 1152 = &amp;0958 to &amp;04D8 + 1408 = &amp;0A58 (&amp;100 more), which allows the palette change to occur lower down the screen, so we can support higher hills</li>
+									</ul>
+								</td>
+							</tr>
+						</table>
+
+						<h2 class="articleSubheader">Self-modifying code at run-time<br />
+						-------------------------------</h2>
+
+						<p>The above modifications are only applied once, when the track first loads. However, as part of these modifications, there are three parts of the main game code that are modified into code that is self-modifying at run-time. The first two of these self-modifying modifications require the &amp;1FE9 modification above, which changes an LDX instruction from absolute addressing (i.e. loading from an address) to immediate addressing (i.e. loading a constant), so the LDX can be modified at run-time to load X with a specific value.</p>
+
+						<p>These self-modifying modifications are all related to the process of cutting off the bottoms of distant objects so they don't go below the horizon. Here are the details:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr>
+								<td>
+									<p class="highlight">?&amp;1FE9 = &amp;A2<br />?&amp;1FEA = A</p>
+									<pre class="articleIndented">1FE9   A6 1F      LDX horizonLine                 -&gt; LDX #A</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by <a href="/source/brands_hatch/subroutine/hookflattenhills.html">HookFlattenHills</a> to <a href="/source/main/subroutine/drawobject.html#dobj3">DrawObject</a> at instruction #6 from label dobj3</li>
+										<li>The modification modifies the operand of the LDX instruction to the value of A in HookFlattenHills</li>
+										<li>The effect of the modification is to cut off objects that are beyond the horizon down to the horizon line given in A, rather than 7</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight">?&amp;1FE9 = &amp;A2<br />?&amp;1FEA = A</p>
+									<pre class="articleIndented">1FE9   A6 1F      LDX horizonLine                 -&gt; LDX #A</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by <a href="/source/brands_hatch/subroutine/hookfixhorizon.html">HookFixHorizon</a> to <a href="/source/main/subroutine/drawobject.html#dobj3">DrawObject</a> at instruction #6 from label dobj3</li>
+										<li>The modification modifies the operand of the LDX instruction to the value of A in HookFixHorizon</li>
+										<li>The effect of the modification is to cut off objects that are beyond the horizon down to the horizon line given in A, rather than 7</li>
+									</ul>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<p class="highlight">?&amp;23B3 = A</p>
+									<pre class="articleIndented">23B2   A9 07      LDA #7                          -&gt; LDA #A</pre>
+								</td>
+							</tr>
+							<tr>
+								<td>
+									<ul>
+										<li>This modification is applied by <a href="/source/brands_hatch/subroutine/hooksectionfrom.html">HookSectionFrom</a> to <a href="/source/main/subroutine/getsectionangles_part_3_of_3.html#gsec11">GetSectionAngles</a> at instruction #4 from label gsec11</li>
+										<li>The modification modifies the operand of the LDA instruction to the value of A in HookSectionFrom, so the CMP prevHorizonIndex compares with this value rather than 7</li>
+										<li>The effect of the modification is to check the first A entries in the track section list the horizon line, rather than the first 7</li>
+									</ul>
+								</td>
+							</tr>
+						</table>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="secrets_of_the_extra_tracks.html">Secrets of the extra tracks</a><a class="next" rel="next" title="Next deep dive" href="dynamic_track_generation_in_the_extra_tracks.html">Dynamic track generation in the extra tracks</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

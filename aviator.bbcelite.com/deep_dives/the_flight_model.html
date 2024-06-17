@@ -1,0 +1,478 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_flight_model.html", "The flight model", "The flight model", "A deep dive into the flight model in BBC Micro Aviator", "aviator", "deep_dives_flight_model", "the_flight_model");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="visibility_checks.html">Visibility checks</a><a class="next" rel="next" title="Next deep dive" href="matching_the_code_to_the_flight_model.html">Matching the code to the flight model</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The maths behind the Spitfire's aerodynamic flight simulation</h2>
+
+						<p>The sophisticated simulation of the Spitfire's flight model is one of the most lauded features of Aviator, and rightly so. The heart of the flight model is the <a href="/source/main/subroutine/applyflightmodel_part_1_of_7.html">ApplyFlightModel</a> routine, where the aerodynamic forces on the plane are calculated and applied, all using 8-bit maths and 3D geometry. It's impressive stuff, so let's take a look at what's involved.</p>
+
+						<p>Before tackling the following, you might find it useful to read the deep dive on <a href="rotation_matrices.html">rotation matrices</a>. For more information on the flight model calculations themselves, check out the deep dive on <a href="matching_the_code_to_the_flight_model.html">matching the code to the flight model</a>, which takes the flight model's description from the manual and matches it up with the code.</p>
+
+						<p>To keep things as simple as possible, this deep dive takes a look at how the flight model calculations work for normal flight, i.e. when the plane is flying normally, and is not stalling, trying to land or experiencing alien-induced turbulence. For other aspects of the flight model, see the deep dives on <a href="stalling_and_recovery.html">stalling and recovery</a>, <a href="ripping_the_wings_off.html">ripping the wings off</a>, <a href="take-offs_and_landings.html">take-offs and landings</a> and <a href="on-ground_calculations.html">on-ground calculations</a>.</p>
+
+						<h2 class="articleSubheader">The aim of the flight model<br />
+													 ---------------------------</h2>
+
+						<p>The complex calculations of Aviator's flight model produce a relatively simple set of adjustments that we apply to the plane's velocity, turn rate, orientation and location. This updating process is run on each iteration of the main loop, resulting in a Spitfire that flies through the air in a mathematically accurate manner.</p>
+
+						<p>Specifically, the process takes all the relevant environmental conditions into consideration, and calculates the following:</p>
+
+						<ul>
+							<li>A vector (dxVelocity dyVelocity dzVelocity) that we add to the plane's velocity:
+
+<pre class="articleIndented">  [ xVelocity ]   [ xVelocity ]   [ dxVelocity ]
+  [ yVelocity ] = [ yVelocity ] + [ dyVelocity ]
+  [ zVelocity ]   [ zVelocity ]   [ dzVelocity ]
+</pre>
+							</li>
+
+</li>
+
+							<li>A vector (dxTurn dyTurn dzTurn) that we add to the plane's turn rate:
+
+<pre class="articleIndented">  [ xTurn ]   [ xTurn ]   [ dxTurn ]
+  [ yTurn ] = [ yTurn ] + [ dyTurn ]
+  [ zTurn ]   [ zTurn ]   [ dzTurn ]
+</pre>
+							</li>
+
+							<li>A vector (dxRotation dyRotation dzRotation) that we add to the plane's orientation:
+
+<pre class="articleIndented">  [ xRotation ]   [ xRotation ]   [ dxRotation ]
+  [ yRotation ] = [ yRotation ] + [ dyRotation ]
+  [ zRotation ]   [ zRotation ]   [ dzRotation ]
+</pre>
+							</li>
+
+							<li>The plane's new location in space, which is simply the current location plus the updated velocity vector:</p>
+
+<pre class="articleIndented">  [ xPlane ]   [ xPlane ]   [ xVelocity ]
+  [ yPlane ] = [ yPlane ] + [ yVelocity ]
+  [ zPlane ]   [ zPlane ]   [ zVelocity ]
+</pre>
+							</li>
+						</ul>
+
+						<p>The challenge, then, is to calculate the three (dx dy dz) vectors. Let's see what's involved.</p>
+
+						<h2 class="articleSubheader">The flight model's forces<br />
+													 -------------------------</h2>
+
+													 <p>The ApplyFlightModel routine and its subroutines calculate a number of different forces while calculating the three (dx dy dz) vectors. Some of these are linear forces, while others are angular forces; it's important to understand the difference.</p>
+
+						<ul>
+							<li>Linear forces are pretty easy to understand, as they act in a straight line. For example, the engine pushes the plane along in a straight line, so it's a linear force. Each axis in a linear force's vector represents the linear force along that axis.</li>
+
+							<li>Angular forces are a bit more complicated, as they effectively rotate the object to which they apply around its centre of gravity. For example, the ailerons apply angular forces to the wings that rotate the plane around the z-axis, rolling the plane (as the z-axis points forward out of the plane's nose). These angular forces are also known as moments, or torque, and each axis in an angular force's vector represents the rotational force around that axis, with a positive force rotating clockwise, and a negative force rotating anti-clockwise.</li>
+						</ul>
+
+						<p>Given this, here's a list of the forces that the flight model calculates, starting with the linear forces:</p>
+
+						<ul>
+							<li>(xLiftDrag yLiftDrag zLiftDrag)
+								<ul>
+									<li>Feeds into the (dxVelocity dyVelocity dzVelocity) calculation</li>
+									<li>Describes the lift, drag and side forces caused by the plane moving through the air</li>
+									<li>xLiftDrag moves the plane right/left</li>
+									<li>yLiftDrag moves the plane up/down</li>
+									<li>zLiftDrag moves the plane forwards/backwards</li>
+								</ul>
+							</li>
+
+							<li>(0 yFlapsLift 0)
+								<ul>
+									<li>Feeds into the dyVelocity calculation</li>
+									<li>Describes the lift that's provided by the flaps when they are on</li>
+									<li>The only non-zero component is in the y-axis as this represents lift</li>
+									<li>The x- and z-axis components are always zero, so we don't bother to store them</li>
+									<li>yFlapsLift lifts the plane depending on the forward velocity and the status of the flaps</li>
+								</ul>
+							</li>
+
+							<li>(xLinear yLinear zLinear)
+								<ul>
+									<li>Feeds into the (dxVelocity dyVelocity dzVelocity) calculation</li>
+									<li>Is used to calculate the combined effect of the above two forces, plus the effect of the engine</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>And here are the angular forces used in the calculation:</p>
+
+						<ul>
+							<li>(xMoments yMoments zMoments)
+								<ul>
+									<li>Feeds into the (dxTurn dyTurn dzTurn) calculation</li>
+									<li>Describes the angular forces caused by the plane moving through the air</li>
+									<li>xMoments pitches the plane</li>
+									<li>yMoments yaws the plane</li>
+									<li>zMoments rolls the plane</li>
+								</ul>
+							</li>
+
+							<li>(xControls yControls zControls)
+								<ul>
+									<li>Feeds into the (dxTurn dyTurn dzTurn) calculation</li>
+									<li>Describes the effect of the flight controls</li>
+									<li>xControls pitches the plane (elevator)</li>
+									<li>yControls yaws the plane (rudder)</li>
+									<li>zControls rolls the plane (ailerons)</li>
+								</ul>
+							</li>
+
+							<li>(0 0 zSlipMoment)
+								<ul>
+									<li>Feeds into the dzTurn calculation</li>
+									<li>Describes the rolling moment due to wing forces resulting from aircraft slip</li>
+									<li>The only non-zero component is in the z-axis, as this represents a roll</li>
+									<li>The x- and y-axis components are always zero, so we don't bother to store them</li>
+									<li>zSlipMoment rolls the plane depending on side force/velocity</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>Let's now look at the various stages in calculating these forces, and how they get combined to work out the effect on the plane. The links will take you to the relevant parts of the source code, or if you want to match the following calculations to the description of the flight model in the game's manual, see the deep dive on <a href="matching_the_code_to_the_flight_model.html">matching the code to the flight model</a>.</p>
+
+						<h2 class="articleSubheader"><a id="calculation1" name="calculation1" class="anchor"></a>Calculation 1: Linear forces<br />
+													 ----------------------------</h2>
+
+						 <p><i>See code: <a href="/source/main/subroutine/applyflightmodel_part_2_of_7.html">ApplyFlightModel (Part 2 of 7)</a></i></p>
+
+						<p>We start by rotating the plane's velocity vector from the outside world's frame of reference to the plane's frame of reference, using matrix 1:</p>
+
+<pre class="articleIndented">  [ xVelocityP ]             [ xVelocity ]
+  [ yVelocityP ] = matrix1 x [ yVelocity ]
+  [ zVelocityP ]             [ zVelocity ]
+</pre>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyaerodynamics_part_1_of_3.html">ApplyAerodynamics (Part 1 of 3)</a>, <a href="/source/main/subroutine/applyaerodynamics_part_3_of_3.html">ApplyAerodynamics (Part 3 of 3)</a></i></p>
+
+						<p>Next, we calculate the linear forces due to the lift, drag and side forces. These three forces are:</p>
+
+						<ul>
+							<li>x-axis: Side forces due to aircraft slip</li>
+
+							<li>y-axis: Wing lift</li>
+
+							<li>z-axis: Aircraft drag (parasitic)</li>
+						</ul>
+
+						<p>and they are calculated as follows:</p>
+
+<pre class="articleIndented">  [ xLiftDrag ] = [ xVelocityP * 2 * 4 ]
+  [ yLiftDrag ] = [ yVelocityP * 2 * 4 ] * maxv * airDensity
+  [ zLiftDrag ] = [ zVelocityP * 2     ]
+</pre>
+
+						<p>where:</p>
+
+<pre class="articleIndented">  airDensity = ~yPlaneHi * 2
+
+  maxv = max(|xVelocityP|, |yVelocityP|, |zVelocityP|)
+</pre>
+
+						<p>The airDensity factor reduces the effect of all the aerodynamic-related forces at higher altitudes, due to the lower density of the air (which therefore has less effect when interacting with the plane).</p>
+
+						<p>Finally, if zLiftDrag is positive then air is passing over the wings in a front-to-back direction, so we also do the following calculation that gives us the lift due to the flaps (though if the flaps are not extended, then this value is reduced to zero by the scaling process in calculation 3, so we only get lift from the flaps when they are on):</p>
+
+<pre class="articleIndented">  [ xFlapsLift ]   [     0     ]
+  [ yFlapsLift ] = [ zLiftDrag ]
+  [ zFlapsLift ]   [     0     ]
+</pre>
+
+						<p>As mentioned above, we only store yFlapsLift in this calculation because xFlapsLift and zFlapsLift are always zero.</p>
+
+						<p>We now have the basic linear forces that act on the plane.</p>
+
+						<h2 class="articleSubheader"><a id="calculation2" name="calculation2" class="anchor"></a>Calculation 2: Angular forces<br />
+													 -----------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyaerodynamics_part_1_of_3.html">ApplyAerodynamics (Part 1 of 3)</a>, <a href="/source/main/subroutine/applyaerodynamics_part_3_of_3.html">ApplyAerodynamics (Part 3 of 3)</a></i></p>
+
+						<p>Next we calculate the basic angular forces, starting with the moments:</p>
+
+<pre class="articleIndented">  [ xMoments ] = [ yVelocityP * 2 - xTurn * 250 / 256 ]
+  [ yMoments ] = [ xVelocityP * 2 - yTurn * 250 / 256 ] * maxv * airDensity
+  [ zMoments ] = [            -zTurn * 2              ]
+</pre>
+
+						<p>The above calculates the following angular forces:</p>
+
+						<ul>
+							<li>x-axis: Pitching moment due to tail forces, due to both linear motion and pitch rate</li>
+
+							<li>y-axis: Yawing moment due to aircraft side, fin and rudder forces, due to both aircraft slip and yaw rate</li>
+
+							<li>z-axis: Rolling moment due to wing forces resulting from roll rate</li>
+						</ul>
+
+						<p>Then we calculate the rolling moment due to wing forces resulting from aircraft slip (xLiftDrag being the linear side force that we calculated above):</p>
+
+						<pre class="articleIndented">  [ xSlipMoment ]   [     0     ]
+  [ ySlipMoment ] = [     0     ]
+  [ zSlipMoment ]   [ xLiftDrag ]
+</pre>
+
+						<p>As mentioned above, we only store zSlipMoment in the middle calculation because xSlipMoment and ySlipMoment are always zero.</p>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyflightcontrol.html">ApplyFlightControl</a></i></p>
+
+						<p>Next we calculate the angular forces from the plane's controls:</p>
+
+						<pre class="articleIndented">  [ xControls ] = [ zLiftDrag * elevatorPosition ]
+  [ yControls ] = [ zLiftDrag *   rudderPosition ]
+  [ zControls ] = [ zLiftDrag *  aileronPosition ]
+</pre>
+
+						<p>The above calculates the following angular forces:</p>
+
+						<ul>
+							<li>x-axis: Pitching moment due to elevator deflection</li>
+
+							<li>y-axis: Yawing moment due to rudder demand</li>
+
+							<li>z-axis: Rolling moment due to aileron deflection</li>
+						</ul>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyaerodynamics_part_1_of_3.html">ApplyAerodynamics (Part 1 of 3)</a>, <a href="/source/main/subroutine/applyaerodynamics_part_3_of_3.html">ApplyAerodynamics (Part 3 of 3)</a></i></p>
+
+						<p>Finally, if zLiftDrag is positive then air is passing the plane in a front-to-back direction, so we also do the following to calculate the pitching moment due to centre of pressure, which is affected by the position of the flaps:</p>
+
+<pre class="articleIndented">  xMoments = xMoments + (zLiftDrag * 8)       when the flaps are off
+
+             xMoments - (zLiftDrag * 4)       when the flaps are on
+</pre>
+
+						<p>We now have the basic angular forces that act on the plane.</p>
+
+						<h2 class="articleSubheader"><a id="calculation3" name="calculation3" class="anchor"></a>Calculation 3: Scale the forces<br />
+													 -------------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/scaleflightforces.html">ScaleFlightForces</a></i></p>
+
+						<p>Next we scale all the forces we've calculated, first by the relevant force factor in <a href="/source/main/variable/forcefactor.html">forceFactor</a>, and then by the relevant scale factor in <a href="/source/main/variable/scalefactor.html">scaleFactor</a> (each component of each force has its own set of factors). The scaling process uses this formula:</p>
+
+<pre class="articleIndented">  scaledForce = unscaledForce * forceFactor * 2 ^ scaleFactor
+</pre>
+
+						<p>In a sense, this is where the Spitfire's unique characteristics are encoded; the scale factors are the coefficients in the equation, and different planes would have different coefficients. When Geoff Crammond talks about writing Aviator, he talks about getting hold of a pilot's manual and other data for the Spitfire that he fed into the simulation, and I suspect that this is where a lot of that data is encapsulated.</p>
+
+						<p>Specifically, the forces are scaled as follows (in normal flight, with the undercarriage up, the flaps off and the engine on):</p>
+
+<pre class="articleIndented">  [ xLiftDragSc ]     [  xLiftDrag  ]      176 * 16
+  [ yLiftDragSc ]   = [  yLiftDrag  ]  *   156 * 16    (39 * 16 when stalling)
+  [ zLiftDragSc ]     [  zLiftDrag  ]      62          (+/- uc, flaps, engine)
+
+  [ xFlapsLiftSc ]    [      0      ]      n/a
+  [ yFlapsLiftSc ]  = [  yFlapsLift ]  *   0           (152 * 4 when flaps on)
+  [ zFlapsLiftSc ]    [      0      ]      n/a
+
+  [ xMomentsSc ]      [   xMoments  ]      212
+  [ yMomentsSc ]    = [   yMoments  ]  *   201 / 4
+  [ zMomentsSc ]      [   zMoments  ]      204 / 2
+
+  [ xSlipMomentSc ]   [      0      ]      n/a
+  [ ySlipMomentSc ] = [      0      ]  *   n/a
+  [ zSlipMomentSc ]   [ zSlipMoment ]      40 / 32
+
+  [ xControlsSc ]     [  xControls  ]      255 / 2
+  [ yControlsSc ]   = [  yControls  ]  *   141 / 4
+  [ zControlsSc ]     [  zControls  ]      190 / 4
+</pre>
+
+						<p>Note that these are all scalar multiplications, not matrix multiplications.</p>
+
+						<p>The force factors in the above list are for normal flight, but three of the factors for the linear forces change dynamically with the flying conditions. Specifically, this is how these three factors work:</p>
+
+						<ul>
+							<li>The force factor for yLiftDrag is:
+								<ul>
+									<li>156 * 16 in normal flight</li>
+									<li>39 * 16 when the plane is stalling</li>
+								</ul>
+								So stalling reduces the plane's lift to a quarter of the normal value.
+							</li>
+							<li>The force factor for zLiftDrag is:
+								<ul>
+									<li>42 when everything that might cause drag is off, i.e. undercarriage up, flaps off and engine off</li>
+									<li>+10 when the undercarriage goes down</li>
+									<li>+200 when the flaps go on</li>
+									<li>+20 when the engine is switched on</li>
+									<li>So the factor is 52 when starting on the runway with the undercarriage down, flaps off and engine off</li>
+									<li>And the factor is 62 in normal flight, with the undercarriage up, flaps off and engine on</li>
+								</ul>
+								So parasitic drag increases when the undercarriage is down, the flaps are extended and the engine is on. The force factor presumably also includes an element of the coefficient for induced drag, as this doesn't appear to be calculated separately.
+							</li>
+							<li>The force factor for yFlapsLift is:
+								<ul>
+									<li>0 when the flaps are off</li>
+									<li>152 * 4 when the flaps are on</li>
+								</ul>
+								So, not surprisingly, the flaps only produce lift when they are extended.
+							</li>
+						</ul>
+
+						<p>All the other flight factors are constant.</p>
+
+						<p>If the plane is experiencing turbulence from an exploding alien, then additional calculations are implemented at this point - see the deep dive on <a href="explosions_and_turbulence.html">explosions and turbulence</a> for details.</p>
+
+						<h2 class="articleSubheader"><a id="calculation4" name="calculation4" class="anchor"></a>Calculation 4: Effect on the turn rate<br />
+													 --------------------------------------</h2>
+
+						<p>We now start the process of combining the various forces we've calculated, so we can apply them to the plane's turn rate, velocity and rotation.</p>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyflightmodel_part_1_of_7.html">ApplyFlightModel (Part 1 of 7)</a></i></p>
+
+						<p>First, we set a gravity vector that pulls down along the y-axis, and rotate it from the outside world's frame of reference to the plane's frame of reference, using matrix 4:</p>
+
+<pre class="articleIndented">  [ xGravity ]             [   0  ]
+  [ yGravity ] = matrix4 x [ -512 ]
+  [ zGravity ]             [   0  ]
+</pre>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyturnandthrust_part_1_of_2.html">ApplyTurnAndThrust (Part 1 of 2)</a></i></p>
+
+						<p>Next, we calculate the (dxTurn dyTurn dzTurn) vector, which contains the change in the plane's turn rate. We do this as follows:</p>
+
+<pre class="articleIndented">  [ dxTurn ]   [ xMomentsSc ]   [ xControlsSc ]
+  [ dyTurn ] = [ yMomentsSc ] + [ yControlsSc ]
+  [ dzTurn ]   [ zMomentsSc ]   [ zControlsSc ]
+
+               [  yGravity  ]   [      0      ]
+             + [      0     ] - [      0      ]
+               [      0     ]   [ zSlipMoment ]
+</pre>
+
+						<p>This calculation adds the moments due to flight and the moments due to the controls, and subtracts the rolling moment due to wing forces resulting from aircraft slip, all of which we calculated above. It also adds in another angular force: a pitching moment due to the centre of gravity, which takes the gravitational force in yGravity and applies it as an angular force around the x-axis, giving us our pitching moment.</p>
+
+						<h2 class="articleSubheader"><a id="calculation5" name="calculation5" class="anchor"></a>Calculation 5: Engine thrust<br />
+													 ----------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyturnandthrust_part_2_of_2.html">ApplyTurnAndThrust (Part 2 of 2)</a></i></p>
+
+						<p>Next we create a vector in (xLinear yLinear zLinear) that combines all the various linear forces we calculated above into one vector, and then we add in the linear forces from the engine (but only if we are not going too fast). The calculation is as follows, starting with the high-speed calculation, and then the normal speed calculation.</p>
+
+						<p>If zVelocityPHi >= 48 (so forward speed >= 500 mph), then we calculate:</p>
+
+<pre class="articleIndented">  [ xLinear ]   [       0      ]   [ xLiftDragSc ]
+  [ yLinear ] = [ yFlapsLiftSc ] - [ yLiftDragSc ]
+  [ zLinear ]   [       0      ]   [    5632     ]
+</pre>
+
+						<p>Note that the 5632 number is actually (&amp;EA zLinearLo), which is in the range -5632 and -5377 depending on the value of zLinearLo, though as it's such a large number, the low byte isn't that important. The effect is that going really fast puts a huge strain on the plane, resulting in a huge force pressing against the nose and the front edges of the wings and tail.</p>
+
+						<p>If zVelocityPHi &lt; 48 (so forward speed &lt; 500 mph), we calculate:</p>
+
+<pre class="articleIndented">  [ xLinear ]   [       0      ]   [ xLiftDragSc ]   [    0    ]
+  [ yLinear ] = [ yFlapsLiftSc ] - [ yLiftDragSc ] + [    0    ]
+  [ zLinear ]   [       0      ]   [ zLiftDragSc ]   [ zEngine ]
+</pre>
+
+						<p>where zEngine is 0 if the engine is off, or the following if the engine is on:
+
+<pre class="articleIndented">  zEngine = max(0, thrustScaled - (max(0, zVelocityP) / 16)) 
+            * airDensity / 512
+</pre>
+
+						<p>where thrustScaled is the current thrust level in (thrustHi thrustLo), but:</p>
+
+						<ul>
+							<li>Doubled if thrust >= 1024 (i.e. the throttle is between 80% and 100%)</li>
+
+							<li>Doubled if zVelocity is in the range 512 to 1023 (i.e. when the plane is rising vertically between 21.6 to 43.2 mph)</li>
+						</ul>
+
+						<p>In effect, the above calculation takes the engine's thrust, reduces it with higher forward speeds, and reduces it again by the standard high-altitude effect. In the common case that the plane is travelling forwards and the engine is on, it simplifies to:</p>
+
+<pre class="articleIndented">  zEngine = (thrustScaled - (zVelocityP / 16)) * airDensity / 512
+</pre>
+
+						<p>In this case it's a bit easier to see the effect of the current velocity and altitude on the engine force.</p>
+
+						<p>We now have the sum of all the linear forces on the plane, along with the engine forces. If the plane is on the ground, additional calculations are implemented at this point - see the deep dive on <a href="on-ground_calculations.html">on-ground calculations</a> for details.</p>
+
+						<h2 class="articleSubheader"><a id="calculation6" name="calculation6" class="anchor"></a>Calculation 6: Effect on velocity<br />
+													 ---------------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyflightmodel_part_6_of_7.html">ApplyFlightModel (Part 6 of 7)</a>, <a href="/source/main/subroutine/adjustvelocity.html">AdjustVelocity</a></i></p>
+
+						<p>Next we calculate the (dxVelocity dyVelocity dzVelocity) vector, which contains the change in the plane's velocity. We do this by taking (xLinear yLinear zLinear), which contains all the linear forces on the plane, and rotating it from the plane's frame of reference to the outside world's frame using matrix 2.</p>
+				
+						<p>We then subtract 16 from yLinearHi (which subtracts 4096 from yLinear) to apply the force of gravity, before doubling the result:</p>
+
+<pre class="articleIndented">  [ dxVelocity ]       (           [ xLinear ]   [   0  ] )
+  [ dyVelocity ] = 2 * ( matrix2 x [ yLinear ] - [ 4096 ] )
+  [ dzVelocity ]       (           [ zLinear ]   [   0  ] )
+</pre>
+
+						<p>In all, this applies the linear forces to the plane, including gravity, which alter its velocity.</p>
+
+						<h2 class="articleSubheader"><a id="calculation7" name="calculation7" class="anchor"></a>Calculation 7: Effect on orientation<br />
+													 ------------------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/adjustturn.html">AdjustTurn</a></i></p>
+
+						<p>We calculate the (dxRotation dyRotation dzRotation) vector by first updating the (xTurn yTurn zTurn) vector to its new value:</p>
+
+<pre class="articleIndented">  [ xTurn ]   [ xTurn ]   [ dxTurn ]
+  [ yTurn ] = [ yTurn ] + [ dyTurn ]
+  [ zTurn ]   [ zTurn ]   [ dzTurn ]
+</pre>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyflightmodel_part_6_of_7.html">ApplyFlightModel (Part 6 of 7)</a>, <a href="/source/main/subroutine/adjustrotation.html">AdjustRotation</a></i></p>
+
+						<p>We then calculate the change in the plane's orientation by rotating the result by the reverse of the current roll angle using matrix 3:</p>
+
+<pre class="articleIndented">  [ dxRotation ]             [ xTurn ]
+  [ dyRotation ] = matrix3 x [ yTurn ]
+  [ dzRotation ]             [ zTurn ]
+</pre>
+
+						<p>This alters the turn rate of the plane and calculates how we should be changing the orientation of the plane, based on the change in the turn rate that we already calculated in (dxTurn dyTurn dzTurn).</p>
+
+						<h2 class="articleSubheader"><a id="calculation8" name="calculation8" class="anchor"></a>Calculation 8: Update the plane with the results<br />
+													 ------------------------------------------------</h2>
+
+						<p><i>See code: <a href="/source/main/subroutine/applyflightmodel_part_6_of_7.html">ApplyFlightModel (Part 6 of 7)</a></i></p>
+
+						<p>We now have all our (dx dy dz) vectors, so we can update the plane's location, velocity and orientation, giving us our final result (we updated the (xTurn yTurn zTurn) vector in the previous step):</p>
+
+<pre class="articleIndented">  [ xVelocity ]   [ xVelocity ]   [ dxVelocity ]
+  [ yVelocity ] = [ yVelocity ] + [ dyVelocity ]
+  [ zVelocity ]   [ zVelocity ]   [ dzVelocity ]
+
+  [ xRotation ]   [ xRotation ]   [ dxRotation ]
+  [ yRotation ] = [ yRotation ] + [ dyRotation ]
+  [ zRotation ]   [ zRotation ]   [ dzRotation ]
+
+  [ xPlane ]   [ xPlane ]   [ xVelocity ]
+  [ yPlane ] = [ yPlane ] + [ yVelocity ]
+  [ zPlane ]   [ zPlane ]   [ zVelocity ]
+</pre>
+
+						<p>Note that the plane is flipped over if the rotation calculation makes it point backwards.</p>
+
+						<p>And that is Aviator's flight model - an impressive bit of coding, particularly given that this is all on an 8-bit computer. To see how the above calculations map to the description of the flight model in the manual, see the deep dive on <a href="matching_the_code_to_the_flight_model.html">matching the code to the flight model</a>, and for other aspects of the flight model, see the deep dives on <a href="stalling_and_recovery.html">stalling and recovery</a>, <a href="ripping_the_wings_off.html">ripping the wings off</a>, <a href="take-offs_and_landings.html">take-offs and landings</a> and <a href="on-ground_calculations.html">on-ground calculations</a>.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="visibility_checks.html">Visibility checks</a><a class="next" rel="next" title="Next deep dive" href="matching_the_code_to_the_flight_model.html">Matching the code to the flight model</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

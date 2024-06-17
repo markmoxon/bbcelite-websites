@@ -1,0 +1,167 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "data_structures_for_the_track_calculations.html", "Data structures for the track calculations", "Data structures for the track calculations", "A deep dive into data structures for the track calculations in BBC Micro Revs", "revs", "deep_dives_track", "data_structures_for_the_track_calculations");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="corner_markers.html">Corner markers</a><a class="next" rel="next" title="Next deep dive" href="drawing_the_track_verges.html">Drawing the track verges</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Details of the buffers and lists where the track calculations are stored</h2>
+
+						<p>One of the biggest challenges of squeezing a high-fidelity racing simulation into a home computer from the 1980s is the lack of memory. These days it's all about the prefixes, from mega and giga to tera and peta, but back in the day there was only one relevant prefix (unless you were rich beyond Croesus), and even then, we didn't get enough kilobytes to brag about them. Mostly, we just coded in bytes. And bits. Don't forget the bits.</p>
+
+						<p>That's why Revs saves an awful lot of memory by building the track as we drive around it, taking optimised data from the track data file and expanding it on the fly (see the deep dive on <a href="building_a_3d_track_from_sections_and_segments.html">building a 3D track from sections and segments</a> for more on this). It will come as no surprise, then, that Revs contains various buffers and caches for storing the results of all these calculations, so the game can spin along without being bogged down by too much duplicate trigonometry and vector maths.</p>
+
+						<p>Let's take a look at the most important of these space-saving data structures: the track segment buffer, and the track verge buffer.</p>
+
+						<h2 class="articleSubheader">The track segment buffer<br />
+													 ------------------------</h2>
+
+						<p>The track segment buffer is a loose affiliation of tables that share a consistent indexing system, so given an index, we can fetch that segment's data from each of the tables in the buffer. The buffer is used to store calculated data about track segments. For example, 16-bit segment coordinates get constructed on-the-fly as we build the track, by taking section coordinates and adding segment vectors to get the inner and outer verge coordinates. The buffer stores various bits of data for 40 consecutive segments, including these calculated 16-bit coordinates, so we don't have to repeat the calculations unnecessarily.</p>
+
+						<p>Each table in the track segment buffer has the same kind of structure, and each is implemented as a wraparound list. We'll look into the wraparound part in a moment, but for now, it's easiest to think of the track segment buffer as a queue of 40 entries, each of which hold the data for a single track segment. The segment containing the player is always at number 32 in the buffer, and the front segment in the buffer always holds data for the track segment that's 32 segments ahead of the player. You can think of the front segment as being the furthest distance that the driver can see, and the rest of the queue forms backwards from that point, heading towards the player at number 32 in the queue, before passing the player until it reaches the 40th entry at the back of the queue. The index for the player's segment is set in the <a href="/source/main/subroutine/getplayerindex.html">GetPlayerIndex</a> routine.</p>
+
+						<p>As the player drives forwards along the track, the segment buffer "moves" along with them. When the car moves forward into the next segment on the track, the buffer updates itself by adding a new segment to the front of the queue and ditching the segment from the back of the queue. This keeps the segment buffer in sync with the track as the player drives forwards, ensuring that the segment containing the player's car is always at number 32 in the buffer. The <a href="/source/main/subroutine/gettracksegment_part_1_of_3.html">GetTrackSegment</a> routine is responsible for fetching a track segment and sticking it into the buffer.</p>
+
+						<p>To support this need to shift along with the player's car while still fitting into a small memory footprint, the track segment buffer is stored as a wraparound list. Geoff Crammond used a wraparound list in his previous game, Aviator, to manage a constantly changing set of hidden lines which needed to be checked for changes in visibility (see <a href="https://aviator.bbcelite.com/deep_dives/visibility_checks.html">this deep dive in my Aviator project</a> for details). So it's perhaps no surprise that he reused the concept in Revs, as it's very well suited to low-memory situations like this.</p>
+
+						<p>A wraparound list is like a comet chasing its own tail, going round in circles as we add segments to the front of the list. Think of it as an animated Firefox logo doing zoomies, or the Windows 10 loading circle endlessly chasing itself, or if you're a fan of adventure games, picture the wraparound list as an ouroboros (the ancient Egyptian symbol of a snake eating its own tail). However you like to think of it, this structure enables us to store our ever-moving 40-segment buffer in a table of just 40 entries.</p>
+
+						<p>To keep track of the track segment buffer queue within the wraparound list structure, we have a few key variables:</p>
+
+						<ul>
+							<li><a href="/source/main/workspace/zero_page.html#frontsegmentindex">frontSegmentIndex</a> is the index within the table of the front segment in the track segment buffer</li>
+
+							<li><a href="/source/main/workspace/zero_page.html#playersegmentindex">playerSegmentIndex</a> is the index within the table of the player's segment</li>
+						</ul>
+
+						<p>frontSegmentIndex is stored as the index number * 3, as the main table that we access in the buffer has three bytes per entry. Similarly, playerSegmentIndex is nominally set to frontSegmentIndex - 96, plus any wrapround that needs to be applied; 96 = 32 * 3, so it points to the buffer entry that's 32 segments behind the front segment.</p>
+
+						<p>When the player's car enters a new segment, we simply increment frontSegmentIndex and playerSegmentIndex, wrapping them round to the start of the table when they reach the end. We then calculate the segment data for the new front segment (i.e. the one that is 32 segments ahead of the player's new position), and save the new segment's data at index frontSegmentIndex.</p>
+
+						<p>So what data is actually stored in the track segment buffer? As a loose affiliation of tables, all of them containing 40 entries, the buffer consists of the following:</p>
+
+						<ul>
+							<li>(<a href="/source/main/workspace/main_variable_workspace.html#xsegmentcoordihi">xSegmentCoordIHi</a> <a href="/source/main/workspace/main_variable_workspace.html#xsegmentcoordilo">xSegmentCoordILo</a>), (<a href="/source/main/workspace/main_variable_workspace.html#ysegmentcoordihi">ySegmentCoordIHi</a> <a href="/source/main/workspace/main_variable_workspace.html#ysegmentcoordilo">ySegmentCoordILo</a>) and (<a href="/source/main/workspace/main_variable_workspace.html#zsegmentcoordihi">zSegmentCoordIHi</a> <a href="/source/main/workspace/main_variable_workspace.html#zsegmentcoordilo">zSegmentCoordILo</a>) are used to store the 16-bit 3D coordinates for the inner track segment</li>
+
+							<li>(<a href="/source/main/workspace/main_variable_workspace.html#xsegmentcoordohi">xSegmentCoordOHi</a> <a href="/source/main/workspace/main_variable_workspace.html#xsegmentcoordolo">xSegmentCoordOLo</a>) and (<a href="/source/main/workspace/main_variable_workspace.html#zsegmentcoordohi">zSegmentCoordOHi</a> <a href="/source/main/workspace/main_variable_workspace.html#zsegmentcoordolo">zSegmentCoordOLo</a>) are used to store the 16-bit 3D coordinates for the outer track segment</li>
+
+							<li><a href="/source/main/workspace/main_variable_workspace.html#segmentvector">segmentVector</a> stores the number (0-255) of the corresponding segment vector for this track segment</li>
+
+							<li><a href="/source/main/workspace/main_variable_workspace.html#segmentsteering">segmentSteering</a> stores the steering value for the optimum racing line through this part of the section, so we can use it to set the <a href="/source/main/workspace/stack_variables.html#carsteering">carSteering</a> values for controlling non-player cars</li>
+
+							<li><a href="/source/main/workspace/main_variable_workspace.html#segmentflags">segmentFlags</a> stores the flags for this segment, which are based on the parent section's flags from <a href="/source/silverstone/variable/track_section_data_part_2_of_2.html">trackSectionFlag</a>, with any segment-specific changes applied (such as whether or not to display a corner marker next to this segment)</li>
+						</ul>
+
+						<p>The data in the track segment buffer is used for all sorts of things. For example, the front segment is used as a reference point when calculating distances between objects in front of us on the track, which influences behaviour such as non-player cars manoeuvring to overtake each other (in the <a href="/source/main/subroutine/processovertaking_part_1_of_3.html">ProcessOvertaking</a> routine), or checking for collisions between the player and other cars (in the <a href="/source/main/subroutine/checkforcontact.html">CheckForContact</a> routine). Another example is the <a href="/source/main/subroutine/buildplayercar.html">BuildPlayerCar</a> routine, which builds the objects for the player's car using the segment data at playerSegmentIndex; yet another is the <a href="/source/main/subroutine/buildvisiblecar.html">BuildVisibleCar</a> routine, which determines whether cars in front of the player are visible by checking whether they are in front of the segment in frontSegmentIndex (and if they are, they are deemed too distant to be visible).</p>
+
+						<p>It is also used when calculating the coordinates for the track verges, though that process requires even more data structures; let's take a look at those next.</p>
+
+
+						<h2 class="articleSubheader">The track verge buffer<br />
+													 ----------------------</h2>
+
+						<p>The track verge buffer is used to store the results of calculations for the track verges (see the deep dive on <a href="the_track_verges.html">the track verges</a> for more about this). Let's see what's involved.</p>
+
+						<p>As with the track segment buffer, the track verge buffer is made up of a loose affiliation of tables that share a common indexing system. The tables that make up the track verge buffer are as follows:</p>
+
+						<ul>
+							<li>(<a href="/source/main/variable/xvergerighthi.html">xVergeRightHi</a> <a href="/source/main/variable/xvergerightlo.html">xVergeRightLo</a>) contain the yaw angles for the segments along the right side of the track</li>
+
+							<li>(<a href="/source/main/variable/xvergelefthi.html">xVergeLeftHi</a> <a href="/source/main/variable/xvergeleftlo.html">xVergeLeftLo</a>) contain the yaw angles for the segments along the left side of the track</li>
+
+							<li><a href="/source/main/variable/vergedataright.html">vergeDataRight</a> contains data (such as colour) for the verge marks on the right side of the track</li>
+
+							<li><a href="/source/main/variable/vergedataleft.html">vergeDataLeft</a> contains data (such as colour) for the verge marks on the left side of the track</li>
+
+							<li><a href="/source/main/variable/yvergeright.html">yVergeRight</a> contains the pitch angles for the segments along the right side of the track</li>
+
+							<li><a href="/source/main/variable/yvergeleft.html">yVergeLeft</a> contains the pitch angles for the segments along the left side of the track</li>
+						</ul>
+
+						<p>Note that "left" and "right" here are from the point of view of the driver, so they are different to "outer" and "inner" when the player is facing backwards along the track. This also means that the left and right verges in these tables may not have the same elevation, which is why we have distinct yVergeRight and yVergeLeft tables.</p>
+
+						<p>Each of the xVerge tables is 40 bytes long, but the yVergeRight and yVergeLeft tables need only to store 24 entries, as the pitch angle for the inside and outside of each segment's verge mark are the same (as the verge marks are level from side to side), so we don't need to store two separate angles for each verge mark. Section angles are calculated in the <a href="/source/main/subroutine/getsectionangles_part_1_of_3.html">GetSectionAngles</a> routine, while segment angles are calculated in the <a href="/source/main/subroutine/getsegmentangles_part_1_of_3.html">GetSegmentAngles</a> routine.</p>
+
+						<p>It's also important to note that the tables containing the right and left verge data are consecutive in memory, with the right tables coming before the left tables. As all the tables are 40 bytes long, this means that given an index into one of the right verge tables, we can add 40 to the index to get the corresponding index into the left verge tables. The code makes use of this by taking index values as parameters to a number of routines, so passing an index X to a routine, where X is in the range 0 to 40, will cause that routine to operate on the right verge data, and passing X + 40 to the same routine will therefore cause that routine to operate on the left verge data.</p>
+
+						<p>To be explicit:</p>
+
+						<ul>
+							<li>xVergeRightLo + 40 = xVergeLeftLo</li>
+
+							<li>xVergeRightHi + 40 = xVergeLeftHi</li>
+
+							<li>vergeDataRight + 40 = vergeDataLeft</li>
+
+							<li>yVergeRight + 40 = yVergeLeft</li>
+						</ul>
+
+						<p>Not only is there this split between left and right, but each of these 40-byte buffers is broken down into three lists (together these three lists take up 38 bytes, so the last two bytes are unused). The three lists are follows:</p>
+
+						<ul>
+							<li>Bytes 0 to 5 = the track section list (6 bytes)</li>
+
+							<li>Bytes 6 to 21 = the track segment list for the inner edge of the verge mark, i.e. the outer edge of the black part of the track (16 bytes)</li>
+
+							<li>Bytes 22 to 37 = the track segment list for the outer edge of the verge mark, i.e. where the verge mark meets the green grass (16 bytes)</li>
+						</ul>
+
+						<p>The track section list and the two track segment lists behave quite differently. Let's look at each in turn.</p>
+
+						<h2 class="articleSubheader">The track section list<br />
+													 ----------------------</h2>
+
+						<p>The first portion of the list - the track section list - is of variable length. There are always six bytes allocated to the list, but not all of these are used. The size of the track section list is determined by the low nibble of <a href="/source/silverstone/variable/track_section_data_part_1_of_2.html">trackSectionData</a> for the current section, which is defined in the track data file, and this determines the number of sections that are maintained in the track section list. The list size is stored in the <a href="/source/main/workspace/zero_page.html#sectionlistsize">sectionListSize</a> variable by the <a href="/source/main/subroutine/getfirstsegment.html">GetFirstSegment</a> routine (which is called when the player enters a new section), and the specified number of entries are stored in the track section list, storing the values at the top end of the list so the last entry is always at entry #5.</p>
+
+						<p>You can think of the track section list as a cache of section data, from the furthest section that we can see in front of us on the track (entry #5), working backwards towards the player. If the next set of track sections are quite bunched up, or we're cresting a hill and can see for a long way, then the higher the number of track sections that we need to cache in the track section list, to make sure we have cached all the sections we might see when looking along the track.</p>
+
+						<p>When we need to add a new section to the list, the <a href="/source/main/subroutine/shufflesectionlist.html">ShuffleSectionList</a> routine does what it says - it shuffles the values in the track section list along by one place, inserting the new entry at the lowest address in the list (so we lose the section in entry #5 in the process, and replace it with the section from entry #4). The <a href="/source/main/workspace/zero_page.html#sectionliststart">sectionListStart</a> variable points to the first entry in the list, and the <a href="/source/main/workspace/zero_page.html#sectionlistvalid">sectionListValid</a> variable points to the first valid entry in the list. It takes time to calculate the section coordinates, so the game updates just one entry on each iteration round the main driving loop, marking each entry as valid once it has been updated. In this way we can invalidate the whole list by setting sectionListValid to 6, forcing all the sections to be updated. The <a href="/source/main/subroutine/changedirection.html">ChangeDirection</a> routine does this when the car flips around, as all the previously cached sections are invalid once the car is pointing in the opposite direction in the track.</p>
+
+						<p>The various pointers for the track section list are managed by the <a href="/source/main/subroutine/incsectionpointers.html">IncSectionPointers</a> and <a href="/source/main/subroutine/setsectionpointers.html">SetSectionPointers</a> routines.</p>
+
+						<h2 class="articleSubheader">The track segment lists<br />
+													 -----------------------</h2>
+
+						<p>The track segment lists are a bit simpler. As mentioned above, there are two track segment lists, one for the inner verge angles and another for the outer verge angles. Each of these lists can contain up to 16 entries.</p>
+
+						<ul>
+							<li><a href="/source/main/workspace/zero_page.html#segmentlistpointer">segmentListPointer</a> contains the index of the last entry in the track segment list for the left side of the track</li>
+
+							<li><a href="/source/main/workspace/zero_page.html#segmentlistright">segmentListRight</a> contains the index of the last entry in the track segment list for the right side of the track</li>
+						</ul>
+
+						<p>We therefore have the following:</p>
+
+						<ul>
+							<li>segmentListPointer points to the end of the list of left inner verge data</li>
+
+							<li>segmentListPointer+16 points to the end of the list of left outer verge data</li>
+
+							<li>segmentListRight points to the end of the list of right inner verge data</li>
+
+							<li>segmentListRight+16 points to the end of the list of right outer verge data</li>
+						</ul>
+
+						<p>When we add new segment angles to the list using <a href="/source/main/subroutine/getsegmentangles_part_1_of_3.html">GetSegmentAngles</a>, each angle gets added to the track segment list at index segmentListPointer, which then gets incremented. Up to 16 segments can be stored before the list fills up, but we stop filling the list when the segments are no longer visible. The outer verge data is populated in part 3 of <a href="/source/main/subroutine/getvergeandmarkers_part_1_of_4.html">GetVergeAndMarkers</a>, which is called from GetSegmentAngles.</p>
+
+						<p>The contents of the track section and track segment lists are used in the <a href="/source/main/subroutine/drawtrack.html">DrawTrack</a> routine to draw the track verges into the screen buffer.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="corner_markers.html">Corner markers</a><a class="next" rel="next" title="Next deep dive" href="drawing_the_track_verges.html">Drawing the track verges</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

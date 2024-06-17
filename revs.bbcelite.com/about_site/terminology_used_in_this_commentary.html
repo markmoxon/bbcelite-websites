@@ -1,0 +1,119 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("about_site", "terminology_used_in_this_commentary.html", "Terminology used in this commentary", "Terminology used in this commentary", "An explanation of terminology used in this commentary", "revs", "about_site", "terminology_used_in_this_commentary");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="about_this_project.html">About this project</a><a class="next" rel="next" title="Next page" href="building_revs.html">Building Revs from the source</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<p>There's a lot to explain in Revs, and some of it is pretty challenging stuff. Before getting stuck in, it's probably wise to take a brief look at some of the terminology I've used in this commentary.</p>
+
+						<p>Let's start with some general terms.</p>
+
+						<ul>
+							<li>Given a number X, ~X is the number with all the bits inverted.</li>
+
+							<li>Given a number A, |A| is the absolute of that number - i.e. the number with no sign, or just the magnitude of the number.</li>
+
+							<li>Given a multi-byte number, (S R) say, the absolute would be written |S R| (see below for more on multi-byte numbers and terminology).</li>
+
+							<li>Coordinates are shown as (x, y), both on the screen and in the outside world, so the centre of the radar is at screen coordinate (140, 207), while the origin for the outside world, which is not far from Acornsville, is at (0, 0, 0).</li>
+
+							<li>Vectors and matrices are enclosed in square brackets, like this:
+
+<pre class="articleIndented">  [ 1   0   0 ]        [ x ]
+  [ 0   1   0 ]   or   [ y ]
+  [ 0   0  -1 ]        [ z ]
+</pre>
+
+							We might sometimes write a column vector as (x y z) instead, just to save space, but it means the same thing as the vertical version. And as vectors and coordinates are often interchangeable, we might also talk about the vector (x, y, z); it's all the same thing under the hood, anyway.</li>
+						</ul>
+
+						<p>We also need some terminology for multi-byte numbers, but that needs its own section.</p>
+
+						<h2 class="articleSubheader">Multi-byte numbers<br />
+						                             ------------------</h2>
+
+						<p>Revs uses standard 6502 integers, both signed and unsigned, so for the most part the normal arithmetic instructions work as expected, and two's complement applies. There are some exceptions to this, in the variables (sinYawAngleHi sinYawAngleLo), (cosYawAngleHi cosYawAngleLo), (steeringHi steeringLo) and carSteering. In carSteering, bit 7 is the sign bit, bit 6 is a status bit and the magnitude is in bits 0 to 5, while in the others bit 0 is the sign bit and bits 1 to 15 store the magnitude. This is explained whenever it appears in the source code.</p>
+
+						<p>For multi-byte numbers, however, Revs doesn't tend to use the little-endian approach of the standard 6502 instruction set (i.e. where numbers are stored sequentially in memory with the least significant byte first). Instead, Revs stores the individual bytes of its multi-byte variables in totally separate locations, almost never sequentially. This means that we don't have to worry about whether numbers are big-endian or little-endian, because there is no beginning or end when the bytes aren't together in memory.</p>
+
+						<p>It does make it challenging to talk about such disparate variables, though, so let's agree on some terminology to make it easier to talk about multi-byte numbers and how they are stored in memory.</p>
+
+						<p>If we have three bytes called xTop, xHi and xLo, which between them contain a 24-bit number with the highest byte in xTop and the lowest in xLo, then we can refer to their 24-bit number like this:</p>
+
+<pre class="articleIndented">  (xTop xHi xLo)
+</pre>
+
+						<p>In this terminology, the most significant byte is always written first, irrespective of how the bytes are stored in memory. So, we can talk about 16-bit numbers made up of registers:</p>
+
+<pre class="articleIndented">  (X Y)
+</pre>
+
+						<p>So here X is the high byte and Y the low byte. Or here's a 24-bit number made up of a mix of registers and memory locations:</p>
+
+<pre class="articleIndented">  (A S S+1)
+</pre>
+
+						<p>Again, the most significant byte is on the left, so that's the accumulator A, then the next most significant is in memory location S, and the least significant byte is in S+1.</p>
+
+						<p>Or we can even talk about numbers made up of registers, memory locations and constants, like this 24-bit number:</p>
+
+<pre class="articleIndented">  (A P 0)
+</pre>
+
+						<p>or this constant, which stores 590 in a 32-bit number:</p>
+
+<pre class="articleIndented">  (2 78)
+</pre>
+
+						<p>Just remember that in every case, the high byte is on the left, and the low byte is on the right. It might help to think of the digits listed in the brackets as being written down in the same order that we would write them down as humans. The point of this terminology is to make it easier for people to read, after all.</p>
+
+						<h2 class="articleSubheader">Label names<br />
+						                             -----------</h2>
+
+						<p>As the original source for Aviator has never been released, I have had to make up my own labels. My label names follow a number of rules:</p>
+
+						<ul>
+							<li>Subroutine names are in camel case with an initial capital letter, such as SubroutineLabel</li>
+
+							<li>Variable names are in camel case with an initial lower case letter, such as variableLabel</li>
+
+							<li>Variables that refer to coordinates tend to start with the axis, such as xScreenCoord</li>
+
+							<li>Variables that refer to multi-byte values tend to end wih Hi or Lo, such as xCoordLo</li>
+
+							<li>Minor labels within subroutines are four lower-case letters and a number, such as main34</li>
+
+							<li>Subroutines that exist as jump points tend to end in a capital S (a terminology taken from Elite), so BigRoutineS will typically jump through to BigRoutine, for example</li>
+
+							<li>Constant are in all caps, such as VIA</li>
+						</ul>
+
+						<p>Routine names tend to be in the form "VerbNoun", so they describe an action, e.g. GetTyreDashEdges or DrawTrackBytes. Hopefully this makes things easier to follow...</p>
+
+						<h2 class="articleSubheader">Variant conditionals<br />
+						                             --------------------</h2>
+
+						<p>The source code is designed to build multiple variants of the game. This is done using BeebAsm variables whose names start with underscores, and the source code contains IF ... ENDIF statement blocks to control which code is assembled during the build, according to which variant is being built.</p>
+
+						<p>This means you can search the source code for _ACORNSOFT, _4TRACKS, _SUPERIOR or _REVSPLUS to see exactly how the variants differ.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="about_this_project.html">About this project</a><a class="next" rel="next" title="Next page" href="building_revs.html">Building Revs from the source</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

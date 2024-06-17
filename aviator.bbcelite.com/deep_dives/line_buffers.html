@@ -1,0 +1,163 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "line_buffers.html", "Line buffers", "Line buffers", "A deep dive into line buffers in BBC Micro Aviator", "aviator", "deep_dives_graphics", "line_buffers");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="converting_pixel_coordinates_to_screen_addresses.html">Converting pixel coordinates to screen addresses</a><a class="next" rel="next" title="Next deep dive" href="program_flow_of_the_main_game_loop.html">Program flow of the main game loop</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Caching line information for faster erasing</h2>
+
+						<p>The whole Aviator codebase boils down to one thing: working out which lines to draw on the screen. Without any lines, there is no simulation, there is no outside world, and there is no dashboard information. Although this sounds like an abstraction, this is a literal interpretation of the code, as once the dashboard image has been loaded and the canopy edges drawn, the only things that get updated on-screen are the lines.</p>
+
+						<p>There are two main types of line: the lines that make up 3D objects in the canopy view (which I refer to as "canopy lines"), and the lines on the dashboard ("indicator lines"). Of the lines on the dashboard, some are relatively quick to draw, such as the vertical bars on the rudder and thrust indicators, but most of them involve quite a few calculations, with the trickiest being the clock-based dials and the radar (see the deep dive on <a href="clock_hands_and_dial_indicators.html">clock hands and dial indicators</a> for details). Meanwhile, all of the lines in the canopy are a challenge to calculate; see the deep dives on <a href="lines_and_points.html">lines and points</a> and <a href="3d_objects.html">3D objects</a> to find out why.</p>
+
+						<p>Aviator erases lines from the screen by redrawing them, using EOR logic to cancel out the old line. So, to save time recalculating each line when we want to erase it, we cache the line details in the line buffers. Let's take a look at how this works.</p>
+
+						<h2 class="articleSubheader">The line buffers<br />
+													 ----------------</h2>
+
+						<p>There are two separate sets of line buffers, one for the dashboard indicators and one for the canopy lines, but they work in the same way. Each line in Aviator is defined by a set of parameters that gets passed to the relevant line-drawing routine. For clock-based indicator lines (including the line on the artificial horizon), that routine is <a href="/source/main/subroutine/drawvectorline_part_1_of_3.html">DrawVectorLine</a>, while for canopy lines it's <a href="/source/main/subroutine/drawcanopyline_part_1_of_9.html">DrawCanopyLine</a>.</p>
+
+						<p>Both of these routines expect the following information to be passed to them:</p>
+
+						<ul>
+							<li>The start point's x-coordinate</li>
+
+							<li>The start point's y-coordinate</li>
+
+							<li>The magnitude of the x-coordinate of the line's vector, i.e. |x-delta|</li>
+
+							<li>The magnitude of the y-coordinate of the line's vector, i.e. |y-delta|</li>
+
+							<li>The direction of the line's vector:
+
+								<ul>
+									<li>Bit 7 is the direction of the x-delta</li>
+
+									<li>Bit 6 is the direction of the y-delta</li>
+
+									<li>The direction is like a clock, so positive (clear) is up and right</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>For canopy lines, the DrawCanopyLine routine also expects the following additional information, which enables us to implement line-clipping (which we don't need to do for the dashboard):</p>
+
+						<ul>
+							<li>Max/min x-coordinate for the end of the line</li>
+
+							<li>Max/min y-coordinate for the end of the line</li>
+
+							<li>Extra information stored in the direction of the line's vector:
+
+								<ul>
+									<li>Bit 1 is set if this is the horizon line</li>
+
+									<li>Bit 0 is set if the line has been clipped</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>The information above is what we cache in the line buffers. There is one set of line buffers for the dashboard lines, and another for the canopy lines, so let's take a look at how they are structured.</p>
+
+						<h2 class="articleSubheader">The dashboard line buffers<br />
+													 --------------------------</h2>
+
+						<p>Both line buffers work in the same way: for each line, they simply cache all of the parameters that we need to pass to that line's line-drawing routine. In the case of the dashboard lines, there are eight indicator lines that get cached:</p>
+
+						<ul>
+							<li>Indicator 0: Compass</li>
+							<li>Indicator 1: Airspeed indicator</li>
+							<li>Indicator 2: Altimeter, small "hour" hand</li>
+							<li>Indicator 3: Altimeter, large "minute" hand</li>
+							<li>Indicator 4: Vertical speed indicator</li>
+							<li>Indicator 5: Turn indicator</li>
+							<li>Indicator 6: Slip indicator</li>
+							<li>Indicator 7: Artificial horizon</li>
+						</ul>
+
+						<p>There are five parameters that define each line in the <a href="/source/main/subroutine/drawvectorline_part_1_of_3.html">DrawVectorLine</a> routine, as mentioned above, and there are five corresponding line buffers, one for each parameter. Each line buffer has eight entries, one for each of the dashboard lines that we want to cache. The buffers are named after the variables that are used to pass the parameters to the DrawVectorLine routine, so because the start coordinate is passed to the routine in (I, J), the two buffers that store the coordinate values are called indicatorLineI and indicatorLineJ.</p>
+
+						<p>Here's a list of all the line buffers for the dashboard lines.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Parameter</th><th>Details</th><th>Buffer</th></tr>
+							<tr><td>I</td><td>Start point x-coordinate</td><td><a href="/source/main/variable/indicatorlinei.html">indicatorLineI</a></td></tr>
+							<tr><td>J</td><td>Start point y-coordinate</td><td><a href="/source/main/variable/indicatorlinej.html">indicatorLineJ</a></td></tr>
+							<tr><td>T</td><td>Magnitude of line's vector |x-delta|</td><td><a href="/source/main/variable/indicatorlinet.html">indicatorLineT</a></td></tr>
+							<tr><td>U</td><td>Magnitude of line's vector |y-delta|</td><td><a href="/source/main/variable/indicatorlineu.html">indicatorLineU</a></td></tr>
+							<tr><td>V</td><td>Direction of line's vector in (T, U)</td><td><a href="/source/main/variable/indicatorlinev.html">indicatorLineV</a></td></tr>
+						</table>
+
+						<p>So the compass line on indicator 0 is buffered in the following locations:</p>
+
+						<ul>
+							<li>indicatorLineI+0</li>
+							<li>indicatorLineJ+0</li>
+							<li>indicatorLineT+0</li>
+							<li>indicatorLineU+0</li>
+							<li>indicatorLineV+0</li>
+						</ul>
+
+						<p>while the slip line on indicator 6 is buffered here:</p>
+
+						<ul>
+							<li>indicatorLineI+6</li>
+							<li>indicatorLineJ+6</li>
+							<li>indicatorLineT+6</li>
+							<li>indicatorLineU+6</li>
+							<li>indicatorLineV+6</li>
+						</ul>
+
+						<p>The code to erase and draw dashboard lines is in the <a href="/source/main/subroutine/drawindicatorline.html">DrawIndicatorLine</a> routine, which first erases the existing line that's in the cache, and then draws the new one, caching the line's details in the process.</p>
+
+						<h2 class="articleSubheader">The canopy line buffers<br />
+													 -----------------------</h2>
+
+						<p>The line buffers for the canopy lines use the same principal as the dashboard lines, except there are more line parameters and more lines (there's a fixed set of 193 lines in Aviator - see the deep dive on <a href="lines_and_points.html">lines and points</a> for more information). Also, the parameters are passed to the <a href="/source/main/subroutine/drawcanopyline_part_1_of_9.html">DrawCanopyLine</a> routine using slightly different variables, so the buffer names are also different.</p>
+
+						<p>Here's a list of all the line buffers for the canopy lines.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Parameter</th><th>Details</th><th>Buffer</th></tr>
+							<tr><td>R</td><td>Start point x-coordinate</td><td><a href="/source/main/variable/linebufferr.html">lineBufferR</a></td></tr>
+							<tr><td>S</td><td>Start point y-coordinate</td><td><a href="/source/main/variable/linebuffers.html">lineBufferS</a></td></tr>
+							<tr><td>T</td><td>Magnitude of line's vector |x-delta|</td><td><a href="/source/main/variable/linebuffert.html">lineBufferT</a></td></tr>
+							<tr><td>U</td><td>Magnitude of line's vector |y-delta|</td><td><a href="/source/main/workspace/stack_variables.html#linebufferu">lineBufferU</a></td></tr>
+							<tr><td>V</td><td>Direction of line's vector in (T, U)</td><td><a href="/source/main/variable/linebufferv.html">lineBufferV</a></td></tr>
+							<tr><td>W</td><td>Max/min x-coordinate for the end of the line</td><td><a href="/source/main/variable/linebufferw.html">lineBufferW</a></td></tr>
+							<tr><td>G</td><td>Max/min y-coordinate for the end of the line</td><td><a href="/source/main/variable/linebufferg.html">lineBufferG</a></td></tr>
+						</table>
+
+						<p>The above information is stored when a line is drawn by the <a href="/source/main/subroutine/drawclippedline_part_1_of_6.html">DrawClippedLine</a> routine, and is read by the <a href="/source/main/subroutine/erasecanopylines.html">EraseCanopyLines</a> routine when the line is erased, so that works in a similar way to above. However, these caches are organised differently to the dashboard caches. We don't buffer all 193 lines, and we also need to support the colour-cycling system (see the deep dive on <a href="flicker-free_animation_through_colour_cycling.html">flicker-free animation through colour cycling</a> for details of the latter).</p>
+
+						<p>Each of the above buffers contains room to cache the details of 96 lines. This is split in half to support the two colours used in the colour cycling system: one half is used to buffer up to 48 lines in colour 1, while the other half is used to buffer up to 48 lines in colour 2. As all the lines are erased in one batch when clearing the invisible screen, it doesn't matter in which order they are added to the cache, so each cache is a simple sequential list, with the list sizes stored in the lineBuffer1Count and lineBuffer2Count variables.</p>
+
+						<p>This means that the maximum number of lines we can show on-screen at any one time is 48 lines out of the 193 lines defined in the world.</p>
+
+						<h2 class="articleSubheader">The radar buffer<br />
+													 ----------------</h2>
+
+						<p>There is one more buffer, for the radar lines (i.e. the runway and the attacking alien, if there is one). The start point for each of these lines is stored in the (<a href="/source/main/variable/xradarbuffer.html">xRadarBuffer</a>, <a href="/source/main/variable/yradarbuffer.html">yRadarBuffer</a>) table, but that's the only information that is cached: the line vector is recalculated every time one of these lines needs to be erased.</p>
+
+						<p>Then again, the radar is only updated once every eight iterations of the main loop, so this isn't an issue. See the deep dive on <a href="scheduling_tasks_in_the_main_loop.html">scheduling tasks in the main loop</a> for more details.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="converting_pixel_coordinates_to_screen_addresses.html">Converting pixel coordinates to screen addresses</a><a class="next" rel="next" title="Next deep dive" href="program_flow_of_the_main_game_loop.html">Program flow of the main game loop</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,67 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "multi-byte_variables.html", "Multi-byte variables", "Multi-byte variables", "A deep dive into multi-byte variables in BBC Micro Aviator", "aviator", "deep_dives_other", "multi-byte_variables");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_key_logger.html">The key logger</a><a class="next" rel="next" title="Next deep dive" href="source_code_clues_hidden_in_the_game_binary.html">Source code clues hidden in the game binary</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Multi-byte variables</h2>
+
+						<p>Aviator uses a lot of multi-byte values in its calculations. One variable, containing the plane's current position in 3D space, even contains a 32-bit value, spread out across four bytes. In the terminology of this site (explained in the <a href="/about_site/terminology_used_in_this_commentary.html">terminology guide</a>), this variable is:</p>
+
+<pre class="articleIndented">  (xPlaneTop xPlaneHi xPlaneLo xPlaneBot)
+</pre>
+
+						<p>This means that the top byte is stored in <a href="/source/main/workspace/main_variable_workspace.html#xplanetop">xPlaneTop</a>, the high byte in <a href="/source/main/workspace/main_variable_workspace.html#xplanehi">xPlaneHi</a>, the low byte in <a href="/source/main/workspace/main_variable_workspace.html#xplanelo">xPlaneLo</a> and the bottom byte in <a href="/source/main/workspace/main_variable_workspace.html#xplanebot">xPlaneBot</a>.</p>
+
+						<p>So far so good, but where are these locations? You might think that it would be convenient to store multi-byte values sequentially in memory, in little-endian order, with the least significant byte first, to mirror the way the 6502 stores its addresses. Or you might be tempted to go big-endian, with the most significant byte first, as that's how we humans write them down. For example, Elite stores a lot of numbers, and it tends to go for the little-endian approach; you can read more about this <a href="https://www.bbcelite.com/about_site/terminology_used_in_this_commentary.html">in my Elite project</a>.</p>
+
+						<p>Aviator, however, blows all these conventions out of the water, and spreads its bytes all over the place. At first glance, this seems like a strange approach, but there is method in this apparent madness, because the individual bytes might be spread out, but they are often spread out in a pattern.</p>
+
+						<p>The pattern is simple. Given a multi-byte number, its high and low bytes are often stored with exactly 16 (&amp;10) bytes between the location of each individual byte. For example, we have the following:</p>
+
+						<ul>
+							<li>xTemp2Lo is at &amp;0CA8, xTemp2Hi is at &amp;0CB8</li>
+						
+							<li>xVelocityPLo is at &amp;0C03, xVelocityPHi is at &amp;0C13</li>
+						
+							<li>dxRotationLo is at &amp;0C86, dxRotationHi is at &amp;0C96</li>
+						</ul>						
+
+						<p>and so on. Structuring these 16-bit values like this means we can build routines like <a href="/source/main/subroutine/copypointtowork.html">CopyPointToWork</a> and <a href="/source/main/subroutine/copyworktopoint.html">CopyWorkToPoint</a>, which take an offset in X that points to the low byte address, and update both the low and high bytes, because given the low byte address, we can simply add &amp;10 to get the high byte address. Not only that, but if your source code uses direct memory addresses rather than labels, which was pretty common back in the day, this system makes it easier to remember the addresses of both the high and low bytes of your 16-bit variables.</p>
+
+						<p>An additional advantage of this system is that it is pretty easy to add an extra byte onto an existing variable - much easier than extending a sequential big-endian or little-endian variable, where you have no choice but to insert a byte at the variable's location. With the bytes so spread out as they are in Aviator, you just need to find a spare byte. Ideally it would be 16 bytes away from the existing locations, but it doesn't have to be if you aren't going to use the Copy routines. Indeed, the variable locations seem to show this extending of variables in action; look at xPlane, for example:</p>
+
+						<ul>
+							<li>xPlaneBot is at &amp;0C09</li>
+
+							<li>xPlaneLo is at &amp;0CED</li>
+
+							<li>xPlaneHi is at &amp;0CFD</li>
+
+							<li>xPlaneTop is at &amp;0C6D</li>
+						</ul>
+
+						<p>This seems to imply that (xPlaneHi xPlaneLo) came first and followed the 16-byte separation, and was then extended by xPlaneTop, which isn't 16 bytes away, but is at least a multiple of 16 bytes away... and finally, xPlaneBot was added, which is in a completely unrelated place. As the bottom byte is <a href="/source/main/subroutine/adjustrotation.html">only used in one place</a> for storing the fractional overflow of a calculation, this history makes sense.</p>
+
+						<p>Along with the <a href="source_code_clues_hidden_in_the_game_binary.html">source code clues hidden in the game binary</a>, this is another interesting glimpse into how this game was written.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_key_logger.html">The key logger</a><a class="next" rel="next" title="Next deep dive" href="source_code_clues_hidden_in_the_game_binary.html">Source code clues hidden in the game binary</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

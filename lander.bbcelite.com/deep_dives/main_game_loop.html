@@ -1,0 +1,71 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "main_game_loop.html", "The main game loop", "The main game loop", "A deep dive into the main game loop in Archimedes Lander", "lander", "deep_dives_structure", "main_game_loop");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="the_lander_memory_map.html">The Lander memory map</a><a class="next" rel="next" title="Next page" href="camera_and_landscape_offset.html">The camera and the landscape offset</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Details of the tasks that Lander performs every iteration around the main loop</h2>
+
+						<p>The main game loop in Lander is responsible for running the game-playing part of Lander (as opposed to the pre-game setup process or the part where we lose a life). Compared to some other games - <a href="https://www.bbcelite.com/deep_dives/program_flow_of_the_main_game_loop.html">Elite, I'm looking at you</a> - the main loop in Lander is short and very easy to follow, as it simply calls the same set of subroutines on every iteration around the loop, and with very little extra logic.</p>
+
+						<p>The main loop is at <a href="/source/main/subroutine/mainloop.html">MainLoop</a>, and it does the following on every iteration:</p>
+
+						<ul>
+							<li>Check to see if the Escape key is being pressed, and if it is, quit the game and return to the Desktop or the command line, depending on how the game was originally run.</li>
+
+							<li>Call <a href="/source/main/subroutine/moveanddrawplayer_part_1_of_5.html">MoveAndDrawPlayer</a> to move the player's ship and draw it into the graphics buffers (see the deep dive on <a href="flying_by_mouse.html">flying by mouse</a>).</li>
+
+							<li>Call <a href="/source/main/subroutine/calculaterotationmatrix.html">CalculateRotationMatrix</a> to build a rotation matrix from the value of the main loop counter, so we can use it to make the rocks tumble as they fall (see below).</li>
+
+							<li>Call <a href="/source/main/subroutine/droprocksfromthesky.html">DropRocksFromTheSky</a> to check whether the score is 800 or more, and if it is then consider dropping a rock from the sky, with higher scores making it more likely.</li>
+
+							<li>Call <a href="/source/main/subroutine/moveanddrawparticles_part_1_of_4.html">MoveAndDrawParticles</a> to move and draw all the particles, such as smoke clouds and bullets, into the graphics buffers (see the deep dive on <a href="particles_and_particle_clouds.html">particles and particle clouds</a>).</li>
+
+							<li>Call <a href="/source/main/subroutine/drawobjects_part_1_of_3.html">DrawObjects</a> to draw all the 3D objects, such as trees and buildings, into the graphics buffers (see the deep dive on <a href="drawing_3d_objects.html">drawing 3D objects</a>).</li>
+
+							<li>Call <a href="/source/main/subroutine/addterminatorstobuffers.html">AddTerminatorsToBuffers</a> to add terminators to the ends of the graphics buffers so we know when to stop drawing (see the deep dive on <a href="depth-sorting_with_the_graphics_buffers.html">depth-sorting with the graphics buffers</a>).</li>
+
+							<li>Call <a href="/source/main/subroutine/drawlandscapeandbuffers_part_1_of_4.html">DrawLandscapeAndBuffers</a> to draw the landscape and the contents of the graphics buffers (see the deep dive on <a href="drawing_the_landscape.html">drawing the landscape</a>).</li>
+
+							<li>Call <a href="/source/main/subroutine/printcurrentscore.html">PrintCurrentScore</a> to print the number of remaining bullets at the left end of the score bar.</li>
+
+							<li>Call <a href="/source/main/subroutine/drawfuellevel.html">DrawFuelLevel</a> to draw the fuel bar.</li>
+
+							<li>Call <a href="/source/main/subroutine/switchscreenbank.html">SwitchScreenBank</a> to switch screen banks and clear the newly hidden screen bank to black (see the deep dive on <a href="screen_memory_in_the_archimedes.html">screen memory in the Archimedes</a>).</li>
+
+							<li>Increment the main loop counter in mainLoopCount.</li>
+						</ul>
+
+						<p>Most of this is pretty self-explanatory, and you can click on the deep dive links above for details of the more complicated steps in the main loop. Let's talk about the third step, though, as that's rather less obvious.</p>
+
+						<h2 class="articleSubheader">The rotation matrix<br />
+						                             -------------------</h2>
+
+						<p>In the third step of the main loop, we call <a href="/source/main/subroutine/calculaterotationmatrix.html">CalculateRotationMatrix</a> to build a rotation matrix from the value of the main loop counter. This matrix describes a rotation in two axes, with one axis rotating twice as fast as the other (as the two angles are set to mainLoopCount &lt;&lt; 24 and mainLoopCount &lt;&lt; 25). This means that any objects to which we apply this rotation matrix will rotate as we iterate around the main loop.</p>
+
+						<p>There are only three 3D objects that are set to rotate (see the deep dive on <a href="object_blueprints.html">object blueprints</a> for details). One is the player's ship, and for that we already have a rotation matrix based on the mouse position, which we calculated in the MoveAndDrawPlayer routine in step 2 of the main loop, so the counter-based rotation matrix does not apply there. The other two rotating objects are the pyramid and the rock, but the pyramid object is unused, so this leaves just the rock object. So as rocks fall from the sky, they are spun by the rotation matrix that is generated from the main loop counter, and this makes them tumble in the sky as they fall.</p>
+
+						<p>One final point to note about the main loop is that there is an almost identical copy of the loop in the <a href="/source/main/subroutine/loselife.html">LoseLife</a> routine. This loop runs after we crash, so the explosion animation can run its course before we restart the game with the next life. This loop is just like the main loop, but without the calls to drop new rocks from the sky, draw the player's ship or update the fuel level, as we don't want any of these to happen once the player has crashed.</p>
+
+						<p>Instead of running endlessly, the LoseLife loop has its own counter in crashLoopCount, and when this runs out, so does the explosion animation (crashLoopCount is set to 30, so the animation runs for 30 frames before we move on to the next life).</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="the_lander_memory_map.html">The Lander memory map</a><a class="next" rel="next" title="Next page" href="camera_and_landscape_offset.html">The camera and the landscape offset</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

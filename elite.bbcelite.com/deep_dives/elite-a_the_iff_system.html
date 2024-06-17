@@ -1,0 +1,110 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "elite-a_the_iff_system.html", "The I.F.F. system", "The I.F.F. system", "A deep dive into the I.F.F. system in Elite-A", "elite", "deep_dives_elite-a", "the_iff_system");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="elite-a_the_encyclopedia_galactica.html">The Encyclopedia Galactica</a><a class="next" rel="next" title="Next deep dive" href="elite-a_fixing_ship_positions.html">Fixing ship positions</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Friend or foe? Adding ship information to the 3D scanner</h2>
+
+						<p>One of the most interesting features that Angus Duggan added to Elite-A is the I.F.F. system, which is an optional upgrade to the 3D scanner. In the original disc version of Elite, missiles are shown on the scanner in yellow (or white if we have an escape pod fitted), while all other ships are shown in green (or cyan with an escape pod). Apart from the location of each ship, there isn't any other information available, so there is no way of telling whether we are looking at an asteroid, a peaceful trader, a violent pirate or a vengeful cop.</p>
+
+						<p>The "Identification Friend or Foe" system (I.F.F. for short) upgrades the scanner to show a lot more information about what's actually out there. At the same time, the standard scanner is downgraded so it no longer shows missiles in a different colour, so there's quite an incentive to upgrade when you get the chance.</p>
+
+						<p>To show this new information, the I.F.F. system adds stripes to the sticks on the scanner, to help us distinguish aggressive ships from friendly ones. The I.F.F. colours for the normal dashboard palette are:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Index</th><th>Dot colour</th><th>Stick colour(s)</th><th>Ship types</th></tr>
+							<tr><td>0</td><td>Green</td><td>Green</td><td>Clean</td></tr>
+							<tr><td>1</td><td>Yellow</td><td>Yellow</td><td>Station tracked</td></tr>
+							<tr><td>2</td><td>Green</td><td>Green and yellow</td><td>Debris</td></tr>
+							<tr><td>3</td><td>Yellow</td><td>Yellow and red</td><td>Missile</td></tr>
+							<tr><td>4</td><td>Green</td><td>Green and red</td><td>Offender/fugitive</td></tr>
+						</table>
+
+						<p>while the colours for the escape pod dashboard palette are:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Index</th><th>Dot colour</th><th>Stick colour(s)</th><th>Ship types</th></tr>
+							<tr><td>0</td><td>Cyan</td><td>Cyan	</td><td>Clean</td></tr>
+							<tr><td>1</td><td>White</td><td>White</td><td>Station tracked</td></tr>
+							<tr><td>2</td><td>Cyan</td><td>Cyan and white</td><td>Debris</td></tr>
+							<tr><td>3</td><td>White</td><td>White and red</td><td>Missile</td></tr>
+							<tr><td>4</td><td>Cyan</td><td>Cyan and red</td><td>Offender/fugitive</td></tr>
+						</table>
+
+						<p>If the I.F.F. system is not fitted, all ships are shown using the clean colour (i.e. green or cyan), including missiles. See the next section for a breakdown of what constitutes station-tracked ships and debris.</p>
+        
+						<p>Let's take a look at how Angus added these colour schemes to the normal 3D scanner.</p>
+
+						<h2 class="articleSubheader">Base colours and EOR values<br />
+													 ---------------------------</h2>
+
+						<p>First of all, the <a href="/elite-a/flight/subroutine/scan.html">SCAN</a> routine has been modified in Elite-A to support different colours for both the dot and the stick, by introducing two colours for each ship on the scanner - the base colour and the EOR value. The base colour is the colour of the dot and the colour of one of the stripes in the stick, while the EOR value is applied to the base colour to give the colour of the other stripe in the stick. This second colour is obtained by EOR'ing the base colour with the EOR value, so if the EOR value is 0, the stick doesn't have stripes and is all in the base colour, as n EOR 0 = n.</p>
+
+						<p>So the first task we have when drawing a ship on the I.F.F. system is to determine the base colour and EOR value, depending on the type and status of the ship. This logic is implemented in the <a href="/elite-a/loader/subroutine/iff_index.html">iff_index</a> routine, which returns an index value as follows:</p>
+
+						<ol start="0">
+							<li>Clean = innocent trader or innocent bounty hunter</li>
+
+							<li>Station tracked = cop, space station or escape pod</li>
+
+							<li>Debris = cargo canister, alloy plate, asteroid, boulder or splinter</li>
+
+							<li>Missile</li>
+
+							<li>Offender/fugitive = pirate or non-innocent bounty hunter</li>
+						</ol>
+
+						<p>If there is no I.F.F. system fitted, the index returned is always 0, the same as for a clean ship.</p>
+
+						<p>We now use the returned index as an offset into two tables, first to fetch the base colour from the <a href="/elite-a/flight/variable/iff_base.html">iff_base</a> table, and then to fetch the EOR value from the <a href="/elite-a/flight/variable/iff_xor.html">iff_xor</a> table. The base colour table simply contains the mode 5 colour byte for that type of ship, but the EOR value is rather more complex, so let's look at that in more detail.</p>
+
+						<h2 class="articleSubheader">Adding stripes to the stick<br />
+													 ---------------------------</h2>
+
+						<p>The EOR values in the <a href="/elite-a/flight/variable/iff_xor.html">iff_xor</a> table have the following effect on the colour of the stick:
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Value</th><th>Effect</th></tr>
+							<tr><td>%00000000</td><td>Stick is a solid colour, in the base colour</td></tr>
+							<tr><td>%00001111</td><td>Stick is striped, in the base colour and base colour EOR %01</td></tr>
+							<tr><td>%11110000</td><td>Stick is striped, in the base colour and base colour EOR %10</td></tr>
+							<tr><td>%11111111</td><td>Stick is striped, in the base colour and base colour EOR %11</td></tr>
+						</table>
+
+						<p>Let's take the example of debris, which has an index of 2 from the iff_index routine. We therefore fetch the base colour from iff_base + 2, which is &amp;FF. This is %11111111, or a four-pixel byte of colour %11, or colour 3 in mode 5, or green/cyan (green for the normal palette, cyan in the escape pod palette). So far so good.</p>
+
+						<p>We now look up the EOR value from iff_xor + 2, which is &amp;0F. This is %00001111, or a four-pixel mode 5 byte of %01 values. Applying this EOR to the base colour (%11) gives:</p>
+
+<pre class="articleIndented">  %11 EOR %01 = %10 = 2
+</pre>
+
+						<p>and colour 2 in mode 5 is yellow/white (yellow for the normal palette, white in the escape pod palette). So the stick colour for debris when we have an I.F.F. system fitted is:</p>
+
+<pre class="articleIndented">  Green/cyan (the base colour)
+  striped with yellow/white (the colour after applying the EOR value)
+</pre>
+
+						<p>If there is no I.F.F. system fitted, the index is 0 and the EOR value is 0, which doesn't affect the default colour.</p>
+            
+						<p>In this way, the I.F.F. system adds quite a bit of useful information to the scanner without breaking the scanner's iconic design. When you're jumping your way through a new system, it's really useful to know whether you just ran into a family of green traders, a field of green and yellow asteroids, a criminal-seeking bunch of yellow cops... or, worst of all, a rabid pack of green and red pirates firing off yellow and red missiles. Getting a heads-up can make the difference between a successful trip, and a one-way ticket into the cold, hard vacuum of space...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="elite-a_the_encyclopedia_galactica.html">The Encyclopedia Galactica</a><a class="next" rel="next" title="Next deep dive" href="elite-a_fixing_ship_positions.html">Fixing ship positions</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

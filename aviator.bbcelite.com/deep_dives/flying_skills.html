@@ -1,0 +1,170 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "flying_skills.html", "Flying skills", "Flying skills", "A deep dive into flying skills in BBC Micro Aviator", "aviator", "deep_dives_flight_model", "flying_skills");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="on-ground_calculations.html">On-ground calculations</a><a class="next" rel="next" title="Next deep dive" href="clock_hands_and_dial_indicators.html">Clock hands and dial indicators</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Flying under bridges and over main street</h2>
+
+						<p>Probably the most recognisable image of Aviator is the screenshot on the front of the box, showing the view as we approach the iconic suspension bridge. Flying under the bridge or along the main street of the town is a real test of flying skill, so much so that the following points are awarded for these audacious acts of derring-do:</p>
+
+						<ul>
+							<li>50 points for flying under the bridge the right way up</li>
+
+							<li>100 points for flying under the bridge upside down</li>
+
+							<li>100 points for flying down the main street of Acornsville the right way up</li>
+
+							<li>200 points for flying down the main street of Acornsville upside down</li>
+						</ul>
+
+						<p>The <a href="/source/main/subroutine/checkflyingskills_part_1_of_2.html">CheckFlyingSkills</a> is responsible for detecting these flying skills and awarding the correct points, so let's take a look at how it's done.</p>
+
+						<h2 class="articleSubheader">Skill zones<br />
+													 -----------</h2>
+
+						<p>The <a href="/source/main/subroutine/checkflyingskills_part_1_of_2.html">first part of CheckFlyingSkills</a> simply checks to see if the plane is close enough to the bridge or town for a test of skill to be possible. Specifically, we check whether the plane is within a distance of &amp;0500 from the location of the bridge or the town's object anchor point, and if not, we stop checking as the plane is too far away.</p>
+
+						<p>If we are close enough, then we move on to <a href="/source/main/subroutine/checkflyingskills_part_2_of_2.html">part 2 of CheckFlyingSkills</a>, which checks the relevant skill zones by calling the <a href="/source/main/subroutine/checkbridgeandtown.html">CheckBridgeAndTown</a> routine for each zone. This routine checks whether the plane is within a certain distance of a specific coordinate from the (<a href="/source/main/variable/skillzonehi.html">skillZoneHi</a> <a href="/source/main/variable/skillzonelo.html">skillZoneLo</a>) table. If it is within the correct distance, which is given in the <a href="/source/main/variable/skillzonesize.html">skillZoneSize</a> table, then it is within the skill zone.</p>
+
+						<p>The plane is said to be within a coordinate's skill zone if the following checks are all true. They start with larger checks and whittle it down to more fine-grained checks, as follows:</p>
+
+						<ul>
+							<li>The vector from the skill zone coordinate to the plane is in a positive direction along each axis, i.e. the plane is somewhere inside a cuboid that has the skill zone coordinate at its bottom-left corner, nearest the origin (the origin being at ground level in the bottom-left corner of the map).</li>
+
+							<li>The length of this vector along each axis is &lt; 1024, so the plane is close enough to the skill zone coordinate for the next check to be done, i.e. within the rectangular cuboid described above, so the plane is within a cube of size 1024 in the skill zone coordinate's corner.</li>
+
+							<li>The length of the vector along each axis divided by 4 is within the margin for this skill zone (as defined in the skillZoneSize table), i.e. the plane is within an even smaller rectangular cuboid, again in the skill zone coordinate's corner, with dimensions given in the skillZoneSize table.</li>
+						</ul>
+
+						<p>In short, the plane is in the skill zone if it's inside a box whose dimensions are given in the skillZoneSize table, and whose corner nearest the origin is at the skill zone coordinate given in the skillZone table - in other words, the cuboid at the skill zone coordinate, with the dimensions in skillZoneSize.</p>
+
+						<p>Or, even shorter, the plane is in a skill zone if this is true for all three axes:</p>
+
+<pre class="articleIndented">  skill zone    &lt;=      plane      &lt;   skill zone  +  skill zone
+  coordinate         coordinate        coordinate      size * 4
+</pre>
+
+						<p>Given this, let's see how the skill zones are constructed for the bridge and town.</p>
+
+						<h2 class="articleSubheader">Size and location of skill zones<br />
+													 --------------------------------</h2>
+
+						<p>The skill zones are defined as follows. For the bridge we have these three skill zones:</p>
+
+						<ul>
+                        	<li>Skill zone 0 is at (&amp;4CA8, &amp;0000, &amp;8656) with size (&amp;A8, &amp;10, &amp;18) * 4</li>
+                        	<li>Skill zone 3 is at (&amp;4CA8, &amp;0060, &amp;8656) with size (&amp;A8, &amp;16, &amp;18) * 4</li>
+                        	<li>Skill zone 6 is at (&amp;4C88, &amp;0000, &amp;8656) with size (&amp;B8, &amp;2C, &amp;18) * 4</li>
+						</ul>
+
+						<p>And we have these four for the town:</p>
+
+						<ul>
+                        	<li>Skill zone 9 is at (&amp;0430, &amp;0000, &amp;0330) with size (&amp;A8, &amp;44, &amp;28) * 4</li>
+                        	<li>Skill zone 12 is at (&amp;04D0, &amp;0000, &amp;0470) with size (&amp;28, &amp;84, &amp;48) * 4</li>
+                        	<li>Skill zone 15 is at (&amp;0610, &amp;0000, &amp;0470) with size (&amp;60, &amp;24, &amp;38) * 4</li>
+                        	<li>Skill zone 18 is at (&amp;04E0, &amp;0000, &amp;03C0) with size (&amp;78, &amp;20, &amp;60) * 4</li>
+						</ul>
+
+						<p>I hope to visualise these skill zones in a future update, but for now these descriptions will have to do:</p>
+
+						<ul>
+                        	<li>Skill zone 0 is the safe zone under the bridge's suspended deck</li>
+
+                        	<li>Skill zone 3 is the safe zone above the bridge's suspended deck</li>
+
+                        	<li>Skill zone 6 is a long, tall zone covering the bounds of the entire bridge structure, from the ground to the top of the towers</li>
+						</ul>
+
+						<p>The bridge's suspended deck (i.e. where the road runs across the bridge) is sandwiched between zones 0 and 3, so if we find ourselves inside zone 6, but not in zone 0 or 3, then we have hit the bridge.</p>
+
+						<p>The zones for the town are as follows:</p>
+
+						<ul>
+                        	<li>Skill zone 9 is one of the town's buildings</li>
+
+                        	<li>Skill zone 12 is another of the town's buildings</li>
+
+                        	<li>Skill zone 15 is another of the town's buildings</li>
+
+                        	<li>Skill zone 18 is the safe zone above the main street</li>
+						</ul>
+
+						<p>If we're inside the safe zone then all is well; if we're inside one of the buildings, then we probably don't need to discuss that further.</p>
+
+						<h2 class="articleSubheader">Awarding points<br />
+													 ---------------</h2>
+
+						<p>Points are banked when they are earned, but they are only awarded when the plane exits the area safely, at which point the <a href="/source/main/subroutine/scorepoints.html"></a>ScorePoints</a> routine is called to make a beep and add the points to the score. There are no posthumous points in Aviator.</p>
+
+						<p>Starting with the bridge, points are banked when the plane passes the following three tests in sequence:
+
+						<ul>
+                        	<li>Inside skill zone 6 (we are inside the bounds of the bridge)</li>
+
+                        	<li>Outside skill zone 3 (we are not above the bridge's suspended deck)</li>
+
+                        	<li>Inside skill zone 0 (we are below the bridge's suspended deck)</li>
+						</ul>
+
+						<p>The points are awarded when the plane exits skill zone 6 (i.e. leaves the bridge zone) or enters skill zone 3 (i.e. pulls up from the dive under the bridge and clips zone 3, maybe as part of a loop-the-loop). However, if the plane passes the following three tests in sequence:</p>
+
+						<ul>
+                        	<li>Inside skill zone 6 (we are inside the bounds of the bridge)</li>
+
+                        	<li>Outside skill zone 3 (we are not above the bridge's suspended deck)</li>
+
+                        	<li>Outside skill zone 0 (we are not below the bridge's suspended deck)</li>
+						</ul>
+
+						<p>then the plane crashes into the bridge.</p>
+
+						<p>For the town, points are banked when the plane passes the following four tests in sequence:</p>
+
+						<ul>
+                        	<li>Outside skill zone 12 (we are not inside the first building)</li>
+
+                        	<li>Outside skill zone 15 (we are not inside the second building)</li>
+
+                        	<li>Outside skill zone 9 (we are not inside the third building)</li>
+
+                        	<li>Inside skill zone 18 (we are above the main street)</li>
+						</ul>
+
+						<p>The points are awarded when the plane exits skill zone 18, i.e. when we fly away without hitting any buildings. However, if the plane passes any of the following tests:</p>
+
+						<ul>
+                        	<li>Inside skill zone 12</li>
+
+                        	<li>Inside skill zone 15</li>
+
+                        	<li>Inside skill zone 9</li>
+						</ul>
+
+						<p>then the plane has hit one of the buildings and crashes.</p>
+
+						<p>Finally, the points awarded are doubled if there is a line at the bottom of the artificial horizon indicator, which indicates that the plane is upside down. Screen memory is checked directly, so the on-screen bar effectively doubles as a flag variable.</p>
+
+						<p>Unfortunately, knowing the above doesn't make it any easier to earn those points. This is a difficult game where you really earn your stripes, but that's all part of the point. This is a simulator, after all...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="on-ground_calculations.html">On-ground calculations</a><a class="next" rel="next" title="Next deep dive" href="clock_hands_and_dial_indicators.html">Clock hands and dial indicators</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

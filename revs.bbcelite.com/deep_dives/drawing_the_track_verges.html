@@ -1,0 +1,380 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "drawing_the_track_verges.html", "Drawing the track verges", "Drawing the track verges", "A deep dive into drawing the track verges in BBC Micro Revs", "revs", "deep_dives_track", "drawing_the_track_verges");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="data_structures_for_the_track_calculations.html">Data structures for the track calculations</a><a class="next" rel="next" title="Next deep dive" href="secrets_of_the_extra_tracks.html">Secrets of the extra tracks</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Revs draws a dynamically changing track using clever data structures</h2>
+
+						<p>It's perhaps no surprise that a large part of the Revs codebase is dedicated to drawing the track. It is, after all, the aspect of Revs that is most responsible for the game's immersive sense of movement. This is especially true when sliding around corners, when the red-and-white verges give the scene a really tangible sense of motion and depth. Drawing the track quickly and realistically is one of the core aspects of Geoff Crammond's masterpiece.</p>
+
+						<p>In this deep dive, we're going to take a look at what's involved when drawing the track verges, but this is only one stage in a complex process. Here's the process in full (the links will take you to the corresponding deep dives):</p>
+
+						<ul>
+							<li>First, we read the track data from <a href="the_track_data_file_format.html">the track data file</a>.</li>
+
+							<li>Then we calculate coordinates for the <a href="data_structures_for_the_track_calculations.html">track sections and segments</a> in the vicinity of the player.</p>
+
+							<li>We then store this data in the <a href="data_structures_for_the_track_calculations.html">track segment buffer</a>.</p>
+
+							<li>Next, we calculate coordinates for the <a href="the_track_verges.html">corresponding track verges</a>.</li>
+
+							<li>This data then gets stored in the <a href="data_structures_for_the_track_calculations.html">track verge buffer</a>.</p>
+
+							<li>We can now draw the track into the screen buffer, by drawing the track verges. This is the subject of this deep dive.</li>
+
+							<li>Finally, we can <a href="drawing_the_track_view.html">draw the track view</a> on-screen from the contents of the screen buffer, making sure to <a href="drawing_around_the_dashboard.html">fit it around the dashboard</a>.</li>
+						</ul>
+
+						<p>The track-drawing routine we're going to look at here manages to take up about ten per cent of the Revs codebase, and that's on top of all the other stages above. It is a pretty complex process, so let's start by agreeing some essential terminology.</p>
+
+						<h2 class="articleSubheader">Some terminology<br />
+													 ----------------</h2>
+
+						<p>Before diving into the code, let's recap a few key terms that are explained in the other track-related deep dives, otherwise things will get confusing, and quickly.</p>
+
+						<ul>
+							<li>The track view is what we see in front of us as we are driving around. See the deep dive on <a href="drawing_the_track_view.html">drawing the track view</a> for details.</li>
+
+							<li>The track view is made up of 80 horizontal track lines, each of which is one pixel high; line 79 is at the top of the track view, in the blue sky, and line 0 is at the bottom, behind the dashboard. See the deep dive on <a href="drawing_around_the_dashboard.html">drawing around the dashboard</a> for more on this.</li>
+
+							<li>The track verge runs along the left and right edges of the track. The track verge is made up of verge marks. Each verge mark is either red, white or black, so sometimes the verge is black and white, and sometimes it's red and white. See the deep dive on <a href="the_track_verges.html">the track verges</a> for details.</li>
+
+							<li>Each track segment corresponds to one verge mark along the edge of the track, so each track segment has two associated verge marks, one on the left edge of the track segment, and one on the right edge.</li>
+
+							<li>The track segment buffer contains cached data on 40 track segments. The segment at the front of the buffer (at number 0) is in the far distance, 32 segments ahead of the player, who is always at number 32 in the buffer. As the player moves along the track, the track segment buffer moves with them, always storing 32 segments in front of the player, and 8 segments behind them. The data in the buffer is mainly 3D coordinates, as well as various flags and data for steering the computer-controlled drivers. See the deep dive on <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> for details.</li>
+
+							<li>The track verge buffer contains cached data about the track verges. The main data are the yaw and pitch angles for each of the verge marks along the left and right verges, from the point of view of the player. Each segment corresponds to a verge mark (i.e. a red, white or black mark), and the track verge buffer contains yaw angles for both the inner and outer edges of each of these verge marks (though as verge marks are flat, we only need to store one set of pitch angles for each verge mark). The buffer also contains colour data for each verge mark. See the deep dives on <a href="the_track_verges.html">the track verges</a> and <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> for details.</li>
+
+							<li>The track verge buffer is composed of three different lists:
+
+								<ul>
+									<li>The track section list in bytes 0 to 5</li>
+
+									<li>The track segment list for the inner edge of the verge mark, in bytes 6 to 21</li>
+
+									<li>The track segment list for the outer edge of the verge mark, in bytes 22 to 37</li>
+								</ul>
+
+								See the deep dive on <a href="data_structures_for_the_track_calculations.html">data structures for the track calculations</a> for details.
+							</li>
+						</ul>
+
+						<p>On top of the above, we need to introduce the concept of a "verge edge". As noted above, we can generally see two verges when looking at the track, one on the left and one on the right, and each verge is made up of a sequence of coloured verge marks. Each of these verge marks is a red, white or black rectangle along the side of the track, and each of these verge marks has an inner edge and an outer edge (the "verge edges"). The inner verge edge is next to the track, while the outer verge edge is next to the grass.</p>
+
+						<p>There are therefore four verge edges that make up the track verges. They are referred to by the following names within the commentary:
+
+						<ul>
+							<li>leftVergeStart = the left edge of the left verge</li>
+
+							<li>leftTrackStart = the right edge of the left verge</li>
+
+							<li>rightVergeStart = the left edge of the right verge</li>
+
+							<li>rightGrassStart = the right edge of the right verge</li>
+						</ul>
+
+						<p>These names are based on the way the screen buffer works - it draws from left to right, so the names correspond to the verge edges as we would come across them when drawing the screen.</p>
+
+						<p>To be explicit, let's picture the track from a drone flying above the race, with the player's car driving up the screen (the verges aren't this wide, but you get the idea):</p>
+
+<pre class="articleIndented">      grass      verge               track               verge      grass
+
+        |          |                   |                   |          |
+        |          |                   |                   |          |
+        v          v                   v                   v          v
+
+
+
+              :         :                             :         :
+              |         |                             |         |
+              +---------+                             +---------+
+              |         |                             |         |
+              |         |                             |         |
+              +---------+                             +---------+
+              |         |              ^              |         |
+              |         |              |              |         |
+              +---------+              |              +---------+
+              |         |          direction          |         |
+              |         |          of travel          |         |
+              +---------+                             +---------+
+              |         |                             |         |
+              :         :                             :         :
+
+
+
+              ^         ^                             ^         ^
+              |         |                             |         |
+              |         |                             |         |
+
+   leftVergeStart     leftTrackStart      rightVergeStart     rightGrassStart
+</pre>
+
+						<p>Let's take this terminology and see if we can make sense of the DrawTrack routine, which is the routine responsible for drawing these verge edges into the screen buffer.</p>
+
+						<h2 class="articleSubheader">A breakdown of the DrawTrack routine<br />
+													 ------------------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/drawtrack.html">DrawTrack</a> routine draws the track on-screen by drawing each of the four verge edges, one at a time. This is similar in concept to the way that the objects in Revs are drawn on-screen using edges - see the deep dive <a href="creating_objects_from_edges.html">creating objects from edges</a> for details.</p>
+
+						<p>The main difference is that the edges on objects like cars and signs are always vertical straight lines, while the track verges are almost always at an angle, and are for the most part curved. The approach to drawing is similar, however, in that we draw the track verges by drawing all four edges, from left to right, with pixel bytes to the right of each edge so the track and grass get filled in by the screen buffer drawing process.</p>
+
+						<p>Here's a breakdown of the structure of the DrawTrack routine and its subroutines. We'll spend the rest of this article analysing the key parts:</p>
+
+						<ul>
+							<li><a href="/source/main/subroutine/drawtrack.html">DrawTrack</a> - Draw all four verge edges (where visible), calling the DrawVergeEdge routine for each of them
+
+								<ul>
+									<li><a href="/source/main/subroutine/mapsegmentstolines.html">MapSegmentsToLines</a> - Populate the leftSegment and rightSegment tables, which map track lines to the corresponding track segments in the verge buffer
+
+										<ul>
+											<li><a href="/source/main/subroutine/checkvergeonscreen.html">CheckVergeOnScreen</a> - Check to see if a verge coordinate is off-screen</li>
+										</ul>
+									</li>
+
+									<li><a href="/source/main/subroutine/drawvergeedge.html">DrawVergeEdge</a> - Draw one of the four track verge edges into the screen buffer
+
+										<ul>
+											<li><a href="/source/main/subroutine/drawsegmentedge_part_1_of_7.html">DrawSegmentEdge</a> - Draw a single segment's verge edge
+
+												<ul>
+													<li><a href="/source/main/subroutine/drawshallowtoleft.html">DrawShallowToLeft</a> - Draw the verge edge as a two-byte wide entry in the screen buffer (i.e. across two dash data blocks for each track line), when it has a shallow gradient from right to left
+
+														<ul>
+															<li><a href="/source/main/subroutine/drawvergebyteleft.html">DrawVergeByteLeft</a> - Draw the left pixel byte of the edge into the screen buffer, storing the block number as we go</li>
+
+															<li><a href="/source/main/subroutine/drawvergebyteright.html">DrawVergeByteRight</a> - Draw the right pixel byte of the edge into the screen buffer, storing the block number as we go</li>
+
+															<li><a href="/source/main/subroutine/drawgrassright.html">DrawGrassRight</a> - Draw a green pixel byte in the right pixel byte of the edge, when required</li>
+
+															<li><a href="/source/main/subroutine/drawgrassleft.html">DrawGrassLeft</a> - Draw a green pixel byte in the left pixel byte of the edge, when required</li>
+														</ul>
+													</li>
+
+													<li><a href="/source/main/subroutine/drawshallowtoright.html">DrawShallowToRight</a> - Draw the verge edge as a two-byte wide entry in the screen buffer, when it has a shallow gradient from left to right
+														<ul>
+															<li>Same structure as DrawShallowToLeft</li>
+														</ul>
+													</li>
+
+													<li><a href="/source/main/subroutine/drawsteeptoleft.html">DrawSteepToLeft</a> - Draw the verge edge as a two-byte wide entry in the screen buffer, when it has a steep gradient from right to left
+														<ul>
+															<li>Same structure as DrawShallowToLeft</li>
+														</ul>
+													</li>
+
+													<li><a href="/source/main/subroutine/drawsteeptoright.html">DrawSteepToRight</a> - Draw the verge edge as a two-byte wide entry in the screen buffer, when it has a steep gradient from left to right
+														<ul>
+															<li>Same structure as DrawShallowToLeft</li>
+														</ul>
+													</li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+
+									<li><a href="/source/main/subroutine/setvergebackground.html">SetVergeBackground</a> - Update the background colour table for any verges that overlap the left edge of the screen</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>Let's look at these routines in more detail.</p>
+
+						<h2 class="articleSubheader">Mapping segments to track lines<br />
+													 -------------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/mapsegmentstolines.html">MapSegmentsToLines</a> routine populates either the <a href="/source/main/workspace/main_variable_workspace.html#leftsegment">leftSegment</a> or <a href="/source/main/workspace/main_variable_workspace.html#rightsegment">rightSegment</a> table, depending on the arguments passed to the routine. These tables contain a mapping between the track line number, and the index of the segment within the verge buffer for the relevant left or right verge. This data is used by the <a href="/source/main/subroutine/getcolour_part_1_of_3.html">GetColour</a> routine when calculating the background colour for a pixel byte in the screen buffer, specifically so it can fetch the verge colour from the relevant entry in the <a href="/source/main/variable/vergedataright.html">vergeDataRight</a> or <a href="/source/main/variable/vergedataleft.html">vergeDataLeft</a> tables, which contain the colour number (0 to 2) of the corresponding verge mark.</p>
+
+						<p>The routine does this by working its way through the verge buffer, from distant entries at the start of the buffer, to closer entries at the end of the buffer. As it goes, it looks at the pitch angles of the entries, which equate to track lines in the track view, with high track lines matching high pitch values (which are higher up the screen). It then fills the corresponding entries in the leftSegment or rightSegment table, which have one entry per track line, set to the index numbers of the relevant entries from the verge buffer.</p>
+
+						<p>In other words, if we fill five entries in the rightSegment table with an index n, then that means that the segment that's mapped to entry n in the verge buffer will take up five track lines on-screen, so it will be five pixels tall.</p>
+
+						<p>It's worth pointing out that the track verge buffer stores distant segments first, coming towards us as we progress through the list, but leftSegment and rightSegment are the reverse of this, with the closest segments at the start, and the furthest segments at the end. This matches the track lines, where small numbers are at the bottom of the screen (i.e. close), and high numbers are up the screen (i.e. further away).</p>
+
+						<h2 class="articleSubheader">The drawing routines<br />
+													 --------------------</h2>
+
+						<p>The main drawing routine at <a href="/source/main/subroutine/drawtrack.html">DrawTrack</a> calls the <a href="/source/main/subroutine/drawvergeedge.html">DrawVergeEdge</a> routine four times, once for each of the four verge edges that we want to draw.</p>
+
+						<p>DrawVergeEdge draws an entire verge edge by working through the corresponding entries in the verge buffer, where each entry corresponds to one track segment (remember, each track segment corresponds to one verge mark on each side of the track). It then calls the <a href="/source/main/subroutine/drawsegmentedge_part_1_of_7.html">DrawSegmentEdge</a> routine to draw the verge edge for each individual segment - in other words, the edge for each verge mark.</p>
+
+						<p><a href="/source/main/subroutine/drawsegmentedge_part_1_of_7.html">DrawSegmentEdge</a> contains the meat of the verge-drawing code. It does the following:</p>
+
+						<ul>
+							<li><a href="/source/main/subroutine/drawsegmentedge_part_1_of_7.html">Part 1</a> - Check whether the edge is fully on-screen, fully off-screen or partially on-screen, and store the yaw and pitch angles of the edge in W and RR respectively.</li>
+
+							<li><a href="/source/main/subroutine/drawsegmentedge_part_2_of_7.html">Part 2</a> - Calculate the edge's gradient in terms of the change in yaw and pitch angles, and store them in SS and TT, with SS containing the yaw delta, and TT containing the pitch delta.</li>
+
+							<li><a href="/source/main/subroutine/drawsegmentedge_part_3_of_7.html">Part 3</a> - Modify the edge-drawing routines (<a href="/source/main/subroutine/drawvergebyteleft.html">DrawVergeByteLeft</a> and <a href="/source/main/subroutine/drawvergebyteright.html">DrawVergeByteRight</a>) so they move in the right directions depending on the signs of the deltas calculated previously, and set up pixel bytes and masks for the correct colour scheme depending on which verge edge is being drawn.</li>
+
+							<li><a href="/source/main/subroutine/drawsegmentedge_part_4_of_7.html">Part 4</a> - Set variables for use when updating the background colour table, and clip the pitch angle in RR to fit into a track line.</li>
+
+							<li><a href="/source/main/subroutine/drawsegmentedge_part_5_of_7.html">Part 5</a> - Calculate the number of the dash data block for the edge, and the corresponding memory addresses within the screen buffer.</li>
+
+							<li><a href="/source/main/subroutine/drawsegmentedge_part_6_of_7.html">Part 6</a> - Draw the edge for this segment by jumping to the correct drawing routine (<a href="/source/main/subroutine/drawshallowtoleft.html">DrawShallowToLeft</a>, <a href="/source/main/subroutine/drawshallowtoright.html">DrawShallowToRight</a>, <a href="/source/main/subroutine/drawsteeptoleft.html">DrawSteepToLeft</a> or <a href="/source/main/subroutine/drawsteeptoright.html">DrawSteepToRight</a>), depending on the gradient and direction of the edge.</li>
+
+							<li><a href="/source/main/subroutine/drawsegmentedge_part_7_of_7.html">Part 7</a> - Get things ready for the next call to DrawSegmentEdge, when we draw the next segment's verge edge, and return from the subroutine.</li>
+						</ul>
+
+						<p>The key parts of this process are part 3 (the modification of the drawing routines) and part 6 (call the correct drawing routine), so let's take a look at these steps in more detail.</p>
+
+						<h2 class="articleSubheader">Code modifications<br />
+													 ------------------</h2>
+
+						<p>As noted above, the DrawSegmentEdge routine modifies the code in the DrawVergeByteLeft and DrawVergeByteRight routines, and then calls one of DrawShallowToLeft, DrawShallowToRight, DrawSteepToLeft and DrawSteepToRight to draw the segment's verge edge. Let's take a look at the logic behind this.</p>
+
+						<p>First, we need to calculate the slope and gradient of the verge edge we want to draw, so we calculate the following variables in <a href="/source/main/subroutine/drawsegmentedge_part_1_of_7.html">part 1 of DrawSegmentEdge</a>:</p>
+
+						<ul>
+							<li>W = the yaw angle of the edge to draw</li>
+
+							<li>RR = the pitch angle of the edge to draw</li>
+
+							<li>M = the yaw angle of the previous edge</li>
+
+							<li>N = the pitch angle of the previous edge</li>
+						</ul>
+
+						<p>We then calculate the following variables in <a href="/source/main/subroutine/drawsegmentedge_part_2_of_7.html">part 2 of DrawSegmentEdge</a>:</p>
+
+						<ul>
+							<li>SS = the scaled yaw delta along the edge to draw (scaled to be as large as possible)</li>
+
+							<li>TT = the scaled pitch delta along the edge to draw (scaled to be as small as possible)</li>
+
+							<li>VV = the left-right direction of the edge
+
+								<ul>
+									<li>Positive = left to right (i.e. if M &lt; W)</li>
+
+									<li>Negative = right to left (i.e. if M &gt;= W)</li>
+								</ul>
+							</li>
+
+							<li>WW = the up-down direction of the edge
+
+								<ul>
+									<li>Positive = line is heading up the screen (i.e. if RR &lt; N)</li>
+
+									<li>Negative = line is heading down the screen (i.e. if RR &gt; N)</li>
+
+									<li>If the line is horizontal, WW is set to be positive if the line is partially off-screen, negative otherwise</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>The polarity of VV and the relative values of SS and TT are used to determine whether the line goes to the right or to the left, and whether the line is steep or shallow. We then call the relevant routine to draw the segment's verge edge, as follows:</p>
+
+						<ul>
+							<li>If SS >= TT and VV is negative, call DrawShallowToLeft</li>
+
+							<li>If SS >= TT and VV is positive, call DrawShallowToRight</li>
+
+							<li>If SS &lt; TT and VV is negative, call DrawSteepToLeft</li>
+
+							<li>If SS &lt; TT and VV is positive, call DrawSteepToRight</li>
+						</ul>
+
+						<p>This logic is implemented by various comparisons in <a href="/source/main/subroutine/drawsegmentedge_part_6_of_7.html">part 6 of DrawSegmentEdge</a>.</p>
+
+						<p>But what about the value of WW, which determines whether the line goes up the screen or down the screen? This isn't implemented by comparison logic, but by modifying the drawing routines themselves. This makes things harder to follow, but it means we only need four drawing routines rather than eight, which saves a lot of memory.</p>
+
+						<p>The modification logic is in <a href="/source/main/subroutine/drawsegmentedge_part_3_of_7.html">part 3 of DrawSegmentEdge</a>. Each of the four drawing routines has an instruction that is run on entry, and another that is run on exit, and the modifications operate on these instructions to either increment or decrement the value of Y, or leave it alone. Y contains the track line, so this controls whether the line routine draws up the screen or down the screen, and whether it changes the value of Y before or after it has drawn the edge.</p>
+
+                        <p>Specifically, we modify the routines as follows:</p>
+
+						<ul>
+							<li>If WW is positive, so the edge is heading up the screen, then do NOP on entry and INY on exit, so we increase the track line as we draw the edge</li>
+
+							<li>If WW is negative, so the edge is heading down the screen, then do NOP on entry and DEY on exit, so we decrease the track line as we draw the edge</li>
+						</ul>
+
+                        <p>This ensures that when we call these routines, they increase or decrease the track line in the appropriate direction for the line we are drawing.</p>
+
+						<p>To finish off, let's take a closer look at one of the edge-drawing routines.</p>
+
+						<h2 class="articleSubheader">DrawShallowToRight<br />
+													 ------------------</h2>
+
+						<p>The four edge-drawing routines are very similar, they just draw at different angles and directions. Let's take a deeper look at one of them - the <a href="/source/main/subroutine/drawshallowtoright.html">DrawShallowToRight</a> routine - to see how it works.
+
+						<p>The DrawShallowToRight routine draws a pair of pixel bytes, at the same time. In the <a href="/source/main/subroutine/drawsegmentedge_part_1_of_7.html">DrawSegmentEdge</a> routine, we set up three dash data blocks, and this routine starts by drawing in the first and second dash data blocks, before moving right to draw the second and third blocks.</p>
+
+						<p>The edge is drawn in the first (leftmost) byte of the pair, while the fill colour (passed in the JJ variable) is drawn in the second (rightmost) byte of the pair. This means that as we draw the edge, we also fill to the right of the edge, and as we draw the four verge edges from left to right, this builds the track view up correctly.</p>
+
+						<p>The routine either works its way up the dash data blocks (if the edge goes up the screen), or down the dash data blocks (if the edge goes down the screen). As mentioned above, the up-down direction is set by modifying the code in the <a href="/source/main/subroutine/drawvergebyteleft.html">DrawVergeByteLeft</a> and <a href="/source/main/subroutine/drawvergebyteright.html">DrawVergeByteRight</a> routines, which is done in the DrawSegmentEdge routine. These modifications depend on the value of WW, which is therefore not passed to this routine, as the modifications have already set the required direction by this point.</p>
+
+						<p>The algorithm is a basic Bresenham line-drawing algorithm, but it cleverly sidesteps the need for a division routine (see <a href="https://www.bbcelite.com/deep_dives/bresenhams_line_algorithm.html">this deep dive in my Elite project</a> for details of Bresenham's algorithm). Normally we draw a shallow sloping line by adding delta_y/delta_x to the slope error, moving to the next pixel row when the cumulative slope error reaches the next integer, but this division is not done explicitly in Revs, which instead implements the same logic using an unrolled algorithm.</p>
+
+						<p>We start with these values:
+
+						<ul>
+							<li>SS is the yaw delta (i.e. delta_x along the x-axis)</li>
+
+							<li>TT is the pitch delta (i.e. delta_y along the y-axis)</li>
+						</ul>
+
+						<p>We use A to store the cumulative slope error, starting with a value of -SS.</p>
+
+						<p>We then step along the x-axis, with each step consisting of unrolled code like this:</p>
+
+<pre class="articleIndented">   ADC TT
+   BCC skip
+
+   SBC SS
+
+   ... draw edge pixel byte ...
+
+  .skip
+</pre>
+
+						<p>This adds TT to A, and if A rolls over past zero, we draw the pixel byte, and subtract SS from A.</p>
+
+						<p>We are effectively using A to count up multiples of TT, flagging each time this sum of multiples reaches a multiple of SS. Because we are only interested in knowing when the sum of TT's reaches a multiple of SS, we can reset the cumulative total back by SS after reaching a multiple of SS, so the whole calculation can happen within eight bits.</p>
+
+						<p>So the routine effectively adds multiples of TT, i.e. of delta_y, to the slope error until they add up to SS, i.e. delta_x. This is the same as adding delta_y/delta_x to the slope error each time, as the following are all equivalent:</p>
+
+						<ul>
+							<li>Add TT multiple times until it passes SS, then subtract SS</li>
+
+							<li>Add delta_y multiple times until it passes delta_x, then subtract delta_x</li>
+
+							<li>Add delta_y multiple times until it passes a new multiple of delta_x</li>
+
+							<li>Add delta_y/delta_x multiple times until it passes a new multiple of delta_x/delta_x = 1</li>
+
+							<li>Add delta_y/delta_x multiple times until it adds up to an integer</li>
+						</ul>
+
+						<p>So the unrolled calculations in DrawShallowToRight are the same as the division-based Bresenham algorithm, just without the need for the explicit calculation of delta_y/delta_x.</p>
+
+						<p>Another interesting aspect of the drawing routines is that each of them draws up to eight pixels of the edge in one call, taking the parameter X as an argument giving the number of the pixel to start drawing from. As each pixel-drawing routine implements its Bresenham algorithm with an unrolled loop, each routine starts by modifying a branch instruction to the value from a lookup table that's indexed by the value of X passed to the subroutine, and this branch instruction then jumps to the correct part of the unrolled loop, so we start drawing from the specified pixel. It's a clever way of simulating a loop with an arbitrary starting point, even if it's a bit of a mind-bending approach.</p>
+
+						<p>In DrawShallowToRight, this <a href="/source/main/subroutine/drawshallowtoright.html#shlr1">branch instruction is at label shlr1</a>, and at the very start of the routine, the destination of this branch is modified to the X-th entry from the <a href="/source/main/variable/jumpshallowright.html">jumpShallowRight</a> table. This means that we start the drawing process at pixel number X, counting from the left, where X is from 0 to 7 (as the routine draws across two horizontal pixel bytes, with four pixels per byte). Interestingly, the lookup table supports a number of other entry points that aren't used, so presumably the author wrote a general-purpose line-drawing routine that turned out to be more flexible than required.</p>
+
+						<p>The three other drawing routines are similar to DrawShallowToRight, except <a href="/source/main/subroutine/drawshallowtoleft.html">DrawShallowToLeft</a> draws shallow lines from right to left instead of left to right, and <a href="/source/main/subroutine/drawsteeptoleft.html">DrawSteepToLeft</a> and <a href="/source/main/subroutine/drawsteeptoright.html">DrawSteepToRight</a> draw steep lines by swapping the pitch and yaw angles (so we step along the up-down pitch axis instead of the left-right yaw axis).</p>
+
+						<p>And that's how the track gets drawn - by breaking it down into four verge edges, each of which is broken down into segments, each of which is drawn using a self-modifying Bresenham routine that draws both the edge and a fill byte into the screen buffer at the same time.</p>
+
+						<p>The fact that all of this happens fast enough to create an immersive racing experience is a real testament to Geoff Crammond's coding skills. Not only does Revs look good, but it's responsive, and the track-drawing routines are an important part of the reason why.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="data_structures_for_the_track_calculations.html">Data structures for the track calculations</a><a class="next" rel="next" title="Next deep dive" href="secrets_of_the_extra_tracks.html">Secrets of the extra tracks</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

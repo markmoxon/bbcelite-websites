@@ -1,0 +1,212 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "views_and_view_types_in_nes_elite.html", "Views and view types in NES Elite", "Views and view types in NES Elite", "A deep dive into views and view types in NES Elite", "elite", "deep_dives_nes", "views_and_view_types_in_nes_elite");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_vector_graphics_using_nes_tiles.html">Drawing vector graphics using NES tiles</a><a class="next" rel="next" title="Next deep dive" href="image_and_data_compression.html">Image and data compression</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Configuring all the different views in the console version</h2>
+
+						<p>Elite has always had a lot of different screen designs (or "views" as they're known), and the type of the current view is stored in the zero-page variable QQ11. The original BBC Micro cassette version supports nine different view types from 0 to 128 (see <a href="/cassette/main/workspace/zp.html#qq11">QQ11</a>), with later versions adding more types into the mix. The NES version takes this view system and revamps it so the view type not only contains the view number, but also a bunch of metadata about the view.</p>
+
+						<p>Let's start by running through the NES version's large collection of views, before talking about transitioning between views and all the view-related routines in the codebase.</p>
+
+						<h2 class="articleSubheader">Views in the NES version<br />
+													 ------------------------</h2>
+
+						<p>The view type is still stored in the <a href="/nes/common/workspace/zp.html#qq11">QQ11</a> variable in the NES version, but it has been extended so the low nibble contains the view number (which is now in the range 0 to 15) and the high nibble contains metadata about the view. This not only allows more information to be stored in the view type, but it also allows views to have multiple statuses that we can track as views get drawn.</p>
+
+						<p>The low nibble contains the view number, as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Number</th><th>Type</th><th>Name</th><th style="text-align: center">View</th></tr>
+							<tr><td style="vertical-align: middle">0</td><td style="vertical-align: middle">$x0</td><td style="vertical-align: middle">Space view</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/station.png" alt="The Space view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">1</td><td style="vertical-align: middle">$x1</td><td style="vertical-align: middle">Title screen</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/title.png" alt="The Title screen in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">2</td><td style="vertical-align: middle">$x2</td><td style="vertical-align: middle">Mission 1 briefing:<br /> rotating ship</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/missions/mission_1_ship.png" alt="The Mission 1 briefing: rotating ship view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">3</td><td style="vertical-align: middle">$x3</td><td style="vertical-align: middle">Mission 1 briefing:<br /> ship and text</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/missions/mission_1a.png" alt="The Mission 1 briefing: ship and text view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">4</td><td style="vertical-align: middle">$x4</td><td style="vertical-align: middle">Game Over screen</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/game_over.png" alt="The Game Over screen in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">5</td><td style="vertical-align: middle">$x5</td><td style="vertical-align: middle">Text-based mission briefing</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/missions/trumbles.png" alt="The Trumbles mission briefing view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">6</td><td style="vertical-align: middle">$x6</td><td style="vertical-align: middle">Data on System</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/data_on_lave.png" alt="The Data on System view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">7</td><td style="vertical-align: middle">$x7</td><td style="vertical-align: middle">Inventory</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/inventory.png" alt="The Inventory view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">8</td><td style="vertical-align: middle">$x8</td><td style="vertical-align: middle">Status Mode</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/commander/default_commander.png" alt="The Status Mode view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">9</td><td style="vertical-align: middle">$x9</td><td style="vertical-align: middle">Equip Ship</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/equipment.png" alt="The Equip Ship view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">10</td><td style="vertical-align: middle">$xA</td><td style="vertical-align: middle">Market Price</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/market_lave.png" alt="The Market Price view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">11</td><td style="vertical-align: middle">$xB</td><td style="vertical-align: middle">Save and Load</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/save_and_load.png" alt="The Save and Load view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">12</td><td style="vertical-align: middle">$xC</td><td style="vertical-align: middle">Short-range Chart</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/short_range_chart.png" alt="The Short-range Chart view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">13</td><td style="vertical-align: middle">$xD</td><td style="vertical-align: middle">Long-range Chart</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/long_range_chart.png" alt="The Long-range Chart view in NES Elite" /></td></tr>
+							<tr><td style="vertical-align: middle">15</td><td style="vertical-align: middle">$xF</td><td style="vertical-align: middle">Start screen</td><td style="vertical-align: middle"><img class="titleImage" style="margin: 1ch" src="/images/nes/general/start.png" alt="The Start screen in NES Elite" /></td></tr>
+						</table>
+
+						<p>Note that view number 14 ($xE) is unused.</p>
+
+						<p>The high nibble contains four configuration bits, as follows:</p>
+
+						<ul>
+							<li>Bit 4 clear = do not load the normal font<br />
+								Bit 4 set &nbsp; = load the normal font</li>
+
+							<li>Bit 5 clear = do not load the highlight font<br />
+								Bit 5 set &nbsp; = load the highlight font</li>
+
+							<li>Bit 6 clear = icon bar<br />
+								Bit 6 set &nbsp; = no icon bar (rows 27-28 are blank)</li>
+
+							<li>Bit 7 clear = dashboard (icon bar is on row 20)<br />
+								Bit 7 set &nbsp; = no dashboard (icon bar is on row 27)</li>
+						</ul>
+
+						<p>The normal font is colour 1 on a background of colour 0 (typically white or cyan on black), and the highlight font is colour 3 on a background of colour 1 (typically green on white), though view $BB (Save and load) displays the normal font as colour 1 on a background of colour 2 (white on red). For more details about the two different fonts and how they get loaded into the pattern tables, see the deep dive on <a href="fonts_in_nes_elite.html">fonts in NES Elite</a>. </p>
+
+						<p>Most views have the same configuration every time the view is shown, but $x0 (the space view), $xB (Save and load), $xD (Long-range Chart) and $xF (Start screen) can have different configurations at different times, typically working through the states as the view is loaded.
+
+						<p>Note that view $FF is an exception to the above rules, as no fonts are loaded for this view, despite bits 4 and 5 being set. This view represents the blank screen between the end of the Title screen and the start of the demo scroll text.</p>
+
+						<p>The complete list of view types used in NES Elite is as follows:</p>
+
+<pre class="articleIndented">  $00 = Space view
+        No fonts loaded, dashboard
+
+  $10 = Space view
+        Normal font loaded, dashboard
+
+  $01 = Title screen
+        No fonts loaded, dashboard
+
+  $92 = Mission 1 briefing: rotating ship
+        Normal font loaded, no dashboard
+
+  $93 = Mission 1 briefing: ship and text
+        Normal font loaded, no dashboard
+
+  $C4 = Game Over screen
+        No fonts loaded, no dashboard or icon bar
+
+  $95 = Text-based mission briefing
+        Normal font loaded, no dashboard
+
+  $96 = Data on System
+        Normal font loaded, no dashboard
+
+  $97 = Inventory
+        Normal font loaded, no dashboard
+
+  $98 = Status Mode
+        Normal font loaded, no dashboard
+
+  $B9 = Equip Ship
+        Normal and highlight fonts loaded, no
+        dashboard
+
+  $BA = Market Price
+        Normal and highlight fonts loaded, no
+        dashboard
+
+  $8B = Save and Load
+        No fonts loaded, no dashboard
+
+  $BB = Save and Load
+        Normal and highlight fonts loaded, special
+        colours for the normal font, no dashboard
+
+  $9C = Short-range Chart
+        Normal font loaded, no dashboard
+
+  $8D = Long-range Chart
+        No fonts loaded, no dashboard
+
+  $9D = Long-range Chart
+        Normal font loaded, no dashboard
+
+  $CF = Start screen
+        No fonts loaded, no dashboard or icon bar
+
+  $DF = Start screen
+        Normal font loaded, no dashboard or icon bar
+
+  $FF = Segue screen from Title screen to Demo
+        No fonts loaded, no dashboard or icon bar
+</pre>
+
+						<p>Although it is technically possible to configure a view to only load the highlight font and not the normal font, in practice this isn't done. In terms of fonts, these are the only configurations used:</p>
+
+						<ul>
+							<li>No font is loaded</li>
+
+							<li>The normal font is loaded</li>
+
+							<li>The normal and highlight fonts are loaded</li>
+
+							<li>The normal and highlight fonts are loaded, with special colours for the normal font</li>
+						</ul>
+
+						<p>As noted above, the last one is only used for the Save and Load screen.</p>
+
+						<h2 class="articleSubheader">Fading between views<br />
+													 --------------------</h2>
+
+						<p>Transitioning between different views is much improved in the NES version. When changing views, the <a href="/nes/bank_3/subroutine/fadetoblack.html">FadeToBlack</a> routine slowly fades the current view to black over the course of the next four VBlanks. While the view is faded to black, we can remove the old view and draw the new one without worrying about NMIs, VBlanks and the PPU, as any screen corruption will be invisible as every colour in the palette is black. When the new view is ready, the <a href="/nes/bank_3/subroutine/fadetocolour.html">FadeToColour</a> routine reverses the effect and the screen fades into view over the course of another four VBlanks.</p>
+
+						<p>A new variable, <a href="/nes/common/workspace/zp.html#qq11a">QQ11a</a>, is used to store the old view type when changing views. When we decide to change view, QQ11 gets set to the new view number straight away while QQ11a stays set to the old view type, only updating to the new view type once the new view has appeared. This is useful when switching views as it allows us to work out what we need to change when we're in-between views and the screen has faded to black.</p>
+
+						<p>The fading process makes the most of the way colours are implemented on the NES. Colours on the NES are stored as hue and value, using an HSV model but without the saturation. Specifically the hue (i.e. blue, red etc.) is stored in the low nibble, while the value (i.e. the brightness) is stored in bits 4 and 5 of the high nibble. Bits 6 and 7 are unused and are always zero.</p>
+
+						<p>This means that given a colour value in hexadecimal, it is in the form $vh where v is the value (brightness) and h is the hue. We can therefore alter the brightness of a colour by increasing or decreasing the high nibble between 0 and 3, with $0h being the darkest and $3h being the brightest.</p>
+
+						<p>The <a href="/nes/bank_3/variable/fadecolours.html">fadeColours</a> table lets us fade colours with a quick lookup, which saves having to extract the high nibble, decrement it and put it back. Given a colour $vh, the table entry at fadeColours + $vh contains the same colour but with a reduced brightness in $v. Specifically, it returns the colour with a brightness of $v - 1. We can therefore use this table to fade a colour to black, which will take up to four steps depending on the brightness of the starting colour (and the same table is used to fade colours back from black once the view is ready).</p>
+
+						<p>The effect is subtle but rather pleasing.</p>
+
+						<h2 class="articleSubheader">Loading static patterns<br />
+													 -----------------------</h2>
+
+						<p>As well as loading fonts, each view loads a set of static patterns into both pattern tables. For example, this space view:</p>
+
+						<img class="titleImage" src="/images/nes/bitplanes/planet_asteroid.png" alt="A deep space view showing a planet and an asteroid in NES Elite" />
+
+						<p>contains the following fixed patterns in pattern table 0:</p>
+
+						<img class="titleImage lightBorder" src="/images/nes/bitplanes/planet_asteroid_patterns_0.png" alt="Example pattern table 0 in NES Elite">
+
+						<p>Almost all views contain these fixed patterns. They come in two blocks: there are the icon bar patterns at the start of the table, and the dashboard patterns from pattern 69 to the end.</p>
+
+						<ul>
+							<li>The icon bar patterns at pattern 0 are loaded in the NMI handler, after being configured in <a href="/nes/bank_3/subroutine/showiconbar.html">ShowIconBar</a> or <a href="/nes/bank_3/subroutine/updateiconbar.html">UpdateIconBar</a>.</li>
+
+							<li>The <a href="/nes/bank_3/subroutine/sendviewtoppu.html">SendViewToPPU</a> routine decides which other patterns to load for the new view, and for the space view shown above, it loads the dashboard image data from <a href="/nes/bank_3/variable/dashimage.html">dashImage</a> into patterns 69 to 255 in pattern table 0. The actual loading is done by calling the <a href="/nes/bank_3/subroutine/senddashimagetoppu.html">SendDashImageToPPU</a> routine.</li>
+						</ul>
+
+						<p>The SendViewToPPU routine is also responsible for loading patterns for the system and commander images, if required, as well as any other graphics that the new view needs. It sends these patterns straight to the PPU without waiting for the NMI handler, as we don't need to worry about corrupting the screen (as it's already faded to black by this point).</p>
+
+						<h2 class="articleSubheader">View routine naming conventions<br />
+													 -------------------------------</h2>
+
+						<p>There are lots of routines that deal with setting up new views and sending the correct data to the PPU. I have tried to use a clear naming convention for these different routines, to make things easier to follow.</p>
+
+						<ul>
+							<li>Routines that end in "ToPPU" send data to the PPU immediately, without worrying about VBlank. For example, <a href="/nes/bank_3/subroutine/sendviewtoppu.html">SendViewToPPU</a> sends the new view data to the PPU, <a href="/nes/bank_3/subroutine/sendbitplanetoppu.html">SendBitplaneToPPU</a> sends a bitplane to the PPU, and <a href="/nes/bank_0/subroutine/sendspaceviewtoppu.html">SendSpaceViewToPPU</a> configures a new space view and sends it to the PPU.</li>
+
+							<li>Routines that end in "InNMI" configure the NMI handler to start sending data to the PPU in the next appropriate VBlank. For example, <a href="/nes/bank_3/subroutine/setupviewinnmi.html">SetupViewInNMI</a> sets up the new view before configuring the NMI handler to send it to the PPU, <a href="/nes/bank_7/subroutine/drawbitplaneinnmi.html">DrawBitplaneInNMI</a> configures the NMI handler to send the specified bitplane to the PPU, and <a href="/nes/bank_0/subroutine/drawscreeninnmi.html">DrawScreenInNMI</a> configures the NMI handler to send the screen to the PPU.</li>
+
+							<li>Routines that start with "Update" decide whether to send data to the PPU immediately or go via the NMI handler and VBlank. For example, routines like <a href="/nes/bank_7/subroutine/updatescreen.html">UpdateScreen</a>, <a href="/nes/bank_0/subroutine/updateview.html">UpdateView</a> and <a href="/nes/bank_7/subroutine/updatehangarview.html">UpdateHangarView</a> check whether the screen is faded before deciding how best to send the view data.</li>
+						</ul>
+
+						<p>As in the original Elite, <a href="/nes/bank_0/subroutine/tt66.html">TT66</a> is still the core routine for changing views, but in NES Elite there are lots of other routines too. Hopefully the naming convention above will help make things a little easier to understand...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="drawing_vector_graphics_using_nes_tiles.html">Drawing vector graphics using NES tiles</a><a class="next" rel="next" title="Next deep dive" href="image_and_data_compression.html">Image and data compression</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

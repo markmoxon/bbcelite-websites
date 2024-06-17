@@ -1,0 +1,68 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "scheduling_tasks_in_the_main_loop.html", "Scheduling tasks in the main loop", "Scheduling tasks in the main loop", "A deep dive into scheduling tasks in the main loop in BBC Micro Revs", "revs", "deep_dives_main_loop", "scheduling_tasks_in_the_main_loop");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="program_flow_of_the_main_game_loop.html">Program flow of the main game loop</a><a class="next" rel="next" title="Next deep dive" href="hidden_secrets_of_the_custom_screen_mode.html">Hidden secrets of the custom screen</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Revs does the right thing at the right time</h2>
+
+						<p>Revs employs two different devices to let it spread out the workload and keep proper time in the all-important lap timers. Let's take a look at what's involved.</p>
+
+						<h2 class="articleSubheader">The main loop counter<br />
+													 ---------------------</h2>
+
+						<p>The most obvious way that Revs schedules its different tasks is via the main loop counter, which is stored in the 16-bit variable at (<a href="/source/main/variable/mainloopcounterhi.html">mainLoopCounterHi</a> <a href="/source/main/workspace/zero_page.html#mainloopcounterlo">mainLoopCounterLo</a>). Interestingly, the low byte of the loop counter is in zero page along with all the most important variables, but the high byte is in main memory, which is a rather unusual arrangement. Perhaps Geoff Crammond started with a one-byte loop counter, and only realised later that he needed more granularity? Who knows.</p>
+
+						<p>Whatever its provenance, the main loop counter is set to zero at the start of each driving session by the <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> routine, and is incremented by the <a href="/source/main/subroutine/processtime.html">ProcessTime</a> routine on each iteration of the main game loop, in <a href="/source/main/subroutine/maindrivingloop_part_2_of_5.html">part 2 of the main driving loop</a>.</p>
+
+						<p>The loop counter is used as follows:</p>
+
+						<ul>
+							<li>In the <a href="/source/main/subroutine/processshiftedkeys.html">ProcessShiftedKeys</a> routine, to ensure that when we change the volume, it only changes on every other iteration round the main loop.</li>
+
+							<li>In the <a href="/source/main/subroutine/finishrace.html">FinishRace</a> routine, where we check the high byte of the counter to make sure the rest of the race runs for at least 14 * 256 main loop iterations, but doesn't run forever.</li>
+
+							<li>In the <a href="/source/main/subroutine/applytyresandskids.html">ApplyTyresAndSkids</a> routine, where we flush the sound buffer on two out of every four iterations of the main loop (specifically when bit 1 of mainLoopCounterLo is set).</li>
+
+							<li>In the <a href="/source/main/subroutine/applyengine.html">ApplyEngine</a> routine, where if the blue lights are showing at the start of the race, we check to see if mainLoopCounterLo mod 64 &lt; 53. If so, then we have at least 63 - 53 = 10 main loop iterations (including this one) to go until the green lights appear, so we engage the clutch.</li>
+
+							<li>In the <a href="/source/main/subroutine/processtime.html">ProcessTime</a> routine, where we recalculate the driver speeds every 32 iterations of the main loop.</li>
+
+							<li>In the <a href="/source/main/subroutine/showstartinglights.html">ShowStartingLights</a> routine, when we are showing the blue lights and are about to show the green lights. We wait until mainLoopCounterLo mod 64 is zero, which will be the case once every 64 iterations, and then we turn the lights green. This ensures that the exact starting point of the race is unpredictable, which adds to the excitement.</li>
+						</ul>
+
+						<p>The main loop counter isn't used anywhere else.</p>
+
+						<h2 class="articleSubheader">Adjusting the timers<br />
+													 --------------------</h2>
+
+						<p>The main loop runs as fast as it can, looping round and round. The timing of the loop isn't tied to anything, so if the loop takes longer to run than normal, so be it. This means that if there is a lot happening on screen, or there's a particularly complex bit of track to calculate, things can slow down a fraction, though in practice the game is well behaved and slowdowns are not at all obvious.</p>
+
+						<p>But Revs has two timers - the clock timer and lap timer - that count the elapsed minutes and seconds for each race, so what happens to these? Perhaps surprisingly, the timers are not tied to any other source of truth, such as the VIA timers. Instead, the timers also tick down at a constant rate, and if the game slows down, so do the timers.</p>
+
+						<p>There is part of the code that tries to mitigate this, however. The timers are incremented by the <a href="/source/main/subroutine/addtimetotimer.html">AddTimeToTimer</a> routine, which adds 9/100 of a second to a specific timer when called. This behaviour is adjustable on a per-track basis using the trackTimerAdjust feature from the track data file. The <a href="/source/main/subroutine/processtime.html">ProcessTime</a> routine implements logic that increments a counter in timerAdjust every time it is called (which is on every iteration of the main driving loop), and when this matches the value of trackTimerAdjust from the track data file, the AddTimeToTimer routine adds 18/100 of a second to the timer instead of 9/100 of a second.</p>
+
+						<p>This allows us to change the speed of the timers by altering the value of trackTimerAdjust in the track data file. Increasing this value therefore speeds up the timers, allowing their speed to be adjusted on a per-track basis. You can see the different tracks' values in the deep dive on <a href="comparing_the_tracks.html">comparing the tracks</a>, where they range from 20 (for Donington Park) to 93 (for Oulton Park). From this we can deduce that the Oulton Park track puts more strain on the main driving loop than the Donington Park track, as we have to speed up the timers to compensate for a slower loop iteration rate.</p>
+
+						<p>Revs is a slick game with smooth graphics and a real sense of urgency about the simulation, so even if the timers aren't perfect, it seems that nobody's counting...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="program_flow_of_the_main_game_loop.html">Program flow of the main game loop</a><a class="next" rel="next" title="Next deep dive" href="hidden_secrets_of_the_custom_screen_mode.html">Hidden secrets of the custom screen</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

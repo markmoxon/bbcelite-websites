@@ -1,0 +1,140 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "drawing_ellipses.html", "Drawing ellipses", "Drawing ellipses", "A deep dive into drawing ellipses in BBC Micro Elite", "elite", "deep_dives_drawing_circles", "drawing_ellipses");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_ball_line_heap.html">The ball line heap</a><a class="next" rel="next" title="Next deep dive" href="drawing_craters.html">Drawing craters</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Elite draws ellipses for the planet's crater, meridian and equator</h2>
+
+						<p>The BBC Micro and NES versions of Elite have a feature that is notably absent from all other versions of the game, from the 8-bit Commodore 64 and ZX Spectrum versions, to the 16-bit PC and 32-bit Archimedes ports. In all those other variations of Elite, planets are either plain circles or simple filled disks, but when you launch from Lave on the BBC Micro or NES, you're greeted by a planet with a rotating meridian and equator, like this:</p>
+
+						<img class="titleImage" src="/images/ellipses/lave.png" alt="The launch view of Lave in BBC Micro Elite" />
+
+						<p>And after a quick hyperspace to nearby Diso, the planet hanging in the distance boasts a huge crater that hurtles around the surface at speed. The BBC Micro's planets might rotate improbably fast, but they feel a lot more three-dimensional than the flat disks of the other platforms.</p>
+
+						<img class="titleImage" src="/images/ellipses/diso.png" alt="A view of Diso in BBC Micro Elite" />
+
+						<p>The key to both of these unique planetary features can be found in the ellipse routines at <a href="/cassette/main/subroutine/pls2.html">PLS2</a> and <a href="/cassette/main/subroutine/pls22.html">PLS22</a>. The planet's meridian and equator are drawn as half-ellipses by calling PLS2 from <a href="/cassette/main/subroutine/pl9_part_2_of_3.html">part 2 of PL9</a>, while the crater is drawn as a full ellipse by calling PLS22 from <a href="/cassette/main/subroutine/pl9_part_3_of_3.html">part 3 of PL9</a>. In this deep dive we take a look at how these ellipses are drawn; for information on how the planet's features are constructed from these ellipses, see the deep dives on <a href="drawing_craters.html">drawing craters</a> and <a href="drawing_meridians_and_equators.html">drawing meridians and equators</a>.</p>
+
+						<p>Interestingly, the ellipse routines are still present in some of the other 6502-based versions, and in some cases they can even be enabled using an undocumented feature - for example, you can pause the Commodore 64 version and press "P" to enable more detailed planets, though they do slow the game down quite a bit, which is presumably why they are disabled by default. In other versions, like the Acorn Electron, the code has been completely removed to save space.</p>
+
+						<h2 class="articleSubheader">Drawing ellipses with parametric equations<br />
+													 ------------------------------------------</h2>
+
+						<p>The <a href="/cassette/main/subroutine/pls22.html">PLS22</a> subroutine is responsible for drawing ellipses and half-ellipses, depending on the value of the TGT parameter. Full ellipses are used when drawing planet craters, and half-ellipses are used when drawing planet meridians and equators.</p>
+
+						<p>The PLS22 subroutine works as follows. If we have any pair of two-dimensional vectors u and v:</p>
+
+<pre class="articleIndented">  u = [ u_x ]
+      [ u_y ]
+
+  v = [ v_x ]
+      [ v_y ]
+</pre>
+
+						<p>and an ellipse centre point at coordinate c:</p>
+
+<pre class="articleIndented">  c = [ c_x ]
+      [ c_y ]
+</pre>
+
+						<p>then a parametric equation of an ellipse is given by:</p>
+
+<pre class="articleIndented">  [ x ]  =  [ c_x ]  +  [ u_x ] * cos(theta)  +  [ v_x ] * sin(theta)
+  [ y ]     [ c_y ]     [ u_y ]                  [ v_y ]
+</pre>
+
+						<p>This is a parametric equation in theta (see the <a href="https://en.wikipedia.org/wiki/Parametric_equation">Wikipedia entry on parametric equations</a> for details). What this means is that as theta increases from 0 to 360 degrees, the x and y coordinates move accordingly, and as they do so, they plot out an ellipse.</p>
+
+						<p>In this case, u and v are said to be conjugate half-diameters of the ellipse (see the <a href="https://en.wikipedia.org/wiki/Conjugate_diameters">Wikipedia entry on conjugate diameters</a> for details). Before we get to that, it's probably easier to understand the simpler case where u and v are perpendicular to each other, and are both axis-aligned. To illustrate this, let's set up u and v as follows:</p>
+
+<pre class="articleIndented">  u = [ 2 ]
+      [ 0 ]
+
+  v = [ 0 ]
+      [ 3 ]
+</pre>
+						<p>Then the parametric equation for the ellipse simplifies into:</p>
+
+<pre class="articleIndented">  [ x ]  =  [ 0 ]  +  [ 2 ] * cos(theta)  +  [ 0 ] * sin(theta)
+  [ y ]     [ 0 ]     [ 0 ]                  [ 3 ]
+
+         =  [ 2 * cos(theta) ]
+            [ 3 * sin(theta) ]
+</pre>
+
+						<p>We can interpret this as the parametric equation of a circle, as shown in the deep dive on <a href="drawing_circles.html">drawing circles</a>; but in this ellipse example, the x-coordinates have been stretched by a factor of 2, and the y-coordinates have been stretched by a factor of 3. This is therefore a tall ellipse aligned with the y-axis, with a horizontal radius of length 2 and a vertical radius of length 3, like this:</p>
+
+						<img class="titleImage themeLight noBorder photo" style="width: 550px" src="/images/ellipses/w_ellipse_aligned.png" alt="A tall ellipse" /><img class="titleImage themeDark noBorder photo" style="width: 550px" src="/images/ellipses/b_ellipse_aligned.png" alt="A tall ellipse" /><img class="titleImage themeElite noBorder photo" style="width: 550px" src="/images/ellipses/b_ellipse_aligned.png" alt="A tall ellipse" />
+
+						<p>In the above simple example, vectors u and v represent the minor and major radii of the ellipse. </p>
+
+						<p>In practice, u and v do not have to be axis-aligned, or even perpendicular to each other. In general, when u and v are not perpendicular, the above parametric equation will still give us an ellipse, but now it will be rotated, and not axis-aligned. For example, if we take the following values for u and v:</p>
+
+<pre class="articleIndented">  u = [ 2.0 ]
+      [ 0.6 ]
+
+  v = [ 0.6 ]
+      [ 2.5 ]
+</pre>
+
+						<p>then we get the following rotated ellipse:</p>
+
+						<img class="titleImage themeLight noBorder photo" style="width: 550px" src="/images/ellipses/w_ellipse_angled.png" alt="An angled ellipse" /><img class="titleImage themeDark noBorder photo" style="width: 550px" src="/images/ellipses/b_ellipse_angled.png" alt="An angled ellipse" /><img class="titleImage themeElite noBorder photo" style="width: 550px" src="/images/ellipses/b_ellipse_angled.png" alt="An angled ellipse" />
+
+						<p>To see this in action, check out this <a target="_blank" href="https://bbcmic.ro/#%7B%22v%22%3A1%2C%22program%22%3A%22REM%20BBC%20BASIC%20version%20of%20Elite%20Ellipse%20plotting%20algorithm%5CnMODE1%5Cncx%25%3D640%3Acy%25%3D512%3AREM%20centre%20of%20ellipse%5Cnux%25%3D450%3Auy%25%3D200%3AREM%20U%20vector%5Cnvx%25%3D250%3Avy%25%3D-100%3AREM%20V%20vector%5Cntgt%25%3D64%3AREM%20number%20of%20segments%20to%20draw.%20%20Use%2064%20for%20a%20full%20ellipse.%20%20Use%2032%20for%20a%20half-ellipse.%5Cncnt2%25%3D0%3AREM%20Starting%20segment%20number.%20%20%28Only%20relevant%20if%20we%20are%20drawing%20a%20half-ellipse%29%5CnFOR%20segment%25%3Dcnt2%25%20TO%20cnt2%25%2Btgt%25%5Cntheta%3Dsegment%25%2F64*2*PI%5Cnx%3Dcx%25%2Bux%25*COS%28theta%29%2Bvx%25*SIN%28theta%29%5Cny%3Dcy%25%2Buy%25*COS%28theta%29%2Bvy%25*SIN%28theta%29%5CnIF%20segment%25%3Dcnt2%25%20MOVE%20x%2Cy%20ELSE%20DRAW%20x%2Cy%5CnNEXT%5Cn%5CnREM%20show%20U%20and%20V%20vectors%5CnGCOL0%2C1%3AMOVE%20cx%25%2Ccy%25%3ADRAW%20cx%25%2Bux%25%2Ccy%25%2Buy%25%3AREM%20U%20vector%20%28red%29%5CnGCOL0%2C2%3AMOVE%20cx%25%2Ccy%25%3ADRAW%20cx%25%2Bvx%25%2Ccy%25%2Bvy%25%3AREM%20V%20vector%20%28yellow%29%22%7D">BBC BASIC demonstration of the Elite ellipse-drawing algorithm</a> (link opens in a new window). This uses the Owlet engine to run the BASIC program in your browser, and you can clearly see the ellipse being drawn as the theta parameter goes from 0 to 2*PI radians (i.e. from 0 to 360 degrees) in 64 steps.</p>
+
+						<p>There are a number of mathematically interesting details about this parametric way of defining an ellipse:</p>
+
+                        <ol>
+                            <li>The above parametric equations do give an ellipse.</li>
+
+                            <li>The ellipse passes through the points at the ends of the u and v vectors (as shown in the above diagrams). When theta is 0, the (x, y) coordinates pass through the end of the u vector. When theta is 90 degrees, the (x, y) coordinates pass through the end of the v vector.</li>
+
+                            <li>When u and v are not perpendicular, u and v will end up as conjugate-radius vectors of the ellipse (see the <a href="https://en.wikipedia.org/wiki/Conjugate_diameters">Wikipedia entry on conjugate diameters</a> for more on this).</li>
+                        </ol>
+
+						<p>This parametric method, with two non-perpendicular vectors u and v used to define the ellipse, is a fairly unusual way to plot an ellipse, but this approach is particularly convenient and efficient for drawing craters and meridians. The ellipse routine uses sine and cosine lookup-tables with just 64 points stored in them (see the deep dive on <a href="the_sine_cosine_and_arctan_tables.html">the sine, cosine and arctan tables</a> for details). In the <a href="/cassette/main/subroutine/pls22.html">PLS22</a> routine, the variables used to represent vectors u and v are as follows:</p>
+
+<pre class="articleIndented">  u = [    (XX16 K2)   ]
+      [ -(XX16+1 K2+1) ]
+
+  v = [  (XX16+2 K2+2) ]
+      [ -(XX16+3 K2+3) ]
+</pre>
+
+						<p>The y-coordinates are negated because BLINE expects pixel coordinates but the u and v vectors are extracted from the orientation vectors. The y-axis runs in the opposite direction in 3D space to that on the screen, so we need to negate the 3D space coordinates before we can combine them with the ellipse's centre coordinates.</p>
+
+						<p>Other parameters passed to PLS22 are:</p>
+
+<pre class="articleIndented">  c = [ K3(1 0) ] = coordinates of the centre of the ellipse
+      [ K4(1 0) ]
+
+  TGT = the number of line segments to plot
+
+  CNT2 = the segment number to start drawing from
+
+  STP = step rate at which to increase the angle when drawing the ellipse
+</pre>
+
+						<p>As with the <a href="drawing_circles.html">circle-drawing algorithm</a>, the ellipse routine does not use any symmetry properties of the ellipse to halve the number of points calculated, but instead relies on the pre-calculated sine and cosine tables for speed.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_ball_line_heap.html">The ball line heap</a><a class="next" rel="next" title="Next deep dive" href="drawing_craters.html">Drawing craters</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

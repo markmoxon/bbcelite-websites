@@ -1,0 +1,231 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "orientation_vectors.html", "Orientation vectors", "Orientation vectors", "A deep dive into orientation vectors in BBC Micro Elite", "elite", "deep_dives_moving_and_rotating_in_space", "orientation_vectors");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="rotating_the_universe.html">Rotating the universe</a><a class="next" rel="next" title="Next deep dive" href="tidying_orthonormal_vectors.html">Tidying orthonormal vectors</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The three vectors that determine a ship's orientation in space</h2>
+
+						<p>Each ship in the Elite universe has its own set of three orientation vectors, which determine its orientation in space. These are fundamental aspects of the Elite universe, and form the basis for the ship-moving routines in <a href="/cassette/main/subroutine/mveit_part_1_of_9.html">MVEIT</a> (moving the universe), <a href="/cassette/main/subroutine/mvs4.html">MVS4</a> (pitching and rolling our ship) and <a href="/cassette/main/subroutine/mvs5.html">MVS5</a> (pitching and rolling other ships).</p>
+
+						<p>There are three different vectors - nosev, roofv and sidev - with each of them pointing along one of the ship's main axes, like this:</p>
+
+						<ul>
+							<li>nosev points forward out of the nose of the ship</li>
+
+							<li>roofv points up out of the ship's sunroof... or it would if it had one</li>
+
+							<li>sidev points out of the ship's right view</li>
+						</ul>
+
+						<p>So if we're looking at the Cobra Mk III on the title screen, like this:</p>
+
+						<img class="titleImage" src="/images/cassette/title.png" alt="The title screen in the BBC Micro version of Elite" />
+
+						<p>then this is how the orientation vectors are arranged:</p>
+
+						<ul>
+							<li>nosev points out of the nose, towards the bottom-right corner</li>
+
+							<li>roofv points out of the roof, coming out of the screen to the top-right</li>
+
+							<li>sidev points out of the right side, towards the bottom-left corner</li>
+						</ul>
+
+						<p>(Note that there are five ships that have slightly different orientations to this standard model, namely Thargoids, Thargons, space stations, cargo canisters and asteroids. These orientations are described below.)</p>
+
+						<p>It might help to think of these vectors from the point of view of the ship's cockpit. From this perspective, the orientation vectors always look like this, with our ship at the origin:</p>
+
+<pre class="articleIndented">  roofv
+  ^
+  |
+  |
+  |
+  |    nosev
+  |   /
+  |  /
+  | /
+  |/
+  +-----------------------&gt; sidev
+</pre>
+
+						<p>Every ship out there has its own set of orientation vectors, with nosev pointing out of that ship's nose, roofv pointing out of that ship's roof, and sidev out of that ship's right side. The orientation vectors are used in lots of places, for example:</p>
+
+						<ul>
+							<li>When we draw the ship on screen, we take the shape as defined by its blueprint, and rotate it so that it aligns with its orientation vectors, so the ship we draw on screen points the right way</li>
+
+							<li>If an enemy ship is firing its lasers at us, we use that ship's nosev vector to work out whether it is pointing towards us, and therefore whether it can hit us</li>
+
+							<li>When enemy ships pitch or roll, we can apply these movements by rotating their orientation vectors</li>
+						</ul>
+
+						<p>Our ship doesn't have its own set of orientation vectors - at least, not explicitly. This is because our own ship's orientation vectors always align with the main coordinate axes: sidev aligns with the x-axis, which always points to the right from the point of view of our cockpit, while roofv aligns with the y-axis and points up, and nosev aligns with the z-axis, which always points into the screen.</p>
+
+						<h2 class="articleSubheader">Storing the vectors in the ship data block<br />
+													 ------------------------------------------</h2>
+
+						<p>The three vectors are stored in bytes #9-26 of the ship's data block, so when we copy a ship's data into the internal workspace INWK, the vectors live in INWK+9 to INWK+26. Each vector coordinate is stored as a 16-bit sign-magnitude number, like this:</p>
+
+<pre class="articleIndented">          [ INWK(10 9)  ]           [ INWK(16 15) ]           [ INWK(22 21) ]
+  nosev = [ INWK(12 11) ]   roofv = [ INWK(18 17) ]   sidev = [ INWK(24 23) ]
+          [ INWK(14 13) ]           [ INWK(20 19) ]           [ INWK(26 25) ]
+</pre>
+
+						<p>We can refer to these three vectors in various ways, such as these variations for the nosev vector:</p>
+
+<pre class="articleIndented">  nosev = (nosev_x, nosev_y, nosev_z)
+
+        = [ nosev_x nosev_y nosev_z ]
+
+          [ nosev_x ]
+        = [ nosev_y ]
+          [ nosev_z ]
+
+          [ (nosev_x_hi nosev_x_lo) ]
+        = [ (nosev_y_hi nosev_y_lo) ]
+          [ (nosev_z_hi nosev_z_lo) ]
+</pre>             <h2 class="articleSubheader">Orthonormal vectors<br />
+            							 -------------------</h2>
+
+						<p>The three orientation vectors are orthonormal, which means they are orthogonal (i.e. they are perpendicular to each other), and normal (i.e. each of the vectors has length 1).</p>
+
+						<p>We can rotate a ship about its centre by rotating these vectors, as in the MVS4 routine (see the deep dive on <a href="pitching_and_rolling.html">pitching and rolling</a> for more about this). However, because we use the small angle approximation to rotate in space, and it is not completely accurate, the three vectors tend to get a bit stretched over time, so periodically we have to tidy the vectors with the <a href="/cassette/main/subroutine/tidy.html">TIDY</a> routine to ensure they remain as orthonormal as possible (see the deep dive on <a href="tidying_orthonormal_vectors.html">tidying orthonormal vectors</a> for details).</p>
+
+						<h2 class="articleSubheader">Initialisation<br />
+													 --------------</h2>
+
+						<p>When a new ship is spawned, its vectors are initialised in the <a href="/cassette/main/workspace/zp.html#inwk">INWK</a> workspace by the <a href="/cassette/main/subroutine/zinf.html">ZINF</a> routine as follows:</p>
+
+<pre class="articleIndented">  sidev = (1,  0,  0)
+  roofv = (0,  1,  0)
+  nosev = (0,  0, -1)
+</pre>
+
+						<p>So new ships are spawned facing out of the screen, as their nosev vectors point in a negative direction along the z-axis, which is positive into the screen and negative out of the screen.</p>
+
+						<p>Internally, we store a vector value of 1 as 96, to support fractional values, and the orientation vectors are stored as 16-bit sign-magnitude numbers. 96 is &amp;60, and &amp;60 with bit 7 set is &amp;E0, so we store the above vectors like this:</p>
+
+<pre class="articleIndented">  sidev = (&amp;6000, 0, 0)
+  roofv = (0, &amp;6000, 0)
+  nosev = (0, 0, &amp;E000)
+</pre>
+
+						<p>so nosev_z_hi = &amp;E0 = -96, sidev_x_hi = &amp;60 = 96 and so on.</p>
+
+						<h2 class="articleSubheader">How big is a unit vector?<br />
+													 -------------------------</h2>
+
+						<p>As mentioned above, when new ships are spawned in the <a href="/cassette/main/subroutine/nwshp.html">NWSHP</a> routine, they are almost all initialised with nosev pointing towards us, out of the screen, and with roofv pointing up and sidev pointing right (though see below for some exceptions to this rule).</p>
+
+						<p>Planets are spawned in the same way as ships, i.e. with nosev pointing towards us, out of the screen, and with roofv pointing up and sidev pointing right. The orientation vectors are used to draw the planet's meridians and craters; for example, the crater is drawn at the end of the roofv vector, specifically when it is pointing away from us. See the deep dives on <a href="drawing_craters.html">drawing craters</a> and <a href="drawing_meridians_and_equators.html">drawing meridians and equators</a> for more details.</p>
+
+						<p>This means the crater is on the very top of the planet when we arrive out of hyperspace (or launch), and because the planet is set to pitch clockwise around the right-pointing sidev, it means roofv rolls to point towards us, and the crater is not shown immediately. If you launch from the station around a crater system like Zaonce, then the crater does indeed not appear for half a rotation, as roofv takes a while to rotate until it's pointing away from us.</p>
+
+						<p>Planet spawning gives us a way to understand the scale of the orientation vectors. As already discussed, unit vectors in Elite have length 96 (&amp;60), which is represented by a 16-bit number (96 0) to mean 96.0. So the unit vector along the x-axis is (96, 0, 0), for example. Vectors are normalised to this length in the <a href="/cassette/main/subroutine/tis2.html">TIS2</a> routine, which is used to divide vector coordinates by their length, and TIS2 is called from the <a href="/cassette/main/subroutine/norm.html">NORM</a> routine when normalising vectors (see the deep dive on <a href="tidying_orthonormal_vectors.html">tidying orthonormal vectors</a> for more details).</p>
+
+						<p>When we launch from a space station, the planet is spawned with a radius of K(1 0) = (96 0) = 24576. It is spawned at a distance of (z_sign z_hi z_lo) = (1 0 0), so this is the distance between the centre of the planet and the station. This is set up in the <a href="/cassette/main/subroutine/planet.html">PLANET</a> routine.</p>
+
+						<p>When we actually leave the station, the planet gets projected onto the screen. The planet's dimensions get divided by z, so to get the radius of the projected planet, we calculate (96 0) / (1 0 0). This projection division gives us a planet with an on-screen pixel radius of 96 pixels, and the space view is 192 pixels high and 256 pixels wide, so this means that on launching, the planet exactly fits the screen vertically, as 96 * 2 = 192. This is indeed the case, if you look at the size of the planet on launching.</p>
+
+						<p>So, to come back to roofv and the other orientation vectors, planets are spawned with a radius of (96 0), which is 96 * 256, or a radius of 256 unit vectors.</p>
+
+						<p>There is a twist on this, though. The scale of the orientation vectors is effectively an interpretation: we choose to interpret (96 0) as meaning 96.0, but we don't have to. When calculating the space station safe zone, for example, we actually interpret the unit vector length as being (96 0), rather than 96.0, so we get a vector that spans the radius of the whole planet. The unit vector (nosev, in this case) is exactly the same, we just choose to treat it as a much larger vector than when we are thinking in ship scale... so you could also argue that planets in Elite have a radius of one unit vector. It all depends on the context.</p>
+
+						<h2 class="articleSubheader">Rotation matrices and axes<br />
+													 --------------------------</h2>
+
+						<p>Sometimes we might refer to the orientation vectors as a matrix, with sidev as the first row, roofv as the second row, and nosev as the third row, like this:</p>
+
+<pre class="articleIndented">  [ sidev_x sidev_y sidev_z ]
+  [ roofv_x roofv_y roofv_z ]
+  [ nosev_x nosev_y nosev_z ]
+</pre>
+
+						<p>though generally we talk about the individual vectors, because that's easier to understand. See the deep dive on <a href="calculating_vertex_coordinates.html">calculating vertex coordinates</a> for an example of the above matrix in use.</p>
+
+						<p>For the mathematically inclined, the three orientation vectors can be thought of as axes that define the 3D coordinate space orientated around the other ship - they form the basis for this space. To put it yet another way, the matrix above is a rotation matrix that transforms the axes of our ship into the axes of the other ship.</p>
+
+						<p>Finally, the orientation vectors define a left-handed universe, with the thumb as roofv, index finger as nosev, and middle finger as sidev.</p>
+
+						<h2 class="articleSubheader">Non-standard orientations<br />
+													 -------------------------</h2>
+
+						<p>Not all ships are spawned with the nosev pointing towards us. For example, the space station is an exception; when we launch from the station, it is spawned with nosev pointing away from us, into the screen. This is because nosev points out of the station slot, and when we launch from it, we want the station to be spawned behind us, and with the slot facing forwards, in the same direction that we are looking. You can see this logic in the <a href="/cassette/main/subroutine/tt110.html">TT110</a> launch routine, which places the new station behind us before calling <a href="/cassette/main/subroutine/nwsps.html">NWSPS</a> to flip nosev before spawning the station with NWSHP.</p>
+
+						<p>The following ships don't have a standard orientation (all other ships follow the logical nose-roof-side pattern).</p>
+
+						<ul>
+							<li>Thargoid mothership:
+
+								<ul>
+									<li>nosev points out of one side of the mothership</li>
+
+									<li>roofv points out of the other side of the mothership</li>
+
+									<li>sidev points out of the roof of the mothership</li>
+								</ul>
+
+							</li>
+
+							<li>Thargon:
+
+								<ul>
+									<li>nosev points out of the Thargon's nose</li>
+
+									<li>roofv points out of the side of the Thargon</li>
+
+									<li>sidev points out of the roof of the Thargon</li>
+								</ul>
+
+							</li>
+
+							<li>Space station:
+
+								<ul>
+									<li>nosev points forward out of the docking slot</li>
+
+									<li>roofv points out of the side of the space station in a direction that is parallel to the horizontal line of the slot</li>
+
+									<li>sidev points out of the side of the space station in a direction that is perpendicular to the horizontal line of the slot</li>
+								</ul>
+
+							</li>
+
+							<li>Cargo canister:
+
+								<ul>
+									<li>nosev points out of the side of the canister, avoiding the apexes of the pentagonal cross-section and at right-angles to roofv</li>
+
+									<li>roofv points out of the side of the canister, through one of the apexes of the pentagonal cross-section</li>
+
+									<li>sidev points out of one end of the canister</li>
+								</ul>
+
+							</li>
+						</ul>
+
+						<p>The asteroid also follows its own orientation, but I'm not even going to try to describe which features appear to be the nose, roof and side, as they all just look like bumps to me.</p>
+
+						<p>One interesting (and presumably intentional) effect of the Thargoid and Thargon orientations can be seen when they pitch and roll. A pitching Thargoid actually spins like a traditional flying saucer (i.e. like a spinning top) as its roofv vector points out of its side (though a rolling Thargoid tilts back and forth as expected). When fighting Thargoids, you often find yourself orientating your ship to get them vertically aligned in your sights, which is because you can then track their sideways pitching with your own vertical pitching movement. This is different to the other ships, which expose their soft underbellies to your lasers when they try to pitch out of your way.</p>
+
+						<p>That's Thargoids for you. Different... and deadly.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="rotating_the_universe.html">Rotating the universe</a><a class="next" rel="next" title="Next deep dive" href="tidying_orthonormal_vectors.html">Tidying orthonormal vectors</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

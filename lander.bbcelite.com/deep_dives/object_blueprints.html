@@ -1,0 +1,127 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "object_blueprints.html", "Object blueprints", "Object blueprints", "A deep dive into object blueprints in Lander on the Acorn Archimedes", "lander", "deep_dives_objects_particles", "object_blueprints");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="drawing_the_landscape.html">Drawing the landscape</a><a class="next" rel="next" title="Next page" href="drawing_3d_objects.html">Drawing 3D objects</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Storing 3D object definitions using vertices, faces and normals</h2>
+
+						<p>The world of Lander is composed of three parts: the <a href="generating_the_landscape.html">rolling landscape</a>, the 3D objects, and the <a href="particles_and_particle_clouds.html">particle system</a>. In this deep dive we're going to take a look at Lander's 3D objects and how they are defined.</p>
+
+						<p>Consider the following scene:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/general/taking_off.png" alt="The ship taking off in Acorn Archimedes Lander" />
+
+						<p>This familiar take-off scenario contains the landscape, with its flat grey launchpad, a hint of sea in the bottom-left corner, and gently sloping green fields. There's a cloud of exhaust particles below the player's ship, and the rest of the scene is made up of 3D objects. There's the ship itself, then the three rockets along the right edge of the launchpad, a gazebo hiding in the distance, and a tall leafy tree on the right.</p>
+
+						<p>That isn't all, though, as the ship, tree and rockets all cast shadows on the ground (and so does the gazebo, but its shadow merges into the background, so isn't terribly obvious). The shadows are drawn as part of the 3D object system, so check out the deep dive on <a href="drawing_3d_objects.html">drawing 3D objects</a> for more details.</p>
+
+						<p>But for this article, let's start with a look at the different flavours of in-game object, before moving on to the data structures that define those objects.</p>
+
+						<h2 class="articleSubheader">Object designs<br />
+						                             --------------</h2>
+
+						<p>There are 13 object designs in Lander, but one of them, the pyramid, is unused and never appears in-game. Each design has an associated blueprint, which we'll look at below.</p>
+
+						<p>The different objects are as follows, with all of them shown to the same scale:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Name and blueprint</th><th style="width: 23ch">Object attributes</th><th style="text-align: center">Object</th></tr>
+							<tr><td style="vertical-align: middle">Player's ship<br /><br /><a href="/source/main/variable/objectplayer.html">objectPlayer</a></td><td style="vertical-align: middle"><ul><li>9 vertices</li><li>9 faces</li><li>Object rotates</li><li>Object has a shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 196px; margin: 1ch 0" src="/images/deep_dives/objects/player.png" alt="The player's ship in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Tall leafy tree<br /><br /><a href="/source/main/variable/objecttallleafytree.html">objectTallLeafyTree</a></td><td style="vertical-align: middle"><ul><li>14 vertices</li><li>6 faces</li><li>Object is static</li><li>Object has a shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 200px; margin: 1ch 0" src="/images/deep_dives/objects/tall_tree.png" alt="A tall leafy tree in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Smoking remains<br /> that bend to the left<br /><br /><a href="/source/main/variable/objectsmokingremainsleft.html">objectSmokingRemainsLeft</a></td><td style="vertical-align: middle"><ul><li>5 vertices</li><li>2 faces</li><li>Object is static</li><li>Object has no shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 248px; margin: 1ch 0" src="/images/deep_dives/objects/smoking_remains_left.png" alt="Smoking remains that bend to the left in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Small leafy tree<br /><br /><a href="/source/main/variable/objectsmallleafytree.html">objectSmallLeafyTree</a></td><td style="vertical-align: middle"><ul><li>11 vertices</li><li>5 faces</li><li>Object is static</li><li>Object has a shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 220px; margin: 1ch 0" src="/images/deep_dives/objects/small_tree.png" alt="A small leafy tree in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Smoking remains<br /> that bend to the right<br /><br /><a href="/source/main/variable/objectsmokingremainsright.html">objectSmokingRemainsRight</a></td><td style="vertical-align: middle"><ul><li>5 vertices</li><li>2 faces</li><li>Object is static</li><li>Object has no shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 248px; margin: 1ch 0" src="/images/deep_dives/objects/smoking_remains_right.png" alt="Smoking remains that bend to the right in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Fir tree<br /><br /><a href="/source/main/variable/objectfirtree.html">objectFirTree</a></td><td style="vertical-align: middle"><ul><li>5 vertices</li><li>2 faces</li><li>Object is static</li><li>Object has a shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 192px; margin: 1ch 0" src="/images/deep_dives/objects/fir_tree.png" alt="A firtree in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Building<br /><br /><a href="/source/main/variable/objectbuilding.html">objectBuilding</a></td><td style="vertical-align: middle"><ul><li>16 vertices</li><li>12 faces</li><li>Object is static</li><li>Object has no shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 216px; margin: 1ch 0" src="/images/deep_dives/objects/building.png" alt="A building in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Smoking remains<br /> of a building<br /><br /><a href="/source/main/variable/objectsmokingbuilding.html">objectSmokingBuilding</a></td><td style="vertical-align: middle"><ul><li>6 vertices</li><li>6 faces</li><li>Object is static</li><li>Object has no shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 248px; margin: 1ch 0" src="/images/deep_dives/objects/smoking_building.png" alt="The smoking remains of a building in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Gazebo<br /><br /><a href="/source/main/variable/objectgazebo.html">objectGazebo</a></td><td style="vertical-align: middle"><ul><li>13 vertices</li><li>8 faces</li><li>Object is static</li><li>Object has a shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 200px; margin: 1ch 0" src="/images/deep_dives/objects/gazebo.png" alt="A gazebo in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Smoking remains<br /> of a gazebo<br /><br /><a href="/source/main/variable/objectsmokinggazebo.html">objectSmokingGazebo</a></td><td style="vertical-align: middle"><ul><li>6 vertices</li><li>4 faces</li><li>Object is static</li><li>Object has a shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 220px; margin: 1ch 0" src="/images/deep_dives/objects/smoking_gazebo.png" alt="The smoking remains of a gazebo in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Rocket<br /><br /><a href="/source/main/variable/objectrocket.html">objectRocket</a></td><td style="vertical-align: middle"><ul><li>13 vertices</li><li>8 faces</li><li>Object is static</li><li>Object has a shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 200px; margin: 1ch 0" src="/images/deep_dives/objects/rocket.png" alt="A rocket in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Rock<br /><br /><a href="/source/main/variable/objectrock.html">objectRock</a></td><td style="vertical-align: middle"><ul><li>6 vertices</li><li>8 faces</li><li>Object rotates</li><li>Object has a shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 198px; margin: 1ch 0" src="/images/deep_dives/objects/rock.png" alt="A rock in Lander" /></td></tr>
+							<tr><td style="vertical-align: middle">Pyramid (unused)<br /><br /><a href="/source/main/variable/objectpyramid.html">objectPyramid</a></td><td style="vertical-align: middle"><ul><li>5 vertices</li><li>6 faces</li><li>Object rotates</li><li>Object has no shadow</li></ul></td><td style="vertical-align: middle"><img class="titleImage" style="width: 240px; margin: 1ch 0" src="/images/deep_dives/objects/pyramid.png" alt="A pyramid in Lander" /></td></tr>
+						</table>
+
+						<p>Some objects represent destroyed versions of other objects - see the deep dive on <a href="placing_objects_on_the_map.html">placing objects on the map</a> for details of how these objects are managed, and the <a href="particles_and_particle_clouds.html">particles and particle clouds</a> article for information on how objects get destroyed.</p>
+
+						<p>Most objects are designed to sit on the landscape; only the player's ship and rock are designed to be airborne.</p>
+
+						<h2 class="articleSubheader">Object blueprints<br />
+						                             -----------------</h2>
+
+						<p>Much like Elite, each 3D object in Lander has an associated blueprint that contains all the data required to draw that object. In Elite these are known as the <a href="https://www.bbcelite.com/deep_dives/ship_blueprints.html">ship blueprints</a>, but for Lander we'll call them object blueprints, as they cover quite a range of designs.</p>
+
+						<p>Each object blueprint starts with four 32-bit words that define the data structure, as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Word</th><th>Content</th></tr>
+							<tr><td>Word #0</td><td>Number of vertices</td></tr>
+							<tr><td>Word #1</td><td>Number of faces</td></tr>
+							<tr><td>Word #2</td><td>Offset from the start of the blueprint to the face data</td></tr>
+							<tr><td>Word #3</td><td>Object flags:</br /></br />
+													<ul>
+														<li>Bit 0 = 0 = object is static</li>
+														<li>Bit 0 = 1 = object rotates</li>
+														<li>Bit 1 = 0 = object has no shadow</li>
+														<li>Bit 1 = 1 = object has a shadow</li>
+													</ul>
+							</td></tr>
+						</table>
+
+						<p>The next batch of data, starting at word #4, is the vertex data. Each vertex in the object's shape is stored as a three-word (x, y, z) coordinate, like this:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Word</th><th>Content</th></tr>
+							<tr><td>Word #4</td><td>Vertex 0 x-coordinate</td></tr>
+							<tr><td>Word #5</td><td>Vertex 0 y-coordinate</td></tr>
+							<tr><td>Word #6</td><td>Vertex 0 z-coordinate</td></tr>
+							<tr><td>Word #7</td><td>Vertex 1 x-coordinate</td></tr>
+							<tr><td>Word #8</td><td>Vertex 1 y-coordinate</td></tr>
+							<tr><td>Word #9</td><td>Vertex 1 z-coordinate</td></tr>
+							<tr><td>Word #10</td><td>Vertex 2 x-coordinate</td></tr>
+							<tr><td>...</td><td>...</td></tr>
+						</table>
+
+						<p>This continues until we reach the last vertex, which is followed by the face data, starting at the offset defined in word #2. The face data is rather more involved, as each face has seven words of data (with four bytes in each of those words), giving a data structure like this:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Word</th><th>Content</th></tr>
+							<tr><td>Offset</td><td>Face 0 normal x-coordinate</td></tr>
+							<tr><td>Offset + 1 * 4</td><td>Face 0 normal y-coordinate</td></tr>
+							<tr><td>Offset + 2 * 4</td><td>Face 0 normal z-coordinate</td></tr>
+							<tr><td>Offset + 3 * 4</td><td>Face 0 vertex number 1</td></tr>
+							<tr><td>Offset + 4 * 4</td><td>Face 0 vertex number 2</td></tr>
+							<tr><td>Offset + 5 * 4</td><td>Face 0 vertex number 3</td></tr>
+							<tr><td>Offset + 6 * 4</td><td>Face 0 colour, in the format &amp;rgb</td></tr>
+							<tr><td>Offset + 7 * 4</td><td>Face 1 normal x-coordinate</td></tr>
+							<tr><td>Offset + 8 * 4</td><td>Face 1 normal y-coordinate</td></tr>
+							<tr><td>Offset + 9 * 4</td><td>Face 1 normal z-coordinate</td></tr>
+							<tr><td>...</td><td>...</td></tr>
+						</table>
+
+						<p>This continues until we reach the end of the face data, and the end of the object blueprint.</p>
+
+						<p>Note that because of the way objects are drawn, rotating objects have to be convex and fully closed. Static objects can be open - the gazebo is a good example - but the rule for static objects is that their faces must be ordered so the faces at the back of the object appear first in the blueprint, and then the faces at the front. This ensures they are drawn in the correct order, from back to front.</p>
+
+						<p>When combined with the object's orientation, the object blueprint contains all the design data that we need to draw that object. See the deep dive on <a href="drawing_3d_objects.html">drawing 3D objects</a> for the details of the drawing process.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="drawing_the_landscape.html">Drawing the landscape</a><a class="next" rel="next" title="Next page" href="drawing_3d_objects.html">Drawing 3D objects</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

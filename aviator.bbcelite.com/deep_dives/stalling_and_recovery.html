@@ -1,0 +1,90 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "stalling_and_recovery.html", "Stalling and recovery", "Stalling and recovery", "A deep dive into stalling and recovery in BBC Micro Aviator", "aviator", "deep_dives_flight_model", "stalling_and_recovery");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="matching_the_code_to_the_flight_model.html">Matching the code to the flight model</a><a class="next" rel="next" title="Next deep dive" href="ripping_the_wings_off.html">Ripping the wings off</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How Aviator simulates a stalling plane and the recovery process</h2>
+
+						<p>As a plane flies through the air, its wings provide lift. This lift is caused by the special shape of the wings, and specifically by air flowing over this shape from front to back, creating a lower pressure above the wing than below it. This pulls the wing up, thereby lifting the plane.</p>
+
+						<p>If this front-to-back airflow is disrupted, then the amount of lift will drop. The most obvious way to disrupt the lift is to slow the plane down so that air is no longer passing over the wing at a fast enough rate; a less obvious way is to increase the angle of the wing too much, typically by pulling back on the stick and pulling the nose up too far. In the first case, the lift disappears because the air isn't flowing over the wing fast enough; in the second case, the air no longer flows cleanly over the wing due to the steeper angle of attack, which is disruptive enough to reduce the amount of lift.</p>
+
+						<p>In both cases, the plane is said to be stalling. Let's look at how Aviator's flight model implements stalling, and what you can do about it.</p>
+
+						<h2 class="articleSubheader">The stalling checks<br />
+													 -------------------</h2>
+
+						<p>The flight model checks for stalling in <a href="/source/main/subroutine/applyaerodynamics_part_2_of_3.html">part 2 of the ApplyAerodynamics routine</a>, which is itself called by <a href="/source/main/subroutine/applyflightmodel_part_2_of_7.html">part 2 of the ApplyFlightModel routine</a> on every iteration around the main loop. The main check is as follows:</p>
+
+<pre class="articleIndented">  zVelocityP &lt;= |yVelocityP| * 4
+</pre>
+
+						<p>When this is true, the plane is stalling. To break this down, the plane stalls when the forward velocity in <a href="/source/main/workspace/main_variable_workspace.html#zvelocityphi">zVelocityP</a> is less than four times the vertical velocity in <a href="/source/main/workspace/main_variable_workspace.html#yvelocityphi">yVelocityP</a>, with both velocities being relative to the plane's frame of reference. Both of these velocities are shown on the dashboard, with zVelocityP on the airspeed indicator and yVelocityP on the vertical speed indicator, so in theory you can use these indicators to predict when the plane will stall.</p>
+
+						<p>In summary, we stall when we aren't going forward fast enough compared to the vertical velocity, specifically when we fall more than four times faster than we are travelling forwards. Note that zVelocityP has to be positive for us not to be stalling; a fast but negative airspeed is still a stall, as the air has to travel over the wing from front to back for normal flight to occur.</p>
+
+						<p>If the plane starts to stall, then this status isn't stored in a flag - it's actually stored in the force factor entry for yLiftDrag, in byte #4 of the <a href="/source/main/variable/forcefactor.html">forceFactor</a> table. This value is set to 156 in normal flight, so yLiftDrag is scaled by 156 * 16 when calculating yLiftDragSc. When we are stalling, however, the force factor is changed to 39, so yLiftDrag is only scaled by 39 * 16. If we want to know if we are stalling, then we can just check the value in forceFactor+4, which will be 156 in normal flight and 39 if we are stalling. This also affects the flight model, so let's take a closer look in the next section.</p>
+
+						<p>See the deep dive on <a href="the_flight_model.html">the flight model</a> for more about the force factor scaling system.</p>
+
+						<h2 class="articleSubheader">The effect of stalling on flight<br />
+													 --------------------------------</h2>
+
+						<p>As mentioned above, forceFactor+4 not only acts as a status flag for stalling, it also reduces the force factor for yLiftDrag to a quarter of its normal value when we are stalling (as 39 / 156 = 0.25). This means that as soon as we start stalling, the vertical lift due to the wings instantly drops to a quarter of its value in normal flight.</p>
+
+						<p>Not only does this, but the flight model also simulates the effect of one wing stalling before the other (again, this code is in <a href="/source/main/subroutine/applyaerodynamics_part_2_of_3.html">part 2 of the ApplyAerodynamics routine</a>). The stalling wing will be the one that loses lift first, meaning the plane will roll to that side once the stalling effect kicks in. This effect is only applied if the plane is not too close to the ground (specifically, the code checks that <a href="/source/main/workspace/main_variable_workspace.html#yplanelo">yPlaneLo</a> >= 20, or that we are more than 5 feet above the ground), so stalling very close to the ground, which will typically happen as part of a controlled landing, won't spin the plane into what would almost certainly be an instant crash.</p>
+
+						<p>Assuming we aren't just above the ground, the flight model applies the following roll to the plane to simulate one of the wings stalling before the other:</p>
+
+<pre class="articleIndented">  zTurn = zTurn +/- (A 0) >> 5
+</pre>
+
+						<p>where:
+
+						<ul>
+							<li>The +/- sign is the sign of yTurn</li>
+
+							<li>A = xTurnTop EOR #%00111111</li>
+						</ul>
+
+						<p>The +/- part means that the wing to stall first will be the one that we are already yawing towards. In other words, if we are yawing to the left when we stall, then the left wing will have slightly slower airflow over the wing, because it's yawing backwards while the other wing is yawing forwards, so it will the first wing to stall. This translates into a change in the z-axis turn rate (i.e. the roll rate) in the same direction.</p>
+
+						<p>The amount of roll in (A 0) >> 5 is inversely proportional to xTurnTop, which is our current the pitch rate, so pitching hard when stalling, in either direction, will decrease the roll effect.</o>
+
+						<p>This roll effect is only applied at the very start of the stall, as a one-off, so it has the effect of tipping the affected wing into the start of the roll, but once applied, the tipping nudge isn't applied again.</p>
+
+						<h2 class="articleSubheader">Recovering from a stall<br />
+													 -----------------------</h2>
+
+						<p>Once we are stalling, we will continue to stall until we address the cause of the stall - i.e. the bad airflow over the wing. The best way, then, to get out of a stall is to orientate the plane so that we get fast enough front-to-back airflow over the wings. Typically this involves pitching forward to let gravity help pull us out of the stall.</p>
+
+						<p>This is modelled by the following check in <a href="/source/main/subroutine/applyaerodynamics_part_2_of_3.html">part 2 of the ApplyAerodynamics routine</a>:</p>
+
+<pre class="articleIndented">  zVelocityPHi >= 11
+</pre>
+
+						<p>This test is true if the high byte of the forward airspeed in <a href="/source/main/workspace/main_variable_workspace.html#zvelocityphi">zVelocityPHi</a> is greater or equal to 11, so it is true when the plane's forward airspeed is greater or equal to (11 0), or 119 mph.</p>
+
+						<p>The code works like this. If we are already stalling and our forward airspeed is lower than 119 mph, then we are not going fast enough to pull out of the stall, so we keep stalling (and the game makes a beeping noise to warn us that things are not going well). However, once our speed rises to 119 mph or above, then we are potentially fast enough to pull out of the stall, so we apply the stalling test above. If we find that we are still stalling, then things continue as they were, but if the stalling condition is no longer true, then we pull out of the stall, the force factor for yLiftDrag gets set back to its normal value, the game stops yelling at us... and we can heave a big sigh of relief.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="matching_the_code_to_the_flight_model.html">Matching the code to the flight model</a><a class="next" rel="next" title="Next deep dive" href="ripping_the_wings_off.html">Ripping the wings off</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

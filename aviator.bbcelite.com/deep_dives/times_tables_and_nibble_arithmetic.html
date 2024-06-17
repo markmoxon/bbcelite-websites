@@ -1,0 +1,184 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "times_tables_and_nibble_arithmeticß.html", "Times tables and nibble arithmetic", "Times tables and nibble arithmetic", "A deep dive into times tables and nibble arithmetic in BBC Micro Aviator", "aviator", "deep_dives_maths", "times_tables_and_nibble_arithmetic");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="scheduling_tasks_in_the_main_loop.html">Scheduling tasks in the main loop</a><a class="next" rel="next" title="Next deep dive" href="trigonometry.html">Trigonometry</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Inside Aviator's multiplication algorithms</h2>
+
+						<p>Aviator contains a lot of calculations, and a fair number of them require multiplication. The 6502 CPU doesn't have a multiplication instruction, so 8-bit authors have to roll their own. There are lots of ways of doing this: Elite, for example, implements loop-based shift-and-add multiplication that's optimised for tight memory, though it uses faster logarithm-based multiplication in later versions of the game (see the <a href="https://www.bbcelite.com/deep_dives/">deep dives on my Elite site</a> for details).</p>
+
+						<p>Aviator, meanwhile, goes for speed from the get-go, and implements 4-bit multiplication using times tables. It then uses this as a building block to implement multiplication routines that can multiply all the way up to two 16-bit numbers.</p>
+
+						<p>Let's take a look at the building blocks before moving on to the algorithms.</p>
+
+						<h2 class="articleSubheader">Times tables<br />
+													 ------------</h2>
+
+						<p>The core of the multiplication process is the <a href="/source/main/variable/timestable.html">timesTable</a> table. This table lets us quickly multiply two unsigned four-bit numbers, using a single lookup to get the result.</p>
+
+						<p>The way it works is simple. Say our two four-bit numbers are A and B, which are both in the range 0 to 15. If, in binary, they are written as A = %aaaa and B = %bbbb, then the location timesTable+%aaaabbbb contains A * B (and so does timesTable+%bbbbaaaa, incidentally).</p>
+
+						<p>So, to multiply A and B, we just have to set X = %aaaabbbb (or %bbbbaaaa), and then we can fetch the result of A * B using a simple instruction:</p>
+
+<pre class="articleIndented">  LDA timesTable,X
+</pre>
+
+						<p>We can, if course, use Y instead of X, and fetch the same result with the following:</p>
+
+<pre class="articleIndented">  LDA timesTable,Y
+</pre>
+
+						<p>We can encode the values of %aaaa and %bbbb into X or Y by using the nibble and shift tables, which we look at next.</p>
+
+						<h2 class="articleSubheader">Extracting nibbles and quick shifting<br />
+													 -------------------------------------</h2>
+
+						<p>The most convenient way of setting X to %aaaabbbb, given two numbers %aaaa and %bbbb, is to shift one of them left by four places, and OR the results together into one combined byte. This is not that difficult to do, but as the bitwise and shift instructions are only available for the accumulator, it's convenient to have shortcuts for shifting the X and Y registers. It's also useful to have a shortcut for extracting, say, just the high nibble from a register, as we will use that a lot in the following algorithms.</p>
+
+						<p>To this end, Aviator has the <a href="/source/main/variable/highnibble.html">highNibble</a> and <a href="/source/main/variable/lownibble.html">lowNibble</a> tables for extracting the high and low nibble from an 8-bit value, and the <a href="/source/main/variable/shift4right.html">shift4Right</a> and <a href="/source/main/variable/shift4left.html">shift4Left</a> tables for shifting four places to the right or left.</p>
+
+						<p>If we consider the 8-bit value of X to be %XXXXxxxx in binary, then these lookups work like this:</p>
+
+						<ul>
+							<li>highNibble,X contains the high nibble of X, i.e. %XXXX0000</li>
+
+							<li>lowNibble,X contains the low nibble of X, i.e. %0000xxxx</li>
+
+							<li>shift4Right,X contains X &gt;&gt; 4, i.e. %0000XXXX</li>
+
+							<li>shift4Left,X contains X &lt;&lt; 4, i.e. %xxxx0000</li>
+						</ul>
+
+						<p>Note that unlike the CPU's shift commands, these lookups don't affect or use the C flag.</p>
+
+						<p>Using these and the times table lookup above, we can write multiplication routines that quickly multiply various magnitudes of numbers. That's exactly what Aviator does, so let's take a look at the details.</p>
+
+						<h2 class="articleSubheader">Multiply8x8<br />
+													 -----------</h2>
+
+						<p>The most basic multiplication routine in Aviator is <a href="/source/main/subroutine/multiply8x8.html">Multiply8x8</a>, which multiplies two unsigned 8-bit numbers, as follows:</p>
+
+<pre class="articleIndented">  (A V) = X * Y
+</pre>
+
+						<p>It uses the following algorithm, where X is %XXXXxxxx in binary and Y is %YYYYyyyy in binary:</p>
+
+<pre class="articleIndented">  X * Y = %XXXXxxxx * %YYYYyyyy 
+
+        = (%XXXX0000 + %0000xxxx) * (%YYYY0000 + %0000yyyy)
+
+        = (%XXXX0000 * %YYYY0000) + (%XXXX0000 * %0000yyyy)
+                                  + (%0000xxxx * %YYYY0000)
+                                  + (%0000xxxx * %0000yyyy)
+
+        = (%YYYY * %XXXX) &lt;&lt; 8    + (%XXXX * %yyyy &lt;&lt; 4)
+                                  + (%xxxx * %YYYY &lt;&lt; 4)
+                                  + (%xxxx * %yyyy)
+
+        = (%YYYY * %XXXX) &lt;&lt; 8    + ((%XXXX * %yyyy) + (%xxxx * %YYYY)) &lt;&lt; 4
+                                  + (%xxxx * %yyyy)
+</pre>
+
+						<p>All the constituent parts of the expanded equation can be calculated using the timesTable, shift and nibble tables, so that's what the routine does.</p>
+
+						<h2 class="articleSubheader">Multiply4x16<br />
+													 ------------</h2>
+
+						<p>The <a href="/source/main/subroutine/multiply4x16.html">Multiply4x16</a> routine multiplies a 4-bit number by a 16-bit number, again using the lookup table at timesTable for fast results. It does the following calculation:</p>
+
+<pre class="articleIndented">  (G W) = V * (S R) &gt;&gt; 8
+</pre>
+
+						<p>The algorithm goes as follows. First, we perform a couple of lookups from timesTable to calculate the following:</p>
+
+<pre class="articleIndented">  X = %vvvv * %RRRR
+
+  Y = %vvvv * %SSSS
+</pre>
+
+						<p>where V is %VVVVvvvv, S is %SSSSssss, and R is %RRRRrrrr.</p>
+
+						<p>If we write X as %XXXXxxxx in binary and Y as %YYYYyyyy, then we now calculate the following, which is again pretty easy using the timesTable, shift and nibble tables:</p>
+
+<pre class="articleIndented">  %YYYYyyyyXXXX + (%vvvv * %ssss)
+</pre>
+
+						<p>This is the answer we are looking for. To see why, we can expand it as follows:</p>
+
+<pre class="articleIndented">    %YYYYyyyyXXXX + (%vvvv * %ssss)
+  = %YYYYyyyy0000 + %XXXX + (%vvvv * %ssss)
+  =   %vvvv * %SSSS &lt;&lt; 4
+    + %vvvv * %RRRR &gt;&gt; 4
+    + %vvvv * %ssss
+  = %vvvv * (%SSSS &lt;&lt; 4 + %ssss + %RRRR &gt;&gt; 4)
+  = %vvvv * (%SSSSssss + %RRRR &gt;&gt; 4)
+  = %vvvv * (%SSSSssss + %RRRRrrrr &gt;&gt; 8)
+  = %vvvv * (S R) &gt;&gt; 8
+  = V * (S R) &gt;&gt; 8
+</pre>
+
+						<p>Note, the step that goes from %RRRR &gt;&gt; 4 to %RRRRrrrr &gt;&gt; 8 is a bit of a fudge; this appears to be the algorithm ignoring the lowest nibble of R. I am not entirely sure this analysis is correct, but it can't be too far off...</p>
+
+						<h2 class="articleSubheader">Multiply8x16<br />
+													 ------------</h2>
+
+						<p>The <a href="/source/main/subroutine/multiply8x16.html">Multiply8x16</a> routine multiplies an unsigned 8-bit and a signed 16-bit number, as follows:</p>
+
+<pre class="articleIndented">  (G W V) = (Q P) * R
+</pre>
+
+						<p>It uses the following algorithm to break it down into multiple multiplications of two 8-bit numbers, which can be done by Multiply8x8:</p>
+
+<pre class="articleIndented">    (Q P) * R
+  = (Q &lt;&lt; 8 + P) * R
+  = (Q &lt;&lt; 8) * R + (P * R)
+  = (Q * R) &lt;&lt; 8 + (P * R)
+</pre>
+
+						<h2 class="articleSubheader">Multiply16x16<br />
+													 -------------</h2>
+
+						<p>The Multiply16x16 routine multiplies two unsigned 16-bit numbers:</p>
+
+<pre class="articleIndented">  (H A) = (J I) * (S R) &gt;&gt; 16
+</pre>
+
+						<p>It uses the following algorithm to break it down into multiple multiplications of two 8-bit numbers, which can be done by Multiply8x8:</p>
+
+<pre class="articleIndented">  (J I) * (S R) = (J &lt;&lt; 8 + I) * (S &lt;&lt; 8 + R)
+                = (J &lt;&lt; 8 * S &lt;&lt; 8) + (J &lt;&lt; 8 * R)
+                                    + (I * S &lt;&lt; 8)
+                                    + (I * R)
+                = (J * S) &lt;&lt; 16 + (J * R) &lt;&lt; 8
+                                + (I * S) &lt;&lt; 8
+                                + (I * R)
+</pre>
+
+						<p>This returns a fractional result with the lowest byte containing the fraction. The routine doesn't care about the very lowest byte, so it actually calculates the following, effectively shifting the above to the right by 8 places and dropping the (I * R) part:</p>
+
+<pre class="articleIndented">  (J I) * (S R) = (J * S) &lt;&lt; 8 + (J * R) + (I * S)
+</pre>
+
+ 						<p>before adding 128 to round the result up or down.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="scheduling_tasks_in_the_main_loop.html">Scheduling tasks in the main loop</a><a class="next" rel="next" title="Next deep dive" href="trigonometry.html">Trigonometry</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,1083 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "backporting_the_flicker-free_algorithm.html", "Backporting the flicker-free algorithm", "Backporting the flicker-free algorithm", "A deep dive into backporting the flicker-free algorithmin BBC Micro Elite", "elite", "deep_dives_drawing_ships", "backporting_the_flicker-free_algorithm");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="flicker-free_ship_drawing.html">Flicker-free ship drawing</a><a class="next" rel="next" title="Next deep dive" href="drawing_circles.html">Drawing circles</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Applying the BBC Master's flicker-free algorithm to the other versions</h2>
+
+						<p>Once you've seen the smoother animation and flicker-free ships in BBC Master and Apple II Elite, it does tend to make the older versions look a little less sophisticated. Luckily, the changes that Bell and Braben made for these versions don't require any fancy hardware or more memory; instead, it's all down to an improved ship-drawing algorithm, as explained in the deep dive on <a href="flicker-free_ship_drawing.html">flicker-free ship drawing</a> (which you probably want to read before exploring the code below).</p>
+
+						<p>This means it's relatively straightforward to backport these changes into all the other versions of Acornsoft Elite, even the Acorn Electron version and Angus Duggan's Elite-A. Here's a comparison in the latter, with the standard version on the left, and the flicker-free version on the right:</p>
+
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/flicker-free_elite/elite-a_comparison.mp4" type="video/mp4">
+						</video>
+
+						<p>You can play the flicker-free versions via the <a href="/compare/releases.html">releases</a> page, either in a browser or on real hardware; it's interesting to see the differences on-screen. I have also backported the algorithm to the Commodore 64 version; see the GitHub repository for <a href="https://github.com/markmoxon/c64-elite-flicker-free">flicker-free Elite on the Commodore 64</a> for details.</p>
+
+						<p>There are three steps to the backporting process:</p>
+
+						<ol>
+							<li>Free up enough memory for the flicker-free code</li>
+
+							<li>Copy the LSPUT line-drawing routine from the Master</li>
+
+							<li>Update the SHPPT and LL9 routines to support the flicker-free algorithm</li>
+						</ol>
+
+						<p>Interestingly, this backporting process is identical for all the original versions of Elite (i.e. cassette, disc, Electron, 6502 Second Processor and Elite-A). The only difference is that in some cases, we have to move routines around to prevent the extra code from breaking branch instructions that would otherwise have to reach too far. The code changes themselves are the same, as they all share the same SHPPT and LL9 routines.</p>
+
+						<p>This is true even for the 6502 Second Processor version, which normally uses a line-queueing system when drawing ships, but we can replace this with the same flicker-free code as the other versions because the flicker-free algorithm draws lines by calling LL30, and this routine still draws a line, even on the Second Processor version, so dropping in the new algorithm just works.</p>
+
+						<p>Let's look at these three steps in turn. To be specific, let's look at backporting the flicker-free algorithm to the BBC Micro cassette version. To see the code differences for the other versions, you can check out the flicker-free branches in the accompanying repositories, but the updated routines in all versions are essentially the same as in the code below.</p>
+
+						<h2 class="articleSubheader">1. Finding enough memory<br />
+													 ------------------------</h2>
+
+						<p>Altogether, the flicker-free changes only require a small number of extra bytes compared to the original versions - in the BBC Micro cassette version, for example, we only need to find eight more bytes. That said, memory usage is famously tight in Elite, so this is easier said than done.</p>
+            
+						<p>Luckily, all the versions of Elite that have serious memory constraints also contain an unused routine that the authors forgot to remove - it's a <a href="/cassette/main/subroutine/unused_duplicate_of_multu.html">duplicate of MULTU that is never called</a>. Removing this routine (or just commenting out the required number of instructions) easily gives us the space we need, even in Elite-A, where only <a href="/elite-a/flight/subroutine/unused_duplicate_of_multu.html">half of the duplicate routine</a> is left in the flight code for us to remove.</p>
+
+						<p>So, step 1 is to comment out a big enough chunk of this routine. Simple.</p>
+
+						<h2 class="articleSubheader">2. Copying over LSPUT<br />
+													 ---------------------</h2>
+
+						<p>As part of the new algorithm in the Master, there's an extra routine called <a href="/master/main/subroutine/lsput.html">LSPUT</a>, which draws a line, adding the line to the ship line heap (potentially replacing one of the lines already there), and then erasing the line that we just replaced. We need to port this over for the flicker-free code to call, which we can do by simply copying <a href="/master/main/subroutine/lsput.html">LSPUT</a> directly from the Master, and inserting it after the last stage of the LL9 routine.</p>
+
+						<p>So, step 2 is to copy LSPUT from the Master and into the version we are updating. Easy.</p>
+
+						<h2 class="articleSubheader">3. Updating SHPPT and LL9<br />
+													 -------------------------</h2>
+
+						<p>The SHPPT routine draws ships as points for when they are far away, and the LL9 routine draws them as wireframes when they are closer. As the final step of backporting the new algorithm, we need to update both of these routines so that instead of erasing the whole ship before redrawing the whole ship again, they instead use the new LSPUT routine to draw and erase ships one line at a time.</p>
+
+						<p>Below you can see every single code change that we need to make to convert the BBC Micro cassette version to the flicker-free algorithm (specifically, the changes are in SHPPT and parts 1, 9, 10, 11 and 12 of LL9).</p>
+
+						<p>So, step 3 is to make the changes below... and then we're done.</p>
+
+						<h2 class="articleSubheader">Exploring the code below<br />
+													 ------------------------</h2>
+
+						<p>To explore the code changes below, simply click a routine header to expand it, and click it again to shrink it back. Within the code that appears, the original and flicker-free code are shown side-by-side. You can tap one side to expand it, and tap it again to go back to showing both sides. Each side is sideways scrollable, so you can read the comments on small screens.</p>
+
+						<p>It might look like a lot of code, but that's because I've included all the routines in full, so you can see the differences <i>in situ</i>. There are surprisingly few differences between the two versions (especially when you realise that parts 2 to 8 of LL9 are completely unchanged). This is a delightfully simple change that makes a very noticeable improvement to the graphics, and without perceivable loss. That's well worth the effort of backporting, I'd say.</p>
+				</div>
+
+<div class="codeBlockWrapper compare"><pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper hiding" data-block="1"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">SHPPT</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing ships</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw a distant ship as a point rather than a full wireframe</span>
+
+</div></div><div class="hide-code-1">
+<span class="label">.SHPPT</span><a id="shppt" name="shppt" class="anchor"></a>
+
+</div></pre>
+
+<div class="hide-code-1">
+
+<div class="codeCompareBlock">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">JSR</span> <span class="destination">EE51</span>               <span class="comment">\ Call EE51 to remove the ship's wireframe from the</span>
+                        <span class="comment">\ screen, if there is one</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> (Empty)
+</div></div></div></pre></div>
+
+
+<pre class="codeBlock sourceCode">
+ <span class="mne">JSR</span> <span class="destination">PROJ</span>               <span class="comment">\ Project the ship onto the screen, returning:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * K3(1 0) = the screen x-coordinate</span>
+                        <span class="comment">\   * K4(1 0) = the screen y-coordinate</span>
+                        <span class="comment">\   * A = K4+1</span>
+
+ <span class="mne">ORA</span> <span class="variable">K3</span><span class="operator">+</span><span class="decimal">1</span>               <span class="comment">\ If either of the high bytes of the screen coordinates</span>
+ <span class="mne">BNE</span> <span class="destination">nono</span>               <span class="comment">\ are non-zero, jump to nono as the ship is off-screen</span>
+
+ <span class="mne">LDA</span> <span class="variable">K4</span>                 <span class="comment">\ Set A = the y-coordinate of the dot</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="variable">Y</span><span class="operator">*</span><span class="decimal">2</span><span class="operator">-</span><span class="decimal">2</span>             <span class="comment">\ If the y-coordinate is bigger than the y-coordinate of</span>
+ <span class="mne">BCS</span> <span class="destination">nono</span>               <span class="comment">\ the bottom of the screen, jump to nono as the ship's</span>
+                        <span class="comment">\ dot is off the bottom of the space view</span>
+
+</pre>
+
+<div class="codeCompareBlock">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ Call Shpt with Y = 2 to set up bytes 1-4 in the ship</span>
+ <span class="mne">JSR</span> <span class="destination">Shpt</span>               <span class="comment">\ lines space, aborting the call to LL9 if the dot is</span>
+                        <span class="comment">\ off the side of the screen. This call sets up the</span>
+                        <span class="comment">\ first row of the dot (i.e. a four-pixel dash)</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\ Set Y to 6 for the next call to Shpt</span>
+
+ <span class="mne">LDA</span> <span class="variable">K4</span>                 <span class="comment">\ Set A = y-coordinate of dot + 1 (so this is the second</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ row of the two-pixel-high dot)</span>
+
+ <span class="mne">JSR</span> <span class="destination">Shpt</span>               <span class="comment">\ Call Shpt with Y = 6 to set up bytes 5-8 in the ship</span>
+                        <span class="comment">\ lines space, aborting the call to LL9 if the dot is</span>
+                        <span class="comment">\ off the side of the screen. This call sets up the</span>
+                        <span class="comment">\ second row of the dot (i.e. another four-pixel dash,</span>
+                        <span class="comment">\ on the row below the first one)</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">JSR</span> <span class="destination">Shpt</span>               <span class="comment">\ Call Shpt to draw a horizontal 4-pixel dash for the</span>
+                        <span class="comment">\ first row of the dot (i.e. a four-pixel dash)</span>
+ <span class="mne">LDA</span> <span class="variable">K4</span>                 <span class="comment">\ Set A = y-coordinate of dot + 1 (so this is the second</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ row of the two-pixel-high dot)</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">1</span>
+
+ <span class="mne">JSR</span> <span class="destination">Shpt</span>               <span class="comment">\ Call Shpt to draw a horizontal 4-pixel dash for the</span>
+                        <span class="comment">\ first row of the dot (i.e. a four-pixel dash)</span>
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode">
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%00001000</span>         <span class="comment">\ Set bit 3 of the ship's byte #31 to record that we</span>
+ <span class="mne">ORA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ have now drawn something on-screen for this ship</span>
+ <span class="mne">STA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>
+
+</pre>
+
+<div class="codeCompareBlock">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">8</span>                 <span class="comment">\ Set A = 8 so when we call LL18+2 next, byte #0 of the</span>
+                        <span class="comment">\ heap gets set to 8, for the 8 bytes we just stuck on</span>
+                        <span class="comment">\ the heap</span>
+
+ <span class="mne">JMP</span> <span class="destination">LL81</span><span class="operator">+</span><span class="decimal">2</span>             <span class="comment">\ Call LL81+2 to draw the ship's dot, returning from the</span>
+                        <span class="comment">\ subroutine using a tail call</span>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Pull the return address from the stack, so the RTS</span>
+ <span class="mne">PLA</span>                    <span class="comment">\ below actually returns from the subroutine that called</span>
+                        <span class="comment">\ LL9 (as we called SHPPT from LL9 with a JMP)</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">JMP</span> <span class="destination">LSPUT</span>              <span class="comment">\ Jump to LSPUT to draw any remaining lines that are</span>
+                        <span class="comment">\ still in the ship line heap and return from the</span>
+                        <span class="comment">\ subroutine using a tail call</span>
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode">
+<span class="label">.nono</span><a id="nono" name="nono" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%11110111</span>         <span class="comment">\ Clear bit 3 of the ship's byte #31 to record that</span>
+ <span class="mne">AND</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ nothing is being drawn on-screen for this ship</span>
+ <span class="mne">STA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>
+
+</pre>
+
+<div class="codeCompareBlock">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.Shpt</span><a id="shpt" name="shpt" class="anchor"></a>
+
+                        <span class="comment">\ This routine sets up four bytes in the ship line heap,</span>
+                        <span class="comment">\ from byte Y-1 to byte Y+2. If the ship's screen point</span>
+                        <span class="comment">\ turns out to be off-screen, then this routine aborts</span>
+                        <span class="comment">\ the entire call to LL9, exiting via nono. The four</span>
+                        <span class="comment">\ bytes define a horizontal 4-pixel dash, for either the</span>
+                        <span class="comment">\ top or the bottom of the ship's dot</span>
+
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>           <span class="comment">\ Store A in byte Y of the ship line heap</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Store A in byte Y+2 of the ship line heap</span>
+ <span class="mne">INY</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDA</span> <span class="variable">K3</span>                 <span class="comment">\ Set A = screen x-coordinate of the ship dot</span>
+
+ <span class="mne">DEY</span>                    <span class="comment">\ Store A in byte Y+1 of the ship line heap</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ Set A = screen x-coordinate of the ship dot + 3</span>
+
+ <span class="mne">BCS</span> <span class="destination">nono</span><span class="operator">-</span><span class="decimal">2</span>             <span class="comment">\ If the addition pushed the dot off the right side of</span>
+                        <span class="comment">\ the screen, jump to nono-2 to return from the parent</span>
+                        <span class="comment">\ subroutine early (i.e. LL9). This works because we</span>
+                        <span class="comment">\ called Shpt from above with a JSR, so nono-2 removes</span>
+                        <span class="comment">\ that return address from the stack, leaving the next</span>
+                        <span class="comment">\ return address exposed. LL9 called SHPPT with a JMP.</span>
+                        <span class="comment">\ so the next return address is the one that was put on</span>
+                        <span class="comment">\ the stack by the original call to LL9. So the RTS in</span>
+                        <span class="comment">\ nono will actually return us from the original call</span>
+                        <span class="comment">\ to LL9, thus aborting the entire drawing process</span>
+
+ <span class="mne">DEY</span>                    <span class="comment">\ Store A in byte Y-1 of the ship line heap</span>
+ <span class="mne">DEY</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">JMP</span> <span class="destination">LSPUT</span>              <span class="comment">\ Jump to LSPUT to draw any remaining lines that are</span>
+                        <span class="comment">\ still in the ship line heap and return from the</span>
+                        <span class="comment">\ subroutine 
+
+<span class="label">.Shpt</span><a id="shpt" name="shpt" class="anchor"></a>
+
+                        <span class="comment">\ This routine draws a horizontal 4-pixel dash, for</span>
+                        <span class="comment">\ either the top or the bottom of the ship's dot</span>
+
+ <span class="mne">STA</span> <span class="variable">Y1</span>                 <span class="comment">\ Store A in both y-coordinates, as this is a horizontal</span>
+ <span class="mne">STA</span> <span class="variable">Y2</span>                 <span class="comment">\ dash at y-coordinate A</span>
+
+
+ <span class="mne">LDA</span> <span class="variable">K3</span>                 <span class="comment">\ Set A = screen x-coordinate of the ship dot</span>
+
+ <span class="mne">STA</span> <span class="variable">X1</span>                 <span class="comment">\ Store the x-coordinate of the ship dot in X1, as this</span>
+                        <span class="comment">\ is where the dash starts</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set A = screen x-coordinate of the ship dot + 3</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">3</span>
+
+ <span class="mne">BCC</span> <span class="skip">P%+4</span>               <span class="comment">\ If the addition overflowed, set A = 255, the</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">255</span>               <span class="comment">\ x-coordinate of the right edge of the screen</span>
+
+ <span class="mne">STA</span> <span class="variable">X2</span>                 <span class="comment">\ Store the x-coordinate of the ship dot in X1, as this</span>
+                        <span class="comment">\ is where the dash starts</span>
+
+ <span class="mne">JMP</span> <span class="destination">LSPUT</span>              <span class="comment">\ Draw this edge using flicker-free animation, by first</span>
+                        <span class="comment">\ drawing the ship's new line and then erasing the</span>
+                        <span class="comment">\ corresponding old line from the screen, and return</span>
+                        <span class="comment">\ from the subroutine using a tail call</span>
+</div></div></div></pre></div>
+
+</div></div>
+
+
+<div class="codeBlockWrapper compare"><pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper hiding" data-block="2"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">LL9 (Part 1 of 12)</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing ships</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw ship: Check if ship is exploding, check if ship is in front</span>
+
+<div class="hide-code-2"><hr class="light" />
+ This routine draws the current ship on the screen. This part checks to see if
+ the ship is exploding, or if it should start exploding, and if it does it sets
+ things up accordingly.
+
+ It also does some basic checks to see if we can see the ship, and if not it
+ removes it from the screen.
+
+ In this code, XX1 is used to point to the current ship's data block at INWK
+ (the two labels are interchangeable).
+
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">XX1</span>                  <span class="argumentEntry">XX1 shares its location with INWK, which contains the</span>
+                        <span class="argumentEntry">zero-page copy of the data block for this ship from the</span>
+                        <span class="argumentEntry">K% workspace</span>
+
+   <span class="argumentLabel">INF</span>                  <span class="argumentEntry">The address of the data block for this ship in workspace</span>
+                        <span class="argumentEntry">K%</span>
+
+   <span class="argumentLabel">XX19(1 0)</span>            <span class="argumentEntry">XX19(1 0) shares its location with INWK(34 33), which</span>
+                        <span class="argumentEntry">contains the ship line heap address pointer</span>
+
+   <span class="argumentLabel">XX0</span>                  <span class="argumentEntry">The address of the blueprint for this ship</span>
+
+<span class="subheader"> Other entry points:</span>
+
+   <span class="argumentLabel">EE51</span>                 <span class="argumentEntry">Remove the current ship from the screen, called from</span>
+                        <span class="argumentEntry">SHPPT before drawing the ship as a point</span>
+
+</div></div></div><div class="hide-code-2">
+<span class="label">.LL25</span><a id="ll25" name="ll25" class="anchor"></a>
+
+ <span class="mne">JMP</span> <span class="destination">PLANET</span>             <span class="comment">\ Jump to the PLANET routine, returning from the</span>
+                        <span class="comment">\ subroutine using a tail call</span>
+
+<span class="label">.LL9</span><a id="ll9" name="ll9" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="variable">TYPE</span>               <span class="comment">\ If the ship type is negative then this indicates a</span>
+ <span class="mne">BMI</span> <span class="destination">LL25</span>               <span class="comment">\ planet or sun, so jump to PLANET via LL25 above</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">31</span>                <span class="comment">\ Set XX4 = 31 to store the ship's distance for later</span>
+ <span class="mne">STA</span> <span class="variable">XX4</span>                <span class="comment">\ comparison with the visibility distance. We will</span>
+                        <span class="comment">\ update this value below with the actual ship's</span>
+                        <span class="comment">\ distance if it turns out to be visible on-screen</span>
+
+<div></pre>
+
+<div class="codeCompareBlock hide-code-2">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> (Empty)
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="comment">                       <span class="comment">\ We now set things up for flicker-free ship plotting,</span>
+                        <span class="comment">\ by setting the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   LSNUM = offset to the first coordinate in the ship's</span>
+                        <span class="comment">\           line heap</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   LSNUM2 = the number of bytes in the heap for the</span>
+                        <span class="comment">\            ship that's currently on-screen (or 0 if</span>
+                        <span class="comment">\            there is no ship currently on-screen)</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ Set LSNUM = 1, the offset of the first set of line</span>
+ <span class="mne">STY</span> <span class="variable">LSNUM</span>              <span class="comment">\ coordinates in the ship line heap</span>
+
+ <span class="mne">DEY</span>                    <span class="comment">\ Decrement Y to 0</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%00001000</span>         <span class="comment">\ If bit 3 of the ship's byte #31 is set, then the ship</span>
+ <span class="mne">BIT</span> <span class="variable">INWK</span><span class="operator">+</span><span class="decimal">31</span>            <span class="comment">\ is currently being drawn on-screen, so skip the</span>
+ <span class="mne">BNE</span> <span class="skip">P%+5</span>               <span class="comment">\ following two instructions</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ The ship is not being drawn on screen, so set A = 0</span>
+                        <span class="comment">\ so that LSNUM2 gets set to 0 below (as there are no</span>
+                        <span class="comment">\ existing coordinates on the ship line heap for this</span>
+                        <span class="comment">\ ship)</span>
+
+ <span class="mne">EQUB</span> <span class="hex">&2C</span>               <span class="comment">\ Skip the next instruction by turning it into</span>
+                        <span class="comment">\ &2C &B1 &BD, or BIT &BDB1 which does nothing apart</span>
+                        <span class="comment">\ from affect the flags</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>           <span class="comment">\ Set LSNUM2 to the first byte of the ship's line heap,</span>
+ <span class="mne">STA</span> <span class="variable">LSNUM2</span>             <span class="comment">\ which contains the number of bytes in the heap</span>
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode hide-code-2">
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%00100000</span>         <span class="comment">\ If bit 5 of the ship's byte #31 is set, then the ship</span>
+ <span class="mne">BIT</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ is currently exploding, so jump down to EE28</span>
+ <span class="mne">BNE</span> <span class="destination">EE28</span>
+
+ <span class="mne">BPL</span> <span class="destination">EE28</span>               <span class="comment">\ If bit 7 of the ship's byte #31 is clear then the ship</span>
+                        <span class="comment">\ has not just been killed, so jump down to EE28</span>
+
+                        <span class="comment">\ Otherwise bit 5 is clear and bit 7 is set, so the ship</span>
+                        <span class="comment">\ is not yet exploding but it has been killed, so we</span>
+                        <span class="comment">\ need to start an explosion</span>
+
+ <span class="mne">ORA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ Clear bits 6 and 7 of the ship's byte #31, to stop the</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00111111</span>         <span class="comment">\ ship from firing its laser and to mark it as no longer</span>
+ <span class="mne">STA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ having just been killed</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set the ship's acceleration in byte #31 to 0, updating</span>
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">28</span>                <span class="comment">\ the byte in the workspace K% data block so we don't</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">INF</span><span class="bracket">)</span>,<span class="register">Y</span>            <span class="comment">\ have to copy it back from INWK later</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">30</span>                <span class="comment">\ Set the ship's pitch counter in byte #30 to 0, to stop</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">INF</span><span class="bracket">)</span>,<span class="register">Y</span>            <span class="comment">\ the ship from pitching</span>
+
+ <span class="mne">JSR</span> <span class="destination">EE51</span>               <span class="comment">\ Call EE51 to remove the ship from the screen</span>
+
+                        <span class="comment">\ We now need to set up a new explosion cloud. We</span>
+                        <span class="comment">\ initialise it with a size of 18 (which gets increased</span>
+                        <span class="comment">\ by 4 every time the cloud gets redrawn), and the</span>
+                        <span class="comment">\ explosion count (i.e. the number of particles in the</span>
+                        <span class="comment">\ explosion), which go into bytes 1 and 2 of the ship</span>
+                        <span class="comment">\ line heap. See DOEXP for more details of explosion</span>
+                        <span class="comment">\ clouds</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ Set byte #1 of the ship line heap to 18, the initial</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">18</span>                <span class="comment">\ size of the explosion cloud</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">7</span>                 <span class="comment">\ Fetch byte #7 from the ship's blueprint, which</span>
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX0</span><span class="bracket">)</span>,<span class="register">Y</span>            <span class="comment">\ determines the explosion count (i.e. the number of</span>
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ vertices used as origins for explosion clouds), and</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>           <span class="comment">\ store it in byte #2 of the ship line heap</span>
+
+                        <span class="comment">\ The following loop sets bytes 3-6 of the of the ship</span>
+                        <span class="comment">\ line heap to random numbers</span>
+
+<span class="label">.EE55</span><a id="ee55" name="ee55" class="anchor"></a>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment Y (so the loop starts at 3)</span>
+
+ <span class="mne">JSR</span> <span class="destination">DORND</span>              <span class="comment">\ Set A and X to random numbers</span>
+
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>           <span class="comment">\ Store A in the Y-th byte of the ship line heap</span>
+
+ <span class="mne">CPY</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\ Loop back until we have randomised the 6th byte</span>
+ <span class="mne">BNE</span> <span class="destination">EE55</span>
+
+<span class="label">.EE28</span><a id="ee28" name="ee28" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">8</span>              <span class="comment">\ Set A = z_sign</span>
+
+<span class="label">.EE49</span><a id="ee49" name="ee49" class="anchor"></a>
+
+ <span class="mne">BPL</span> <span class="destination">LL10</span>               <span class="comment">\ If A is positive, i.e. the ship is in front of us,</span>
+                        <span class="comment">\ jump down to LL10</span>
+
+<span class="label">.LL14</span><a id="ll14" name="ll14" class="anchor"></a>
+
+                        <span class="comment">\ The following removes the ship from the screen by</span>
+                        <span class="comment">\ redrawing it (or, if it is exploding, by redrawing the</span>
+                        <span class="comment">\ explosion cloud). We call it when the ship is no</span>
+                        <span class="comment">\ longer on-screen, is too far away to be fully drawn,</span>
+                        <span class="comment">\ and so on</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ If bit 5 of the ship's byte #31 is clear, then the</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00100000</span>         <span class="comment">\ ship is not currently exploding, so jump down to EE51</span>
+ <span class="mne">BEQ</span> <span class="destination">EE51</span>               <span class="comment">\ to redraw its wireframe</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ The ship is exploding, so clear bit 3 of the ship's</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%11110111</span>         <span class="comment">\ byte #31 to denote that the ship is no longer being</span>
+ <span class="mne">STA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ drawn on-screen</span>
+
+ <span class="mne">JMP</span> <span class="destination">DOEXP</span>              <span class="comment">\ Jump to DOEXP to display the explosion cloud, which</span>
+                        <span class="comment">\ will remove it from the screen, returning from the</span>
+                        <span class="comment">\ subroutine using a tail call</span>
+
+<span class="label">.EE51</span><a id="ee51" name="ee51" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%00001000</span>         <span class="comment">\ If bit 3 of the ship's byte #31 is clear, then there</span>
+ <span class="mne">BIT</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ is already nothing being shown for this ship, so</span>
+ <span class="mne">BEQ</span> <span class="destination">LL10</span><span class="operator">-</span><span class="decimal">1</span>             <span class="comment">\ return from the subroutine (as LL10-1 contains an RTS)</span>
+
+ <span class="mne">EOR</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ Otherwise flip bit 3 of byte #31 and store it (which</span>
+ <span class="mne">STA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ clears bit 3 as we know it was set before the EOR), so</span>
+                        <span class="comment">\ this sets this ship as no longer being drawn on-screen</span>
+
+</pre>
+
+<div class="codeCompareBlock hide-code-2">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">JMP</span> <span class="destination">LL155</span>              <span class="comment">\ Jump to LL155 to draw the ship, which removes it from</span>
+                        <span class="comment">\ the screen, returning from the subroutine using a</span>
+                        <span class="comment">\ tail call</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">JMP</span> <span class="destination">LSPUT</span>              <span class="comment">\ Jump to LSPUT to draw the ship, which removes it from</span>
+                        <span class="comment">\ the screen, returning from the subroutine using a</span>
+                        <span class="comment">\ tail call</span>
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode hide-code-2">
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+</pre>
+</div>
+
+<div class="codeBlockWrapper compare"><pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper hiding" data-block="3"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">LL9 (Part 9 of 12)</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing ships</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw ship: Draw laser beams if the ship is firing its laser at us</span>
+
+<div class="hide-code-3"><hr class="light" />
+ This part sets things up so we can loop through the edges in the next part. It
+ also adds a line to the ship line heap, if the ship is firing at us.
+
+ When we get here, the heap at XX3 contains all the visible vertex screen
+ coordinates.
+
+</div></div></div><div class="hide-code-3">
+<span class="label">.LL72</span><a id="ll72" name="ll72" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ If bit 5 of the ship's byte #31 is clear, then the</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00100000</span>         <span class="comment">\ ship is not currently exploding, so jump down to EE31</span>
+ <span class="mne">BEQ</span> <span class="destination">EE31</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ The ship is exploding, so set bit 3 of the ship's byte</span>
+ <span class="mne">ORA</span> <span class="hash">#</span><span class="decimal">8</span>                 <span class="comment">\ #31 to denote that we are drawing something on-screen</span>
+ <span class="mne">STA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ for this ship</span>
+
+ <span class="mne">JMP</span> <span class="destination">DOEXP</span>              <span class="comment">\ Jump to DOEXP to display the explosion cloud,</span>
+                        <span class="comment">\ returning from the subroutine using a tail call</span>
+
+<span class="label">.EE31</span><a id="ee31" name="ee31" class="anchor"></a>
+
+</div></pre>
+
+<div class="codeCompareBlock hide-code-3">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%00001000</span>         <span class="comment">\ If bit 3 of the ship's byte #31 is clear, then there</span>
+ <span class="mne">BIT</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ is nothing already being shown for this ship, so skip</span>
+ <span class="mne">BEQ</span> <span class="destination">LL74</span>               <span class="comment">\ to LL74 as we don't need to erase anything from the</span>
+                        <span class="comment">\ screen</span>
+
+ <span class="mne">JSR</span> <span class="destination">LL155</span>              <span class="comment">\ Otherwise call LL155 to draw the existing ship, which</span>
+                        <span class="comment">\ removes it from the screen</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">9</span>                 <span class="comment">\ Fetch byte #9 of the ship's blueprint, which is the</span>
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX0</span><span class="bracket">)</span>,<span class="register">Y</span>            <span class="comment">\ number of edges, and store it in XX20</span>
+ <span class="mne">STA</span> <span class="variable">XX20</span>
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode hide-code-3">
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%00001000</span>         <span class="comment">\ Set bit 3 of A so the next instruction sets bit 3 of</span>
+                        <span class="comment">\ the ship's byte #31 to denote that we are drawing</span>
+                        <span class="comment">\ something on-screen for this ship</span>
+
+<span class="label">.LL74</span><a id="ll74" name="ll74" class="anchor"></a>
+
+ <span class="mne">ORA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ Apply bit 3 of A to the ship's byte #31, so if there</span>
+ <span class="mne">STA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ was no ship already on screen, the bit is clear,</span>
+                        <span class="comment">\ otherwise it is set</span>
+
+</pre>
+
+<div class="codeCompareBlock hide-code-3">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">9</span>                 <span class="comment">\ Fetch byte #9 of the ship's blueprint, which is the</span>
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX0</span><span class="bracket">)</span>,<span class="register">Y</span>            <span class="comment">\ number of edges, and store it in XX20</span>
+ <span class="mne">STA</span> <span class="variable">XX20</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ We are about to step through all the edges, using Y</span>
+                        <span class="comment">\ as a counter</span>
+
+ <span class="mne">STY</span> <span class="variable">U</span>                  <span class="comment">\ Set U = 0 (though we increment it to 1 below)</span>
+
+ <span class="mne">STY</span> <span class="variable">XX17</span>               <span class="comment">\ Set XX17 = 0, which we are going to use as a counter</span>
+                        <span class="comment">\ for stepping through the ship's edges</span>
+
+ <span class="mne">INC</span> <span class="variable">U</span>                  <span class="comment">\ We are going to start calculating the lines we need to</span>
+                        <span class="comment">\ draw for this ship, and will store them in the ship</span>
+                        <span class="comment">\ line heap, using U to point to the end of the heap, so</span>
+                        <span class="comment">\ we start by setting U = 1</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set XX17 = 0, which we are going to use as a counter</span>
+ <span class="mne">STY</span> <span class="variable">XX17</span>               <span class="comment">\ for stepping through the ship's edges</span>
+
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode hide-code-3">
+ <span class="mne">BIT</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ If bit 6 of the ship's byte #31 is clear, then the</span>
+ <span class="mne">BVC</span> <span class="destination">LL170</span>              <span class="comment">\ ship is not firing its lasers, so jump to LL170 to</span>
+                        <span class="comment">\ skip the drawing of laser lines</span>
+
+                        <span class="comment">\ The ship is firing its laser at us, so we need to draw</span>
+                        <span class="comment">\ the laser lines</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>             <span class="comment">\ Clear bit 6 of the ship's byte #31 so the ship doesn't</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%10111111</span>         <span class="comment">\ keep firing endlessly</span>
+ <span class="mne">STA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">31</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\ Fetch byte #6 of the ship's blueprint, which is the</span>
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX0</span><span class="bracket">)</span>,<span class="register">Y</span>            <span class="comment">\ number * 4 of the vertex where the ship has its lasers</span>
+
+ <span class="mne">TAY</span>                    <span class="comment">\ Put the vertex number into Y, where it can act as an</span>
+                        <span class="comment">\ index into list of vertex screen coordinates we added</span>
+                        <span class="comment">\ to the XX3 heap</span>
+
+ <span class="mne">LDX</span> <span class="variable">XX3</span>,<span class="register">Y</span>              <span class="comment">\ Fetch the x_lo coordinate of the laser vertex from the</span>
+ <span class="mne">STX</span> <span class="variable">XX15</span>               <span class="comment">\ XX3 heap into XX15</span>
+
+ <span class="mne">INX</span>                    <span class="comment">\ If X = 255 then the laser vertex is not visible, as</span>
+ <span class="mne">BEQ</span> <span class="destination">LL170</span>              <span class="comment">\ the value we stored in part 2 wasn't overwritten by</span>
+                        <span class="comment">\ the vertex calculation in part 6 and 7, so jump to</span>
+                        <span class="comment">\ LL170 to skip drawing the laser lines</span>
+
+                        <span class="comment">\ We now build a laser beam from the ship's laser vertex</span>
+                        <span class="comment">\ towards our ship, as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   XX15(1 0) = laser vertex x-coordinate</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   XX15(3 2) = laser vertex y-coordinate</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   XX15(5 4) = x-coordinate of the end of the beam</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   XX12(1 0) = y-coordinate of the end of the beam</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The end of the laser beam will be set positioned to</span>
+                        <span class="comment">\ look good, rather than being directly aimed at us, as</span>
+                        <span class="comment">\ otherwise we would only see a flashing point of light</span>
+                        <span class="comment">\ as they unleashed their attack</span>
+
+ <span class="mne">LDX</span> <span class="variable">XX3</span><span class="operator">+</span><span class="decimal">1</span>,<span class="register">Y</span>            <span class="comment">\ Fetch the x_hi coordinate of the laser vertex from the</span>
+ <span class="mne">STX</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">1</span>             <span class="comment">\ XX3 heap into XX15+1</span>
+
+ <span class="mne">INX</span>                    <span class="comment">\ If X = 255 then the laser vertex is not visible, as</span>
+ <span class="mne">BEQ</span> <span class="destination">LL170</span>              <span class="comment">\ the value we stored in part 2 wasn't overwritten by</span>
+                        <span class="comment">\ a vertex calculation in part 6 and 7, so jump to LL170</span>
+                        <span class="comment">\ to skip drawing the laser beam</span>
+
+ <span class="mne">LDX</span> <span class="variable">XX3</span><span class="operator">+</span><span class="decimal">2</span>,<span class="register">Y</span>            <span class="comment">\ Fetch the y_lo coordinate of the laser vertex from the</span>
+ <span class="mne">STX</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">2</span>             <span class="comment">\ XX3 heap into XX15+2</span>
+
+ <span class="mne">LDX</span> <span class="variable">XX3</span><span class="operator">+</span><span class="decimal">3</span>,<span class="register">Y</span>            <span class="comment">\ Fetch the y_hi coordinate of the laser vertex from the</span>
+ <span class="mne">STX</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">3</span>             <span class="comment">\ XX3 heap into XX15+3</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set XX15(5 4) = 0, so their laser beam fires to the</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">4</span>             <span class="comment">\ left edge of the screen</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">5</span>
+
+ <span class="mne">STA</span> <span class="variable">XX12</span><span class="operator">+</span><span class="decimal">1</span>             <span class="comment">\ Set XX12(1 0) = the ship's z_lo coordinate, which will</span>
+ <span class="mne">LDA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">6</span>              <span class="comment">\ effectively make the vertical position of the end of</span>
+ <span class="mne">STA</span> <span class="variable">XX12</span>               <span class="comment">\ the laser beam move around as the ship moves in space</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX1</span><span class="operator">+</span><span class="decimal">2</span>              <span class="comment">\ If the ship's x_sign is positive, skip the next</span>
+ <span class="mne">BPL</span> <span class="skip">P%+4</span>               <span class="comment">\ instruction</span>
+
+ <span class="mne">DEC</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">4</span>             <span class="comment">\ The ship's x_sign is negative (i.e. it's on the left</span>
+                        <span class="comment">\ side of the screen), so switch the laser beam so it</span>
+                        <span class="comment">\ goes to the right edge of the screen by decrementing</span>
+                        <span class="comment">\ XX15(5 4) to 255</span>
+
+ <span class="mne">JSR</span> <span class="destination">LL145</span>              <span class="comment">\ Call LL145 to see if the laser beam needs to be</span>
+                        <span class="comment">\ clipped to fit on-screen, returning the clipped line's</span>
+                        <span class="comment">\ end-points in (X1, Y1) and (X2, Y2)</span>
+
+ <span class="mne">BCS</span> <span class="destination">LL170</span>              <span class="comment">\ If the C flag is set then the line is not visible on</span>
+                        <span class="comment">\ screen, so jump to LL170 so we don't store this line</span>
+                        <span class="comment">\ in the ship line heap</span>
+
+</pre>
+
+<div class="codeCompareBlock hide-code-3">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDY</span> <span class="variable">U</span>                  <span class="comment">\ Fetch the ship line heap pointer, which points to the</span>
+                        <span class="comment">\ next free byte on the heap, into Y</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX15</span>               <span class="comment">\ Add X1 to the end of the heap</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">1</span>             <span class="comment">\ Add Y1 to the end of the heap</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">2</span>             <span class="comment">\ Add X2 to the end of the heap</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">3</span>             <span class="comment">\ Add Y2 to the end of the heap</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">STY</span> <span class="variable">U</span>                  <span class="comment">\ Store the updated ship line heap pointer in U</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">JSR</span> <span class="destination">LSPUT</span>              <span class="comment">\ Draw the laser line using flicker-free animation, by</span>
+                        <span class="comment">\ first drawing the new laser line and then erasing the</span>
+                        <span class="comment">\ corresponding old line from the screen</span>
+</div></div></div></pre></div>
+
+</div>
+
+<div class="codeBlockWrapper compare"><pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper hiding" data-block="4"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">LL9 (Part 10 of 12)</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing ships</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw ship: Calculate the visibility of each of the ship's edges</span>
+             <span class="headerEntry">and, for flicker-free only, draw the visible ones</span>
+
+<div class="hide-code-4"><hr class="light" />
+ This part calculates which edges are visible - in other words, which lines we
+ should draw - and clips them to fit on the screen.
+
+ When we get here, the heap at XX3 contains all the visible vertex screen
+ coordinates.
+
+</div></div></div><div class="hide-code-4">
+<span class="label">.LL170</span><a id="ll170" name="ll170" class="anchor"></a>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ Fetch byte #3 of the ship's blueprint, which contains</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ the low byte of the offset to the edges data</span>
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX0</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">ADC</span> <span class="variable">XX0</span>                <span class="comment">\ Set V = low byte edges offset + XX0</span>
+ <span class="mne">STA</span> <span class="variable">V</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">16</span>                <span class="comment">\ Fetch byte #16 of the ship's blueprint, which contains</span>
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX0</span><span class="bracket">)</span>,<span class="register">Y</span>            <span class="comment">\ the high byte of the offset to the edges data</span>
+
+ <span class="mne">ADC</span> <span class="variable">XX0</span><span class="operator">+</span><span class="decimal">1</span>              <span class="comment">\ Set V+1 = high byte edges offset + XX0+1</span>
+ <span class="mne">STA</span> <span class="variable">V</span><span class="operator">+</span><span class="decimal">1</span>                <span class="comment">\</span>
+                        <span class="comment">\ So V(1 0) now points to the start of the edges data</span>
+                        <span class="comment">\ for this ship</span>
+
+</div></pre>
+
+<div class="codeCompareBlock hide-code-4">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">5</span>                 <span class="comment">\ Fetch byte #5 of the ship's blueprint, which contains</span>
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX0</span><span class="bracket">)</span>,<span class="register">Y</span>            <span class="comment">\ the maximum heap size for plotting the ship (which is</span>
+ <span class="mne">STA</span> <span class="variable">T1</span>                 <span class="comment">\ 1 + 4 * the maximum number of visible edges) and store</span>
+                        <span class="comment">\ it in T1</span>
+
+ <span class="mne">LDY</span> <span class="variable">XX17</span>               <span class="comment">\ Set Y to the edge counter in XX17</span>
+
+<span class="label">.LL75</span><a id="ll75" name="ll75" class="anchor"></a>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">5</span>                 <span class="comment">\ Fetch byte #5 of the ship's blueprint, which contains</span>
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX0</span><span class="bracket">)</span>,<span class="register">Y</span>            <span class="comment">\ the maximum heap size for plotting the ship (which is</span>
+ <span class="mne">STA</span> <span class="variable">CNT</span>                <span class="comment">\ 1 + 4 * the maximum number of visible edges) and store</span>
+                        <span class="comment">\ it in CNT</span>
+
+<span class="label">.LL75</span><a id="ll75" name="ll75" class="anchor"></a>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set Y = 0 so we start with byte #0</span>
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode hide-code-4">
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">V</span><span class="bracket">)</span>,<span class="register">Y</span>              <span class="comment">\ Fetch byte #0 for this edge, which contains the</span>
+                        <span class="comment">\ visibility distance for this edge, beyond which the</span>
+                        <span class="comment">\ edge is not shown</span>
+
+ <span class="mne">CMP</span> <span class="variable">XX4</span>                <span class="comment">\ If XX4 > the visibility distance, where XX4 contains</span>
+ <span class="mne">BCC</span> <span class="destination">LL78</span>               <span class="comment">\ the ship's z-distance reduced to 0-31 (which we set in</span>
+                        <span class="comment">\ part 2), then this edge is too far away to be visible,</span>
+                        <span class="comment">\ so jump down to LL78 to move on to the next edge</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment Y to point to byte #1</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">V</span><span class="bracket">)</span>,<span class="register">Y</span>              <span class="comment">\ Fetch byte #1 for this edge into A, so:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   A = %ffff ffff, where:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\     * Bits 0-3 = the number of face 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\     * Bits 4-7 = the number of face 2</span>
+
+</pre>
+
+<div class="codeCompareBlock hide-code-4">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">INY</span>                    <span class="comment">\ Increment Y to point to byte #2</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> (Empty)
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode hide-code-4">
+ <span class="mne">STA</span> <span class="variable">P</span>                  <span class="comment">\ Store byte #1 into P</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00001111</span>         <span class="comment">\ Extract the number of face 1 into X</span>
+ <span class="mne">TAX</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX2</span>,<span class="register">X</span>              <span class="comment">\ If XX2+X is non-zero then we decided in part 5 that</span>
+ <span class="mne">BNE</span> <span class="destination">LL79</span>               <span class="comment">\ face 1 is visible, so jump to LL79</span>
+
+ <span class="mne">LDA</span> <span class="variable">P</span>                  <span class="comment">\ Fetch byte #1 for this edge into A</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ Shift right four times to extract the number of face 2</span>
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ from bits 4-7 into X</span>
+ <span class="mne">LSR</span> <span class="register">A</span>
+ <span class="mne">LSR</span> <span class="register">A</span>
+ <span class="mne">TAX</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX2</span>,<span class="register">X</span>              <span class="comment">\ If XX2+X is zero then we decided in part 5 that</span>
+ <span class="mne">BEQ</span> <span class="destination">LL78</span>               <span class="comment">\ face 2 is hidden, so jump to LL78</span>
+
+<span class="label">.LL79</span><a id="ll79" name="ll79" class="anchor"></a>
+
+                        <span class="comment">\ We now build the screen line for this edge, as</span>
+                        <span class="comment">\ follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   XX15(1 0) = start x-coordinate</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   XX15(3 2) = start y-coordinate</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   XX15(5 4) = end x-coordinate</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   XX12(1 0) = end y-coordinate</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We can then pass this to the line clipping routine</span>
+                        <span class="comment">\ before storing the resulting line in the ship line</span>
+                        <span class="comment">\ heap</span>
+
+</pre>
+
+<div class="codeCompareBlock hide-code-4">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">V</span><span class="bracket">)</span>,<span class="register">Y</span>              <span class="comment">\ Fetch byte #2 for this edge into X, which contains</span>
+ <span class="mne">TAX</span>                    <span class="comment">\ the number of the vertex at the start of the edge</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment Y to point to byte #3</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">V</span><span class="bracket">)</span>,<span class="register">Y</span>              <span class="comment">\ Fetch byte #3 for this edge into Q, which contains</span>
+ <span class="mne">STA</span> <span class="variable">Q</span>                  <span class="comment">\ the number of the vertex at the end of the edge</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">INY</span>                    <span class="comment">\ Increment Y to point to byte #2</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">V</span><span class="bracket">)</span>,<span class="register">Y</span>              <span class="comment">\ Fetch byte #2 for this edge into X, which contains</span>
+ <span class="mne">TAX</span>                    <span class="comment">\ the number of the vertex at the start of the edge</span>
+
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode hide-code-4">
+ <span class="mne">LDA</span> <span class="variable">XX3</span><span class="operator">+</span><span class="decimal">1</span>,<span class="register">X</span>            <span class="comment">\ Fetch the x_hi coordinate of the edge's start vertex</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">1</span>             <span class="comment">\ from the XX3 heap into XX15+1</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX3</span>,<span class="register">X</span>              <span class="comment">\ Fetch the x_lo coordinate of the edge's start vertex</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span>               <span class="comment">\ from the XX3 heap into XX15</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX3</span><span class="operator">+</span><span class="decimal">2</span>,<span class="register">X</span>            <span class="comment">\ Fetch the y_lo coordinate of the edge's start vertex</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">2</span>             <span class="comment">\ from the XX3 heap into XX15+2</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX3</span><span class="operator">+</span><span class="decimal">3</span>,<span class="register">X</span>            <span class="comment">\ Fetch the y_hi coordinate of the edge's start vertex</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">3</span>             <span class="comment">\ from the XX3 heap into XX15+3</span>
+
+</pre>
+
+<div class="codeCompareBlock hide-code-4">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">LDX</span> <span class="variable">Q</span>                  <span class="comment">\ Set X to the number of the vertex at the end of the</span>
+                        <span class="comment">\ edge, which we stored in Q</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">INY</span>                    <span class="comment">\ Increment Y to point to byte #3</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">V</span><span class="bracket">)</span>,<span class="register">Y</span>              <span class="comment">\ Fetch byte #3 for this edge into X, which contains</span>
+ <span class="mne">TAX</span>                    <span class="comment">\ the number of the vertex at the end of the edge</span>
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode hide-code-4">
+ <span class="mne">LDA</span> <span class="variable">XX3</span>,<span class="register">X</span>              <span class="comment">\ Fetch the x_lo coordinate of the edge's end vertex</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">4</span>             <span class="comment">\ from the XX3 heap into XX15+4</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX3</span><span class="operator">+</span><span class="decimal">3</span>,<span class="register">X</span>            <span class="comment">\ Fetch the y_hi coordinate of the edge's end vertex</span>
+ <span class="mne">STA</span> <span class="variable">XX12</span><span class="operator">+</span><span class="decimal">1</span>             <span class="comment">\ from the XX3 heap into XX11+1</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX3</span><span class="operator">+</span><span class="decimal">2</span>,<span class="register">X</span>            <span class="comment">\ Fetch the y_lo coordinate of the edge's end vertex</span>
+ <span class="mne">STA</span> <span class="variable">XX12</span>               <span class="comment">\ from the XX3 heap into XX12</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX3</span><span class="operator">+</span><span class="decimal">1</span>,<span class="register">X</span>            <span class="comment">\ Fetch the x_hi coordinate of the edge's end vertex</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">5</span>             <span class="comment">\ from the XX3 heap into XX15+5</span>
+
+ <span class="mne">JSR</span> <span class="destination">LL147</span>              <span class="comment">\ Call LL147 to see if the new line segment needs to be</span>
+                        <span class="comment">\ clipped to fit on-screen, returning the clipped line's</span>
+                        <span class="comment">\ end-points in (X1, Y1) and (X2, Y2)</span>
+
+ <span class="mne">BCS</span> <span class="destination">LL78</span>               <span class="comment">\ If the C flag is set then the line is not visible on</span>
+                        <span class="comment">\ screen, so jump to LL78 so we don't store this line</span>
+                        <span class="comment">\ in the ship line heap</span>
+
+</pre>
+
+<div class="codeCompareBlock hide-code-4">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> (Empty)
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">JSR</span> <span class="destination">LSPUT</span>              <span class="comment">\ Draw this edge using flicker-free animation, by first</span>
+                        <span class="comment">\ drawing the ship's new line and then erasing the</span>
+                        <span class="comment">\ corresponding old line from the screen</span>
+</div></div></div></pre></div>
+
+</div>
+
+<div class="codeBlockWrapper compare"><pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper hiding" data-block="5"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">LL9 (Part 11 of 12)</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing ships</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw ship: Add all visible edges to the ship line heap</span>
+
+<div class="hide-code-5"><hr class="light" />
+ This part adds all the visible edges to the ship line heap, so we can draw
+ them in part 12.
+
+<span class="subheader"> Other entry points:</span>
+
+   <span class="argumentLabel">LL81+2</span>               <span class="argumentEntry">Draw the contents of the ship line heap, used to draw</span>
+                        <span class="argumentEntry">the ship as a dot from SHPPT</span>
+
+</div></div></div></pre>
+
+<div class="codeCompareBlock hide-code-5">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"><span class="label">.LL80</span><a id="ll80" name="ll80" class="anchor"></a>
+
+ <span class="mne">LDY</span> <span class="variable">U</span>                  <span class="comment">\ Fetch the ship line heap pointer, which points to the</span>
+                        <span class="comment">\ next free byte on the heap, into Y</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX15</span>               <span class="comment">\ Add X1 to the end of the heap</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">1</span>             <span class="comment">\ Add Y1 to the end of the heap</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">2</span>             <span class="comment">\ Add X2 to the end of the heap</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">LDA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">3</span>             <span class="comment">\ Add Y2 to the end of the heap</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">STY</span> <span class="variable">U</span>                  <span class="comment">\ Store the updated ship line heap pointer in U</span>
+
+ <span class="mne">CPY</span> <span class="variable">T1</span>                 <span class="comment">\ If Y >= T1 then we have reached the maximum number of</span>
+ <span class="mne">BCS</span> <span class="destination">LL81</span>               <span class="comment">\ edge lines that we can store in the ship line heap, so</span>
+                        <span class="comment">\ skip to LL81 so we don't loop back for the next edge</span>
+
+<span class="label">.LL78</span><a id="ll78" name="ll78" class="anchor"></a>
+
+ <span class="mne">INC</span> <span class="variable">XX17</span>               <span class="comment">\ Increment the edge counter to point to the next edge</span>
+
+ <span class="mne">LDY</span> <span class="variable">XX17</span>               <span class="comment">\ If Y >= XX20, which contains the number of edges in</span>
+ <span class="mne">CPY</span> <span class="variable">XX20</span>               <span class="comment">\ the blueprint, jump to LL81 as we have processed all</span>
+ <span class="mne">BCS</span> <span class="destination">LL81</span>               <span class="comment">\ the edges and don't need to loop back for the next one</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set Y to point to byte #0 again, ready for the next</span>
+                        <span class="comment">\ edge</span>
+
+ <span class="mne">LDA</span> <span class="variable">V</span>                  <span class="comment">\ Increment V by 4 so V(1 0) points to the data for the</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ next edge</span>
+ <span class="mne">STA</span> <span class="variable">V</span>
+</div></div><div class="cell contentCell"><div class="cellContents"><span class="label">.LL78</span><a id="ll78" name="ll78" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="variable">LSNUM</span>              <span class="comment">\ If LSNUM >= CNT, skip to LL81 so we don't loop back</span>
+ <span class="mne">CMP</span> <span class="variable">CNT</span>                <span class="comment">\ for the next edge (CNT was set to the maximum heap</span>
+ <span class="mne">BCS</span> <span class="destination">LL81</span>               <span class="comment">\ size for this ship in part 10, so this checks whether</span>
+                        <span class="comment">\ we have just run out of space in the ship line heap,</span>
+                        <span class="comment">\ and stops drawing edges if we have)</span>
+
+ <span class="mne">LDA</span> <span class="variable">V</span>                  <span class="comment">\ Increment V by 4 so V(1 0) points to the data for the</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ next edge</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">4</span>
+ <span class="mne">STA</span> <span class="variable">V</span>
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode hide-code-5">
+ <span class="mne">BCC</span> <span class="destination">ll81</span>               <span class="comment">\ If the above addition didn't overflow, jump to ll81</span>
+
+ <span class="mne">INC</span> <span class="variable">V</span><span class="operator">+</span><span class="decimal">1</span>                <span class="comment">\ Otherwise increment the high byte of V(1 0), as we</span>
+                        <span class="comment">\ just moved the V(1 0) pointer past a page boundary</span>
+
+<span class="label">.ll81</span><a id="ll81" name="ll81" class="anchor"></a>
+
+</pre>
+
+<div class="codeCompareBlock hide-code-5">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">JMP</span> <span class="destination">LL75</span>               <span class="comment">\ Loop back to LL75 to process the next edge</span>
+
+<span class="label">.LL81</span><a id="ll81" name="ll81" class="anchor"></a>
+
+                        <span class="comment">\ We have finished adding lines to the ship line heap,</span>
+                        <span class="comment">\ so now we need to set the first byte of the heap to</span>
+                        <span class="comment">\ the number of bytes stored there</span>
+
+ <span class="mne">LDA</span> <span class="variable">U</span>                  <span class="comment">\ Fetch the ship line heap pointer from U into A, which</span>
+                        <span class="comment">\ points to the end of the heap, and therefore contains</span>
+                        <span class="comment">\ the heap size</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Store A as the first byte of the ship line heap, so</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>           <span class="comment">\ the heap is now correctly set up</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">INC</span> <span class="variable">XX17</span>               <span class="comment">\ Increment the edge counter to point to the next edge</span>
+
+ <span class="mne">LDY</span> <span class="variable">XX17</span>               <span class="comment">\ If Y < XX20, which contains the number of edges in</span>
+ <span class="mne">CPY</span> <span class="variable">XX20</span>               <span class="comment">\ the blueprint, loop back to LL75 to process the next</span>
+ <span class="mne">BCC</span> <span class="destination">LL75</span>               <span class="comment">\ edge</span>
+
+<span class="label">.LL81</span><a id="ll81" name="ll81" class="anchor"></a>
+
+ <span class="mne">JMP</span> <span class="destination">LSCLR</span>              <span class="comment">\ Jump down to part 12 below to draw any remaining lines</span>
+                        <span class="comment">\ from the old ship that are still in the ship line heap</span>
+</div></div></div></pre></div>
+
+</div>
+
+
+<div class="codeBlockWrapper compare"><pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper hiding" data-block="6"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">LL9 (Part 12 of 12)</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing ships</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw ship: Draw all the visible edges from the ship line heap</span>
+
+<div class="hide-code-6"><hr class="light" />
+ This part draws the lines in the ship line heap, which is used both to draw
+ the ship, and to remove it from the screen.
+
+</div></div></div></pre>
+
+<div class="codeCompareBlock hide-code-6">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"><span class="label">.LL155</span><a id="ll155" name="ll155" class="anchor"></a>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Fetch the first byte from the ship line heap into A,</span>
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>           <span class="comment">\ which contains the number of bytes in the heap</span>
+
+ <span class="mne">STA</span> <span class="variable">XX20</span>               <span class="comment">\ Store the heap size in XX20</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ If the heap size is less than 4, there is nothing to</span>
+ <span class="mne">BCC</span> <span class="destination">LL118</span><span class="operator">-</span><span class="decimal">1</span>            <span class="comment">\ draw, so return from the subroutine (as LL118-1</span>
+                        <span class="comment">\ contains an RTS)</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Set Y = 1, which we will use as an index into the ship</span>
+                        <span class="comment">\ line heap, starting at byte #1 (as byte #0 contains</span>
+                        <span class="comment">\ the heap size)</span>
+
+<span class="label">.LL27</span><a id="ll27" name="ll27" class="anchor"></a>
+</div></div><div class="cell contentCell"><div class="cellContents"><span class="label">.LSCLR</span><a id="lsclr" name="lsclr" class="anchor"></a>
+
+ <span class="mne">LDY</span> <span class="variable">LSNUM</span>              <span class="comment">\ Set Y to the offset in the line heap LSNUM</span>
+
+<span class="label">.LSC1</span><a id="lsc1" name="lsc1" class="anchor"></a>
+
+ <span class="mne">CPY</span> <span class="variable">LSNUM2</span>             <span class="comment">\ If Y >= LSNUM2, jump to LSC2 to return from the ship</span>
+ <span class="mne">BCS</span> <span class="destination">LSC2</span>               <span class="comment">\ drawing routine, because the index in Y is greater</span>
+                        <span class="comment">\ than the size of the existing ship line heap, which</span>
+                        <span class="comment">\ means we have alrady erased all the old ships lines</span>
+                        <span class="comment">\ when drawing the new ship</span>
+
+                        <span class="comment">\ If we get here then Y < LSNUM2, which means Y is</span>
+                        <span class="comment">\ pointing to an on-screen line from the old ship that</span>
+                        <span class="comment">\ we need to erase</span>
+</div></div></div></pre></div>
+
+<pre class="codeBlock sourceCode hide-code-6">
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>           <span class="comment">\ Fetch the X1 line coordinate from the heap and store</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span>               <span class="comment">\ it in XX15</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>           <span class="comment">\ Fetch the Y1 line coordinate from the heap and store</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">1</span>             <span class="comment">\ it in XX15+1</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>           <span class="comment">\ Fetch the X2 line coordinate from the heap and store</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">2</span>             <span class="comment">\ it in XX15+2</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>           <span class="comment">\ Fetch the Y2 line coordinate from the heap and store</span>
+ <span class="mne">STA</span> <span class="variable">XX15</span><span class="operator">+</span><span class="decimal">3</span>             <span class="comment">\ it in XX15+3</span>
+
+ <span class="mne">JSR</span> <span class="destination">LL30</span>               <span class="comment">\ Draw a line from (X1, Y1) to (X2, Y2)</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the heap pointer</span>
+
+</pre>
+
+<div class="codeCompareBlock hide-code-6">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="mne">CPY</span> <span class="variable">XX20</span>               <span class="comment">\ If the heap counter is less than the size of the heap,</span>
+ <span class="mne">BCC</span> <span class="destination">LL27</span>               <span class="comment">\ loop back to LL27 to draw the next line from the heap</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="mne">JMP</span> <span class="destination">LSC1</span>               <span class="comment">\ Loop back to LSC1 to draw (i.e. erase) the next line</span>
+                        <span class="comment">\ from the heap</span>
+
+<span class="label">.LSC2</span><a id="lsc2" name="lsc2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="variable">LSNUM</span>              <span class="comment">\ Store LSNUM in the first byte of the ship line heap</span>
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">0</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><span class="variable">XX19</span><span class="bracket">)</span>,<span class="register">Y</span>
+
+<span class="label">.LSC3</span><a id="lsc3" name="lsc3" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</div></div></div></pre></div>
+
+
+</div>
+
+<style>
+.codeBlockWrapper.compare > pre.initial { display: block }
+.hide-code-1, .hide-code-2, .hide-code-3, .hide-code-4, .hide-code-5, .hide-code-6 { display: none }
+.codeBlockWrapper .headerBlockWrapper { cursor: pointer; }
+.codeBlockWrapper .headerBlockWrapper.hiding:not(:last-child) { border-bottom: none; }
+.codeBlockWrapper .codeCompareBlock { padding-top: 2ch }
+</style>
+
+<script>
+  var hideShow = function() {
+    var blockNumber = this.getAttribute("data-block");
+    var codeToToggle = document.getElementsByClassName("hide-code-" + blockNumber);
+
+    showing = false
+    for (var i = 0; i < codeToToggle.length; i++) {
+      x = codeToToggle[i]
+      if (x.style.display === "none" || x.style.display === "") {
+        x.style.display = "block";
+        showing = true
+      } else {
+        x.style.display = "none";
+      }
+    }
+    if (showing) {
+      this.classList.remove('hiding');
+    } else {
+      this.classList.add('hiding');
+    }
+  };
+
+  var elements = document.getElementsByClassName("headerBlockWrapper");
+
+  for (var i = 0; i < elements.length; i++) {
+    elements[i].addEventListener('click', hideShow, false);
+  }
+
+</script>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="flicker-free_ship_drawing.html">Flicker-free ship drawing</a><a class="next" rel="next" title="Next deep dive" href="drawing_circles.html">Drawing circles</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>
