@@ -185,7 +185,7 @@
 					<li class="showForMobile otherSites"><a href="https://www.moxon.net"><span class="menuTitle">Mark Moxon's Travel Writing</span></a></li>
 					<li class="showForMobile otherSites"><a href="https://www.landsendjohnogroats.info"><span class="menuTitle">Walking Land's End to John o'Groats</span></a></li>
 					<li class="showForMobile otherSites"><a href="https://www.tubewalker.com"><span class="menuTitle">Tubewalker: The Tube, on Foot</span></a></li>
-					<li class="menuItemHeader showForMobile">Contact details and more information</li>
+					<li class="menuItemHeader showForMobile">Contact details and more</li>
 					<li class="showForMobile otherSites"><a href="https://www.markmoxon.com"><span class="menuTitle">Mark Moxon's Homepage</span></a></li>
 				</ul>
 			</nav>

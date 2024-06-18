@@ -218,20 +218,29 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 
 			<div id="navDropdown">
 				<p class="subheading first">My software archaeology sites</p>
-				<p><a href="https://www.bbcelite.com">Mark Moxon's Software Archaeology</a></p>
-				<p><a href="https://elite.bbcelite.com">Elite on the BBC Micro and NES</a></p>
-				<p><a href="https://aviator.bbcelite.com">Aviator on the BBC Micro</a></p>
-				<p><a href="https://revs.bbcelite.com">Revs on the BBC Micro</a></p>
-				<p><a href="https://lander.bbcelite.com">Lander on the Acorn Archimedes</a></p>
+				<p><?php nav_link("www.bbcelite.com", "Mark Moxon's Software Archaeology"); ?></p>
+				<p><?php nav_link("elite.bbcelite.com", "Elite on the BBC Micro and NES"); ?></p>
+				<p><?php nav_link("aviator.bbcelite.com", "Aviator on the BBC Micro"); ?></p>
+				<p><?php nav_link("revs.bbcelite.com", "Revs on the BBC Micro"); ?></p>
+				<p><?php nav_link("lander.bbcelite.com", "Lander on the Acorn Archimedes"); ?></p>
 				<p class="subheading">My writing sites</p>
-				<p><a href="https://www.moxon.net">Mark Moxon's Travel Writing</a></p>
-				<p><a href="https://www.landsendjohnogroats.info">Walking Land's End to John o'Groats</a></p>
-				<p><a href="https://www.tubewalker.com">Tubewalker: The Tube, on Foot</a></p>
-				<p class="subheading">Contact details and more information</p>
-				<p><a href="https://www.markmoxon.com">Mark Moxon's Homepage</a></p>
+				<p><?php nav_link("www.moxon.net", "Mark Moxon's Travel Writing"); ?></p>
+				<p><?php nav_link("www.landsendjohnogroats.info", "Walking Land's End to John o'Groats"); ?></p>
+				<p><?php nav_link("www.tubewalker.com", "Tubewalker: The Tube, on Foot"); ?></p>
+				<p class="subheading">Contact details and more</p>
+				<p><?php nav_link("www.markmoxon.com", "Mark Moxon's Homepage"); ?></p>
 			</div>
 
 			<article>
 <?php
+}
+
+function nav_link($link, $text) {
+    global $DOMAIN;
+	if ($link == $DOMAIN) {
+		echo '<span style="position: relative;right: -2ch;"><a href="https://' . $link . '">' . $text . '</a> *</span>';
+	} else {
+		echo '<a href="https://' . $link . '">' . $text . '</a>';
+	}
 }
 ?>
