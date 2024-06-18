@@ -150,7 +150,6 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 
 		<link rel="icon" type="image/png" href="/favicons/favicon-16x16.png" sizes="16x16" />
 		<link rel="icon" type="image/png" href="/favicons/favicon-32x32.png" sizes="32x32" />
-		<link rel="icon" type="image/png" href="/favicons/favicon-196x196.png" sizes="196x196" />
 		<link rel="apple-touch-icon" type="image/png" href="/favicons/favicon-180x180.png" sizes="180x180" />
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:creator" content="@markmoxon" />
