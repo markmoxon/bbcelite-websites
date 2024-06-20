@@ -4,19 +4,204 @@ page_header("disassembly_websites", "generating_websites.html", "Generating webs
 ?>
 				<!-- Start of article -->
 				<div class="codeBlockWrapper nav">
-					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="generating_elite.html">Generating source code for Elite</a></nav>
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="index.html">An overview of my automated scripts</a><a class="next" rel="next" title="Next page" href="generating_elite.html">Generating source code for Elite</a></nav>
 				</div>
 
 				<div class="codeBlockWrapper">
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How I create high-quality web disassemblies from hand-crafted code</h2>
 
-						<p>This article is coming soon.</p>
+						<p>As discussed in the <a href="index.html">overview</a>, my disassembly websites are generated from the source code repositories in GitHub by a monstrous Python script called <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/disassembly-website-generator/create-disassembly-websites.py">create-disassembly-websites.py</a>.</p>
+
+						<p>Before I write anything else, I must warn you that this Python script is a textbook example of a little script that grew into a big script without being properly refactored on the way. There are global variables - lots of them. There are no classes and there are no objects. The entire beast is one, massive Python file with more than 8000 lines of code. The main routine is gargantuan. Content, configuration and code are freely mixed. Regular expressions make for powerful but impenetrable text processing. Analysis data is stored in nested lists and dictionaries when an in-memory database would make a lot more sense. And so it goes.</p>
+
+						<p>It is, in short, a bit of a mess. But it works, it's relatively easy to follow (outside of the regular expressions), and although it's not much more than a hacky script, it's <i>my</i> hacky script, and I have grown rather fond of it. As a professional coder I know it's not pretty, but what it produces is a work of art, so bear this in mind if you're tempted to dive into the code.</p>
+
+						<h2 class="articleSubheader">What the script does<br />
+													 --------------------</h2>
+
+						<p>The <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/disassembly-website-generator/create-disassembly-websites.py">create-disassembly-websites.py</a> script has two main functions.</p>
+
+						<p>The first function (and the one we'll be talking about here) is to generate source code pages and indexes for the <a href="https://aviator.bbcelite.com">Aviator</a>, <a href="https://revs.bbcelite.com">Revs</a> and <a href="https://lander.bbcelite.com">Lander</a> websites. It does this for each site by ingesting a hand-built repository that contains the fully buildable and fully documented source code for the relevant game, and spitting out a website version as a set of HTML files.</p>
+
+						<p>These are the source code repositories for the three websites I just mentioned:</p>
+
+						<ul>
+							<li><a href="https://github.com/markmoxon/aviator-beebasm">aviator-beebasm</a></li>
+
+							<li><a href="https://github.com/markmoxon/revs-beebasm">revs-beebasm</a></li>
+
+							<li><a href="https://github.com/markmoxon/archimedes-lander">archimedes-lander</a></li>
+						</ul>
+
+						<p>So the script reads the files from each repository and creates the code pages for the corresponding website, which are then combined with the static web content from the <a href="https://github.com/markmoxon/bbcelite-websites/">bbc-websites</a> repository to create the final website. You can read more about this process in the <a href="index.html">overview</a>, but here's a flowchart of how this works - in this example, we're processing the Revs website:</p>
+
+<pre class="articleIndented">
+           <a href="https://github.com/markmoxon/revs-beebasm">revs-beebasm</a>                                <a href="https://github.com/markmoxon/bbcelite-websites/">bbc-websites</a>
+                |                                             |
+                |                                             |
+  <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/disassembly-website-generator/create-disassembly-websites.py">create-disassembly-websites.py</a>                              |
+                |                                             |
+                |                                             |
+                |                                             |
+  +-------------|---------- <a href="https://revs.bbcelite.com/">revs.bbcelite.com</a> website --------|-------------+
+  |             |                                             |             |
+  |             v                                             v             |
+  |                                                                         |
+  |         <a href="https://revs.bbcelite.com/source/articles/map_of_the_source_code.html">Code pages</a>                                    <a href="https://revs.bbcelite.com/">Homepage</a>          |
+  |           <a href="https://revs.bbcelite.com/source/indexes/a-z.html">Indexes</a>                                    <a href="https://revs.bbcelite.com/about_site/quick_start_guide.html">About site</a>         |
+  |         <a href="https://revs.bbcelite.com/source/articles/source_code_statistics.html">Statistics</a>                                   <a href="https://revs.bbcelite.com/deep_dives/">Deep dives</a>         |
+  |                                                     <a href="https://revs.bbcelite.com/source/">Version info</a>        |
+  |                                                                         |
+  +-------------------------------------------------------------------------+
+</pre>
+
+						<p>In this article we're going to take a look at the left-hand arrow, which converts source code into web pages.</p>
+
+						<p>The second function of the script (which we won't be talking about here) is to generate content for the more complex <a href="https://elite.bbcelite.com">Elite</a> website. In this case, not only does the script generate the code pages for seven different versions of Elite, but it also creates the code pages and indexes for the compare section, which contains a line-by-line comparison of all the Acornsoft releases of Elite.</p>
+
+						<p>The way this works is tied up with the structure of the Elite library repository, so we'll cover this aspect in a separate article on <a href="generating_elite.html">generating source code for Elite</a>. For the rest of this article, we'll stick to the simpler process of generating the Aviator, Revs and Lander sites from their respective repositories.</p>
+
+						<h2 class="articleSubheader">A deeper look at the website generation process<br />
+													 -----------------------------------------------</h2>
+
+						<p>For our example, let's look at the <a href="https://revs.bbcelite.com">Revs</a> website, which is generated from the source code repository at <a href="https://github.com/markmoxon/revs-beebasm">revs-beebasm</a>.</p>
+
+						<p>The site is updated by running the <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/generate-revs.sh">generate-revs.sh</a> script. If you want to have a go at running this process yourself, then the <a href="https://github.com/markmoxon/bbcelite-scripts">bbcelite-scripts</a> repository contains step-by-step instructions on setting up and running the scripts yourself. The process has been built on a Mac, but it wouldn't take much effort to get it working on Linux or Windows.</p>
+
+						<p>The shell script does three things. First it clears down the folder into which we will generate the website. Then it runs the <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/disassembly-website-generator/create-disassembly-websites.py">create-disassembly-websites.py</a> Python script to generate up-to-date website pages from the repository source code and save them into this folder. And finally, it syncs the results to the website itself.</p>
+
+						<p>We're interested in the middle step, which is a simple one-liner:</p>
+
+<pre class="articleIndented">  python3 create-disassembly-websites.py revs
+</pre>
+
+						<p>The "revs" argument tells the script to generate the Revs site; this value gets put into the args.platform variable, which you'll see scattered throughout the script. Valid values for the platform are: cassette, disc, 6502sp, master, electron, elite-a, nes, aviator, revs and lander (the first seven are for the different versions of Elite).</p>
+
+						<p>This kicks off the ingestion process. Here's a summary of what the <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/disassembly-website-generator/create-disassembly-websites.py">script</a> does, along with links to relevant examples of the output on the Revs website:</p>
+
+						<ul>
+							<li>Call create_folder() to create the folders we need to hold the generated website.</li>
+
+							<li>Call readlines() to read the source code files from the repository into memory.</li>
+
+							<li>Call extract_popup_data() for each of the source code files to populate references_library[], entry_points[] and configuration_variables[].</li>
+
+							<li>Call output_individual_code_pages() for each of the source code files to create the <a href="https://revs.bbcelite.com/source/main/subroutine/hideobject.html">individual code pages</a> (i.e. one routine per page).</li>
+
+							<li>Call output_map_of_source_code() to create the <a href="https://revs.bbcelite.com/source/articles/map_of_the_source_code.html">map of the source code</a>.</li>
+
+							<li>Call output_source_code_stats() to create the <a href="https://revs.bbcelite.com/source/articles/source_code_statistics.html">source code statistics page</a>.</li>
+
+							<li>Call output_source_code_cross_references() to create the <a href="https://revs.bbcelite.com/source/articles/source_code_cross-references.html">source code cross-reference page</a>.</li>
+
+							<li>Call output_large_source_code_page() to create the <a href="https://revs.bbcelite.com/source/all/revs_a.html">large source code pages</a> (i.e. continuous source code).</li>
+
+							<li>Call output_menus() to create the <a href="https://revs.bbcelite.com/templates_local/navigation.php">navigation.php include file</a> containing the left-hand navigation.</li>
+
+							<li>Call add_workspace_variables_to_indexes() to merge the workspace veriables into variables[] for inclusion in the indexes.</li>
+
+							<li>Call add_entry_points_to_indexes() to merge entry_points[] into subroutines[] for inclusion in the indexes.</li>
+
+							<li>Call output_indexes() to create the <a href="https://revs.bbcelite.com/source/indexes/subroutines.html">indexes by category</a>.</li>
+
+							<li>Call output_a_z_index() to create the <a href="https://revs.bbcelite.com/source/indexes/a-z.html">A-Z index</a>.</li>
+						</ul>
+
+						<p>If you want to investigate the <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/disassembly-website-generator/create-disassembly-websites.py">create-disassembly-websites.py</a> script in more detail, then here's a call hierarchy of the above process. In the following, a + indicates a routine that is called from multiple places, while a - indicates this subroutine is only called once in the whole program.</p>
+
+						<style>
+							.codeBlockWrapper .codeBlock.article table.codeSummary.nospacing td { vertical-align: middle; }
+							.codeBlockWrapper .codeBlock.article table.codeSummary.nospacing pre { margin: 0; }
+						</style>
+						<table class="spacedTableBorder codeSummary nospacing">
+							<tr class="codeSummaryHeader"><th>Routine</th><th>Details</th></tr>
+							<tr><td><pre>+ create_folder()</pre></td><td>Create skeleton website folders</td></tr>
+							<tr><td><pre>+ extract_popup_data()</pre></td><td>Populate references_library[], entry_points[], configuration_variables[]</td></tr>
+							<tr><td><pre>    + add_to_references_library()</pre></td><td>Add entry to references_library[]</td></tr>
+							<tr><td><pre>    + fetch_header_summary()</pre></td><td>Extract multi-line summary from header</td></tr>
+							<tr><td><pre>    - parse_header()</pre></td><td>Called once header has been extracted</td></tr>
+							<tr><td><pre>        + add_to_references_library()</pre></td><td>Add entry to references_library[]</td></tr>
+							<tr><td><pre>        + add_category()</pre></td><td>Add category to categories[] and create folder</td></tr>
+							<tr><td><pre>        - extract_entry_point()</pre></td><td>Called when we come across an entry point</td></tr>
+							<tr><td><pre>            - fetch_header_comments()</pre></td><td>Fetch multi-line comments from header</td></tr>
+							<tr><td><pre>            + add_to_references_library()</pre></td><td>Add entry to references_library[]</td></tr>
+							<tr><td><pre>            + add_article()</pre></td><td>Add entry to entry_points[]</td></tr>
+							<tr><td><pre>        + tidy_code()</pre></td><td>Add markup to a source code line</td></tr>
+							<tr><td><pre>            - markup_operand()</pre></td><td>Add markup to operands</td></tr>
+							<tr><td><pre>        - extract_labels()</pre></td><td>Called as a catch-all for body content</td></tr>
+							<tr><td><pre>            + fetch_comments()</pre></td><td>Fetch multi-line comments from code</td></tr>
+							<tr><td><pre>            + add_source_code_stats()</pre></td><td>Add counts to source_code_stats[]</td></tr>
+							<tr><td><pre>            + add_to_references_library()</pre></td><td>Add entry to references_library[]</td></tr>
+							<tr><td><pre>        + add_mentions()</pre></td><td>Add references to mentions[] for source code cross-reference page</td></tr>
+							<tr><td><pre>+ output_individual_code_pages()</pre></td><td>Create individual code pages, one routine per page</td></tr>
+							<tr><td><pre>    + fetch_header_summary()</pre></td><td>Extract multi-line summary from header</td></tr>
+							<tr><td><pre>    - build_individual_code_page()</pre></td><td>Called once header has been extracted</td></tr>
+							<tr><td><pre>        + add_category()</pre></td><td>Add category to categories[] and create folder</td></tr>
+							<tr><td><pre>        + add_article()</pre></td><td>Add entry to variables[], workspaces[], macros[] or subroutines[]</td></tr>
+							<tr><td><pre>        + start_code_html()</pre></td><td>Output the start of the HTML code page</td></tr>
+							<tr><td><pre>        - fetch_next_prev()</pre></td><td>Fetch correct next/prev array for this page</td></tr>
+							<tr><td><pre>        + output_next_prev()</pre></td><td>Output next/prev links from fetched array</td></tr>
+							<tr><td><pre>        + routine_extra_data()</pre></td><td>Create the 'More info' references list to add to headers</td></tr>
+							<tr><td><pre>        + tidy_source_header_line()</pre></td><td>Add markup to a source code header line</td></tr>
+							<tr><td><pre>        + tidy_code()</pre></td><td>Add markup to a source code line</td></tr>
+							<tr><td><pre>            - markup_operand()</pre></td><td>Add markup to operands</td></tr>
+							<tr><td><pre>        + add_source_code_stats()</pre></td><td>Add counts to source_code_stats[]</td></tr>
+							<tr><td><pre>        + add_reference_popups()</pre></td><td>Output popup HTML for all references in references[]</td></tr>
+							<tr><td><pre>        + add_mentions()</pre></td><td>Add references to mentions[] for source code cross-reference page</td></tr>
+							<tr><td><pre>        + end_code_html()</pre></td><td>Output the end of the HTML code page</td></tr>
+							<tr><td><pre>- output_map_of_source_code()</pre></td><td>Create source code map page</td></tr>
+							<tr><td><pre>    + start_html()</pre></td><td>Output the start of the HTML page</td></tr>
+							<tr><td><pre>    + output_next_prev()</pre></td><td>Output next/prev links for page</td></tr>
+							<tr><td><pre>    + end_html()</pre></td><td>Output the end of the HTML page</td></tr>
+							<tr><td><pre>- output_source_code_stats()</pre></td><td>Create source code stats page</td></tr>
+							<tr><td><pre>    + start_html_index()</pre></td><td>Output the start of the HTML index page</td></tr>
+							<tr><td><pre>    + output_next_prev()</pre></td><td>Output next/prev links for page</td></tr>
+							<tr><td><pre>    - percentage()</pre></td><td>Display a percentage</td></tr>
+							<tr><td><pre>    - padding()</pre></td><td>Pad a number</td></tr>
+							<tr><td><pre>    + end_html()</pre></td><td>Output the end of the HTML page</td></tr>
+							<tr><td><pre>- output_source_code_cross_references()</pre></td><td>Create source code cross-reference page</td></tr>
+							<tr><td><pre>    + start_html()</pre></td><td>Output the start of the HTML page</td></tr>
+							<tr><td><pre>    + output_next_prev()</pre></td><td>Output next/prev links for page</td></tr>
+							<tr><td><pre>    + fetch_cross_references()</pre></td><td>Create a list of cross-references for this entry  </td></tr>
+							<tr><td><pre>    + end_html()</pre></td><td>Output the end of the HTML page</td></tr>
+							<tr><td><pre>+ output_large_source_code_page()</pre></td><td>Create large source code page (e.g. Elite A, Ship blueprints)</td></tr>
+							<tr><td><pre>    + start_html()</pre></td><td>Output the start of the HTML page</td></tr>
+							<tr><td><pre>    + output_next_prev()</pre></td><td>Output next/prev links for page</td></tr>
+							<tr><td><pre>    - large_source_code_page_contents()</pre></td><td>Called once for each large source code that's output</td></tr>
+							<tr><td><pre>        + fetch_header_summary()</pre></td><td>Extract multi-line summary from header</td></tr>
+							<tr><td><pre>        - build_large_source_code_page()</pre></td><td>Called once header has been extracted</td></tr>
+							<tr><td><pre>            + routine_extra_data()</pre></td><td>Create the 'More info' references list to add to headers</td></tr>
+							<tr><td><pre>            + tidy_source_header_line()</pre></td><td>Add markup to a source code header line</td></tr>
+							<tr><td><pre>            + tidy_code()</pre></td><td>Add markup to a source code line</td></tr>
+							<tr><td><pre>                - markup_operand()</pre></td><td>Add markup to operands</td></tr>
+							<tr><td><pre>        + fetch_cross_references()</pre></td><td>Create a list of cross-references for this entry  </td></tr>
+							<tr><td><pre>        + tidy_source_header_line()</pre></td><td>Add markup to a source code header line</td></tr>
+							<tr><td><pre>        + tidy_code()</pre></td><td>Add markup to a source code line</td></tr>
+							<tr><td><pre>            - markup_operand()</pre></td><td>Add markup to operands</td></tr>
+							<tr><td><pre>    + add_reference_popups()</pre></td><td>Output popup HTML for all references in references[]</td></tr>
+							<tr><td><pre>    + end_html()</pre></td><td>Output the end of the HTML page</td></tr>
+							<tr><td><pre>- output_menus()</pre></td><td>Create navigation.php</td></tr>
+							<tr><td><pre>- add_workspace_variables_to_indexes()</pre></td><td>Merge workspace veriables into variables[] for inclusion in indexes</td></tr>
+							<tr><td><pre>- add_entry_points_to_indexes()</pre></td><td>Merge entry_points into subroutines[] for inclusion in indexes</td></tr>
+							<tr><td><pre>+ output_indexes()</pre></td><td>Create indexes by category</td></tr>
+							<tr><td><pre>    + start_html()</pre></td><td>Output the start of the HTML page</td></tr>
+							<tr><td><pre>    + output_next_prev()</pre></td><td>Output next/prev links for page</td></tr>
+							<tr><td><pre>    + end_html()</pre></td><td>Output the end of the HTML page</td></tr>
+							<tr><td><pre>- output_a_z_index()</pre></td><td>Create A-Z index</td></tr>
+							<tr><td><pre>    + start_html()</pre></td><td>Output the start of the HTML page</td></tr>
+							<tr><td><pre>    + output_next_prev()</pre></td><td>Output next/prev links for page</td></tr>
+							<tr><td><pre>    + end_html()</pre></td><td>Output the end of the HTML page</td></tr>
+						</table>
+
+						<p>Note that if you do decide to investigate the guts of this script, then you will see a lot of references to "prefix". The prefix is the way we differentiate routines with the same name that appear in different sections, so you might end up with routine names like "MESS (Docked)" or "DORND (Loader)". In these cases, the parts in brackets are the prefixes. OK, I know they are actually suffixes, but the first version of the website had routine titles of the form "Docked: MESS" and "Loader: DORND", in which case "prefix" made sense. The site design has changed, but the word "prefix" is so buried in the script that I've left it alone, just to trip up the unwary. Here be dragons, in other words...</p>
+
+						<p>Still, if you want to know how the source code sections of my disassembly sites are generated, then this is the answer you're looking for.</p>
 					</div>
 				</div>
 
 				<div class="codeBlockWrapper nav">
-					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="generating_elite.html">Generating source code for Elite</a></nav>
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="index.html">An overview of my automated scripts</a><a class="next" rel="next" title="Next page" href="generating_elite.html">Generating source code for Elite</a></nav>
 				</div>
 				<!-- End of article -->
 			</article>
