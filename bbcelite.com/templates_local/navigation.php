@@ -23,7 +23,8 @@
 						<span class="menuSummary menuSummarySubmenu">The scripts that generate my source code sites</span>
 						<ul id="submenu_disassembly_websites">
 							<li class="menuItemHeader">Creating amazing disassembly websites</li>
-							<li><a id="disassembly_websites_index" href="/disassembly_websites/"><span class="menuTitle">An overview of my automated scripts</span> <span class="menuSummary">How I automated my disassembly sites and code repositories</span></a></li>
+							<li><a id="disassembly_websites_index" href="/disassembly_websites/"><span class="menuTitle">Why I auto-generate my websites</span> <span class="menuSummary">The advantages of generating disassembly websites from the source code</span></a></li>
+							<li><a id="disassembly_websites_overview" href="/disassembly_websites/overview.html"><span class="menuTitle">An overview of my automated scripts</span> <span class="menuSummary">How I automated my disassembly sites and code repositories</span></a></li>
 							<li><a id="disassembly_websites_generating_websites" href="/disassembly_websites/generating_websites.html"><span class="menuTitle">Generating websites from source code</span> <span class="menuSummary">How I create high-quality web disassemblies from hand-crafted code</span></a></li>
 							<li><a id="disassembly_websites_generating_elite" href="/disassembly_websites/generating_elite.html"><span class="menuTitle">Generating and comparing source code for Elite</span> <span class="menuSummary">Using a library repository to generate and compare seven versions of Elite</span></a></li>
 						</ul>

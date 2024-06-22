@@ -20,7 +20,7 @@ page_header("disassembly_websites", "generating_elite.html", "Generating and com
 						<h2 class="articleSubheader">What the scripts do<br />
 													 -------------------</h2>
 
-						<p>As discussed in the <a href="index.html">overview</a>, here's the flowchart for producing the Elite site:</p>
+						<p>As discussed in the <a href="overview.html">overview</a>, here's the flowchart for producing the Elite site:</p>
 
 <pre class="articleIndented">                +---- <a href="https://github.com/markmoxon/library-elite-beebasm">library-elite-beebasm</a> -----+             <a href="https://github.com/markmoxon/bbcelite-websites/">bbc-websites</a>
                 |                                |                   |
@@ -77,13 +77,29 @@ page_header("disassembly_websites", "generating_elite.html", "Generating and com
 
 						<p>This shell script is quite a bit bigger than the equivalent scripts for Aviator, Revs and Lander, but the structure is pretty similar - it just looks bigger because the Elite site is effectively seven websites rolled into one.</p>
 
+						<p>It starts by running the <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/elite-repository-generator/create-elite-repositories.py">create-elite-repositories.py</a> script to generate the seven source code repositories from the library repository (see the next section for more details). It then syncs the results to each of the seven repositories themselves.</p>
+
+						<p>It then generates the seven source code sections in the website, by calling the <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/disassembly-website-generator/create-disassembly-websites.py">create-disassembly-websites.py</a> script eight times, each time with a different parameter:</p>
+
+<pre class="articleIndented">
+  python3 create-disassembly-websites.py cassette
+  python3 create-disassembly-websites.py disc
+  python3 create-disassembly-websites.py 6502sp
+  python3 create-disassembly-websites.py master
+  python3 create-disassembly-websites.py electron
+  python3 create-disassembly-websites.py elite-a
+  python3 create-disassembly-websites.py nes
+  python3 create-disassembly-websites.py compare
+</pre>
+
+						<p>The first seven generate the different source code sections of the website, and the last one generates the comparison section (see below for more details). The results are then synced to the website folders, and we're done.</p>
 
 						<h2 class="articleSubheader">Generating source code from the library<br />
 													 ---------------------------------------</h2>
 
 create-elite-repositories.py
 Elite-A
-
+Different delimiters and hex prefixes
 
 						<h2 class="articleSubheader">Generating the compare section from the library<br />
 													 -----------------------------------------------</h2>
@@ -96,8 +112,79 @@ Groups
 						<h2 class="articleSubheader">A deeper look at the comparison process<br />
 													 ---------------------------------------</h2>
 
-Breakdown of compare script
+						<p>As mentioned above, the generation of the comparison part of the website is implemented by a single line in the <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/generate-elite.sh">generate-elite.sh</a> shell script:</p>
 
+<pre class="articleIndented">  python3 create-disassembly-websites.py compare
+</pre>
+
+						<p>The "compare" argument tells the script to generate the comparison part of the site. Here's a summary of what the <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/disassembly-website-generator/create-disassembly-websites.py">script</a> does, along with links to relevant examples of the output on the Elite website:</p>
+
+						<ul>
+							<li>Call create_folder() to create the folders we need to hold the comparison section of the website.</li>
+
+							<li>Call analyse_files_for_compare() to ingest the source code library and populate global variables such as includes_in_versions[] and all_includes[].</li>
+
+							<li>Call output_compares_indexes() to create the indexes of variations and code usage, such as the list of <a href="https://elite.bbcelite.com/compare/indexes/shared_code_with_variations.html">all shared code that contains variations</a>.</li>
+
+							<li>Call output_compare_category_index() to create the summary of code variations in each category, such as the list of <a href="https://elite.bbcelite.com/compare/indexes/shared_code_standard.html">comparisons of features of standard Elite</a>.</li>
+
+							<li>Call output_compare_other_categories_index() to create the <a href="https://elite.bbcelite.com/compare/indexes/shared_code_other_variations.html">summary of minor variations between versions</a>.</li>
+
+							<li>Call output_compare_version_page() to create the individual code variation pages, such as the <a href="https://elite.bbcelite.com/compare/main/subroutine/bline.html">version analysis of BLINE</a>.</li>
+
+							<li>Call output_compare_menu() to create the <a href="https://revs.bbcelite.com/templates_local/navigation.php">navigation.php include file</a> containing the left-hand navigation.</li>
+						</ul>
+
+						<p>If you want to investigate the <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/disassembly-website-generator/create-disassembly-websites.py">create-disassembly-websites.py</a> script in more detail, then here's a call hierarchy of the comparison process. In the following, a + indicates a routine that is called from multiple places, while a - indicates this subroutine is only called once in the whole program.</p>
+
+						<table class="spacedTableBorder codeSummary tight">
+							<tr class="codeSummaryHeader"><th>Routine</th><th>Details</th></tr>
+							<tr><td><pre>+ create_folder()</pre></td><td>Create skeleton website folders</td></tr>
+							<tr><td><pre>+ analyse_files_for_compare()</pre></td><td>Analyse all source code files for comparisons</td></tr>
+							<tr><td><pre>    + process_compare_file()</pre></td><td>Process an individual source code file for comparisons</td></tr>
+							<tr><td><pre>        + strip_elite_a()</pre></td><td>Strip platforms defined in omit_from_compare[] from comparison</td></tr>
+							<tr><td><pre>        + process_compare_line()</pre></td><td>Process an individual source code line for comparisons</td></tr>
+							<tr><td><pre>            - add_compare_include()</pre></td><td>Add details of each included file to all_includes[]</td></tr>
+							<tr><td><pre>- output_compares_indexes()</pre></td><td>Create the indexes of variations and code usage</td></tr>
+							<tr><td><pre>    + start_html()</pre></td><td>Output the start of the HTML page</td></tr>
+							<tr><td><pre>    + output_next_prev()</pre></td><td>Output next/prev links for page</td></tr>
+							<tr><td><pre>    - add_code_link()</pre></td><td>Create a link to a specific version of Elite</td></tr>
+							<tr><td><pre>    + end_html()</pre></td><td>Output the end of the HTML page</td></tr>
+							<tr><td><pre>- output_compare_category_index()</pre></td><td>Create the summary of variations in each category</td></tr>
+							<tr><td><pre>    + start_html()</pre></td><td>Output the start of the HTML page</td></tr>
+							<tr><td><pre>    + output_next_prev()</pre></td><td>Output next/prev links for page</td></tr>
+							<tr><td><pre>    + end_html()</pre></td><td>Output the end of the HTML page</td></tr>
+							<tr><td><pre>- output_compare_other_categories_index()</pre></td><td>Create the summary of minor variations between versions</td></tr>
+							<tr><td><pre>    + start_html()</pre></td><td>Output the start of the HTML page</td></tr>
+							<tr><td><pre>    + output_next_prev()</pre></td><td>Output next/prev links for page</td></tr>
+							<tr><td><pre>    + get_url_for_code_page()</pre></td><td>Fetch the URL for a page containing source code</td></tr>
+							<tr><td><pre>        - get_stage()</pre></td><td>Fetch the stage (e.g. loader, text_tokens) for an include</td></tr>
+							<tr><td><pre>    - tag_comments_as_ul()</pre></td><td>Extract the tag comments for a code difference as HTML</td></tr>
+							<tr><td><pre>    - tag_comments_for_single_platform_variation()</pre></td><td>Extract the tag comments for a single-platform difference as HTML</td></tr>
+							<tr><td><pre>    + end_html()</pre></td><td>Output the end of the HTML page</td></tr>
+							<tr><td><pre>- output_compare_version_page()</pre></td><td>Create the code variation pages for each routine</td></tr>
+							<tr><td><pre>    + start_code_html()</pre></td><td>Output the start of the HTML code page</td></tr>
+							<tr><td><pre>    - get_links_for_compared_versions()</pre></td><td>Fetch a list of all versions containing the routine being compared</td></tr>
+							<tr><td><pre>        + get_url_for_code_page()</pre></td><td>Fetch the URL for a page containing source code</td></tr>
+							<tr><td><pre>            - get_stage()</pre></td><td>Fetch the stage (e.g. loader, text_tokens) for an include</td></tr>
+							<tr><td><pre>        + convert_version_to_full_name_comma_list()</pre></td><td>Convert DISC_DOCKED to "Disc (docked)" etc.</td></tr>
+							<tr><td><pre>    - convert_versions_to_link_list()</pre></td><td>Convert an array of version names to an HTML list</td></tr>
+							<tr><td><pre>    - output_compare_line()</pre></td><td>Output marked-up HTML for a compared line of code</td></tr>
+							<tr><td><pre>        + tidy_source_header_line()</pre></td><td>Add markup to a source code header line</td></tr>
+							<tr><td><pre>        - replace_workspace_include_with_variable()</pre></td><td>In compared workspaces, just display variable names and no comments</td></tr>
+							<tr><td><pre>        - append_multi_version_compare_line()</pre></td><td>Add a compared code line to the compare buffer for output later</td></tr>
+							<tr><td><pre>        + output_buffered_compare_line()</pre></td><td>Output the compare code buffer</td></tr>
+							<tr><td><pre>    - output_multi_version_section()</pre></td><td>Output HTML for a compared code block with multiple versions</td></tr>
+							<tr><td><pre>        - convert_versions_to_list()</pre></td><td>Create a comma-separated list of versions that do not contain a specific comparison</td></tr>
+							<tr><td><pre>            + convert_version_to_full_name_comma_list()</pre></td><td>Convert DISC_DOCKED to "Disc (docked)" etc.</td></tr>
+							<tr><td><pre>        - add_links_to_compared_routines()</pre></td><td>Create a comma-separated list of versions that contain a specific comparison</td></tr>
+							<tr><td><pre>    + output_buffered_compare_line()</pre></td><td>Output and flush the compare buffer</td></tr>
+							<tr><td><pre>    + end_code_html()</pre></td><td>Output the end of the HTML code page</td></tr>
+							<tr><td><pre>- output_compare_menu()</pre></td><td>Create the left nav for the comparison section</td></tr>
+							<tr><td><pre>    - add_compare_article()</pre></td><td>Add compare page to routines{}</td></tr>
+						</table>
+
+						<p>Note that when generating the source code pages for the non-comparison part of the Elite site, there is an additional call to the analyse_files_for_compare() routine when compared to the process for Aviator, Revs and Lander. This ensures that global variables such as includes_in_versions[] and all_includes[] are populated correctly, so we can add links to the comparison pages into the headers of each routine in the main source code section of the site.</p>
 					</div>
 				</div>
 
