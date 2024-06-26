@@ -1,5 +1,7 @@
 # Static content for bbcelite.com
 
+[Scripts for generating bbcelite.com](https://github.com/markmoxon/bbcelite-scripts) | **Static content for bbcelite.com** | [Elite source code library](https://github.com/markmoxon/library-elite-beebasm)
+
 This repository contains static content for generating the websites at [bbcelite.com](https://www.bbcelite.com):
 
 * [Mark Moxon's Software Archaeology](https://www.bbcelite.com)
@@ -15,7 +17,7 @@ The generation scripts in the [bbcelite-scripts](https://github.com/markmoxon/bb
 * [Revs source code](https://github.com/markmoxon/revs-beebasm)
 * [Lander source code](https://github.com/markmoxon/archimedes-lander)
 
-See the the [bbcelite-scripts](https://github.com/markmoxon/bbcelite-scripts) repository for more information.
+For details of how the site and source code repositories are built, see the [bbcelite.com website](https://www.bbcelite.com/disassembly_websites/).
 
 ---
 
