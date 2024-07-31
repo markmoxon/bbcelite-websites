@@ -155,18 +155,18 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 		<meta name="twitter:creator" content="@markmoxon" />
 		<meta name="twitter:title" content="<?php echo $meta_title ?>" />
 		<meta name="twitter:image" content="<?php echo $twitter_image ?>" />
-		<link rel="stylesheet" href="/css/20240607/print.min.css" media="print" />
+		<link rel="stylesheet" href="/css/20240731/print.min.css" media="print" />
 		<link rel="home" href="/" title="Home page" />
 		
 		<script>
 			//<![CDATA[
 			function downloadJSAtOnload() {
 				var element = document.createElement("script");
-				element.src = "/javascript/20240607/jquery.min.js";
+				element.src = "/javascript/20240731/jquery.min.js";
 				if (element.addEventListener) {
 					element.addEventListener("load", function () {
 						$.ajaxSetup({cache: true});
-						$.getScript("/javascript/20240607/global.min.js", function () {
+						$.getScript("/javascript/20240731/global.min.js", function () {
 							<?php echo $initialise_page ?>
 						});
 					}, false);
@@ -174,7 +174,7 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 					element.onreadystatechange = function () {
 						if (this.readyState == 'complete' || this.readyState == 'loaded') {
 							$.ajaxSetup({cache: true});
-							$.getScript("/javascript/20240607/global.min.js", function () {
+							$.getScript("/javascript/20240731/global.min.js", function () {
 								<?php echo $initialise_page ?>
 							});
 						}
