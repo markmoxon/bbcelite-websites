@@ -115,7 +115,7 @@ page_header("disassembly_websites", "generating_elite.html", "Generating source 
 
 						<p>Including library files will work if routines are identical across the different versions, but more often than not the code differs slightly. The final piece of the puzzle is to add conditional logic into each library file to assemble the correct code for each version. As the includes are still BeebAsm files, we can implement this easily enough using the assembler's IF, ELIF and ENDIF conditionals.</p>
 
-						<p>The library repository defines an integer build variable called _VERSION that defines which version is being built. Logic at the start of each source file in the versions folder converts this integer variable into a fixed set of Boolean variables that determine whether each individual version is being built. This is the logic (I haven't added the Commodore 64 or Apple versions yet, but hope to someday):</p>
+						<p>The library repository defines an integer build variable called _VERSION that defines which version is being built. Logic at the start of each source file in the versions folder converts this integer variable into a fixed set of Boolean variables that determine whether each individual version is being built. This is the logic:</p>
 
 <pre class="articleIndented">  _CASSETTE_VERSION      = (_VERSION = 1)
   _DISC_VERSION          = (_VERSION = 2)
@@ -166,10 +166,25 @@ page_header("disassembly_websites", "generating_elite.html", "Generating source 
    LDY #100            \ {cr}"), with the ship at a distance of 100, returning
    JSR TITLE           \ with the internal number of the key pressed in A
 
+  ELIF _C64_VERSION
+
+   LDA #7              \ Call TITLE to show a rotating Adder (#ADA) and token
+   LDX #ADA            \ 7 ("PRESS SPACE OR FIRE,{single cap}COMMANDER.{cr}
+   LDY #48             \ {cr}"), with the ship at a distance of 48, returning
+   JSR TITLE           \ with the internal number of the key pressed in A
+
+  ELIF _APPLE_VERSION
+
+   LDA #7              \ Call TITLE to show a rotating Sidewinder (#SH3) and
+   LDX #SH3            \ token 7 ("PRESS SPACE OR FIRE,{single cap}COMMANDER.
+   LDY #75             \ {cr}{cr}"), with the ship at a distance of 75,
+   JSR TITLE           \ returning with the internal number of the key pressed
+                       \ in A
+
   ENDIF
 </pre>
 
-						<p>This code is responsible for displaying the second ship when starting the game, which varies between versions: the cassette and Electron versions show a rotating Mamba, the disc version shows a rotating Krait, the 6502 Second Processor version shows a rotating Asp Mk II, and the Master version shows a rotating Cougar. It assembles nothing for the NES version or the disc version's flight code, as the NES version doesn't show a second title screen, and the flight code doesn't show either title screen; as you can see in the above snippet, _NES_VERSION and _DISC_FLIGHT aren't mentioned at all.</p>
+						<p>This code is responsible for displaying the second ship when starting the game, which varies between versions: the BBC Micro cassette and Acorn Electron versions show a rotating Mamba, the BBC Micro disc version shows a rotating Krait, the 6502 Second Processor version shows a rotating Asp Mk II, the BBC Master version shows a rotating Cougar, the Commodore 64 version shows a rotating Adder, and the Apple II version shows a rotating Sidewinder. It assembles nothing for the NES version or the disc version's flight code, as the NES version doesn't show a second title screen, and the flight code doesn't show either title screen; as you can see in the above snippet, _NES_VERSION and _DISC_FLIGHT aren't mentioned at all.</p>
 
 						<p>Note that in the conditional statements that control which code is used in which versions, any ELIFs that solely contain the following versions must be the last ELIFs in the IF block:</p>
 
@@ -190,7 +205,7 @@ page_header("disassembly_websites", "generating_elite.html", "Generating source 
 
 						<p>The approach is simple enough: to generate the repository for a specific version, the script works through the source files in the relevant versions subfolder, converting each INCLUDE directive to the contents of the included file, and processing any version-based IFs in the process. The result is the full source for that version, with no library INCLUDEs left, which contains only the code for that version.</p>
 
-						<p>The script also supports different comment delimiters and hexadecimal prefixes. This is used to generate the source code repository for the NES version at <a href="https://github.com/markmoxon/elite-source-code-nes">elite-source-code-nes</a>, which uses a semicolon for comments and $ instead of &amp; for hexadecimal numbers. The source code in the library repository uses \ and &amp; throughout, but for the NES repository, the script is configured to convert \ into ; and &amp; into $, to give a source code that is more in-keeping with the NES style of code. The corresponding NES section of the Elite website is generated from the repository, so it continues to use the NES-style delimiters.</p>
+						<p>The script also supports different comment delimiters and hexadecimal prefixes. This is used to generate the source code repositories for the <a href="https://github.com/markmoxon/elite-source-code-commodore-64">Commodore 64</a>, <a href="https://github.com/markmoxon/elite-source-code-apple-ii">Apple II</a> and <a href="https://github.com/markmoxon/elite-source-code-nes">NES</a>, which use a semicolon for comments and $ instead of &amp; for hexadecimal numbers. The source code in the library repository uses \ and &amp; throughout, but for these repositories, the script is configured to convert \ into ; and &amp; into $, to give a source code that is more in-keeping with the non-Acorn style of code. The corresponding sections of the Elite website are generated from these source code repositories, so they continues to use non-Acorn delimiters.</p>
 
 						<p>Although this approach of recursively expanding INCLUDE directives is a fairly simple process, the <a href="https://github.com/markmoxon/bbcelite-scripts/blob/main/elite-repository-generator/create-elite-repositories.py">create-elite-repositories.py</a> script does contain some pretty obscure code. This is because it also generates the source code repository for Elite-A, and Elite-A is a special case, so let's look at that next.</p>
 
@@ -268,7 +283,7 @@ page_header("disassembly_websites", "generating_elite.html", "Generating source 
 							<tr><td><pre> - shrink_diffs()</pre></td><td>Remove lines from each end of a diff where those lines match the original  (and therefore aren't actually different)</td></tr>
 							<tr><td><pre>  - shrink_from_start()</pre></td><td>Remove lines from the start of a diff where those lines match the original </td></tr>
 							<tr><td><pre>   - move_lines_out_of_top()</pre></td><td>Move lines out of the top of a diff block into the code above</td></tr>
-							<tr><td><pre>- code_style_6502()</pre></td><td>Convert a line of code into 6502 style for the NES, as opposed to BBC Micro style</td></tr>
+							<tr><td><pre>- code_style_6502()</pre></td><td>Convert a line of code into 6502 style for the Commodore 64, Apple II and NES, as opposed to BBC Micro style</td></tr>
 						</table>
 
 						<p>To finish off, let's take a look at the shell script that joins everything in the flowchart together.</p>
