@@ -91,6 +91,13 @@ page_header("hacks", "elite_compendium_technical_information.html", "Technical i
 
 						<p>The BBC Master version of Elite fixes this by leaving the "A" key enabled when in joystick mode. This means you can have one hand steering with the stick and the other on the keyboard, and you can leave them there. For the Compendium I've backported this implementation to all the other versions, so the "A" key keeps working in joystick and Bitstik mode in the BBC Micro, 6502 Second Processor and Teletext versions too.</p>
 
+						<h2 class="articleSubheader">Delta 14B support<br />
+													 -----------------</h2>
+
+						<p>The code to support the Delta 14B joystick and keypad comes straight from Elite-A, Angus Duggan's epic extended version of Elite. For details of how this code works, check out the deep dive on <a href="elite-a_delta_14b_joystick_support.html">Delta 14B joystick support</a>.</p>
+
+						<p>I had to changes for the BBC Master, as the key logger is in a different order to the original BBC Micro version. For the 6502 Second Processor, the Delta 14B code slotted nicely into the KEYBOARD routine in the I/O processor, but I had to extend the API call to transmit the Delta 14B configuration setting from the parasite, so the I/O processor would know whether or not to scan the Delta 14B buttons.</p>
+
 						<h2 class="articleSubheader">Slowing down the co-pro version<br />
 													 -------------------------------</h2>
 
@@ -134,6 +141,58 @@ page_header("hacks", "elite_compendium_technical_information.html", "Technical i
 						</blockquote>
 
 						<p>In all it's a bit of a tragedy that the Moray never gets spawned, so the Compendium fixes this bug by tweaking the list of bounty hunter ships to include the Moray. It appears rarely, which is befitting such an exotic ship, but at least it is no longer excluded.</p>
+
+						<h2 class="articleSubheader">Making space for all these hacks<br />
+													 --------------------------------</h2>
+
+						<p>Music aside, all of the hacks included in the Compendium fit nicely into main memory in the BBC Master and 6502 Second Processor versions of Elite; the music lives in sideways RAM, as it's pretty big. This is also true of Teletext Elite, as teletext screen mode 7 only takes up 1K of screen RAM compared to 7.75K of RAM for the original game's screen mode, and this is enough extra space to cater for all the extra hacks.</p>
+
+						<p>But what about the original BBC Micro version, where space is legendarily tight? Well, for the Compendium we are already loading a ROM image into sideways RAM for the music, and it turns out there's a bit of free space at the end of the ROM, as the music only takes around 12K of the 16K ROM image. So for the BBC Micro versions of Compendium Elite, we can move code from the main game into sideways RAM, freeing up space for the hacks.</p>
+
+						<p>The process is relatively straightforward. First we pick a routine to move - preferably a routine that isn't used during combat, as there is a speed penalty when switching to sideways RAM - and we then update the BeebAsm source to build that routine in the sideways RAM address space. We save this out as a separate binary file that we can tack onto the music ROM image file, and we replace the original routine in the main game code with a small bit of code that switches to the sideways ROM image, calls the moved routine, and switches back once it returns.</p>
+
+						<p>These are the routines that have been moved to squeeze in the Compendium hacks:</p>
+
+						<ul>
+							<li>BBC Micro cassette
+
+								<ul class="tightList">
+									<li>rom-extra1.bin = TT22 (Long-range Chart), TT15 (Draw crosshairs)
+									<li>rom-extra2.bin = TT210 (Inventory)
+									<li>rom-extra3.bin = TT23 (Short-range Chart)
+									<li>rom-extra4.bin = TT111 (Set current system to nearest)
+									<li>rom-extra5.bin = EQSHP (Equip ship)
+									<li>rom-extra6.bin = cpl (Print the selected system name)
+									<li>rom-extra7.bin = OOPS (Take some damage)
+									<li>rom-extra8.bin = TIDY (Orthonormalise orientation vectors)
+								</ul>
+							</li>
+
+							<li>BBC Micro disc version on the BBC Micro
+
+								<ul class="tightList">
+									<li>rom-extra1.bin = TT22 (Long-range Chart), TT15 (Draw crosshairs)
+									<li>rom-extra2.bin = TT210 (Inventory)
+									<li>rom-extra3.bin = TT23 (Short-range Chart)
+									<li>rom-extra4.bin = TT111 (Set current system to nearest)
+									<li>rom-extra5.bin = cpl (Print the selected system name)
+									<li>rom-extra6.bin = OOPS (Take some damage)
+									<li>rom-extra7.bin = TIDY (Orthonormalise orientation vectors)
+								</ul>
+							</li>
+
+							<li>BBC Micro disc version on the BBC Master
+
+								<ul class="tightList">
+									<li>rom-extra1.bin = TT22 (Long-range Chart), TT15 (Draw crosshairs)
+									<li>rom-extra2.bin = TT210 (Inventory)
+									<li>rom-extra3.bin = TT23 (Short-range Chart)
+									<li>rom-extra4.bin = TT111 (Set current system to nearest)
+								</ul>
+							</li>
+						</ul>
+
+						<p>Each routine is saved out as rom-extra1.bin, rom-extra2.bin and so on, and a simple cat command in the Makefile appends all the ROM extras onto the end of the music ROM. In this way we can extend the available memory for Elite without needing any further hardware beyond the 16K of sideways RAM that the music already requires.</p>
 
 						<h2 class="articleSubheader">Information on the other hacks in the Compendium<br />
 													 ------------------------------------------------</h2>
