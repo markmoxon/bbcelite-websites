@@ -170,9 +170,9 @@ page_header("deep_dives", "drawing_monochrome_pixels_in_mode_4.html", "Drawing m
   (191, 255)   is at pixel   (191 mod 8, 255 mod 8)   =   (7, 7)
 </pre>
 
-						<p>We can do a mod 8 operation really easily in assembly language by simply AND'ing with %111, so in assembly, we get this:</p>
+						<p>We can do a mod 8 operation really easily in assembly language by simply AND'ing with 7, so in assembly, we get this:</p>
 
-<pre class="articleIndented">  Pixel (x, y) is at position (x AND %111, y AND %111) within the character
+<pre class="articleIndented">  Pixel (x, y) is at position (x AND 7, y AND 7) within the character
 </pre>
 
 						<p>And this is the algorithm that's implemented in this routine, though with a small twist.</p>
@@ -187,7 +187,7 @@ page_header("deep_dives", "drawing_monochrome_pixels_in_mode_4.html", "Drawing m
 
 						<p>and this specific pixel within that character block:</p>
 
-<pre class="articleIndented">  (x AND %111, y AND %111)
+<pre class="articleIndented">  (x AND 7, y AND 7)
 </pre>
 
 						<p>As mentioned above, we can update this pixel by poking a byte into screen memory, so now we need to work out which memory location we need to update, and what to update it with.</p>
@@ -204,14 +204,14 @@ page_header("deep_dives", "drawing_monochrome_pixels_in_mode_4.html", "Drawing m
 <pre class="articleIndented">  The character starts at byte (x &gt;&gt; 3) * 8 within the row's page
 </pre>
 
-						<p>Next, we know that the pixel we want to update within this block is on row (y AND %111) in the character, and because there are 8 bits in each row (one byte), this is also the byte offset of the start of that row within the character block. So we also know this:</p>
+						<p>Next, we know that the pixel we want to update within this block is on row (y AND 7) in the character, and because there are 8 bits in each row (one byte), this is also the byte offset of the start of that row within the character block. So we also know this:</p>
 
-<pre class="articleIndented">  The pixel is in the character byte number (y AND %111)
+<pre class="articleIndented">  The pixel is in the character byte number (y AND 7)
 </pre>
 
 						<p>So, to summarise, we know we need to update this byte in the row's memory page:</p>
 
-<pre class="articleIndented">  (x &gt;&gt; 3) * 8 + (y AND %111)
+<pre class="articleIndented">  (x &gt;&gt; 3) * 8 + (y AND 7)
 </pre>
 
 						<p>The final question is what to poke into this byte.</p>
@@ -219,7 +219,7 @@ page_header("deep_dives", "drawing_monochrome_pixels_in_mode_4.html", "Drawing m
 						<h2 class="articleSubheader">The two TWOS tables<br />
 													 -------------------</h2>
 
-						<p>So we know which byte to update, and we also know which bit to set within that byte - it's bit number (x AND %111). We could always fetch that byte and EOR it with 1 shifted by the relevant number of spaces, but Elite chooses a slightly different approach, one which makes it easier for us to plot not only individual pixels, but also two pixels and even blocks of four.</p>
+						<p>So we know which byte to update, and we also know which bit to set within that byte - it's bit number (x AND 7). We could always fetch that byte and EOR it with 1 shifted by the relevant number of spaces, but Elite chooses a slightly different approach, one which makes it easier for us to plot not only individual pixels, but also two pixels and even blocks of four.</p>
 
 						<p>There are two tables of bytes, one at <a href="/cassette/main/variable/twos.html">TWOS</a> and the other at <a href="/cassette/main/variable/twos2.html">TWOS2</a>, that contain ready-made bytes for plotting one-pixel and two-pixel points. In each table, the byte at offset X contains a byte that, when poked into a character row, will plot a single-pixel at column X (for TWOS) or a two-pixel "dash" at column X (for TWOS2). As one example, this is what's in the fourth entry from each table (i.e. the entry at offset 3):</p>
 
@@ -228,11 +228,11 @@ page_header("deep_dives", "drawing_monochrome_pixels_in_mode_4.html", "Drawing m
   TWOS2+3 = %00011000
 </pre>
 
-						<p>This is the value we need to EOR with the byte we worked out above, where the offset is the bit number we want to set, i.e. (x AND %111). Or to put it another way, if we set the following:</p>
+						<p>This is the value we need to EOR with the byte we worked out above, where the offset is the bit number we want to set, i.e. (x AND 7). Or to put it another way, if we set the following:</p>
 
 <pre class="articleIndented">  SCH = &amp;60 + y &gt;&gt; 3
-  SC = (x &gt;&gt; 3) * 8 + (y AND %111)
-  X = x AND %111
+  SC = (x &gt;&gt; 3) * 8 + (y AND 7)
+  X = x AND 7
 </pre>
 
 						<p>then we want to fetch this byte:</p>
