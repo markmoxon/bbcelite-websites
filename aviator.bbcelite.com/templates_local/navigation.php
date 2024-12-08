@@ -26,7 +26,7 @@
 							<li><a id="about_site_to-do_list" href="/about_site/to-do_list.html"><span class="menuTitle">To-do list</span> <span class="menuSummary">Code that could benefit from a bit more analysis</span></a></li>
 						</ul>
 					</li>
-					<li class="menuItemHeader showForMobile">Understanding the source code</li>
+					<li class="menuItemHeader showForMobile">Understanding the Aviator source code</li>
 					<li id="deep_dives"><span class="menuTitle">Deep dive articles</span>
 						<span class="menuSummary menuSummarySubmenu">Over 30 articles on how Aviator weaves its magic</span>
 						<ul id="submenu_deep_dives">
@@ -107,7 +107,7 @@
 						</ul>
 					</li>
 
-					<li class="menuItemHeader showForMobile">Exploring the source code</li>
+					<li class="menuItemHeader showForMobile">Exploring the Aviator source code</li>
 					<li id="source_sources"><span class="menuTitle">Aviator source code</span>
 						<span class="menuSummary menuSummarySubmenu">Annotated source of BBC Micro Aviator</span>
 						<ul id="submenu_source_sources">
@@ -138,7 +138,7 @@
 
 					<li class="menuItemHeader showForMobile">My software archaeology sites</li>
 					<li class="showForMobile otherSites"><a href="https://www.bbcelite.com"><span class="menuTitle">Mark Moxon's Software Archaeology</span></a></li>
-					<li class="showForMobile otherSites"><a href="https://elite.bbcelite.com"><span class="menuTitle">Elite on the BBC Micro and NES</span></a></li>
+					<li class="showForMobile otherSites"><a href="https://elite.bbcelite.com"><span class="menuTitle">Elite on the 6502</span></a></li>
 					<li class="showForMobile otherSites"><a href="https://aviator.bbcelite.com"><span class="menuTitle">Aviator on the BBC Micro</span></a></li>
 					<li class="showForMobile otherSites"><a href="https://revs.bbcelite.com"><span class="menuTitle">Revs on the BBC Micro</span></a></li>
 					<li class="showForMobile otherSites"><a href="https://lander.bbcelite.com"><span class="menuTitle">Lander on the Acorn Archimedes</span></a></li>

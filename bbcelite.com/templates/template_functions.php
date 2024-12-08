@@ -20,6 +20,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE1 = "Mark Moxon's ";
 		$SITE_TITLE = "Software Archaeology";
 		$SITE_SUBTITLE2 = "";
+		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = FALSE;
 		break;
 
@@ -28,7 +29,8 @@ switch ($SERVER_NAME) {
 		$DOMAIN = "elite.bbcelite.com";
 		$SITE_SUBTITLE1 = "";
 		$SITE_TITLE = "Elite";
-		$SITE_SUBTITLE2 = " on the BBC Micro and NES";
+		$SITE_SUBTITLE2 = " on the 6502";
+		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
 		break;
 
@@ -38,6 +40,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE1 = "";
 		$SITE_TITLE = "Aviator";
 		$SITE_SUBTITLE2 = " on the BBC Micro";
+		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
 		break;
 
@@ -47,6 +50,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE1 = "";
 		$SITE_TITLE = "Revs";
 		$SITE_SUBTITLE2 = " on the BBC Micro";
+		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
 		break;
 
@@ -56,6 +60,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE1 = "";
 		$SITE_TITLE = "Lander";
 		$SITE_SUBTITLE2 = " on the Acorn Archimedes";
+		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
 		break;
 
@@ -64,19 +69,20 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE1 = "Mark Moxon's ";
 		$SITE_TITLE = "Software Archaeology";
 		$SITE_SUBTITLE2 = "";
+		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = FALSE;
 		break;
 }
 
 function page_header($folder, $name, $meta_title, $title, $description, $page_type = "", $page_parameter1 = "", $page_parameter2 = "", $subtitle = "") {
-	global $DOMAIN, $SITE_TITLE, $SITE_SUBTITLE1, $SITE_SUBTITLE2, $SITE_URL, $SHOW_RANDOM_LINK;
+	global $DOMAIN, $SITE_TITLE, $SITE_SUBTITLE1, $SITE_SUBTITLE2, $SITE_SUBTITLE3, $SITE_URL, $SHOW_RANDOM_LINK;
 
 	$title_no_tags = preg_replace('/<[^>]+>/', '', $meta_title);
 
 	if (str_ends_with($page_type, '-home')) {
 		$meta_title = $title_no_tags;
 	} else {
-		$meta_title = $title_no_tags . ' - ' . $SITE_SUBTITLE1 . $SITE_TITLE . $SITE_SUBTITLE2;
+		$meta_title = $title_no_tags . ' - ' . $SITE_SUBTITLE1 . $SITE_TITLE . $SITE_SUBTITLE2 . $SITE_SUBTITLE3;
 	}
 
 	if (array_key_exists('elite_theme', $_COOKIE)) {
@@ -105,6 +111,10 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 		$twitter_image = 'https://elite.bbcelite.com/images/disc/github-social-preview.png';
 	} elseif (str_starts_with($page_parameter1, 'electron_') || str_starts_with($page_parameter2, 'electron_')) {
 		$twitter_image = 'https://elite.bbcelite.com/images/electron/github-social-preview.png';
+	} elseif (str_starts_with($page_parameter1, 'c64_') || str_starts_with($page_parameter2, 'c64_')) {
+		$twitter_image = 'https://elite.bbcelite.com/images/c64/github-social-preview.png';
+	} elseif (str_starts_with($page_parameter1, 'apple_') || str_starts_with($page_parameter2, 'apple_')) {
+		$twitter_image = 'https://elite.bbcelite.com/images/apple/github-social-preview.png';
 	} elseif (str_starts_with($page_parameter1, 'master_') || str_starts_with($page_parameter2, 'master_')) {
 		$twitter_image = 'https://elite.bbcelite.com/images/master/github-social-preview.png';
 	} elseif (str_starts_with($page_parameter1, 'elite-a_') || str_starts_with($page_parameter2, 'elite-a_')) {
@@ -155,18 +165,18 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 		<meta name="twitter:creator" content="@markmoxon" />
 		<meta name="twitter:title" content="<?php echo $meta_title ?>" />
 		<meta name="twitter:image" content="<?php echo $twitter_image ?>" />
-		<link rel="stylesheet" href="/css/20240813/print.min.css" media="print" />
+		<link rel="stylesheet" href="/css/20241208/print.min.css" media="print" />
 		<link rel="home" href="/" title="Home page" />
 		
 		<script>
 			//<![CDATA[
 			function downloadJSAtOnload() {
 				var element = document.createElement("script");
-				element.src = "/javascript/20240813/jquery.min.js";
+				element.src = "/javascript/20241208/jquery.min.js";
 				if (element.addEventListener) {
 					element.addEventListener("load", function () {
 						$.ajaxSetup({cache: true});
-						$.getScript("/javascript/20240813/global.min.js", function () {
+						$.getScript("/javascript/20241208/global.min.js", function () {
 							<?php echo $initialise_page ?>
 						});
 					}, false);
@@ -174,7 +184,7 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 					element.onreadystatechange = function () {
 						if (this.readyState == 'complete' || this.readyState == 'loaded') {
 							$.ajaxSetup({cache: true});
-							$.getScript("/javascript/20240813/global.min.js", function () {
+							$.getScript("/javascript/20241208/global.min.js", function () {
 								<?php echo $initialise_page ?>
 							});
 						}
@@ -206,7 +216,7 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 				<div class="siteTitle<?php echo $theme_class ?>">
 					<a href="/" class="homeButton">&#x2302;</a>
 					<?php if ($SHOW_RANDOM_LINK) { ?><a href="/cgi-bin/random.cgi" title="Show me something random" class="homeButton random">&#x221E;</a><?php } ?>
-					<a href="#" id="navDropdownLink" class="navDropdownLink"><?php if ($theme_div) { ?><span class="triangle">&#x25BD;</span> <?php } if ($SITE_SUBTITLE1 != "")  { echo '<span class="subtitle">' . $SITE_SUBTITLE1 . '</span>'; } ?><?php echo $SITE_TITLE ?><?php if ($SITE_SUBTITLE2 != "")  { echo '<span class="subtitle">' . $SITE_SUBTITLE2 . '</span>'; } if ($theme_div == "") { ?> <span class="triangle">&#x25BD;</span><?php } ?></a><?php echo $theme_div ?>
+					<a href="#" id="navDropdownLink" class="navDropdownLink"><?php if ($theme_div) { ?><span class="triangle">&#x25BD;</span> <?php } if ($SITE_SUBTITLE1 != "")  { echo '<span class="subtitle">' . $SITE_SUBTITLE1 . '</span>'; } ?><?php echo $SITE_TITLE ?><?php if ($SITE_SUBTITLE2 != "")  { echo '<span class="subtitle">' . $SITE_SUBTITLE2 . '</span>'; } if ($SITE_SUBTITLE3 != "")  { echo '<span class="subtitle2">' . $SITE_SUBTITLE3 . '</span>'; } if ($theme_div == "") { ?> <span class="triangle">&#x25BD;</span><?php } ?></a><?php echo $theme_div ?>
 				</div>
 				<hr class="header" />
 				<div class="header<?php if ($subtitle != "") { echo " subtitle"; } ?>">
@@ -218,7 +228,7 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 			<div id="navDropdown">
 				<p class="subheading first">My software archaeology sites</p>
 				<p><?php nav_link("www.bbcelite.com", "Mark Moxon's Software Archaeology"); ?></p>
-				<p><?php nav_link("elite.bbcelite.com", "Elite on the BBC Micro and NES"); ?></p>
+				<p><?php nav_link("elite.bbcelite.com", "Elite on the 6502"); ?></p>
 				<p><?php nav_link("aviator.bbcelite.com", "Aviator on the BBC Micro"); ?></p>
 				<p><?php nav_link("revs.bbcelite.com", "Revs on the BBC Micro"); ?></p>
 				<p><?php nav_link("lander.bbcelite.com", "Lander on the Acorn Archimedes"); ?></p>

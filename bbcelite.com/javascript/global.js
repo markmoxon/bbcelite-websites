@@ -21,7 +21,7 @@ function initialiseElitePage() {
 	});
 
 	// Set up navigation menus
-	$.getScript('/javascript/20240813/jquery.mmenu.min.js', function () {
+	$.getScript('/javascript/20241208/jquery.mmenu.min.js', function () {
 	
 		// Clone navigation to burger menu
 		$("#navigation").mmenu({}, { "clone": true });

@@ -5,7 +5,7 @@
 This repository contains static content for generating the websites at [bbcelite.com](https://www.bbcelite.com):
 
 * [Mark Moxon's Software Archaeology](https://www.bbcelite.com)
-* [Elite on the BBC Micro and NES](https://elite.bbcelite.com)
+* [Elite on the 6502](https://elite.bbcelite.com)
 * [Aviator on the BBC Micro](https://aviator.bbcelite.com)
 * [Revs on the BBC Micro](https://revs.bbcelite.com)
 * [Lander on the Acorn Archimedes](https://lander.bbcelite.com)

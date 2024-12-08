@@ -1,5 +1,5 @@
 			<footer id="copyrightMessage">
-				<p><a title="Copyright information for this website" href="/about_site/acknowledgements.html">BBC Micro Elite, written by Ian Bell and David Braben, &copy; Acornsoft 1984<br />Acorn Electron Elite, written by Ian Bell and David Braben, &copy; Acornsoft 1984<br />6502 Second Processor Elite, written by Ian Bell and David Braben, &copy; Acornsoft 1985<br />BBC Master Elite, written by Ian Bell and David Braben, &copy; Acornsoft 1986<br />Elite-A base code as per BBC Micro Elite, modifications by Angus Duggan, &copy; Angus Duggan<br />NES Elite, written by Ian Bell and David Braben, &copy; D. Braben and I. Bell 1991/1992<br />Commentary &copy; Mark Moxon <span id="copyrightYear">2020</span><br />
+				<p><a title="Copyright information for this website" href="/about_site/acknowledgements.html">BBC Micro Elite, written by Ian Bell and David Braben, &copy; Acornsoft 1984<br />Acorn Electron Elite, written by Ian Bell and David Braben, &copy; Acornsoft 1984<br />6502 Second Processor Elite, written by Ian Bell and David Braben, &copy; Acornsoft 1985<br />Commodore 64 Elite, written by Ian Bell and David Braben, &copy; D. Braben and I. Bell 1985<br />BBC Master Elite, written by Ian Bell and David Braben, &copy; Acornsoft 1986<br />NES Elite, written by Ian Bell and David Braben, &copy; D. Braben and I. Bell 1991/1992<br />Elite-A base code as per BBC Micro Elite, modifications by Angus Duggan, &copy; Angus Duggan<br />Commentary &copy; Mark Moxon <span id="copyrightYear">2020</span><br />
 				All Rights Reserved</a></p>
 			</footer>
 
@@ -26,8 +26,8 @@
 							<li><a id="about_site_to-do_list" href="/about_site/to-do_list.html"><span class="menuTitle">To-do list</span> <span class="menuSummary">Code that could benefit from a bit more analysis</span></a></li>
 						</ul>
 					</li>
-					<li class="menuItemHeader showForMobile">Playing with the source code</li>
-					<li id="playing_elite"><a id="playing_elite_index" href="/playing_elite/"><span class="menuTitle">Playing 8-bit Elite in the 21st century</span> <span class="menuSummary">How to play all the versions of Elite analysed here</span></a></li>
+					<li class="menuItemHeader showForMobile">Playing with the Elite source code</li>
+					<li id="playing_elite"><a id="playing_elite_index" href="/playing_elite/"><span class="menuTitle">Playing 6502 Elite in the 21st century</span> <span class="menuSummary">How to play all the versions of Elite analysed here</span></a></li>
 					<li id="deep_dives"><span class="menuTitle">Deep dive articles</span>
 						<span class="menuSummary menuSummarySubmenu">Over 100 articles on how Elite weaves its magic</span>
 						<ul id="submenu_deep_dives">
@@ -39,9 +39,9 @@
 									<li class="menuItemHeader">Memory maps</li>
 									<li><a id="deep_dives_memory_maps_the_elite_memory_map" href="/deep_dives/the_elite_memory_map.html"><span class="menuTitle">BBC Micro cassette Elite memory map</span> <span class="menuSummary">Memory usage in the classic version of Elite, where space is really tight</span></a></li>
 									<li><a id="deep_dives_memory_maps_the_elite_memory_map_disc" href="/deep_dives/the_elite_memory_map_disc.html"><span class="menuTitle">BBC Micro disc Elite memory map</span> <span class="menuSummary">Memory usage in the enhanced disc version of Elite</span></a></li>
+									<li><a id="deep_dives_memory_maps_the_elite_memory_map_electron" href="/deep_dives/the_elite_memory_map_electron.html"><span class="menuTitle">Acorn Electron Elite memory map</span> <span class="menuSummary">Memory usage in the smallest and most basic version of Elite</span></a></li>
 									<li><a id="deep_dives_memory_maps_the_elite_memory_map_6502sp" href="/deep_dives/the_elite_memory_map_6502sp.html"><span class="menuTitle">6502 Second Processor Elite memory map</span> <span class="menuSummary">Memory usage in the Tube-based version of Elite</span></a></li>
 									<li><a id="deep_dives_memory_maps_the_elite_memory_map_master" href="/deep_dives/the_elite_memory_map_master.html"><span class="menuTitle">BBC Master Elite memory map</span> <span class="menuSummary">Memory usage in the smoothest version of Elite</span></a></li>
-									<li><a id="deep_dives_memory_maps_the_elite_memory_map_electron" href="/deep_dives/the_elite_memory_map_electron.html"><span class="menuTitle">Acorn Electron Elite memory map</span> <span class="menuSummary">Memory usage in the smallest and most basic version of Elite</span></a></li>
 									<li><a id="deep_dives_memory_maps_the_elite_memory_map_nes" href="/deep_dives/the_elite_memory_map_nes.html"><span class="menuTitle">NES Elite memory map</span> <span class="menuSummary">Memory usage in the only console-based version of Elite</span></a></li>
 								</ul>
 							</li>
@@ -263,7 +263,7 @@
 									<li><a id="deep_dives_elite-a_the_iff_system" href="/deep_dives/elite-a_the_iff_system.html"><span class="menuTitle">The I.F.F. system</span> <span class="menuSummary">Friend or foe? Adding ship information to the 3D scanner</span></a></li>
 									<li><a id="deep_dives_elite-a_fixing_ship_positions" href="/deep_dives/elite-a_fixing_ship_positions.html"><span class="menuTitle">Fixing ship positions</span> <span class="menuSummary">Why Elite spawns certain ships in certain places, and how Elite-A fixes this</span></a></li>
 									<li><a id="deep_dives_elite-a_special_cargo_missions" href="/deep_dives/elite-a_special_cargo_missions.html"><span class="menuTitle">Special cargo missions</span> <span class="menuSummary">Procedurally generating delivery missions and tracking progress</span></a></li>
-									<li><a id="deep_dives_elite-a_delta_14b_joystick_support" href="/deep_dives/elite-a_delta_14b_joystick_support.html"><span class="menuTitle">Delta 14b joystick support</span> <span class="menuSummary">All the controls of Elite in one single handset - the future is here!</span></a></li>
+									<li><a id="deep_dives_elite-a_delta_14b_joystick_support" href="/deep_dives/elite-a_delta_14b_joystick_support.html"><span class="menuTitle">Delta 14B joystick support</span> <span class="menuSummary">All the controls of Elite in one single handset - the future is here!</span></a></li>
 									<li><a id="deep_dives_elite-a_tube_communication" href="/deep_dives/elite-a_tube_communication.html"><span class="menuTitle">Tube communication in Elite-A</span> <span class="menuSummary">How the 6502 Second Processor version of Elite-A talks over the Tube</span></a></li>
 									<li><a id="deep_dives_elite-a_the_original_source_files" href="/deep_dives/elite-a_the_original_source_files.html"><span class="menuTitle">The original source files</span> <span class="menuSummary">How the original Elite-A source was written, edited and compiled</span></a></li>
 								</ul>
@@ -275,7 +275,7 @@
 							<li class="menuItemHeader">Index</li>
 							<li><a id="hacks_index" href="/hacks/"><span class="menuTitle">Index of all Elite hacks</span><span class="menuSummary">A list of all the Elite hacks on this site</span></a></li>
 							<li class="menuItemHeader">Elite hacks</li>
-							<li id="hacks_elite_compendium"><span class="menuTitle">Elite Compendium</span> <span class="menuSummary menuSummarySubmenu">The best way to play all the hacked and enhanced versions of Acornsoft Elite</span>
+							<li id="hacks_elite_compendium"><span class="menuTitle">Elite Compendium</span> <span class="menuSummary menuSummarySubmenu">The best way to play all the hacked and enhanced versions of Elite</span>
 								<ul id="submenu_hacks_elite_compendium">
 									<li class="menuItemHeader">Elite Compendium</li>
 									<li><a id="hacks_elite_compendium_index" href="/hacks/elite_compendium.html"><span class="menuTitle">About the Elite Compendium</span> <span class="menuSummary">Bringing all the best Elite hacks together in one feature-packed disc</span></a></li>
@@ -349,7 +349,7 @@
 						</ul>
 					</li>
 
-					<li class="menuItemHeader showForMobile">Exploring the source code</li>
+					<li class="menuItemHeader showForMobile">Exploring the Elite source code</li>
 					<li id="cassette_sources"><span class="menuTitle">BBC Micro cassette source code</span>
 						<span class="menuSummary menuSummarySubmenu">Annotated source of the original version of Elite</span>
 						<ul id="submenu_cassette_sources">
@@ -370,6 +370,16 @@
 						</ul>
 					</li>
 
+					<li id="electron_sources"><span class="menuTitle">Acorn Electron source code</span>
+						<span class="menuSummary menuSummarySubmenu">A cut-down version for the Beeb's little brother</span>
+						<ul id="submenu_electron_sources">
+							<li class="menuItemHeader">Version information</li>
+							<li><a id="electron_sources_index" href="/electron/"><span class="menuTitle">About the Electron version</span><span class="menuSummary">Information on the cut-down version of Elite</span></a></li>
+							<li><a id="electron_sources_releases" href="/electron/releases.html"><span class="menuTitle">Different variants of the Electron version</span><span class="menuSummary">Code variations found in Electron Elite</span></a></li>
+		                    <?php include('navigation_electron.php'); ?>
+						</ul>
+					</li>
+
 					<li id="sp_sources"><span class="menuTitle">6502 Second Processor source code</span>
 						<span class="menuSummary menuSummarySubmenu">The fastest and most colourful version of Elite</span>
 						<ul id="submenu_sp_sources">
@@ -380,6 +390,16 @@
 						</ul>
 					</li>
 
+					<li id="c64_sources"><span class="menuTitle">Commodore 64 source code</span>
+						<span class="menuSummary menuSummarySubmenu">The classic Blue Danube and Trumbles version</span>
+						<ul id="submenu_c64_sources">
+							<li class="menuItemHeader">Version information</li>
+							<li><a id="c64_sources_index" href="/c64/"><span class="menuTitle">About the Commodore 64 version</span><span class="menuSummary">Information on the classic Blue Danube and Trumbles version</span></a></li>
+							<li><a id="c64_sources_releases" href="/c64/releases.html"><span class="menuTitle">Different variants of the Commodore 64 version</span><span class="menuSummary">Code variations found in Commodore 64 Elite</span></a></li>
+		                    <?php include('navigation_c64.php'); ?>
+						</ul>
+					</li>
+
 					<li id="master_sources"><span class="menuTitle">BBC Master source code</span>
 						<span class="menuSummary menuSummarySubmenu">The smoothest animation of all the BBC versions</span>
 						<ul id="submenu_master_sources">
@@ -387,16 +407,6 @@
 							<li><a id="master_sources_index" href="/master/"><span class="menuTitle">About the BBC Master version</span><span class="menuSummary">Information on the smoothest version of Elite</span></a></li>
 							<li><a id="master_sources_releases" href="/master/releases.html"><span class="menuTitle">Different variants of the BBC Master version</span><span class="menuSummary">Code variations found in BBC Master Elite</span></a></li>
 		                    <?php include('navigation_master.php'); ?>
-						</ul>
-					</li>
-
-					<li id="electron_sources"><span class="menuTitle">Acorn Electron source code</span>
-						<span class="menuSummary menuSummarySubmenu">A cut-down version for the Beeb's little brother</span>
-						<ul id="submenu_electron_sources">
-							<li class="menuItemHeader">Version information</li>
-							<li><a id="electron_sources_index" href="/electron/"><span class="menuTitle">About the Electron version</span><span class="menuSummary">Information on the cut-down version of Elite</span></a></li>
-							<li><a id="electron_sources_releases" href="/electron/releases.html"><span class="menuTitle">Different variants of the Electron version</span><span class="menuSummary">Code variations found in Electron Elite</span></a></li>
-		                    <?php include('navigation_electron.php'); ?>
 						</ul>
 					</li>
 
@@ -423,8 +433,8 @@
 					<li id="random"><a href="/cgi-bin/random.cgi" rel="nofollow"><span class="menuTitle">Show me a Random Routine</span> <span class="menuSummary">Or click &#x221E; above to jump into the source code...</span></a></li>
 
 					<li class="menuItemHeader showForMobile">Indexes and code analyses</li>
-					<li id="compare_sources"><span class="menuTitle">Compare the Acornsoft versions of Elite</span>
-						<span class="menuSummary menuSummarySubmenu">Feature and code differences between versions</span>
+					<li id="compare_sources"><span class="menuTitle">Compare the different versions of Elite</span>
+						<span class="menuSummary menuSummarySubmenu">Feature and code variations between versions</span>
 						<ul id="submenu_compare_sources">
 		                    <?php include('navigation_compare.php'); ?>
 						</ul>
@@ -460,6 +470,19 @@
 									<li><a id="disc_indexes_macros" href="/disc/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the BBC Micro disc version of Elite</span></a></li>
 								</ul>
 							</li>
+							<li id="electron_indexes"><span class="menuTitle">Acorn Electron source code indexes</span>
+								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the Electron version of Elite</span>
+								<ul id="submenu_electron_indexes">
+									<li class="menuItemHeader">A-Z indexes for the Electron version</li>
+									<li><a id="electron_indexes_a-z" href="/electron/indexes/a-z.html"><span class="menuTitle">A-Z index of the source code</span> <span class="menuSummary">An index of every subroutine, entry point, variable, workspace and macro in the source code</span></a></li>
+									<li><a id="electron_indexes_source_code_cross-references" href="/electron/articles/source_code_cross-references.html"><span class="menuTitle">Source code cross-references</span> <span class="menuSummary">Every label and variable in the source code and where they are used</span></a></li>
+									<li class="menuItemHeader">Indexes by category for the Electron version</li>
+									<li><a id="electron_indexes_subroutines" href="/electron/indexes/subroutines.html"><span class="menuTitle">List of all subroutines by category</span> <span class="menuSummary">Subroutines in the Electron version of Elite</span></a></li>
+									<li><a id="electron_indexes_variables" href="/electron/indexes/variables.html"><span class="menuTitle">List of all variables by category</span> <span class="menuSummary">Variables in the Electron version of Elite</span></a></li>
+									<li><a id="electron_indexes_workspaces" href="/electron/indexes/workspaces.html"><span class="menuTitle">List of all workspaces by category</span> <span class="menuSummary">Workspaces in the Electron version of Elite</span></a></li>
+									<li><a id="electron_indexes_macros" href="/electron/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the Electron version of Elite</span></a></li>
+								</ul>
+							</li>
 							<li id="sp_indexes"><span class="menuTitle">6502 Second Processor source code indexes</span>
 								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the 6502 Second Processor version of Elite</span>
 								<ul id="submenu_sp_indexes">
@@ -473,6 +496,19 @@
 									<li><a id="sp_indexes_macros" href="/6502sp/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the 6502 Second Processor version of Elite</span></a></li>
 								</ul>
 							</li>
+							<li id="c64_indexes"><span class="menuTitle">Commodore 64 source code indexes</span>
+								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the Commodore 64 version of Elite</span>
+								<ul id="submenu_c64_indexes">
+									<li class="menuItemHeader">A-Z indexes for the Commodore 64 version</li>
+									<li><a id="c64_indexes_a-z" href="/c64/indexes/a-z.html"><span class="menuTitle">A-Z index of the source code</span> <span class="menuSummary">An index of every subroutine, entry point, variable, workspace and macro in the source code</span></a></li>
+									<li><a id="c64_indexes_source_code_cross-references" href="/c64/articles/source_code_cross-references.html"><span class="menuTitle">Source code cross-references</span> <span class="menuSummary">Every label and variable in the source code and where they are used</span></a></li>
+									<li class="menuItemHeader">Indexes by category for the Commodore 64 version</li>
+									<li><a id="c64_indexes_subroutines" href="/c64/indexes/subroutines.html"><span class="menuTitle">List of all subroutines by category</span> <span class="menuSummary">Subroutines in the Commodore 64 version of Elite</span></a></li>
+									<li><a id="c64_indexes_variables" href="/c64/indexes/variables.html"><span class="menuTitle">List of all variables by category</span> <span class="menuSummary">Variables in the Commodore 64 version of Elite</span></a></li>
+									<li><a id="c64_indexes_workspaces" href="/c64/indexes/workspaces.html"><span class="menuTitle">List of all workspaces by category</span> <span class="menuSummary">Workspaces in the Commodore 64 version of Elite</span></a></li>
+									<li><a id="c64_indexes_macros" href="/c64/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the Commodore 64 version of Elite</span></a></li>
+								</ul>
+							</li>
 							<li id="master_indexes"><span class="menuTitle">BBC Master source code indexes</span>
 								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the BBC Master version of Elite</span>
 								<ul id="submenu_master_indexes">
@@ -484,19 +520,6 @@
 									<li><a id="master_indexes_variables" href="/master/indexes/variables.html"><span class="menuTitle">List of all variables by category</span> <span class="menuSummary">Variables in the BBC Master version of Elite</span></a></li>
 									<li><a id="master_indexes_workspaces" href="/master/indexes/workspaces.html"><span class="menuTitle">List of all workspaces by category</span> <span class="menuSummary">Workspaces in the BBC Master version of Elite</span></a></li>
 									<li><a id="master_indexes_macros" href="/master/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the BBC Master version of Elite</span></a></li>
-								</ul>
-							</li>
-							<li id="electron_indexes"><span class="menuTitle">Acorn Electron source code indexes</span>
-								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the Electron version of Elite</span>
-								<ul id="submenu_electron_indexes">
-									<li class="menuItemHeader">A-Z indexes for the Electron version</li>
-									<li><a id="electron_indexes_a-z" href="/electron/indexes/a-z.html"><span class="menuTitle">A-Z index of the source code</span> <span class="menuSummary">An index of every subroutine, entry point, variable, workspace and macro in the source code</span></a></li>
-									<li><a id="electron_indexes_source_code_cross-references" href="/electron/articles/source_code_cross-references.html"><span class="menuTitle">Source code cross-references</span> <span class="menuSummary">Every label and variable in the source code and where they are used</span></a></li>
-									<li class="menuItemHeader">Indexes by category for the Electron version</li>
-									<li><a id="electron_indexes_subroutines" href="/electron/indexes/subroutines.html"><span class="menuTitle">List of all subroutines by category</span> <span class="menuSummary">Subroutines in the Electron version of Elite</span></a></li>
-									<li><a id="electron_indexes_variables" href="/electron/indexes/variables.html"><span class="menuTitle">List of all variables by category</span> <span class="menuSummary">Variables in the Electron version of Elite</span></a></li>
-									<li><a id="electron_indexes_workspaces" href="/electron/indexes/workspaces.html"><span class="menuTitle">List of all workspaces by category</span> <span class="menuSummary">Workspaces in the Electron version of Elite</span></a></li>
-									<li><a id="electron_indexes_macros" href="/electron/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the Electron version of Elite</span></a></li>
 								</ul>
 							</li>
 							<li id="nes_indexes"><span class="menuTitle">NES source code indexes</span>
@@ -542,9 +565,10 @@
 							<li class="menuItemHeader">Source code statistics</li>
 							<li><a id="compare_statistics_cassette_statistics" href="/cassette/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the BBC Micro cassette version</span> <span class="menuSummary">A breakdown of the BBC Micro cassette source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_disc_statistics" href="/disc/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the BBC Micro disc version</span> <span class="menuSummary">A breakdown of the BBC Micro disc source code by category, type and number of instructions</span></a></li>
+							<li><a id="compare_statistics_electron_statistics" href="/electron/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Acorn Electron version</span> <span class="menuSummary">A breakdown of the Acorn Electron source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_sp_statistics" href="/6502sp/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the 6502 Second Processor version</span> <span class="menuSummary">A breakdown of the 6502 Second Processor source code by category, type and number of instructions</span></a></li>
+							<li><a id="compare_statistics_c64_statistics" href="/c64/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Commodore 64 version</span> <span class="menuSummary">A breakdown of the Commodore 64 source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_master_statistics" href="/master/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the BBC Master version</span> <span class="menuSummary">A breakdown of the BBC Master source code by category, type and number of instructions</span></a></li>
-							<li><a id="compare_statistics_electron_statistics" href="/electron/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Electron version</span> <span class="menuSummary">A breakdown of the Electron source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_nes_statistics" href="/nes/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the NES version</span> <span class="menuSummary">A breakdown of the NES source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_elite-a_statistics" href="/elite-a/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for Elite-A</span> <span class="menuSummary">A breakdown of the Elite-A source code by category, type and number of instructions</span></a></li>
 						</ul>
@@ -552,7 +576,7 @@
 
 					<li class="menuItemHeader showForMobile">My software archaeology sites</li>
 					<li class="showForMobile otherSites"><a href="https://www.bbcelite.com"><span class="menuTitle">Mark Moxon's Software Archaeology</span></a></li>
-					<li class="showForMobile otherSites"><a href="https://elite.bbcelite.com"><span class="menuTitle">Elite on the BBC Micro and NES</span></a></li>
+					<li class="showForMobile otherSites"><a href="https://elite.bbcelite.com"><span class="menuTitle">Elite on the 6502</span></a></li>
 					<li class="showForMobile otherSites"><a href="https://aviator.bbcelite.com"><span class="menuTitle">Aviator on the BBC Micro</span></a></li>
 					<li class="showForMobile otherSites"><a href="https://revs.bbcelite.com"><span class="menuTitle">Revs on the BBC Micro</span></a></li>
 					<li class="showForMobile otherSites"><a href="https://lander.bbcelite.com"><span class="menuTitle">Lander on the Acorn Archimedes</span></a></li>
