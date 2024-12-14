@@ -1,0 +1,223 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_elite_memory_map_commodore_64.html", "Commodore 64 Elite memory map", "Commodore 64 memory map", "A deep dive into the memory map of Commodore 64 Elite", "elite", "deep_dives_memory_maps", "the_elite_memory_map_commodore_64");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_memory_map_6502sp.html">6502 Second Processor memory map</a><a class="next" rel="next" title="Next deep dive" href="the_elite_memory_map_master.html">BBC Master Elite memory map</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Memory usage in the musical version of Elite</h2>
+
+						<p>For those of us more used to the unexpanded BBC Micro, the Commodore 64 comes as a bit of a shock. That "64" in the name? It turns out it ain't kidding.</p>
+
+                        <p>Both the 6502 CPU in the BBC Micro and the almost-identical 6510 in the Commodore 64 can address a maximum of 64K of memory. When Elite is loaded into the BBC Micro, just over half of that 64K is taken up by the operating system ROM, the language ROM and the essential OS workspaces. The game code, variable workspaces and screen memory are squished into the remainder, which comes to a modest 31.3K; see the <a href="the_elite_memory_map.html">BBC Micro cassette Elite memory map</a> for details.</p>
+
+                        <p>The Commodore 64 is a very different beast, and Elite spreads its girth to take advantage of all the extra memory, so let's take a look.</p>
+
+						<h2 class="articleSubheader">Configuring memory layout in the Commodore 64<br />
+													 ---------------------------------------------</h2>
+
+						<p>The 6510 lets you configure the memory layout in a way that simply isn't possible on the standard BBC Micro, and if you want to, you can page out pretty much everything, from the BASIC ROM to the Kernal, leaving almost an entire 64K of RAM for your own programs. The operating system reserves 512 bytes from $0200 to $03FF, there are two port registers at $0000 and $0001 that let you reconfigure memory, and the 6510 keeps its reset and interrupt vectors at $FFFA-$FFFF... and that's it.</p>
+
+						<h2 class="articleSubheader">Commodore 64 memory map<br />
+													 -----------------------</h2>
+
+						<p>Here's the memory map of Elite when it is loaded and running on the Commodore 64. On the left is 64K of RAM, while on the right are the Kernal ROM and I/O memory, which can be paged into the memory map when needed (see below for more on this).</p>
+
+<pre class="articleIndented">
+  +-----------------------------------+-- $FFFF --------------------------+
+  |                                   |                                   |
+  | 6502 vectors                      |                                   |
+  |                                   |                                   |
+  +-------------------- $FFC0 = LS% --+                                   |
+  |                                   |                                   |
+  | Ship line heap descends from LS%  |                                   |
+  |                                   |                                   |
+  +--------------------------- SLSP --+                                   |
+  |                                   |                                   |
+  .                                   .                                   |
+  .                                   .                                   |
+  .                                   .                                   |
+  .                                   .                                   |
+  .                                   .                                   |
+  +-------------------------- $FA72 --+                                   |
+  |                                   |                                   |
+  | Ship data blocks ascend from K%   |                                   |
+  |                                   |                                   |
+  +--------------------- $F900 = <a href="/c64/main/workspace/k_per_cent.html">K%</a> --+                        Kernal ROM |
+  |                                   |                                   |
+  | $F850-$F8FF unused                |                                   |
+  |                                   |                                   |
+  +-------------------------- $F850 --+                                   |
+  |                                   |                                   |
+  | Copy of dashboard bitmap          |                                   |
+  |                                   |                                   |
+  +---------------- $EF90 = <a href="/c64/all/workspaces.html#dstore-per-cent">DSTORE%</a> --+                                   |
+  |                                   |                                   |
+  | $EF8D-$EF8F unused                |                                   |
+  |                                   |                                   |
+  +-------------------------- $EF8D --+                                   |
+  |                                   |                                   |
+  |                                   |                                   |
+  |                                   |                                   |
+  |                                   |                                   |
+  |                                   |                                   |
+  |                                   |                                   |
+  |                                   |                                   |
+  |                                   +-- $E000 --------------------------+
+  |                                   |                                   |
+  | Ship blueprints (SHIPS.bin)       |                        I/O memory |
+  |                                   |                                   |
+  |                                   |                VIC-II $D000-$D02E |
+  |                                   |                   SID $D400-$D41C |
+  |                                   |            Colour RAM $D800-$DBE7 |
+  |                                   |                  CIA1 $DC00-$DC0F |
+  |                                   |                  CIA2 $DD00-$DD0F |
+  |                                   |                 I/O 1 $DE00-$DEFF |
+  |                                   |                 I/O 2 $DF00-$DFFF |
+  |                                   |                                   |
+  +------------------- $D000 = <a href="/c64/game_data/variable/xx21.html">XX21</a> --+-- $D000 --------------------------+
+  |                                   |
+  | Commander file staging area       |
+  |                                   |
+  +-----------------------------------+   $CF00 = <a href="/c64/all/workspaces.html#tap-per-cent">TAP%</a>
+  |                                   |
+  | Zero page swap space              |
+  |                                   |
+  +-----------------------------------+   $CE00
+  |                                   |
+  | $CCD7-$CDFF unused                |
+  |                                   |
+  +-----------------------------------+   $CCD7 = <a href="/c64/main/variable/f_per_cent.html">F%</a>
+  |                                   |
+  | Title music (C.THEME.bin)         |
+  |                                   |
+  +-----------------------------------+   $C164 = <a href="/c64/main/variable/comudat.html#theme">THEME</a>
+  |                                   |
+  | Blue Danube music (C.COMUDAT.bin) |
+  |                                   |
+  +-----------------------------------+   $B72D = <a href="/c64/main/variable/comudat.html">COMUDAT</a>
+  |                                   |
+  | Main game code 2/2 (HICODE.bin)   |
+  |                                   |
+  +-----------------------------------+   $6A00 = <a href="/c64/main/subroutine/tnpr1.html">tnpr1</a>
+  |                                   |
+  | Sprite definitions (8 x 64 bytes) |
+  |                                   |
+  +-----------------------------------+   $6800 = <a href="/c64/all/workspaces.html#dstore-per-cent">SPRITELOC%</a>
+  |                                   |
+  | Screen RAM for space view (1K)    |
+  |                                   |
+  +-----------------------------------+   $6400
+  |                                   |
+  | Screen RAM for text view (1K)     |
+  |                                   |
+  +-----------------------------------+   $6000
+  |                                   |
+  | Screen bitmap (8K)                |
+  |                                   |
+  +-----------------------------------+   $4000 = <a href="/c64/all/workspaces.html#scbase">SCBASE</a>
+  |                                   |
+  | $3ED2-$3FFF unused                |
+  |                                   |
+  +-----------------------------------+   $3ED2 = <a href="/c64/main/variable/r_per_cent.html">R%</a>
+  |                                   |
+  | Main game code 1/2 (LOCODE.bin)   |
+  |                                   |
+  +-----------------------------------+   $1D00 = <a href="/c64/main/workspace/option_variables.html">Option variables</a>
+  |                                   |
+  | $1CCC-$1CFF unused                |
+  |                                   |
+  +-----------------------------------+   $1CCC
+  |                                   |
+  | Extended text tokens              |
+  |                                   |
+  +-----------------------------------+   $0E00 = <a href="/c64/game_data/variable/tkn1.html">TKN1</a>
+  |                                   |
+  | Game font                         |
+  |                                   |
+  +-----------------------------------+   $0B00 = <a href="/c64/all/workspaces.html#font">FONT</a>
+  |                                   |
+  | Text tokens, sin/cos/tan tables   |
+  |                                   |
+  +-----------------------------------+   $0700 = <a href="/c64/game_data/variable/qq18.html">QQ18</a>
+  |                                   |
+  | $06FC-$06FF unused                |
+  |                                   |
+  +-----------------------------------+   $06FC
+  |                                   |
+  | WP workspace                      |
+  |                                   |
+  +-----------------------------------+   $0580 = <a href="/c64/main/workspace/wp.html">WP</a>
+  |                                   |
+  | $0541-$057F unused                |
+  |                                   |
+  +-----------------------------------+   $0541
+  |                                   |
+  | UP workspace                      |
+  |                                   |
+  +-----------------------------------+   $0400 = <a href="/c64/main/workspace/up.html">UP</a>
+  |                                   |
+  | Operating System workspace        |
+  |                                   |
+  +-----------------------------------+   $0200
+  |                                   |
+  | 6502 stack descends from $01FF    |
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  | Heap space ascends from XX3       |
+  |                                   |
+  +-----------------------------------+   $0100 = <a href="/c64/main/workspace/xx3.html">XX3</a>
+  |                                   |
+  | Zero page workspace               |
+  |                                   |
+  +-----------------------------------+   $0002 = <a href="/c64/main/workspace/zp.html#rand">RAND</a>
+  |                                   |
+  | 6510 port registers               |
+  |                                   |
+  +-----------------------------------+   $0000 = <a href="/c64/main/workspace/zp.html">ZP</a>
+</pre>
+
+						<p>So the game code lives in the 64K of main memory, where it takes up almost all of the available memory (there are a few gaps, but they aren't very big). It can do this because the Commodore 64's 6510 CPU lets you configure the memory layout in a way that simply isn't possible on the standard BBC Micro, and if you want to, you can page out pretty much everything, from the BASIC ROM to the Kernal, leaving most of the 64K of RAM for your own programs. The operating system reserves 512 bytes from $0200 to $03FF, there are two port registers at $0000 and $0001 that let you reconfigure memory, and the 6510 keeps its reset and interrupt vectors at $FFFA-$FFFF... and that's it.</p>
+
+                        <p>Reconfiguring memory is done by writing to the 6510 port registers in location $0001. This is done by calling the <a href="/c64/main/subroutine/setl1.html">SETL1</a> routine, which lets us configure any of the memory layouts described in page 260 of the Programmer's Reference Guide.</p>
+
+                        <p>The main memory map is fairly straightforward, but it's worth mentioning the zero page swap space at $CE00. Whenever the game does any filing system work, such as saving commander files, it first swaps out zero page (&0002 to &00FF) with a copy that's been stored at $CE00. This process effectively stores a "Kernal function-compatible" version of zero page at $CE00, and swaps it in whenever we do any file operations with the Kernal functions. This enables the game to share zero page with the Kernal, but without corrupting the Kernal's zero page variables.</p>
+
+                        <p>The same approach is used in the Apple II and BBC Master versions, but the Commodore 64 version was the first to use it.</p>
+
+						<h2 class="articleSubheader">Elite code as an image<br />
+													 ----------------------</h2>
+
+						<p>To see just how big Commodore 64 Elite is, we can convert the main game binary into an image, with one byte per pixel, and a greyscale showing each byte's value, with 0 being shown as black, 255 being shown as white, and interim values as greyscale pixels. The result is a 229-pixel square, like this:</p>
+
+						<img class="titleImage" style="width: 426px" src="/images/c64/code.png" alt="The game binary for Commodore 64 Elite as an image" />
+
+						<p>This image contains the entire main game, including all the music and sprites.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_memory_map_6502sp.html">6502 Second Processor memory map</a><a class="next" rel="next" title="Next deep dive" href="the_elite_memory_map_nes.html">NES Elite memory map</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>
