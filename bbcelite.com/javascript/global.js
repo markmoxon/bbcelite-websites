@@ -5,7 +5,7 @@
 var lastScrollTop = 1;
 
 // Initialise the page
-function initialiseElitePage() {
+function initialiseElitePage(ajaxMenu) {
 	var page, section;
 
 	// Make header sticky
@@ -20,28 +20,64 @@ function initialiseElitePage() {
 		lastScrollTop = $(this).scrollTop();
 	});
 
-	// Set up navigation menus
-	$.getScript('/javascript/20241208/jquery.mmenu.min.js', function () {
-	
-		// Clone navigation to burger menu
-		$("#navigation").mmenu({}, { "clone": true });
-				
-		// Initialise burger menu
-		var API = $("#mm-navigation").data("mmenu");
-		$("#burger-menu").click(function() {
-			API.open();
+	// If we need to load the menu asynchronously
+	if (ajaxMenu) {
+
+		// Set up navigation menus
+		$.getScript('/javascript/20241215/jquery.mmenu.min.js', function () {
+
+			// Fetch code section of navigation
+			$('#navigation_code').load( "/templates_local/navigation_code.php" , function() {
+
+				// Remove the navigation_code div and move the content up one level
+				$("#navigation_code > li").unwrap();
+
+				// Clone navigation to burger menu
+				$("#navigation").mmenu({}, { "clone": true });
+						
+				// Initialise burger menu
+				var API = $("#mm-navigation").data("mmenu");
+				$("#burger-menu").click(function() {
+					API.open();
+				});
+
+				// Highlight the correct menu item using meta tags
+				section = $("meta[name='description']").attr("data-section");
+				page = $("meta[name='description']").attr("data-page");
+				if (section !== undefined && page !== undefined) {
+					currentMenu(section, page, API);		
+				}
+
+				// Delete desktop navigation now that we no longer need it
+				$('#page-wrapper nav#navigation').remove();
+			});
 		});
 
-		// Highlight the correct menu item using meta tags
-		section = $("meta[name='description']").attr("data-section");
-		page = $("meta[name='description']").attr("data-page");
-		if (section !== undefined && page !== undefined) {
-			currentMenu(section, page, API);		
-		}
+	} else {
 
-		// Delete desktop navigation now that we no longer need it
-		$('#page-wrapper nav#navigation').remove();
-	});
+		// Set up navigation menus
+		$.getScript('/javascript/20241215/jquery.mmenu.min.js', function () {
+
+			// Clone navigation to burger menu
+			$("#navigation").mmenu({}, { "clone": true });
+					
+			// Initialise burger menu
+			var API = $("#mm-navigation").data("mmenu");
+			$("#burger-menu").click(function() {
+				API.open();
+			});
+
+			// Highlight the correct menu item using meta tags
+			section = $("meta[name='description']").attr("data-section");
+			page = $("meta[name='description']").attr("data-page");
+			if (section !== undefined && page !== undefined) {
+				currentMenu(section, page, API);		
+			}
+
+			// Delete desktop navigation now that we no longer need it
+			$('#page-wrapper nav#navigation').remove();
+		});
+	}
 	
 	// Update copyright message with current year
 	copyright();

@@ -22,6 +22,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE2 = "";
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = FALSE;
+		$AJAX_NAVIGATION = FALSE;
 		break;
 
 	case 'elite.bbcelite.com':
@@ -32,6 +33,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE2 = " on the 6502";
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
+		$AJAX_NAVIGATION = TRUE;
 		break;
 
 	case 'aviator.bbcelite.com':
@@ -42,6 +44,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE2 = " on the BBC Micro";
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
+		$AJAX_NAVIGATION = FALSE;
 		break;
 
 	case 'revs.bbcelite.com':
@@ -52,6 +55,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE2 = " on the BBC Micro";
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
+		$AJAX_NAVIGATION = FALSE;
 		break;
 
 	case 'lander.bbcelite.com':
@@ -62,6 +66,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE2 = " on the Acorn Archimedes";
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
+		$AJAX_NAVIGATION = FALSE;
 		break;
 
 	default:
@@ -71,11 +76,12 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE2 = "";
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = FALSE;
+		$AJAX_NAVIGATION = FALSE;
 		break;
 }
 
 function page_header($folder, $name, $meta_title, $title, $description, $page_type = "", $page_parameter1 = "", $page_parameter2 = "", $subtitle = "") {
-	global $DOMAIN, $SITE_TITLE, $SITE_SUBTITLE1, $SITE_SUBTITLE2, $SITE_SUBTITLE3, $SITE_URL, $SHOW_RANDOM_LINK;
+	global $AJAX_NAVIGATION, $DOMAIN, $SITE_TITLE, $SITE_SUBTITLE1, $SITE_SUBTITLE2, $SITE_SUBTITLE3, $SITE_URL, $SHOW_RANDOM_LINK;
 
 	$title_no_tags = preg_replace('/<[^>]+>/', '', $meta_title);
 
@@ -93,7 +99,11 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 
 	$body_class = ' class="' . $theme . '"';
 	$meta_data = 'data-section="' . $page_parameter1 . '" data-page="' . $page_parameter2 . '" ';
-	$initialise_page = "initialiseElitePage();\n";
+    if ($AJAX_NAVIGATION) {
+    	$initialise_page = "initialiseElitePage(true);\n";
+    } else {
+    	$initialise_page = "initialiseElitePage(false);\n";
+    }
 	$theme_div = '<div id="siteTheme"><div class="themeWrapper themeLight" data-theme="themeLight"><div class="circle"></div></div><div class="themeWrapper themeDark" data-theme="themeDark"><div class="circle"></div></div><div class="themeWrapper themeElite" data-theme="themeElite"><div class="circle"></div></div></div>';
 	$theme_class = ' withTheme';
 
@@ -165,18 +175,18 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 		<meta name="twitter:creator" content="@markmoxon" />
 		<meta name="twitter:title" content="<?php echo $meta_title ?>" />
 		<meta name="twitter:image" content="<?php echo $twitter_image ?>" />
-		<link rel="stylesheet" href="/css/20241208/print.min.css" media="print" />
+		<link rel="stylesheet" href="/css/20241215/print.min.css" media="print" />
 		<link rel="home" href="/" title="Home page" />
 		
 		<script>
 			//<![CDATA[
 			function downloadJSAtOnload() {
 				var element = document.createElement("script");
-				element.src = "/javascript/20241208/jquery.min.js";
+				element.src = "/javascript/20241215/jquery.min.js";
 				if (element.addEventListener) {
 					element.addEventListener("load", function () {
 						$.ajaxSetup({cache: true});
-						$.getScript("/javascript/20241208/global.min.js", function () {
+						$.getScript("/javascript/20241215/global.min.js", function () {
 							<?php echo $initialise_page ?>
 						});
 					}, false);
@@ -184,7 +194,7 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 					element.onreadystatechange = function () {
 						if (this.readyState == 'complete' || this.readyState == 'loaded') {
 							$.ajaxSetup({cache: true});
-							$.getScript("/javascript/20241208/global.min.js", function () {
+							$.getScript("/javascript/20241215/global.min.js", function () {
 								<?php echo $initialise_page ?>
 							});
 						}
