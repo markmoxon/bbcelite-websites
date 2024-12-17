@@ -11,44 +11,120 @@ page_header("deep_dives", "music_in_commodore_64_elite.html", "Music in Commodor
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The music driver behind the iconic Blue Danube and the catchy Elite theme tune</h2>
 
-						<p>xxx</p>
+						<p>There is one aspect of Commodore 64 Elite that people remember more fondly than almost anything else.</p>
 
-Music driver data format:
+						<p>No, it isn't the Trumbles.</p>
 
-<#1 fh1 fl1>	Set the frequency for voice 1 to (fh1 fl1) and the control register for voice 1 to value1
+						<p>And no, it isn't the Lenslok copy protection system.</p>
 
-<#2 fh2 fl2>	Set the frequency for voice 2 to (fh2 fl2) and the control register for voice 2 to value2
+						<p>And it isn't even the fact that the Commodore 64 was the first non-Acorn platform to get a conversion of the hottest game around. Because of course it was; the Commodore 64 is the best-selling computer in history, after all.</p>
 
-<#3 fh3 fl3>	Set the frequency for voice 3 to (fh3 fl3) and the control register for voice 3 to value3
+						<p>It's none of these; it is, of course, the Blue Danube, which plays when you engage your docking computer in Commodore 64 Elite. This alone makes the Commodore 64 conversion a really special update to the original. It's a sublime merging of <cite>2001: A Space Odyssey</cite> and 1980s home computing, all wrapped up in the unique tones of the amazing SID sound synthesiser chip that makes the Commodore 64 sound so uniquely lush.</p>
 
-<#4 fh1 fl1 fh2 fl2>	Set the frequencies and voice control registers for voices 1 and 2
+						<p>Let's take a look at how the Blue Danube - and, later, the Elite theme tune - were added to Elite.</p>
 
-<#4 fh1 fl1 fh2 fl2 fh3 fl3>	Set the frequencies and voice control registers for voices 1, 2 and 3
+						<h2 class="articleSubheader">Julie Dunn's music driver<br />
+													 -------------------------</h2>
 
-<#6>	Increment value0 and move on to the next bit of data
+						<p>The source files for Commodore 64 Elite aren't exactly awash with comments, but the music driver does have some interesting information tucked into the start of the <a href="/c64/main/subroutine/bdirqhere.html">BDirqhere</a> routine:</p>
 
-<#7 ad1 ad2 ad3 sr1 sr2 sr3> Set the attack and decay length, sustain volume and release length for all three voices
+<pre class="articleIndented">  Music driver by Dave Dunn.
 
-<#8>	Rest for value4 interrupts (i.e. play nothing for n/50 or n/60 of a second)
+  BBC source code converted from Commodore disassembly extremely badly
+  Jez. 13/4/85.
 
-<#9> Restart the current tune
+  Music system (c)1985 D.Dunn.
+  Modified by IB,DB
+</pre>
 
-<#10 h1 l1 h2 l2 h3 l3>	Set voice 1 pulse width to (h1 l1), voice 2 pulse width to (h2 l2), voice 3 pulse width to (h3 l3)
+						<p>The music driver is one of the few parts of Commodore 64 Elite that wasn't written by Ian Bell and David Braben. It's actually a modified version of a Commodore 64 music driver by Julie Dunn (n&eacute;e David Dunn), which was converted into BBC Micro-compatible assembly by Jez San in April 1985, before being modified by Bell and Braben. Jez San was essentially the Commodore consultant on this project, helping Bell and Braben understand a system which they weren't familiar with, and he was also the brains behind the Programmer's Development System, which enabled the authors to develop the game on a BBC Micro rather than a Commodore 64 (see the deep dive on <a href="developing_commodore_64_elite_on_a_bbc_micro.html">developing Commodore 64 Elite on a BBC Micro</a> for details of the latter.</p>
 
-<#11>	Do command <#9> to restart the current tune
+						<p>Most routines and variables in the converted driver code have names with the prefix "BD", which stands for Blue Danube. In the first Firebird release of Elite, only the Blue Danube was present; the ridiculously catchy Elite theme tune that plays on the title screen was a later addition. Composed by Ian Bell's brother Aidan Bell and arranged by Julie Dunn, it uses the same file format and driver as the Blue Danube, but the "BD" prefixes live on.</p>
 
-<#12 n>	Set value4 = n, which sets the rest length for commands #8 and #15
+						<p>The driver is a relatively straightforward affair. We can start playing a piece of music by calling the <a href="/c64/main/subroutine/startbd.html">startbd</a> routine, which checks the music-related option variables to see if we should indeed be starting a new bit of music. If we should, then the MUPLA variable gets set to $FF, and we call the <a href="/c64/main/subroutine/bdentry.html">BDENTRY</a> routine, which resets a few variables and counters and configures the SID chip.</p>
 
-<#13 v1 v2 v3>	Set value1, value2 and value3 to the voice control register values to use in commands <#1>, <#2> and <#3>
+						<p>The magic happens in the interrupt handler at <a href="/c64/main/subroutine/comirq1.html">COMIRQ1</a>. This routine is called twice for each screen refresh, as part of the split-screen implementation; specifically, it gets called when the raster reaches the top of the screen and again when it reaches the top of the dashboard (see the deep dive on <a href="the_split-screen_mode_commodore_64.html">the split-screen mode in Commodore 64 Elite</a> for details). On every other call, COMIRQ1 calls the music driver routine at <a href="/c64/main/subroutine/bdirqhere.html">BDirqhere</a>, so the music driver gets called once for each screen refresh, so that's 50 times a second on PAL systems and 60 times a second on NTSC systems.</p>
 
-<#14 vf fc cf>	Set the volume and filter modes, filter control and filter cut-off frequency
+						<p>Each call to the music driver sends the correct batch of music data to the SID chip for that clock tick. These batches are stored sequentially in two large blocks of music data, one for the Blue Danube and another for the Elite theme. The interrupt routine keeps sending these batches of data to the SID, working through the music data as regular as clockwork, and the result is the background music that makes the Commodore 64 version of Elite so compelling.</p>
 
-<#15>	Rest for 2 * value4 interrupts
+						<p>Let's take a look at the format of the music data blocks.</p>
 
+						<h2 class="articleSubheader">The music file format<br />
+													 ---------------------</h2>
 
-PAL vs NTSC: http://unusedino.de/ec64/technical/misc/vic656x/pal-ntsc.html
+						<p>As noted above, each tune is made up of sequential blocks of music data, and one block of data is sent to the SID chip by the interrupt routine on each screen refresh.</p>
 
+						<p>These blocks of data break down into commands that are executed sequentially. Each command has a command number between 0 and 15, and most (but not all) commands take arguments. The music data is simply a sequence of commands, where each command is stored as the command number followed by any arguments that command requires.</p>
 
+						<p>The commands are as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th style="width: 30ch">Command</th><th>Description</th></tr>
+							<tr><td>&lt;#0&gt;</td><td>Do nothing and move on to the next command (used to pad out nibbles into bytes)</td></tr>
+							<tr><td>&lt;#1 fh1 fl1&gt;</td><td>Set the frequency for voice 1 to (fh1 fl1) and the control register for voice 1 to value1</td></tr>
+							<tr><td>&lt;#2 fh2 fl2&gt;</td><td>Set the frequency for voice 2 to (fh2 fl2) and the control register for voice 2 to value2</td></tr>
+							<tr><td>&lt;#3 fh3 fl3&gt;</td><td>Set the frequency for voice 3 to (fh3 fl3) and the control register for voice 3 to value3</td></tr>
+							<tr><td>&lt;#4 fh1 fl1 fh2 fl2&gt;</td><td>Set the frequencies and voice control registers for voices 1 and 2</td></tr>
+							<tr><td>&lt;#4 fh1 fl1 fh2 fl2 fh3 fl3&gt;</td><td>Set the frequencies and voice control registers for voices 1, 2 and 3</td></tr>
+							<tr><td>&lt;#6&gt;</td><td>Increment value0 and move on to the next bit of data</td></tr>
+							<tr><td>&lt;#7 ad1 ad2 ad3 sr1 sr2 sr3&gt;</td><td>Set the attack and decay length, sustain volume and release length for all three voices</td></tr>
+							<tr><td>&lt;#8&gt;</td><td>Rest for value4 interrupts (i.e. play nothing for n/50 or n/60 of a second)</td></tr>
+							<tr><td>&lt;#9&gt;</td><td>Restart the current tune</td></tr>
+							<tr><td>&lt;#10 h1 l1 h2 l2 h3 l3&gt;</td><td>Set voice 1 pulse width to (h1 l1), voice 2 pulse width to (h2 l2), voice 3 pulse width to (h3 l3)</td></tr>
+							<tr><td>&lt;#11&gt;</td><td>Do command &lt;#9&gt; to restart the current tune</td></tr>
+							<tr><td>&lt;#12 n&gt;</td><td>Set value4 = n, which sets the rest length for commands #8 and #15</td></tr>
+							<tr><td>&lt;#13 v1 v2 v3&gt;</td><td>Set value1, value2 and value3 to the voice control register values to use in commands &lt;#1&gt;, &lt;#2&gt; and &lt;#3&gt;</td></tr>
+							<tr><td>&lt;#14 vf fc cf&gt;</td><td>Set the volume and filter modes, filter control and filter cut-off frequency</td></tr>
+							<tr><td>&lt;#15&gt;</td><td>Rest for 2 * value4 interrupts</td></tr>
+						</table>
+
+						<p>There are four variables associated with the music data, called value1 to value4, which can be set by commands #12 and #13. These values can then be used by other commands to set things like the rest length and voice control. There is also a variable value0 that can be incremented by command #6, but this variable is never set and is never read, so this functionality is effectively disabled.</p>
+
+						<p>There is one more important aspect of the music data; it is lightly compressed. As command numbers are in the range 0 to 15, they are stored as nibbles rather than bytes (though command arguments are always bytes). Given a byte of music data, the command in the low nibble is processed first, followed by the command in the high nibble. It can make the music data a bit tricky to follow, so let's look at an example</p>
+
+						<p>The Blue Danube music data lives in the binary file C.COMUDAT, which is taken directly from the source disk. If we look at the first few bytes of this file, it looks like this:
+
+<pre class="articleIndented">  A7 26 26 48 29 29 AA 00 06 00 05 00 06 ED 21 21 41 1F F4 70 ...
+</pre>
+
+						<p>We start with the first byte, $A7. Taking the low nibble first, i.e. $7, this means command #7, which is of the form &lt;#7 ad1 ad2 ad3 sr1 sr2 sr3&gt;. The arguments follow the command byte, so the first command is this:</p>
+
+<pre class="articleIndented">  &lt;#7 26 26 48 29 29 AA&gt;
+</pre>
+
+						<p>This sets the attack and decay length, sustain volume and release length for all three voices.</p>
+
+						<p>We then move on to the command in the high nibble of the first byte, i.e. $A. This means command #10, which is of the form &lt;#10 h1 l1 h2 l2 h3 l3&gt;, and we get the arguments from just after the arguments for the prevous command, giving this command:</p>
+
+<pre class="articleIndented">  &lt;#10 00 06 00 05 00 06&gt;
+</pre>
+
+						<p>This sets the pulse width for all three voices.</p>
+
+						<p>We then move on to the next byte of music data, which follows the arguments for the last command (as we have now processed both nibbles in the first byte). The next byte is $ED, so again we pick the low nibble first, $D, to give command #13. This is of the form &lt;#13 v1 v2 v3&gt;, so we fetch the next three bytes to give this:</p>
+
+<pre class="articleIndented">  &lt;#13 21 21 41&gt;
+</pre>
+
+						<p>This sets the value1, value2 and value3 variables to $21, $21 and $41 respectively.</p>
+
+						<p>Then we do the high nibble command, $E, which is &lt;#14 vf fc cf&gt;, so this gives us:</p>
+
+<pre class="articleIndented">  &lt;#14 1F F4 70&gt;
+</pre>
+
+						<p>which sets the volume and filter modes, filter control and filter cut-off frequency.</p>
+
+						<p>And then we move on to the next command byte, and so on. Control is handed back to the interrupt handler once we reach either command #8 or command #15 with a non-zero value in the value4 variable. These commands set the rest counter to either value4 or 2 * value4, so if value4 is non-zero, this hands control back to the game and prevents any more commands being processed until the specified number of screen refreshes have passed.</p>
+
+						<h2 class="articleSubheader">PAL vs NTSC<br />
+													 -----------</h2>
+
+						<p>One final point to note is that the music plays at a different speed on PAL and NTSC machines. PAL machines refresh the screen at 50Hz (50 times a second), while NTSC machines refresh the screen at 60Hz (60 times a second). As we process music data in batches every screen refresh, this means NTSC machines process the music data about 20% faster than the PAL machines, which means NTSC machines play the music 20% faster than PAL machines.</p>
+
+						<p>Note that the pitch is unchanged, so this isn't the same as running a tape at a higher speed - it's just the tempo that is faster, but all the notes and frequencies are the same.</p>
+
+						<p>For an explanation of the difference between the PAL and NTSC versions of the Commodore 64, check out this <a href="http://unusedino.de/ec64/technical/misc/vic656x/pal-ntsc.html">excellent summary</a>.</p>
 					</div>
 				</div>
 
