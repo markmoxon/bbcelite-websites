@@ -29,7 +29,7 @@
 					<li class="menuItemHeader showForMobile">Playing with the Elite source code</li>
 					<li id="playing_elite"><a id="playing_elite_index" href="/playing_elite/"><span class="menuTitle">Playing 6502 Elite in the 21st century</span> <span class="menuSummary">How to play all the versions of Elite analysed here</span></a></li>
 					<li id="deep_dives"><span class="menuTitle">Deep dive articles</span>
-						<span class="menuSummary menuSummarySubmenu">Over 100 articles on how Elite weaves its magic</span>
+						<span class="menuSummary menuSummarySubmenu">Over 115 articles on how Elite weaves its magic</span>
 						<ul id="submenu_deep_dives">
 							<li class="menuItemHeader">Index</li>
 							<li><a id="deep_dives_index" href="/deep_dives/"><span class="menuTitle">Index of all deep dive articles</span><span class="menuSummary">Discover how Elite works under the hood</span></a></li>
@@ -58,6 +58,7 @@
 								<ul id="submenu_deep_dives_screen_mode">
 									<li class="menuItemHeader">The split-screen mode</li>
 									<li><a id="deep_dives_screen_mode_the_split-screen_mode" href="/deep_dives/the_split-screen_mode.html"><span class="menuTitle">The split-screen mode in BBC Micro Elite</span> <span class="menuSummary">Elite's famous split-screen mode, dissected and explained in detail</span></a></li>
+									<li><a id="deep_dives_screen_mode_the_split-screen_mode_commodore_64" href="/deep_dives/the_split-screen_mode_commodore_64.html"><span class="menuTitle">The split-screen mode in Commodore 64 Elite</span> <span class="menuSummary">How the VIC-II makes it easy to implement the Commodore version's split screen</span></a></li>
 									<li><a id="deep_dives_screen_mode_the_split-screen_mode_nes" href="/deep_dives/the_split-screen_mode_nes.html"><span class="menuTitle">The split-screen mode in NES Elite</span> <span class="menuSummary">How the NES version implements a split-screen mode without hardware timers</span></a></li>
 								</ul>
 							</li>
@@ -96,16 +97,22 @@
 									<li><a id="deep_dives_moving_and_rotating_in_space_rotating_the_universe" href="/deep_dives/rotating_the_universe.html"><span class="menuTitle">Rotating the universe</span> <span class="menuSummary">What happens to the rest of the universe when we rotate our ship?</span></a></li>
 									<li><a id="deep_dives_moving_and_rotating_in_space_orientation_vectors" href="/deep_dives/orientation_vectors.html"><span class="menuTitle">Orientation vectors</span> <span class="menuSummary">The three vectors that determine a ship's orientation in space</span></a></li>
 									<li><a id="deep_dives_moving_and_rotating_in_space_tidying_orthonormal_vectors" href="/deep_dives/tidying_orthonormal_vectors.html"><span class="menuTitle">Tidying orthonormal vectors</span> <span class="menuSummary">Making the orientation vectors orthonormal, and why this matters</span></a></li>
+									<li><a id="deep_dives_moving_and_rotating_in_space_flipping_axes_between_space_views" href="/deep_dives/flipping_axes_between_space_views.html"><span class="menuTitle">Flipping axes between space views</span> <span class="menuSummary">Details of how the different space views are implemented</span></a></li>
 								</ul>
 							</li>
-							<li id="deep_dives_flight"><span class="menuTitle">Flying and flight controls</span> <span class="menuSummary menuSummarySubmenu">Docking, space views and the flight keys</span>
+							<li id="deep_dives_flight"><span class="menuTitle">Docking and docking computers</span> <span class="menuSummary menuSummarySubmenu">How to dock safely with a space station</span>
 								<ul id="submenu_deep_dives_flight">
-									<li class="menuItemHeader">Flying and flight controls</li>
+									<li class="menuItemHeader">Docking and docking computers</li>
 									<li><a id="deep_dives_flight_docking_checks" href="/deep_dives/docking_checks.html"><span class="menuTitle">Docking checks</span> <span class="menuSummary">The checks that determine whether we are docking... or just crashing</span></a></li>
 									<li><a id="deep_dives_flight_the_docking_computer" href="/deep_dives/the_docking_computer.html"><span class="menuTitle">The docking computer</span> <span class="menuSummary">How the docking computer steers us home in the enhanced versions of Elite</span></a></li>
-									<li><a id="deep_dives_flight_flipping_axes_between_space_views" href="/deep_dives/flipping_axes_between_space_views.html"><span class="menuTitle">Flipping axes between space views</span> <span class="menuSummary">Details of how the different space views are implemented</span></a></li>
-									<li><a id="deep_dives_flight_the_key_logger" href="/deep_dives/the_key_logger.html"><span class="menuTitle">The key logger</span> <span class="menuSummary">Supporting concurrent in-flight key presses using a key logger</span></a></li>
-									<li><a id="deep_dives_flight_bolting_nes_controllers_onto_the_key_logger" href="/deep_dives/bolting_nes_controllers_onto_the_key_logger.html"><span class="menuTitle">Bolting NES controllers onto the key logger</span> <span class="menuSummary">How the NES version simulates a joystick and keyboard</span></a></li>
+								</ul>
+							</li>
+							<li id="deep_dives_keyboard"><span class="menuTitle">Keyboards, joysticks and controllers</span> <span class="menuSummary menuSummarySubmenu">Reading and logging Elite's multiple controls</span>
+								<ul id="submenu_deep_dives_keyboard">
+									<li class="menuItemHeader">Keyboards, joysticks and controllers</li>
+									<li><a id="deep_dives_keyboard_the_key_logger" href="/deep_dives/the_key_logger.html"><span class="menuTitle">The key logger</span> <span class="menuSummary">Supporting concurrent in-flight key presses using a key logger</span></a></li>
+									<li><a id="deep_dives_keyboard_reading_the_commodore_64_keyboard_matrix" href="/deep_dives/reading_the_commodore_64_keyboard_matrix.html"><span class="menuTitle">Reading the Commodore 64 keyboard matrix</span> <span class="menuSummary">Scanning the Commodore 64 keyboard without using the operating system</span></a></li>
+									<li><a id="deep_dives_keyboard_bolting_nes_controllers_onto_the_key_logger" href="/deep_dives/bolting_nes_controllers_onto_the_key_logger.html"><span class="menuTitle">Bolting NES controllers onto the key logger</span> <span class="menuSummary">How the NES version simulates a joystick and keyboard</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_tactics_and_combat"><span class="menuTitle">Tactics and combat</span> <span class="menuSummary menuSummarySubmenu">Ranks, weapons and intelligent enemy ships</span>
@@ -194,7 +201,7 @@
 									<li class="menuItemHeader">Missions</li>
 									<li><a id="deep_dives_missions_the_constrictor_mission" href="/deep_dives/the_constrictor_mission.html"><span class="menuTitle">The Constrictor mission</span> <span class="menuSummary">Hunting high and low for the stolen Constrictor</span></a></li>
 									<li><a id="deep_dives_missions_the_thargoid_plans_mission" href="/deep_dives/the_thargoid_plans_mission.html"><span class="menuTitle">The Thargoid Plans mission</span> <span class="menuSummary">Evading the Thargoid threat in the depths of the third galaxy</span></a></li>
-									<li><a id="deep_dives_missions_the_trumbles_mission" href="/deep_dives/the_trumbles_mission.html"><span class="menuTitle">The Trumbles mission</span> <span class="menuSummary">Furry fun in the NES version of Elite</span></a></li>
+									<li><a id="deep_dives_missions_the_trumbles_mission" href="/deep_dives/the_trumbles_mission.html"><span class="menuTitle">The Trumbles mission</span> <span class="menuSummary">Furry fun in the Commodore 64 and NES versions of Elite</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_text"><span class="menuTitle">Text</span> <span class="menuSummary menuSummarySubmenu">Text tokenisation and the "goat soup" algorithm</span>
@@ -233,6 +240,17 @@
 									<li><a id="deep_dives_6502sp_elite_6502sp_demo_mode" href="/deep_dives/6502sp_demo_mode.html"><span class="menuTitle">The 6502 Second Processor demo mode</span> <span class="menuSummary">All about the Star Wars-esque scroll text in the Tube-based version of Elite</span></a></li>
 									<li><a id="deep_dives_6502sp_elite_the_tina_hook" href="/deep_dives/the_tina_hook.html"><span class="menuTitle">The TINA hook</span> <span class="menuSummary">Adding your own custom code to the 6502 Second Processor version using TINA</span></a></li>
 									<li><a id="deep_dives_6502sp_elite_secrets_of_the_executive_version" href="/deep_dives/secrets_of_the_executive_version.html"><span class="menuTitle">Secrets of the Executive version</span> <span class="menuSummary">Infinite jumps, retro-futuristic fonts, speech support... and Pizzasoft?</span></a></li>
+								</ul>
+							</li>
+							<li id="deep_dives_c64"><span class="menuTitle">Commodore 64 Elite</span> <span class="menuSummary menuSummarySubmenu">Colours, music, sprites and remote development</span>
+								<ul id="submenu_deep_dives_c64">
+									<li class="menuItemHeader">6502 Second Processor Elite</li>
+									<li><a id="deep_dives_c64_colouring_the_commodore_64_bitmap_screen" href="/deep_dives/colouring_the_commodore_64_bitmap_screen.html"><span class="menuTitle">Colouring the Commodore 64 bitmap screen</span> <span class="menuSummary">Adding a distinctive dash of colour to the Commodore 64 dashboard</span></a></li>
+									<li><a id="deep_dives_c64_sprite_usage_in_commodore_64_elite" href="/deep_dives/sprite_usage_in_commodore_64_elite.html"><span class="menuTitle">Sprite usage in Commodore 64 Elite</span> <span class="menuSummary">Laser sights, colourful explosions and lots of cuddly, furry Trumbles</span></a></li>
+									<li><a id="deep_dives_c64_sound_effects_in_commodore_64_elite" href="/deep_dives/sound_effects_in_commodore_64_elite.html"><span class="menuTitle">Sound effects in Commodore 64 Elite</span> <span class="menuSummary">Making the most of the SID sound synthesiser</span></a></li>
+									<li><a id="deep_dives_c64_music_in_commodore_64_elite" href="/deep_dives/music_in_commodore_64_elite.html"><span class="menuTitle">Music in Commodore 64 Elite</span> <span class="menuSummary">The music driver behind the iconic Blue Danube and the catchy Elite theme tune</span></a></li>
+									<li><a id="deep_dives_c64_building_commodore_64_elite_from_the_source_disk" href="/deep_dives/building_commodore_64_elite_from_the_source_disk.html"><span class="menuTitle">Building Commodore 64 Elite from the source disk</span> <span class="menuSummary">How to build Commodore 64 Elite from the original BBC Micro source disk</span></a></li>
+									<li><a id="deep_dives_c64_developing_commodore_64_elite_on_a_bbc_micro" href="/deep_dives/developing_commodore_64_elite_on_a_bbc_micro.html"><span class="menuTitle">Developing Commodore 64 Elite on a BBC Micro</span> <span class="menuSummary">Sending Elite between 8-bit machines with the Programmer's Development System</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_nes"><span class="menuTitle">NES Elite</span> <span class="menuSummary menuSummarySubmenu">Elite on the Nintendo Entertainment System</span>

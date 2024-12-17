@@ -1,0 +1,155 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "building_commodore_64_elite_from_the_source_disk.html", "Building Commodore 64 Elite from the source disk", "Building Commodore 64 Elite from the source disk", "A deep dive into building Commodore 64 Elite on a BBC Micro from the source disk", "elite", "deep_dives_c64", "building_commodore_64_elite_from_the_source_disk");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="music_in_commodore_64_elite.html">Music in Commodore 64 Elite</a><a class="next" rel="next" title="Next deep dive" href="developing_commodore_64_elite_on_a_bbc_micro.html">Developing Commodore 64 Elite on a BBC Micro</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How to build Commodore 64 Elite from the original BBC Micro source disk</h2>
+
+						<p>xxx</p>
+
+
+LODATA = P.WORDS + C.FONT + C.IANTOK
+COMLOD = LODATA + C.SHIPS + COMLODS (DEEOR) + C.CODIALS + C.SPRITE + C.DATE4
+
+LOCODE = ELTA + ELTB + ELTC
+HICODE = ELTD + ELTE + ELTF + ELTG + ELTH + ELTI + ELTJ + ELTK
+
+gma4 = COMLOD
+gma5 = LOCODE
+gma6 = HICODE + C.THEME
+
+gma1 does the following:
+  Load gma3 at &C800, call it for disk protection (disabled by checksum.py)
+  Set up return address in &CE03
+  Load gma4 at &4000, call it to decrypt itself & relocate the data it contains:
+    LODATA to &0700
+    SHIPS to &D000
+    sdump to screen RAM + &2D0 (for dashboard)
+    cdump to COLMEM + &2D0 (for dashboard)
+    DIALS to STORE%
+    Also sets up a load of screen palette stuff
+    Then jumps back into gma1 via address in &CE03 (set up by gma1)
+  Load gma5 at &1D00, stays there
+  Load gma6 at &6A00, stays there
+  Jump to start of main game code, which decrypts itself and runs
+
+Files from GMA85 disc:
+  firebird implements an auto-run that loads and calls gma1
+  gma1 is the main loader: implements fast load and loads gma3, gma4, gma5, gma6
+  gma2 is empty
+  gma3 is all about disc protection - we can disable and ignore
+    We disable the call to run this in gma1 to disable the protection:
+    JSR &C800 -> NOPx3, BEQ -> BNE
+    Or just the first one for NTSC version
+  gma4 is game data and a decryption routine
+  gma5 is low memory part of main game code, including a decryption routine
+  gma6 is high memory part of main game code
+
+
+Build process on original source disc
+-------------------------------------
+
+C.SHIPS (can be generated with CHAIN "S.CSHIPS" from individual ship files from Ian Bell's site, e.g. MISSILE, ANACONDA etc.)
+CHAIN "S.CSHIPS"
+-> :2.C.SHIPS
+
+Pre-requisite files:
+C.SHIPS
+DIALS53
+C.MUSDAT
+C.FONT
+
+
+Set machine to BBC Micro with 6502SP
+
+Put disc in drive 0
+
+SHIFT-CTRL-BREAK
+
+CHAIN ":2.S.MUCOMPR"
+C.MUSDAT -> :2.C.COMUDAT
+
+*DRIVE 2
+
+CHAIN "S.GENWORD"
+-> :2.P.WORDS
+
+CHAIN "S.IANTOKS"
+-> :2.C.IANTOK
+
+CHAIN "S.LODATAS" (just press Return at prompt)
+P.WORDS, C.FONT, C.IANTOK -> :2.C.LODATA
+
+CHAIN "S.SPRITES"
+-> :2.C.SPRITE
+
+CHAIN "S.CDATE4S"
+-> :2.C.DATE4
+
+*DIR $
+
+CHAIN "$.MO5-COM"
+DIALS53 -> :2.C.CODIALS
+
+SHIFT-CTRL-BREAK
+
+Press f0, Return: CHAIN "ELITEA" (just press Return at prompt)
+A.ELITEA-K, C.COMUDAT -> :0.C.ELTA-K
+
+Press f4, Return: CHAIN ":2.S.BCODES" (just press Return at prompt)
+C.ELTA-K -> :2.HICODE, :2.LOCODE
+
+HIMEM=&B800
+
+CHAIN ":2.S.COMLODS"
+C.LODATA, C.SHIPS, C.CODIALS, C.SPRITE, C.DATE4 -> C.COMLOD
+
+Result = COMLOD (on disc 0), LOCODE, HICODE (on disc 2)
+
+Then make final game disc from these three plus C.THEME (this process is not on the source disc) or transmit these files to a Commodore 64 using $.SEND
+
+
+What the programs do
+--------------------
+
+C.ELITEA = C.ELITEA-K, C.COMUDAT -> ELTA to ELTK
+S.BCODES = ELT* (on disc) -> LOCODE, HICODE (on disc as C.LOCODE, C.HICODE)
+(S.HICODES = ELT* -> HICODE)
+
+S.GENWORD -> P.WORDS (on disc)
+S.IANTOKS -> IANTOK (on disc as C.IANTOK)
+S.LODATAS = P.WORDS (on disc), C.FONT (on disc), C.IANTOK -> LODATA (on disc as C.LODATA)
+S.CSHIPS -> C.SHIPS (on disc)
+$.MO5-COM = DIALS53 (on disc) -> C.CODIALS (on disc)
+S.SPRITES -> C.SPRITE (on disc)
+S.CDATE4S -> C.DATE4
+S.COMLODS = C.LODATA, C.SHIPS, C.CODIALS, C.SPRITE, C.DATE4 -> C.COMLOD (on disc)
+
+S.THEMES = $.ELITE (missing) -> C.THEME (on disc)
+S.MUCOMPR = C.MUSDAT (on disc) -> C.COMUDAT (on disc)
+
+$.SEND sends a file to a Commodore 64
+$.SCRNOP5 is an image editor
+$.UNPACK analyses competition codes
+
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="music_in_commodore_64_elite.html">Music in Commodore 64 Elite</a><a class="next" rel="next" title="Next deep dive" href="developing_commodore_64_elite_on_a_bbc_micro.html">Developing Commodore 64 Elite on a BBC Micro</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>
