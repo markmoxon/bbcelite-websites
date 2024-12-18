@@ -11,146 +11,198 @@ page_header("deep_dives", "colouring_the_commodore_64_bitmap_screen.html", "Colo
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Adding a distinctive dash of colour to the Commodore 64 dashboard</h2>
 
-						<p>This deep dive article is nearly ready and will be released very soon.</p>
+						<p>The Commodore 64 version of Elite is a colourful game. Here it is, with its multicolour dashboard and brightly coloured sprites:</p>
 
-<!--
+						<img class="titleImage" src="/images/c64/station.png" alt="A space station in Commodore 64 Elite" />
 
-						<p>xxx</p>
+						<p>You could never accuse the original BBC Micro version of being brightly coloured. It does have colour, but there isn't a great deal of it:</p>
 
-\ The dashboard section of the screen is in multicolour bitmap mode, which gives
-\ four colours at a resolution of 160x200 pixels. The colour of each character
-\ block is determined by the contents of screen and colour RAM, and the sdump
-\ and cdump tables contain the colour data that is copied to screen and colour
-\ RAM for the dashboard.
-\
-\ The colour data in sdump gets copied to SCBASE + &2400 + &2D0 in screen RAM by
-\ part 3 of the loader. This is the memory layout of screen memory for Elite:
-\
-\   :                                   :
-\   :                                   :
-\   +-----------------------------------+   &6800
-\   |                                   |
-\   | Screen RAM for space view (1K)    |
-\   |                                   |
-\   +-----------------------------------+   &6400
-\   |                                   |
-\   | Screen RAM for text view (1K)     |
-\   |                                   |
-\   +-----------------------------------+   &6000
-\   |                                   |
-\   | Screen bitmap (8K, &2000 bytes)   |
-\   |                                   |
-\   +-----------------------------------+   &4000 = SCBASE
-\   :                                   :
-\   :                                   :
-\
-\ SCBASE + &2400 part is therefore the address of screen RAM for the space view.
-\ The dashboard starts on character row 18 of the space view, so the offset of
-\ the start of the dashboard within screen RAM is 18 * 40 = 720 = &2D0. We
-\ therefore copy sdump to SCBASE + &2400 + &2D0 to set the colour data for the
-\ dashboard in the space view.
-\
-\ As the space view is in multicolour bitmap mode, colour data is also stored in
-\ colour RAM at COLMEM. As with screen RAM, the dashboard starts at offset &2D0,
-\ so part 3 of the loader also copies cdump to COLMEM + &2D0.
-\
-\ The sdump and cdump tables in the loader binary are built in the original
-\ source code by a BBC BASIC program called S.COMLODS. This takes a set of DATA
-\ statements that describe the colour layout of the dashboard, and creates the
-\ data for sdump and cdump. BeebAsm isn't as flexible as BBC BASIC, so instead
-\ we have to stick to EQUB statements, but here are the data statements for
-\ reference:
-\
-\   REM 'Yellow' Screen Mem low nybble
-\   REM   |.....,||,.....||......||.....,||,.....|
-\   DATA "0007774444777777777777777777777777777000"
-\   DATA "0007774444777777777777777777773333777000"
-\   DATA "0007779999777777777777777777773333777000"
-\   DATA "0007778888777777777777777777774444777000"
-\   DATA "000777AAAA777777777777777777774444777000"
-\   DATA "000777DDDD777777777777777777774444777000"
-\   DATA "0007777777777777777777777777774444777000"
-\
-\   REM 'Red' Screen Mem high nybble
-\   REM   |.....,||,.....||......||.....,||,.....|
-\   DATA "0000117777222222222222222222622222330000"
-\   DATA "0000112222222222222222222266662222330000"
-\   DATA "0000332222222222222222222222622222330000"
-\   DATA "0000332222222222222222222222222222110000"
-\   DATA "0000332222222222222222222222222222110000"
-\   DATA "0000332222202222222222222222022222110000"
-\   DATA "0000CC0000202222222222222222022222110000"
-\
-\   REM 'Green' Colour Mem nybble
-\   REM   |.....,||,.....||......||.....,||,.....|
-\   DATA "0000555555DDDDDDDDDDDDDDDD55555555550000"
-\   DATA "0000555555DDDDDDDDDDDDDDDD55555555550000"
-\   DATA "0000555555DDDDDDDDDDDDDDDD55555555550000"
-\   DATA "0000555555DDDDDDDDDDDDDDDDD5555555550000"
-\   DATA "0000555555DDDDDDDDDDDDDDDDDDDD5555550000"
-\   DATA "0000555555DDDDDDDDDDDDDDDDDDDD5555550000"
-\   DATA "0000FF7777DDDDDDD33333DDDDDDDD7777550000"
-\
-\ and these are the Commodore 64 colours (so a 7 in the above denotes yellow,
-\ for example):
-\
-\   * &0 = black
-\   * &1 = white
-\   * &2 = red
-\   * &3 = cyan
-\   * &4 = purple
-\   * &5 = green
-\   * &6 = blue
-\   * &7 = yellow
-\   * &8 = orange
-\   * &9 = brown
-\   * &A = pink
-\   * &B = dark grey
-\   * &C = grey
-\   * &D = light green
-\   * &E = light blue
-\   * &F = light grey 
-\
-\ The data in sdump is formed from the first two tables, with the digit from the
-\ first table in the low nibble and the second table in the high nibble. The
-\ data in cdump takes the third table as the low nibble and sets 0 as the high
-\ nibble.
-\
-\ Because of the way colour data works in multicolour bitmap mode, this means
-\ that:
-\
-\   * The first table defines the colour of %10 in the bitmap in each character
-\     block.
-\
-\   * The second table defines the colour of %01 in the bitmap in each character
-\     block.
-\
-\   * The third table defines the colour of %11 in the bitmap in each character
-\     block.
-\
-\ As an example, look at the left side of the first table. The "000777" at the
-\ start of each line covers the left margin and the indicator labels, but the
-\ interesting part is the next four character blocks, which cover the bars in
-\ the indicators. The top two are "4444", then we have "9999", "8888", "AAAA"
-\ and "DDDD"; these make the two shield bars purple (4), the fuel bar brown (9),
-\ the cabin temperature bar orange (8), the laser temperature bar pink (A) and
-\ the altitude bar light green (D).
-\
-\ In the original source, the colour comments refer to the predominant colours,
-\ so the first table defines %10 as yellow (7) for the bulk of the scanner, the
-\ second table defines %01 as red (2) in a similar way, and the third table
-\ defines %11 as green (5) for the indicator scale lines down the side of the
-\ dashboard.
+						<img class="titleImage" src="/images/cassette/docking_checks.png" alt="A space station in BBC Micro cassette Elite" />
 
+						<p>The Commodore 64 supports a number of different screen modes, of which we use standard bitmap mode for the space view and multicolour bitmap mode for the dashboard. For Elite, this is what we have:</p>
 
+						<ul>
+							<li>The space view is in standard bitmap mode, which provides a one bit-per-pixel screen of resolution 320x200 pixels. The space view uses 260x144 pixels of this.</li>
 
-Screen RAM is &400 bytes long
-  For text mode, first 1000 bytes contain characters
-  For bitmap mode, contains colour info
-  Two blocks in game at &6000 (bitmap screen) and &6400 (text screen)
-  Last 8 bytes contain sprite pointers
+							<li>The dashboard is in multicolour bitmap mode, which provides a two bits-per-pixel screen of resolution 160x200 pixels. The dashboard uses 130x56 pixels of this.</li>
+						</ul>
 
--->
+						<p>Meanwhile, the BBC Micro also supports a number of different screen modes, and for Elite, we need two of them:</p>
+
+						<ul>
+							<li>The space view is a custom version of mode 4, which provides a one bit-per-pixel screen of resolution 256x248 pixels. The space view uses 256x192 pixels of this.</li>
+
+							<li>The dashboard is a custom version of mode 5, which provides a two bits-per-pixel screen of resolution 128x248 pixels. The space view uses 128x56 pixels of this.</li>
+						</ul>
+
+						<p>The BBC Micro's space view is taller, but this aside, the game screens are practically identical in width; the only difference is that the Commodore 64 version draws its yellow box borders outside of the 256-pixel wide playing area, because its screen is actually 320 pixels wide and the outer borders are unused. And they have identical resolutions, with one bit per pixel in the space view and two bits per pixel in the dashboard.</p>
+
+						<p>So how come the Commodore 64 version is so awash with colour? The answer is the Commodore's powerful VIC-II video controller chip, so let's take a look at how Elite uses the VIC-II to give such a colourful experience.</p>
+
+						<h2 class="articleSubheader">Screen RAM and the space view<br />
+													 -----------------------------</h2>
+
+						<p>The secret to the colourful dashboard in Commodore 64 Elite is the way the VIC-II handles colour in bitmap mode. The BBC Micro has a very simple palette system, so for the space view we get to choose two colours from a palette of eight (so we choose black and white), and for the dashboard we get to choose four colours (so the standard dashboard is red, green, yellow and black, while the palette changes to white, cyan, magenta and black if you buy an escape pod).</p>
+
+						<p>In the Commodore 64, we also choose a palette of two or four colours for the space view and dashboard, but there are 16 colours to choose from, and even more impressively, we can set a different palette for every single character block on the screen. These character blocks work in a similar way to the BBC Micro, and the screen consists of 25 character rows with 40 character blocks on each row. So in standard bitmap mode (320x200 pixels) each character is eight rows of eight pixels, while in multicolour bitmap mode (160x200 pixels) each character block is eight rows of four pixels.</p>
+
+						<p>This is where screen RAM comes in: it is used to store the palettes for each of these on-screen character blocks. There are 25 rows of 40 characters, which is a total of 1000 characters, so it's no surprise to find that screen RAM is 1000 bytes each. There's a one-to-one mapping between screen RAM and the character blocks on the screen, working from left to right and up to down.</p>
+
+						<p>To see how screen RAM works, let's look at how the palette is set in the space view; we'll look at the more complicated dashboard in the next section. First, we need to know the colour numbers in the Commodore 64:</p>
+
+						<ul class="tightList">
+							<li>$0 = black</li>
+							<li>$1 = white</li>
+							<li>$2 = red</li>
+							<li>$3 = cyan</li>
+							<li>$4 = purple</li>
+							<li>$5 = green</li>
+							<li>$6 = blue</li>
+							<li>$7 = yellow</li>
+							<li>$8 = orange</li>
+							<li>$9 = brown</li>
+							<li>$A = pink</li>
+							<li>$B = dark grey</li>
+							<li>$C = grey</li>
+							<li>$D = light green</li>
+							<li>$E = light blue</li>
+							<li>$F = light grey</li>
+						</ul>
+
+						<p>So each colour number only requires four bits to store.</p>
+
+						<p>We also need to talk about the screen bitmap, which is where screen pixels are set. The screen bitmap is basically the same as screen memory in the BBC Micro, as follows:</p>
+
+						<ul>
+							<li>For the space view, the bitmap is one bit per pixel, and just like the BBC Micro's mode 4, the bitmap is split up into character blocks of eight rows, with eight pixels on each row in the character block; see the deep dive on <a href="drawing_monochrome_pixels_in_mode_4.html">drawing monochrome pixels in mode 4</a> for details.</li>
+
+							<li>For the dashboard, the bitmap is two bits per pixel, and just like the BBC Micro's mode 5, the bitmap is split up into character blocks of eight rows, with four pixels on each row in the character block; see the deep dive on <a href="drawing_colour_pixels_in_mode_5.html">drawing monochrome pixels in mode 5</a> for details.</li>
+						</ul>
+
+						<p>Now let's see how we can store palette information in screen RAM to add colour to the screen bitmaps for the space view.</p>
+
+						<p>In the space view's standard bitmap mode, the screen RAM byte associated with each character block defines two colours: foreground and background. The foreground colour goes in the high nibble, while the background colour goes in the low nibble. The screen bitmap then works as follows:</p>
+
+						<ul>
+							<li>Pixels set to %0 in the bitmap are drawn in the background colour, i.e. the colour number from the low nibble of the corresponding character block entry in screen RAM.</li>
+
+							<li>Pixels set to %1 in the bitmap are drawn in the foreground colour, i.e. the colour number from the high nibble of the corresponding character block entry in screen RAM.</li>
+						</ul>
+
+						<p>So for the core of the space view we define the background colour as black (colour 0) and the foreground colour as white (colour 1), and for the border box around the edge of the screen, which is just outside the 256-pixel-wide space view and is therefore in its own character blocks, we define the foreground colour as yellow (colour 7). You can see the box border palette being set up in screen RAM <a href="/c64/game_loader/subroutine/elite_loader_part_5_of_7.html#loop10">part 5 of the game loader</a>.</p>
+
+						<p>Not only can we use screen RAM to define the palette for the space view, but we can also use it for text views like this:</p>
+
+						<img class="titleImage" src="/images/c64/status.png" alt="The Status Mode screen in Commodore 64 Elite" />
+
+						<p>The system charts and trading screens also use standard bitmap mode, but they have slightly different requirements; for example, their border boxes reach all the way down to the bottom of the screen, and they cover four edges rather than the three around the space view. Luckily it is possible to reprogram the VIC-II chip to change the address where it looks for screen RAM, so we actually set up two blocks of screen RAM, one for the space view and another for the text views. You can see this in the memory map (see the <a href="the_elite_memory_map_commodore_64.html">Commodore 64 Elite memory map</a> for the full picture):</p>
+
+<pre class="articleIndented">  :                                   :
+  :                                   :
+  +-----------------------------------+   $6800 = <a href="/c64/all/workspaces.html#dstore-per-cent">SPRITELOC%</a>
+  |                                   |
+  | Screen RAM for space view (1K)    |
+  |                                   |
+  +-----------------------------------+   $6400
+  |                                   |
+  | Screen RAM for text view (1K)     |
+  |                                   |
+  +-----------------------------------+   $6000
+  |                                   |
+  | Screen bitmap (8K)                |
+  |                                   |
+  +-----------------------------------+   $4000 = <a href="/c64/all/workspaces.html#scbase">SCBASE</a>
+  :                                   :
+  :                                   :
+</pre>
+
+						<p>The current address of screen RAM is controlled by the interrupt routine at <a href="/c64/main/subroutine/comirq1.html">COMIRQ1</a>, and in particular the <a href="/c64/main/variable/zebop.html">zebop</a> and <a href="/c64/main/variable/abraxas.html">abraxas</a> variables. The interrupt routine configures the correct address for screen RAM by writing the value of zebop to VIC-II register $18 for the top portion of the screen, and the value of abraxas to VIC-II register $18 for the lower portion of the screen.</p>
+
+						<p>zebop is always set to $81, which will set the address of screen RAM to offset $2000 within the VIC-II bank at $4000, so the colour data for the top part of the screen is at screen RAM at $6000.</p>
+
+						<p>abraxas is $81 by default, in which case this will also set screen RAM to $6000, so for the text views both parts of the screen fetch colour data from screen RAM at $6000.</p>
+
+						<p>For when we need to display the space view and the dashboard, the <a href="/c64/main/subroutine/wantdials.html">wantdials</a> routine sets abraxas to $91, and setting VIC-II register $18 to this value sets the address of screen RAM to offset $2400 within the VIC-II bank at $4000, so the screen RAM address for the lower part of the screen gets changed to $6400.</p>
+
+						<p>In other words:</p>
+
+						<ul>
+							<li>When abraxas is $81, the colour of the lower part of the screen is determined by screen RAM at $6000 (i.e. when the dashboard is not being shown).</li>
+
+ 							<li>When abraxas is $91, the colour of the lower part of the screen is determined by screen RAM at $6400 (i.e. when the dashboard is being shown).</li>
+						</ul>
+
+						<p>This enables us to colour the dashboard independently from the corresponding lower part of the text view.</p>
+
+						<p>In multicolour bitmap mode, for the dashboard, things get even more complicated, so let's look at that now.</p>
+
+						<h2 class="articleSubheader">Colour RAM and the dashboard<br />
+													 ----------------------------</h2>
+
+						<p>When used with the space view, each byte in screen RAM defines two colours for each character block, one in each nibble. In the dashboard, each pixel can be one of four colours, so our palette needs to be able to define a four-colour palette for each character block. To help us do this, we need another block of memory. This is colour RAM, which is also 1000 bytes in size, but this time the address is fixed and cannot be changed: colour RAM is always at address $D800.</p>
+
+						<p>In the dashboard's multicolour bitmap mode, the colour of each two-bit pixel is set as follows:</p>
+
+						<ul>
+							<li>Pixels set to %00 in the bitmap are drawn in the background colour, which is set in VIC register $21</li>
+
+							<li>Pixels set to %01 in the bitmap are drawn in the colour given in the top nibble of screen RAM</li>
+
+							<li>Pixels set to %10 in the bitmap are drawn in the colour given in the bottom nibble of screen RAM</li>
+
+							<li>Pixels set to %11 in the bitmap are drawn in the colour given in the bottom nibble of colour RAM</li>
+						</ul>
+
+						<p>The palettes for the dashboard in screen RAM are set up in <a href="/c64/game_loader/subroutine/elite_loader_part_5_of_7.html">part 5 of the game loader</a>, and colour RAM is set up in <a href="/c64/game_loader/subroutine/elite_loader_part_6_of_7.html">part 6</a>. The code simply copies data from the <a href="/c64/game_loader/variable/sdump.html">sdump</a> and <a href="/c64/game_loader/variable/cdump.html">cdump</a> variables into screen RAM and colour RAM, and in the BeebAsm version of the source on this site, these variables are simply blocks of data.</p>
+
+						<p>However, in the original source disks, the sdump and cdump tables in the loader binary are built in the original source code by a BBC BASIC program called S.COMLODS. This takes a set of DATA statements that describe the colour layout of the dashboard, and creates the data for sdump and cdump. BeebAsm isn't as flexible as BBC BASIC, which is why we have to use EQUB statements for the version on this site, but here are the data statements for reference:</p>
+
+<pre class="articleIndented">  REM 'Yellow' Screen Mem low nybble
+  REM   |.....,||,.....||......||.....,||,.....|
+  DATA "0007774444777777777777777777777777777000"
+  DATA "0007774444777777777777777777773333777000"
+  DATA "0007779999777777777777777777773333777000"
+  DATA "0007778888777777777777777777774444777000"
+  DATA "000777AAAA777777777777777777774444777000"
+  DATA "000777DDDD777777777777777777774444777000"
+  DATA "0007777777777777777777777777774444777000"
+
+  REM 'Red' Screen Mem high nybble
+  REM   |.....,||,.....||......||.....,||,.....|
+  DATA "0000117777222222222222222222622222330000"
+  DATA "0000112222222222222222222266662222330000"
+  DATA "0000332222222222222222222222622222330000"
+  DATA "0000332222222222222222222222222222110000"
+  DATA "0000332222222222222222222222222222110000"
+  DATA "0000332222202222222222222222022222110000"
+  DATA "0000CC0000202222222222222222022222110000"
+
+  REM 'Green' Colour Mem nybble
+  REM   |.....,||,.....||......||.....,||,.....|
+  DATA "0000555555DDDDDDDDDDDDDDDD55555555550000"
+  DATA "0000555555DDDDDDDDDDDDDDDD55555555550000"
+  DATA "0000555555DDDDDDDDDDDDDDDD55555555550000"
+  DATA "0000555555DDDDDDDDDDDDDDDDD5555555550000"
+  DATA "0000555555DDDDDDDDDDDDDDDDDDDD5555550000"
+  DATA "0000555555DDDDDDDDDDDDDDDDDDDD5555550000"
+  DATA "0000FF7777DDDDDDD33333DDDDDDDD7777550000"
+</pre>
+
+						<p>The data in sdump is formed from the first two tables, with the digit from the first table in the low nibble and the second table in the high nibble. The data in cdump takes the third table as the low nibble and sets 0 as the high nibble.</p>
+
+						<p>Because of the way colour data works in multicolour bitmap mode, this means that:</p>
+
+						<ul>
+							<li>The first table defines the colour of %10 in the bitmap in each character block.</li>
+							<li>The second table defines the colour of %01 in the bitmap in each character block.</li>
+							<li>The third table defines the colour of %11 in the bitmap in each character block.</li>
+						</ul>
+
+						<p>As an example, look at the left side of the first table. The "000777" at the start of each line covers the left margin and the indicator labels, but the interesting part is the next four character blocks, which cover the bars in the indicators. The top two are "4444", then we have "9999", "8888", "AAAA" and "DDDD"; these make the two shield bars purple (4), the fuel bar brown (9), the cabin temperature bar orange (8), the laser temperature bar pink (A) and the altitude bar light green (D).</p>
+
+						<p>In the original source, the colour comments refer to the predominant colours, so the first table defines %10 as yellow (7) for the bulk of the scanner, the second table defines %01 as red (2) in a similar way, and the third table defines %11 as green (5) for the indicator scale lines down the side of the dashboard.</p>
+
+						<p>And that's how the Commodore 64 dashboard gets its distinctively colourful look.</p>
 					</div>
 				</div>
 
