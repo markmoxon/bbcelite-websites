@@ -175,6 +175,8 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 		<meta name="twitter:creator" content="@markmoxon" />
 		<meta name="twitter:title" content="<?php echo $meta_title ?>" />
 		<meta name="twitter:image" content="<?php echo $twitter_image ?>" />
+		<meta name="og:title" content="<?php echo $meta_title ?>" />
+		<meta name="og:image" content="<?php echo $twitter_image ?>" />
 		<link rel="stylesheet" href="/css/20241215/print.min.css" media="print" />
 		<link rel="home" href="/" title="Home page" />
 		

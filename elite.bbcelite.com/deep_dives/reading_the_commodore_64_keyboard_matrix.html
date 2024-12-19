@@ -11,18 +11,39 @@ page_header("deep_dives", "reading_the_commodore_64_keyboard_matrix.html", "Read
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Scanning the Commodore 64 keyboard without using the operating system</h2>
 
-						<p>This deep dive article is nearly ready and will be released very soon.</p>
+						<p>When converting games between different platforms with the same kind of CPU, you can often leave the game logic unchanged, as maths and algorithms tend not to care too much about the environment in which they run. But outside of the CPU, different computers can vary wildly, particularly when it comes to the video hardware, sound system, file operations, and the keyboard and joysticks.</p>
 
-<!--
+						<p>In the case of the Commodore 64 version of Elite, the keyboard works rather differently to the original BBC Micro version. For the latter, the authors implemented a key logging system to get around limitations in the operating system's keyboard routines, so they could support lots of keys being pressed at once; see the deep dive on <a href="the_key_logger.html">the key logger</a> for details. The Commodore 64 version still uses this key logger, as its built-in keyboard routines are similarly limited, but it is structured and populated in a very different way to the BBC Micro, because the Commodore 64 keyboard is not the same.</p>
 
-						<p>xxx</p>
+						<p>Let's take a look at the Commodore's keyboard matrix and how it influences the code.</p>
 
-Keyboard buffer mirrors the C64 keyboard matrix
-  Which is exposed through $DC00 and $DC01
-  Keyboard matrix: https://sta.c64.org/cbm64kbdlay.html
-  How it works: https://c64os.com/post/howthekeyboardworks
+						<h2 class="articleSubheader">The keyboard matrix<br />
+													 -------------------</h2>
 
--->
+						<p>On the BBC Micro, it is fairly easy to query the 6522 System VIA chip to detect whether a specific key is being held down; the <a href="/cassette/main/subroutine/dks4.html">DKS4</a> routine implements this in ten instructions, so Elite uses this routine to scan for the main and secondary flight keys, updating the key logger with the results. The key logger contains one entry for each flight key, plus another entry where we can store non-flight key presses, and the code can then query the key logger to see what's being pressed. In the cassette version of BBC Micro Elite, the key logger takes up just 17 bytes.</p>
+
+						<p>On the Commodore 64, it's possible to fetch the status of eight keys in one go, so the most efficient approach is to scan the whole keyboard, rather than each of the flight keys in turn. The Commodore keyboard is split up into eight columns of eight keys each, so the key logger in the Commodore 64 version is 64 bytes in size, with one entry for every single key.</p>
+
+						<p>The key logger is at <a href="/c64/main/workspace/keylook.html">KEYLOOK</a> (which shares its address with the label KLO), and interspersed throughout the logger are the labels that the original BBC Micro version uses for its diminutive 16-byte table. On the BBC, the status of the primary flight keys are stored in variables <a href="/cassette/main/workspace/zp.html#ky1">KY1</a> through <a href="/cassette/main/workspace/zp.html#ky7">KY7</a>, so KEYLOOK has the same labels, they're just dotted out throughout the much larger key logger. For example, <a href="/c64/main/workspace/keylook.html#ky1">KY1 is at KLO+$9</a>, and <a href="/c64/main/workspace/keylook.html#ky7">KY7 is at KLO+$36</a>.</p>
+
+						<p>These offsets mirror the layout of the Commodore 64's keyboard matrix. KEYLOOK has one byte for each key in the Commodore 64 keyboard matrix, and it is laid out in the same order. The keyboard matrix is exposed to our code via port A on the CIA1 interface chip, through the memory-mapped locations $DC00 and $DC01. To find out whether a key is being pressed, we first set the column to scan by writing to $DC00, and we can then read the details of any keys that are being pressed in that column by looking at the value of $DC01.</p>
+
+						<p>This is all done in the <a href="/c64/main/subroutine/rdkey.html">RDKEY</a> routine, which scans the keyboard matrix one column at a time, and sets each entry in KEYLOOK according to which keys in that column are being pressed. As mentioned above, the entries that map to the flight keys have labels KY1 through KY7 for the main flight controls and KY12 to KY20 for the secondary controls, so the main game code can check whether a key is being pressed by simply checking for non-zero values in the relevant KY entries (which is exactly the same as in the BBC Micro version, so the key-checking code dotted throughout the source can stay unchanged). The only difference is that the order of the KY labels within KEYLOOK is different because they use the same labels as in the BBC Micro version, and the order of the keys in the logger is completely different on the Commodore 64 (the labels are ordered in memory from KY1 to KY7 and KY12 to KY20 in the BBC Micro version, but they aren't ordered that way in KEYLOOK).</p>
+
+						<p>I have referred to the index of a key in the KEYLOOK table as the "internal key number" throughout the documentation on this site, so the "@" key has an internal key number of $12 (or 18), for example, as it is stored at KEYLOOK+$12.</p>
+
+						<p>Note that the initial content of the KEYLOOK table is a simple repeated string of "123456789ABCDEF0", as this was used in the original source code to create the table during assembly. These initial values have no meaning, so don't get distracted by the EQUS directives when looking at the code; they are just placeholders.</p>
+
+						<p>The keyboard matrix itself is <a href="https://sta.c64.org/cbm64kbdlay.html">documented here</a>. The KEYLOOK table mirrors this structure, though it's reversed so that KEYLOOK maps to the keyboard matrix from the bottom corner of the linked diagram, working right to left and down to up. The RDKEY routine is responsible for filling the KEYLOOK table, and it chooses to work through the table in this direction.</p>
+
+						<h2 class="articleSubheader">Ghost key presses<br />
+													 -----------------</h2>
+
+						<p>One final point to note is the Commodore 64's "ghost key presses". <a href="/c64/main/subroutine/main_flight_loop_part_3_of_16.html#ma64">Part 3 of the main flight loop</a> in the Commodore 64 source contains some strange-looking code with a comment "kill phantom C's". The code first checks to see if "C" is being pressed, for the docking computer, and if it is, it also checks to see if "X" is being pressed. If both keys are being pressed, it ignores the "C" key press and doesn't activate the docking computer.</p>
+
+						<p>This is a workaround for a ghost key press. If "X" is also being pressed, then the "C" we just detected is likely to be a ghost key press, caused by the player actually holding down "A", "S" and "X" (i.e. up, down and fire). Ghost key presses can occur on the Commodore 64 when three keys are held down that form a right angle in the keyboard scan matrix, in which case a fourth key can also appear to be "pressed". The extra code looks for this right angle, and acts accordingly.</p>
+
+						<p>For more information on how the Commodore 64's keyboard works, check out this <a href="https://c64os.com/post/howthekeyboardworks">really deep dive</a>.</p>
 					</div>
 				</div>
 

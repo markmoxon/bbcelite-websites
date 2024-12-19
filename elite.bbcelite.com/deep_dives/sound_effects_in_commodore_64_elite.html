@@ -15,61 +15,57 @@ page_header("deep_dives", "sound_effects_in_commodore_64_elite.html", "Sound eff
 
 <!--
 
-						<p>xxx</p>
+						<p>Even the biggest fans of BBC Micro Elite will have to admit that the sound effects aren't the game's strongest point. Sure, for those of us who played it relentlessly back in the day, we'll never forget the distinctive sound of being straffed by lasers, or the chirping of the E.C.M. as another missile explodes with a crash. But just because those sounds are ingrained, it doesn't mean they're Oscar-worthy.</p>
 
-SID:
-http://www.sidmusic.org/sid/sidtech2.html
+						<p>The sound effects on the Commodore 64 version are noticeably better than on the BBC Micro, which is not a big surprise when you consider the system's excellent SID sound synthersiser chip. The Commodore 64 version has a brand new set of sound routines, so let's take a look at how this works.</p>
 
+						<h2 class="articleSubheader">The sound effects<br />
+													 -----------------</h2>
 
-SOINT pokes values to SID
+						<p>The BBC Micro defines just <a href="/cassette/loader/variable/e_per_cent.html">four sound envelopes</a> for the whole game, which uses a total of ten different sounds, as defined in the <a href="/cassette/main/variable/sfx.html">SFX</a> table. The Commodore 64 version bumps this up to 16 sound effects, as follows:
 
-SID,X
-X = 0, 7, 14 (for voices 1 to 3)
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>#</th><th>Variable</th><th>Description</th></tr>
+							<tr><td>0</td><td>sfxplas</td><td>Pulse lasers fired by us</td></tr>
+							<tr><td>1</td><td>sfxelas</td><td>Being hit by lasers 1</td></tr>
+							<tr><td>2</td><td>sfxhit</td><td>Other ship exploding</td></tr>
+							<tr><td>3</td><td>sfxexpl</td><td>We died / Collision</td></tr>
+							<tr><td>4</td><td>sfxwhosh</td><td>Missile launched / Ship launch</td></tr>
+							<tr><td>5</td><td>sfxbeep</td><td>Short, high beep</td></tr>
+							<tr><td>6</td><td>sfxboop</td><td>Long, low beep</td></tr>
+							<tr><td>7</td><td>sfxhyp1</td><td>Hyperspace drive engaged 1</td></tr>
+							<tr><td>8</td><td>sfxeng</td><td>This sound is not used</td></tr>
+							<tr><td>9</td><td>sfxecm</td><td>E.C.M. on</td></tr>
+							<tr><td>10</td><td>sfxblas</td><td>Beam lasers fired by us</td></tr>
+							<tr><td>11</td><td>sfxalas</td><td>Military lasers fired by us</td></tr>
+							<tr><td>12</td><td>sfxmlas</td><td>Mining lasers fired by us</td></tr>
+							<tr><td>13</td><td>sfxbomb</td><td>Energy bomb</td></tr>
+							<tr><td>14</td><td>sfxtrib</td><td>Trumbles dying</td></tr>
+							<tr><td>15</td><td>sfxelas2</td><td>Being hit by lasers 2</td></tr>
+						</table>
 
-SO*,X
-X= 0, 1 or 2 (for voices 1 to 3)
+						<p>Associated with the sound effects are a number of tables, each of which contributes an aspect of each sound effect.</p>
 
-SOFRQ,X -> SID(1 0),X
- = frequency
-Bits 2-7 -> bits 0-5 of SID+1,X (Voice #X frequency high byte)
-Bits 0-1 -> bits 6-7 of SID,X (Voice #X frequency low byte)
-Initialised from SFXFQ (or NOISE2)
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Variable</th><th>Description</th></tr>
+							<tr><td><a href="/c64/main/variable/sfxpr.html">SFXPR</a></td><td>The priority level for each sound effect</td></tr>
+							<tr><td><a href="/c64/main/variable/sfxcnt.html">SFXCNT</a></td><td>The counter for each sound effect, which defines the duration of the effect in frames</td></tr>
+							<tr><td><a href="/c64/main/variable/sfxfq.html">SFXFQ</a></td><td>The frequency (SID+$5) for each sound effect</td></tr>
+							<tr><td><a href="/c64/main/variable/sfxcr.html">SFXCR</a></td><td>The voice control register (SID+$4) for each sound effect</td></tr>
+							<tr><td><a href="/c64/main/variable/sfxatk.html">SFXATK</a></td><td>The attack and decay length (SID+$5) for each sound effect</td></tr>
+							<tr><td><a href="/c64/main/variable/sfxsus.html">SFXSUS</a></td><td>The release length and sustain volume (SID+$6) for each sound effect</td></tr>
+							<tr><td><a href="/c64/main/variable/sfxfrch.html">SFXFRCH</a></td><td>The frequency change to be applied to each sound effect in each frame (as a signed number)</td></tr>
+							<tr><td><a href="/c64/main/variable/sfxvch.html">SFXVCH</a></td><td>The volume change rate for each sound effect, i.e. how many frames need to pass before the sound effect's volume is reduced by one</td></tr>
+						</table>
 
-PULSEW -> SID+3,X
+						<p>When a sound effect is made, typically by calling the <a href="/c64/main/subroutine/noise.html">NOISE</a> routine, the first thing to do is to find a voice where we can make that sound effect. The SID chip provides three voices, numbered 0 to 2, so we work through each voice to check whether this sound effect is already playing, and if it is, we can reuse that voice (if this effect is configured to allow this). Otherwise we keep looking to find a voice that's either unused or making a lower priority sound effect, and assuming we find one, we start the process of making the sound effect on that voice.</p>
 
-SOCR,X -> SID+4,X
-Initialised from SFXCR
-Control register
+						<p>The first step is to initialise the sound variables for this voice, in the <a href="/c64/main/workspace/sound_variables.html">sound variables workspace</a>. This workspace contains a set of variables that consist of three bytes, one for each voice, so to start making a sound effect, we copy the relevant data for this sound effect from the above tables, and put the data into the sound workspace variables for the chosen voice.</p>
 
-SOATK,X -> SID+5,X
-Initialised from SFXATK
+						<p>Like the game's music, the actual sounds are made during the <a href="/c64/main/subroutine/comirq1.html">COMIRQ1</a> interrupt routine that's called twice every screen refresh. If there is no music playing, then this calls the <a href="/c64/main/subroutine/soint.html">SOINT</a> routine on every other interrupt, so that's once every screen refresh.</p>
 
-SOSUS,X -> SID+6,X
- = sustain volume/release length
-All bits -> SID+6,X (Voice #X Sustain volume and Release length)
-Bits 0-3 = Release length
-Bits 4-7 = Sustain volume
-Initialised from SFXSUS (or NOISE2)
+						<p>The SOINT routine actually makes the sound effects on each voice, using the values in the sound workspace.</p>
 
-SOPR,X = priority
-Comes from SFXPR
-Bit 0 = 1 do not flush all voices when we make this sound effect
-		0 do flush
-
-SOFRCH,X = ?
-Initialised from SFXFRCH
-When non-zero, gets added to frequency in each IRQ, so this is a frequency change
-
-SOCNT,X = ?
-sound counter, setting to 1 stops sound (see NOISEOFF)
-Initialised from SFXCNT
-
-SOVCH,X = ?
-Initialised from SFXVCH
-
-SOFLG,X = ?
-Bits 0-5 = current sound effect number, plus 1? (see NOISEOFF)
-Bit 7 = this is a nee sound effect (gets set in NOISE when starting sound effect and cleared in SOINT)
 
 
 NOISE2
