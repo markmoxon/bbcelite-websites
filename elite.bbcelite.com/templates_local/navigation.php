@@ -74,7 +74,7 @@
 								<ul id="submenu_deep_dives_ship_data">
 									<li class="menuItemHeader">Ship data</li>
 									<li><a id="deep_dives_ship_data_ship_blueprints" href="/deep_dives/ship_blueprints.html"><span class="menuTitle">Ship blueprints</span> <span class="menuSummary">Specifications for all the different types of ship in the universe</span></a></li>
-									<li><a id="deep_dives_ship_data_ship_blueprints_in_the_disc_version" href="/deep_dives/ship_blueprints_in_the_disc_version.html"><span class="menuTitle">Ship blueprints in the disc version</span> <span class="menuSummary">How the disc version loads its ship blueprints into memory</span></a></li>
+									<li><a id="deep_dives_ship_data_ship_blueprints_in_the_disc_version" href="/deep_dives/ship_blueprints_in_the_disc_version.html"><span class="menuTitle">Ship blueprints in the BBC Micro disc version</span> <span class="menuSummary">How the BBC Micro disc version loads its ship blueprints into memory</span></a></li>
 									<li><a id="deep_dives_ship_data_ship_data_blocks" href="/deep_dives/ship_data_blocks.html"><span class="menuTitle">Ship data blocks</span> <span class="menuSummary">Storing data for each of the ships in the local bubble of universe</span></a></li>
 								</ul>
 							</li>
@@ -134,8 +134,8 @@
 							<li id="deep_dives_drawing_pixels"><span class="menuTitle">Drawing pixels</span> <span class="menuSummary menuSummarySubmenu">Poking pixels directly into screen memory</span>
 								<ul id="submenu_deep_dives_drawing_pixels">
 									<li class="menuItemHeader">Drawing pixels</li>
-									<li><a id="deep_dives_drawing_pixels_drawing_monochrome_pixels_in_mode_4" href="/deep_dives/drawing_monochrome_pixels_in_mode_4.html"><span class="menuTitle">Drawing monochrome pixels in mode 4</span> <span class="menuSummary">Poking screen memory to display monochrome pixels in the space view</span></a></li>
-									<li><a id="deep_dives_drawing_pixels_drawing_colour_pixels_in_mode_5" href="/deep_dives/drawing_colour_pixels_in_mode_5.html"><span class="menuTitle">Drawing colour pixels in mode 5</span> <span class="menuSummary">Poking screen memory to display colour pixels in the dashboard view</span></a></li>
+									<li><a id="deep_dives_drawing_pixels_drawing_monochrome_pixels_in_mode_4" href="/deep_dives/drawing_monochrome_pixels_in_mode_4.html"><span class="menuTitle">Drawing monochrome pixels on the BBC Micro</span> <span class="menuSummary">Poking screen memory to display monochrome pixels in the space view</span></a></li>
+									<li><a id="deep_dives_drawing_pixels_drawing_colour_pixels_in_mode_5" href="/deep_dives/drawing_colour_pixels_in_mode_5.html"><span class="menuTitle">Drawing colour pixels on the BBC Micro</span> <span class="menuSummary">Poking screen memory to display colour pixels in the dashboard view</span></a></li>
 									<li><a id="deep_dives_drawing_pixels_drawing_pixels_in_the_electron_version" href="/deep_dives/drawing_pixels_in_the_electron_version.html"><span class="menuTitle">Drawing pixels in the Electron version</span> <span class="menuSummary">Poking pixels into screen memory in the Acorn Electron version of Elite</span></a></li>
 									<li><a id="deep_dives_drawing_pixels_drawing_pixels_in_the_nes_version" href="/deep_dives/drawing_pixels_in_the_nes_version.html"><span class="menuTitle">Drawing pixels in the NES version</span> <span class="menuSummary">How the NES version pokes pixels into the console's tile-based screen</span></a></li>
 									<li><a id="deep_dives_drawing_pixels_extended_screen_coordinates" href="/deep_dives/extended_screen_coordinates.html"><span class="menuTitle">Extended screen coordinates</span> <span class="menuSummary">The extended 16-bit screen coordinate system behind the space view</span></a></li>
