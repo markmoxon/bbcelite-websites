@@ -75,6 +75,7 @@
 									<li class="menuItemHeader">Ship data</li>
 									<li><a id="deep_dives_ship_data_ship_blueprints" href="/deep_dives/ship_blueprints.html"><span class="menuTitle">Ship blueprints</span> <span class="menuSummary">Specifications for all the different types of ship in the universe</span></a></li>
 									<li><a id="deep_dives_ship_data_ship_blueprints_in_the_disc_version" href="/deep_dives/ship_blueprints_in_the_disc_version.html"><span class="menuTitle">Ship blueprints in the BBC Micro disc version</span> <span class="menuSummary">How the BBC Micro disc version loads its ship blueprints into memory</span></a></li>
+									<li><a id="deep_dives_ship_data_comparing_ship_specifications" href="/deep_dives/comparing_ship_specifications.html"><span class="menuTitle">Comparing ship specifications</span> <span class="menuSummary">A detailed comparison of in-game statistics for the different ships in Elite</span></a></li>
 									<li><a id="deep_dives_ship_data_ship_data_blocks" href="/deep_dives/ship_data_blocks.html"><span class="menuTitle">Ship data blocks</span> <span class="menuSummary">Storing data for each of the ships in the local bubble of universe</span></a></li>
 								</ul>
 							</li>

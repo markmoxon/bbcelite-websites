@@ -24,7 +24,7 @@ function initialiseElitePage(ajaxMenu) {
 	if (ajaxMenu) {
 
 		// Set up navigation menus
-		$.getScript('/javascript/20241215/jquery.mmenu.min.js', function () {
+		$.getScript('/javascript/20241230/jquery.mmenu.min.js', function () {
 
 			// Fetch code section of navigation
 			$('#navigation_code').load( "/templates_local/navigation_code.php" , function() {
@@ -56,7 +56,7 @@ function initialiseElitePage(ajaxMenu) {
 	} else {
 
 		// Set up navigation menus
-		$.getScript('/javascript/20241215/jquery.mmenu.min.js', function () {
+		$.getScript('/javascript/20241230/jquery.mmenu.min.js', function () {
 
 			// Clone navigation to burger menu
 			$("#navigation").mmenu({}, { "clone": true });

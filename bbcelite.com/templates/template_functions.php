@@ -177,18 +177,18 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 		<meta name="twitter:image" content="<?php echo $twitter_image ?>" />
 		<meta name="og:title" content="<?php echo $meta_title ?>" />
 		<meta name="og:image" content="<?php echo $twitter_image ?>" />
-		<link rel="stylesheet" href="/css/20241215/print.min.css" media="print" />
+		<link rel="stylesheet" href="/css/20241230/print.min.css" media="print" />
 		<link rel="home" href="/" title="Home page" />
 		
 		<script>
 			//<![CDATA[
 			function downloadJSAtOnload() {
 				var element = document.createElement("script");
-				element.src = "/javascript/20241215/jquery.min.js";
+				element.src = "/javascript/20241230/jquery.min.js";
 				if (element.addEventListener) {
 					element.addEventListener("load", function () {
 						$.ajaxSetup({cache: true});
-						$.getScript("/javascript/20241215/global.min.js", function () {
+						$.getScript("/javascript/20241230/global.min.js", function () {
 							<?php echo $initialise_page ?>
 						});
 					}, false);
@@ -196,7 +196,7 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 					element.onreadystatechange = function () {
 						if (this.readyState == 'complete' || this.readyState == 'loaded') {
 							$.ajaxSetup({cache: true});
-							$.getScript("/javascript/20241215/global.min.js", function () {
+							$.getScript("/javascript/20241230/global.min.js", function () {
 								<?php echo $initialise_page ?>
 							});
 						}
