@@ -24,7 +24,7 @@ page_header("deep_dives", "backporting_the_flicker-free_algorithm.html", "Backpo
 						<p>There are three steps to the backporting process:</p>
 
 						<ol>
-							<li>Free up enough memory for the flicker-free code</li>
+							<li>Free up enough memory for the flicker-free code and the LSNUM and LSNUM2 variables</li>
 
 							<li>Copy the LSPUT line-drawing routine from the Master</li>
 
@@ -44,7 +44,9 @@ page_header("deep_dives", "backporting_the_flicker-free_algorithm.html", "Backpo
             
 						<p>Luckily, all the versions of Elite that have serious memory constraints also contain an unused routine that the authors forgot to remove - it's a <a href="/cassette/main/subroutine/unused_duplicate_of_multu.html">duplicate of MULTU that is never called</a>. Removing this routine (or just commenting out the required number of instructions) easily gives us the space we need, even in Elite-A, where only <a href="/elite-a/flight/subroutine/unused_duplicate_of_multu.html">half of the duplicate routine</a> is left in the flight code for us to remove.</p>
 
-						<p>So, step 1 is to comment out a big enough chunk of this routine. Simple.</p>
+						<p>We also need to find space in zero page for two new variables: LSNUM and LSNUM2. Elite already has one unused variable in zero page called <a href="/cassette/main/workspace/zp.html#xx14">XX14</a>, so we can simply use this for LSNUM. XX14 is followed by <a href="/cassette/main/workspace/zp.html#rat">RAT</a>, which is a temporary variable that isn't used by the ship-drawing routine, so we can reuse the same location for both RAT and LSNUM2, as they won't clash (see below for the code that does this).</p>
+
+						<p>So, step 1 is to comment out a chunk of the duplicate MULTU routine, replace XX14 with LSNUM, and share RAT with LSNUM2. Simple.</p>
 
 						<h2 class="articleSubheader">2. Copying over LSPUT<br />
 													 ---------------------</h2>
@@ -69,6 +71,41 @@ page_header("deep_dives", "backporting_the_flicker-free_algorithm.html", "Backpo
 
 						<p>It might look like a lot of code, but that's because I've included all the routines in full, so you can see the differences <i>in situ</i>. There are surprisingly few differences between the two versions (especially when you realise that parts 2 to 8 of LL9 are completely unchanged). This is a delightfully simple change that makes a very noticeable improvement to the graphics, and without perceivable loss. That's well worth the effort of backporting, I'd say.</p>
 				</div>
+
+<div class="codeBlockWrapper compare"><pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper hiding" data-block="7"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">XX14</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Variable</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Zero page variable</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Unused variable that we can repurpose</span>
+
+</div></div></pre>
+
+<div class="hide-code-7">
+
+<div class="codeCompareBlock">
+	<pre class="codeBlock sourceCode initial compare"><div class="row headerRow expand"><div class="cell headerCell"><p class="key"><span class="legend">Original</span></p></div><div class="cell headerCell"><p class="key"><span class="legend">Flicker-free</span></p></div></div><div class="row contentRow expand"><div class="cell contentCell"><div class="cellContents"> <span class="label">.XX14</span><a id="xx14" name="xx14" class="anchor"></a>
+
+  <span class="mne">SKIP</span> <span class="decimal">1</span>                <span class="comment">\ This byte appears to be unused</span>
+</div></div><div class="cell contentCell"><div class="cellContents"> <span class="label">.LSNUM</span><a id="lsnum" name="lsnum" class="anchor"></a>
+
+  <span class="mne">SKIP</span> <span class="decimal">1</span>                <span class="comment">\ The pointer to the current position in the ship line</span>
+                        <span class="comment">\ heap as we work our way through the new ship's edges</span>
+                        <span class="comment">\ (and the corresponding old ship's edges) when drawing</span>
+                        <span class="comment">\ the ship in the main ship-drawing routine at LL9</span>
+
+ <span class="label">.LSNUM2</span><a id="lsnum2" name="lsnum2" class="anchor"></a>
+
+  <span class="mne">SKIP</span> <span class="decimal">0</span>                <span class="comment">\ The size of the existing ship line heap for the ship</span>
+                        <span class="comment">\ we are drawing in LL9, i.e. the number of lines in the</span>
+                        <span class="comment">\ old ship that is currently shown on-screen and which</span>
+                        <span class="comment">\ we need to erase</span>
+</div></div></div></pre></div>
+
+</div></div>
+
+
+
+
+
 
 <div class="codeBlockWrapper compare"><pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper hiding" data-block="1"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">SHPPT</span>
 <span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
@@ -1033,7 +1070,7 @@ page_header("deep_dives", "backporting_the_flicker-free_algorithm.html", "Backpo
 
 <style>
 .codeBlockWrapper.compare > pre.initial { display: block }
-.hide-code-1, .hide-code-2, .hide-code-3, .hide-code-4, .hide-code-5, .hide-code-6 { display: none }
+.hide-code-1, .hide-code-2, .hide-code-3, .hide-code-4, .hide-code-5, .hide-code-6, .hide-code-7 { display: none }
 .codeBlockWrapper .headerBlockWrapper { cursor: pointer; }
 .codeBlockWrapper .headerBlockWrapper.hiding:not(:last-child) { border-bottom: none; }
 .codeBlockWrapper .codeCompareBlock { padding-top: 2ch }
