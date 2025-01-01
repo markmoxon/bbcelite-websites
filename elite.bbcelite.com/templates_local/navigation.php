@@ -29,7 +29,7 @@
 					<li class="menuItemHeader showForMobile">Playing with the Elite source code</li>
 					<li id="playing_elite"><a id="playing_elite_index" href="/playing_elite/"><span class="menuTitle">Playing 6502 Elite in the 21st century</span> <span class="menuSummary">How to play all the versions of Elite analysed here</span></a></li>
 					<li id="deep_dives"><span class="menuTitle">Deep dive articles</span>
-						<span class="menuSummary menuSummarySubmenu">Over 115 articles on how Elite weaves its magic</span>
+						<span class="menuSummary menuSummarySubmenu">Over 120 articles on how Elite weaves its magic</span>
 						<ul id="submenu_deep_dives">
 							<li class="menuItemHeader">Index</li>
 							<li><a id="deep_dives_index" href="/deep_dives/"><span class="menuTitle">Index of all deep dive articles</span><span class="menuSummary">Discover how Elite works under the hood</span></a></li>
