@@ -66,7 +66,7 @@
 								<ul id="submenu_deep_dives_simulating_the_local_bubble">
 									<li class="menuItemHeader">Simulating the local bubble</li>
 									<li><a id="deep_dives_simulating_the_local_bubble_the_local_bubble_of_universe" href="/deep_dives/the_local_bubble_of_universe.html"><span class="menuTitle">The local bubble of universe</span> <span class="menuSummary">The data structures used to simulate the universe around our ship</span></a></li>
-									<li><a id="deep_dives_simulating_the_local_bubble_the_elusive_cougar" href="/deep_dives/the_elusive_cougar.html"><span class="menuTitle">The elusive Cougar</span> <span class="menuSummary">They say it is vanishingly rare... but just how rare is the mysterious Cougar?</span></a></li>
+									<li><a id="deep_dives_simulating_the_local_bubble_a_sense_of_scale" href="/deep_dives/a_sense_of_scale.html"><span class="menuTitle">A sense of scale</span> <span class="menuSummary">Space is big, but just how large are the star systems in 8-bit Elite?</span></a></li>
 									<li><a id="deep_dives_simulating_the_local_bubble_the_space_station_safe_zone" href="/deep_dives/the_space_station_safe_zone.html"><span class="menuTitle">The space station safe zone</span> <span class="menuSummary">Details of the calculations behind the space station safe zone</span></a></li>
 								</ul>
 							</li>
@@ -77,6 +77,7 @@
 									<li><a id="deep_dives_ship_data_ship_blueprints_in_the_disc_version" href="/deep_dives/ship_blueprints_in_the_disc_version.html"><span class="menuTitle">Ship blueprints in the BBC Micro disc version</span> <span class="menuSummary">How the BBC Micro disc version loads its ship blueprints into memory</span></a></li>
 									<li><a id="deep_dives_ship_data_comparing_ship_specifications" href="/deep_dives/comparing_ship_specifications.html"><span class="menuTitle">Comparing ship specifications</span> <span class="menuSummary">A detailed comparison of in-game statistics for the different ships in Elite</span></a></li>
 									<li><a id="deep_dives_ship_data_ship_data_blocks" href="/deep_dives/ship_data_blocks.html"><span class="menuTitle">Ship data blocks</span> <span class="menuSummary">Storing data for each of the ships in the local bubble of universe</span></a></li>
+									<li><a id="deep_dives_ship_data_the_elusive_cougar" href="/deep_dives/the_elusive_cougar.html"><span class="menuTitle">The elusive Cougar</span> <span class="menuSummary">They say it is vanishingly rare... but just how rare is the mysterious Cougar?</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_simulating_the_universe"><span class="menuTitle">Simulating the universe</span> <span class="menuSummary menuSummarySubmenu">Procedural galaxies, system seeds, market prices</span>

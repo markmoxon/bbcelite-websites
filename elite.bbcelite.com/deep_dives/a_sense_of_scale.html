@@ -1,0 +1,233 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "a_sense_of_scale.html", "A sense of scale", "A sense of scale", "A deep dive into scale in Elite on the 6502", "elite", "deep_dives_simulating_the_local_bubble", "a_sense_of_scale");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_local_bubble_of_universe.html">The local bubble of universe</a><a class="next" rel="next" title="Next deep dive" href="the_space_station_safe_zone.html">The space station safe zone</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Space is big, but just how large are the star systems in 8-bit Elite?</h2>
+
+						<p>xxx</p>
+
+I guess the first thing to note is that you are absolutely right about relative sizes - there is little consistency in the relative sizes of objects within the bubble. Planet radii in the system data don't affect the size of the planet that's drawn when you're flying, and items like the cargo canister and missile are absolutely massive compared to the ships that are supposed to carry them. If they were all realistic sizes, it wouldn't make for a good game, I guess!
+
+Let's see if I can address your questions.
+
+1. How many "map units" wide is your local bubble of the universe? Following that, how many "map units" wide is a system (if there's any limit at all)?
+
+There isn't really a "system" in Elite. There is only our ship, some other nearby ships, and the planet and the sun (or station). In-system jumps move the sun and planet relative to us, but our ship remains at the origin.
+
+The size of the coordinate system is 24 bits, i.e. (z_sign z_hi z_lo) with sign-magnitude numbers, so that's a coordinate range of -8388607 to +8388607, These coordinates are the same as the ones used in the wireframes, so the Coriolis station is 320 units in diameter, for example.
+
+The jump routine uses a simple ADD to move the sun and planet:
+
+https://www.bbcelite.com/cassette/main/subroutine/warp.html
+
+This adds or subtracts 1 to the top byte of the coordinates of the planet and sun, so in theory 127 jumps would push them to the edges of the coordinate system. Although I haven't tried it, I suspect that if you reach the edge of the coordinate system like this, the planet or sun will suddenly wrap around to be close to you as the addition overflows. It would be an interesting thing to test!
+
+2. What is the conversion ratio between a "map unit" and a "vertex unit"? I.E., if a planet is "6 map-units" in radius, how many map-units in radius is a Coriolis station, or your Cobra?
+
+They are the same thing, and are stored in a 24-bit multi-byte system. One "map unit" is equal to 256 "vertex units", if I'm understanding your terminology correctly, but it's easier just to think about one coordinate system.
+
+3. Is a planet even fixed as being 6 map-units in radius? And how large is a star, by contrast?
+
+I think it means that the planets are (0 96 0) in radius, i.e. 96*256 coordinates, or 24576, or about 77 Coriolis station diameters.
+
+The sun uses the exact same calculation, so the planet and sun are the same size. Not realistic, clearly!
+
+4. How is speed calculated? Given how long it takes to bring objects 30 map-units in distance to your location, I must imagine that a speed value of "20" might be something like "0.2 map-units/second", but I'm unsure. To be specific, I'm asking what a "speed value" means in terms of distance over time, and what unit the game is using for "distance" and "time" in the first place (for all I know, it might be using vertex units over game loops, or even Light Machs over astro-seconds). At 40 speed, a ship might cover x times it's own length in y seconds, but how would you find x and y from that initial value?
+
+Speed is a vector that is added to coordinates once per iteration of the main loop, so speed is effectively measured in coordinates per iteration. Here's the code:
+
+https://www.bbcelite.com/cassette/main/subroutine/mveit_part_3_of_9.html
+
+There is no concept of time in Elite - everything just happens on each iteration of the loop, with some actions happening on every loop, and some every x loops. See this deep dive for info:
+
+https://www.bbcelite.com/deep_dives/scheduling_tasks_with_the_main_loop_counter.html
+
+At a top speed of 40, a ship would therefore cover 40 coordinates in one iteration, so it would take 8 iterations to cross the diameter of the space station.
+
+
+
+
+
+
+
+As Ian says, the planet is 0x6000 in radius (&6000 in BBC terms). This is the same as the multi-byte number (0 96 0) in my terminology, which is how the planet and sub sizes are calculated in the PLANET routine:
+
+https://www.bbcelite.com/cassette/main/subroutine/planet.html
+
+So we're all in agreement there. Note that 0x6000 is in hexadecimal, not decimal. 0x60 = &60 = 96, which is how 0x6000 and (0 96 0) are the same number.
+
+The "512x512x512 ship cube" must refer to the maximum size of each individual ship, as the individual coordinates can go from -255 to 255.
+
+Given the above, the planet radius is actually 0x60 x 256 units, or 96 x 256 = 24576. You can see this figure in the calculation towards the end of the PLANET routine.
+
+A Coriolis would take up 320/512 of the "512x512x512 ship cube", along each side.
+
+Incidentally, the "512x512x512 ship cube" is not the bubble - at least, not the one I talk about. The bubble I talk about - the Local Bubble of universe that contains the other ships - is much bigger than the single-ship cube that Ian is referring to. The FAROF routine prunes ships that are more than &E000 away, or 57344 away, so the bubble is actually a sphere within a cube with sides &1c000 (114688). The ship cube is only 512 on each side, and a Coriolis would take up 320/512 of that cube (along one side), but would only take up 320/114688 of the bubble (along one side).
+
+It would be 2 x 24576 = 49152 across, as noted above (as the planet radius is 24576). So a planet is just under 154 Coriolis stations across.
+
+
+
+
+
+> a planet/star is 57344 units wide
+
+49152. It's the local bubble that's 57344 units wide.
+
+> I forget the exact value for your Cobra (which would vary anyways depending on if you're doing L/W/H) but it's something like 100 units long.
+
+I couldn't resist looking it up! Here you go:
+
+Nose to tail = 150 (including the front gun of length 14)
+Width = 256
+Height = 50
+
+> When I messaged Ian Bell, he told me that he had once measured the speed of the Cobra based on the dimensions given to it in the manual (65 x 30 , 130 ft). According to him, assuming 30 Hz, the Cobra would be moving at about 25 mph in the game.
+
+Let's see how I get on!
+
+65 ft from manual == 150 units in-game
+
+Speed of 30 means we take 5 frames to travel the length of ship
+
+i.e. we travel 65 ft in 5 frames
+
+If the game runs at 5 frames a second, that's 65 ft/sec
+
+1 ft/sec ≈ 0.6818 mph
+
+So that's about 44 mph at 5 frames a second. For 25 mph, we'd be talking about 3 frames per second, I guess.
+
+Sounds like the assumption of 30Hz might be the problem here?
+
+
+
+
+
+Actually, weeks later, I'm realizing there's one other reference for scale in the manual: the energy/heat bomb is said to have a destructive (or, we'll, "heat") radius of 9000 km. How many units does that translate to in the game?
+
+The manual says, "Each Coriolis station has a diameter of 1 standard kilometre."
+
+Coriolis diameter in its ship blueprint is 320 coordinates.
+
+So 1km = 320 units.
+
+So 9000km = 9000 * 320 = 2,880,000 units.
+
+So the radius of the energy bomb blast is 2,880,000 units, while the local bubble radius is 57,344 units.
+
+So the energy bomb easily destroys everything in the local bubble - in fact, it destroys everything in a radius of about 50 bubbles.
+
+That's one hell of a bomb!
+
+
+
+
+So it looks like what we have are two figures from the manual that contradict each other.
+
+Your bomb calculation based on a heat radius of 9000km allocates 0.157km per unit. The manual's insistence that “each Coriolis station has a diameter of 1 standard kilometre” gives us 0.003125km per unit. These are a factor of 50 away from each other.
+
+I don't know which one is more correct! All we know from the game is that the energy bomb destroys everything within the bubble, though it could presumably destroy plenty that's outside the bubble as well - the game just doesn't happened to model anything beyond the FAROF distance. And in “real life”, ships wouldn't magically appear from nowhere at that distance like they do in the game, so maybe the edge of the bubble is more like the edge of the ship's sensors, in which case it wouldn't be related to the energy bomb blast at all.
+
+
+
+
+
+Wrapping around
+
+Can you crash game by flying too far from the sun, planet or space station in a given system?
+
+That's a great question, and for the 6502 versions of Elite, here's the answer (I keep meaning to write this up as a deep dive, but haven't found the time yet!).
+
+The following applies to the BBC Micro, Electron, Commodore 64, Apple II and NES versions of Elite; the other platforms have totally different code, so they are unlikely to be the same.
+
+Elite keeps track of the 3D coordinates of all nearby ships, plus the planet and the sun. Our ship is always at the origin - when we jump, we stay at (0, 0, 0) while everything else gets moved around us.
+
+The size of the coordinate system is 24 bits, and it uses sign-magnitude numbers, so the top bit (bit 23) contains the sign, and bits 0 to 22 contain the magnitude. This gives us a coordinate range of -8,388,607 to +8,388,607 (-0x7FFFFF to +0x7FFFFF). To give you an idea of how big this is, the Coriolis station has a radius of 160 coordinates (0xA0), while the planet has a radius of 24,576 coordinates (0x6000). 
+
+The in-system jump routine at WARP (for when we press "J") uses the ADD routine to move the sun and planet backwards to simulate our ship jumping forwards:
+
+https://elite.bbcelite.com/cassette/main/subroutine/warp.html
+
+This subtracts 1 from the top byte of the z-coordinates of the planet and sun, so it moves them backwards by 65,536 coordinates (0x10000). (Any objects in the vicinity, like asteroids, are unchanged, so they come along for the ride.) So, in theory, 127 in-system jumps would push the planet and sun to the edges of the coordinate system. Given how nearby ships prevent in-system jumps, we would have to be pretty determined to get this far - but it is possible.
+
+The ADD routine doesn't check for overflow, so if the planet or sun reach the edge of the coordinate system, then their z-coordinates will simply wrap around to just over zero, while keeping the same sign. So say the planet or sun is behind us at z-coordinate -8,330,000 and we do a jump, then the resulting coordinate will be -8,370,000 - 65,536 = -8,435,536, which the ADD routine will wrap around to -46,929, which is not that far behind us (just under two planet radii). And because the only way this can happen is if the planet/sun is behind us and we are jumping away from it, we won't see it suddenly appear close behind us unless we turn around.
+
+So the game doesn't crash if we jump too far, but instead the planet and/or sun will suddenly appear behind us. And if we are unlucky, *we* will crash: if the planet or sun wraps around to a position that's very close behind us, not only in the z-coordinate but also in the x- and y-coordinate axes, then on the next iteration the altitude detection routines might decide that we are too close to the surface, and we will die instantly and without any warning. Though this would be pretty unlucky as space is very big, even in Elite's finite simulation.
+
+
+
+
+I guess my follow up question then is what happens if you fly past the limit with our the WARP routine. Lets say warp 126 times then fly the final 65,536 coordinates under the "regular" propulsion? Are we also just adding to the coords in such a way that it'll wrap around?
+
+Good question, and it looks like the same maths will apply. Our speed delta gets applied to the z-coordinates of the planet, sun and other ships in the vicinity by part 6 of MVEIT:
+
+https://elite.bbcelite.com/cassette/main/subroutine/mveit_part_6_of_9.html
+
+which calls the MVT1 routine to do the addition:
+
+https://elite.bbcelite.com/cassette/main/subroutine/mvt1.html
+
+As with the ADD routine used by the jump calculation, MVT1 doesn't check for overflow, so if the result overflows the 24-bit sign-magnitude coordinate, it will jump back to a little over zero. So if we are flying away from the planet and the planet reaches the edge of the universe behind us, then the planet will suddenly appear around z-coordinate 0. If the planet's x- and y-coordinates are large enough then this means it will appear somewhere to the side or above or below, but if they are not very large then we could easily find ourselves inside the planet, and we'll die instantly, just like when we jump. It's the same for the sun.
+
+Given how tight memory is in Elite, I guess the authors figured that checking for overflow wasn't worth the extra bytes.
+
+
+Yes, I wonder if anyone did - I bet people tried, but they probably gave up well before 127 jumps, as that's a lot. And even if they did wrap around, they wouldn't necessarily have noticed unless they suddenly died on the spot. Who knows!
+
+
+
+
+
+
+
+Given we know the system size, and we know sun-planet distance, so say this is 1AU, how big is a system in AU?
+
+
+
+
+
+
+
+						<h2 class="articleSubheader">How big is a unit vector?<br />
+													 -------------------------</h2>
+
+						<p>As mentioned above, when new ships are spawned in the <a href="/cassette/main/subroutine/nwshp.html">NWSHP</a> routine, they are almost all initialised with nosev pointing towards us, out of the screen, and with roofv pointing up and sidev pointing right (though see below for some exceptions to this rule).</p>
+
+						<p>Planets are spawned in the same way as ships, i.e. with nosev pointing towards us, out of the screen, and with roofv pointing up and sidev pointing right. The orientation vectors are used to draw the planet's meridians and craters; for example, the crater is drawn at the end of the roofv vector, specifically when it is pointing away from us. See the deep dives on <a href="drawing_craters.html">drawing craters</a> and <a href="drawing_meridians_and_equators.html">drawing meridians and equators</a> for more details.</p>
+
+						<p>This means the crater is on the very top of the planet when we arrive out of hyperspace (or launch), and because the planet is set to pitch clockwise around the right-pointing sidev, it means roofv rolls to point towards us, and the crater is not shown immediately. If you launch from the station around a crater system like Zaonce, then the crater does indeed not appear for half a rotation, as roofv takes a while to rotate until it's pointing away from us.</p>
+
+						<p>Planet spawning gives us a way to understand the scale of the orientation vectors. As already discussed, unit vectors in Elite have length 96 (&amp;60), which is represented by a 16-bit number (96 0) to mean 96.0. So the unit vector along the x-axis is (96, 0, 0), for example. Vectors are normalised to this length in the <a href="/cassette/main/subroutine/tis2.html">TIS2</a> routine, which is used to divide vector coordinates by their length, and TIS2 is called from the <a href="/cassette/main/subroutine/norm.html">NORM</a> routine when normalising vectors (see the deep dive on <a href="tidying_orthonormal_vectors.html">tidying orthonormal vectors</a> for more details).</p>
+
+						<p>When we launch from a space station, the planet is spawned with a radius of K(1 0) = (96 0) = 24576. It is spawned at a distance of (z_sign z_hi z_lo) = (1 0 0), so this is the distance between the centre of the planet and the station. This is set up in the <a href="/cassette/main/subroutine/planet.html">PLANET</a> routine.</p>
+
+						<p>When we actually leave the station, the planet gets projected onto the screen. The planet's dimensions get divided by z, so to get the radius of the projected planet, we calculate (96 0) / (1 0 0). This projection division gives us a planet with an on-screen pixel radius of 96 pixels, and the space view is 192 pixels high and 256 pixels wide, so this means that on launching, the planet exactly fits the screen vertically, as 96 * 2 = 192. This is indeed the case, if you look at the size of the planet on launching.</p>
+
+						<p>So, to come back to roofv and the other orientation vectors, planets are spawned with a radius of (96 0), which is 96 * 256, or a radius of 256 unit vectors.</p>
+
+						<p>There is a twist on this, though. The scale of the orientation vectors is effectively an interpretation: we choose to interpret (96 0) as meaning 96.0, but we don't have to. When calculating the space station safe zone, for example, we actually interpret the unit vector length as being (96 0), rather than 96.0, so we get a vector that spans the radius of the whole planet. The unit vector (nosev, in this case) is exactly the same, we just choose to treat it as a much larger vector than when we are thinking in ship scale... so you could also argue that planets in Elite have a radius of one unit vector. It all depends on the context.</p>
+
+
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_local_bubble_of_universe.html">The local bubble of universe</a><a class="next" rel="next" title="Next deep dive" href="the_space_station_safe_zone.html">The space station safe zone</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>
