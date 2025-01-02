@@ -108,18 +108,20 @@ page_header("deep_dives", "orientation_vectors.html", "Orientation vectors", "Or
   nosev = (0,  0, -1)
 </pre>
 
-						<p>So new ships are spawned facing out of the screen, as their nosev vectors point in a negative direction along the z-axis, which is positive into the screen and negative out of the screen.</p>
+						<p>So new ships are spawned facing out of the screen, as their nosev vectors point in a negative direction along the z-axis, which is positive into the screen and negative out of the screen. They are also spawned with roofv pointing up and sidev pointing right (though see below for some exceptions to this rule)</p>
 
-						<p>Internally, we store a vector value of 1 as 96, to support fractional values, and the orientation vectors are stored as 16-bit sign-magnitude numbers. 96 is &amp;60, and &amp;60 with bit 7 set is &amp;E0, so we store the above vectors like this:</p>
+						<p>Internally, we store the unit vector with a length of (96 0), or &amp;6000, as a 16-bit sign-magnitude number. We use this high value to make it easier to support fractional calculations, which wouldn't be possible if we used a value of 1 for the unit vector length; instead the value of (96 0) represents a length of 1, just scaled up to allow for accuracy. &amp;60 with bit 7 set is &amp;E0, so &amp;E000 represents -1, and we can store the above vectors like this:</p>
 
 <pre class="articleIndented">  sidev = (&amp;6000, 0, 0)
   roofv = (0, &amp;6000, 0)
   nosev = (0, 0, &amp;E000)
 </pre>
 
-						<p>so nosev_z_hi = &amp;E0 = -96, sidev_x_hi = &amp;60 = 96 and so on.</p>
+						<p>So in this case, nosev_z_hi = &amp;E0 = -96, sidev_x_hi = &amp;60 = 96 and so on, while all the low bytes are zero. For a discussion of just how big this initial vector is, see the deep dive on <a href="a_sense_of_scale.html">a sense of scale</a>.</p>
 
-						<p>For a discussion of how big this initial vector is, see the deep dive on <a href="a_sense_of_scale.html">a sense of scale</a>.</p>
+						<p>Planets are spawned in the same way as ships, i.e. with nosev pointing towards us, out of the screen, and with roofv pointing up and sidev pointing right. The orientation vectors are used to draw the planet's meridians and craters; for example, the crater is drawn at the end of the roofv vector, specifically when it is pointing away from us. See the deep dives on <a href="drawing_craters.html">drawing craters</a> and <a href="drawing_meridians_and_equators.html">drawing meridians and equators</a> for more details.</p>
+
+						<p>This means the crater is on the very top of the planet when we arrive out of hyperspace (or launch), and because the planet is set to pitch clockwise around the right-pointing sidev, it means roofv rolls to point towards us, and the crater is not shown immediately. If you launch from the station around a crater system like Zaonce, then the crater does indeed not appear for half a rotation, as roofv takes a while to rotate until it's pointing away from us.</p>
 
 						<h2 class="articleSubheader">Rotation matrices and axes<br />
 													 --------------------------</h2>
