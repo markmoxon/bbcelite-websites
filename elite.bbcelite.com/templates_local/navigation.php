@@ -74,7 +74,6 @@
 								<ul id="submenu_deep_dives_ship_data">
 									<li class="menuItemHeader">Ship data</li>
 									<li><a id="deep_dives_ship_data_ship_blueprints" href="/deep_dives/ship_blueprints.html"><span class="menuTitle">Ship blueprints</span> <span class="menuSummary">Specifications for all the different types of ship in the universe</span></a></li>
-									<li><a id="deep_dives_ship_data_ship_blueprints_in_the_disc_version" href="/deep_dives/ship_blueprints_in_the_disc_version.html"><span class="menuTitle">Ship blueprints in the BBC Micro disc version</span> <span class="menuSummary">How the BBC Micro disc version loads its ship blueprints into memory</span></a></li>
 									<li><a id="deep_dives_ship_data_comparing_ship_specifications" href="/deep_dives/comparing_ship_specifications.html"><span class="menuTitle">Comparing ship specifications</span> <span class="menuSummary">A detailed comparison of in-game statistics for the different ships in Elite</span></a></li>
 									<li><a id="deep_dives_ship_data_ship_data_blocks" href="/deep_dives/ship_data_blocks.html"><span class="menuTitle">Ship data blocks</span> <span class="menuSummary">Storing data for each of the ships in the local bubble of universe</span></a></li>
 									<li><a id="deep_dives_ship_data_the_elusive_cougar" href="/deep_dives/the_elusive_cougar.html"><span class="menuTitle">The elusive Cougar</span> <span class="menuSummary">They say it is vanishingly rare... but just how rare is the mysterious Cougar?</span></a></li>
@@ -234,6 +233,14 @@
 									<li class="menuItemHeader">Saving and loading</li>
 									<li><a id="deep_dives_saving_and_loading_commander_save_files" href="/deep_dives/commander_save_files.html"><span class="menuTitle">Commander save files</span> <span class="menuSummary">A description of each and every byte in the saved commander file</span></a></li>
 									<li><a id="deep_dives_saving_and_loading_the_competition_code" href="/deep_dives/the_competition_code.html"><span class="menuTitle">The competition code</span> <span class="menuSummary">All the information that's hidden in the Elite competition code</span></a></li>
+								</ul>
+							</li>
+							<li class="menuItemHeader">Version-specific deep dives</li>
+							<li id="deep_dives_bbc_micro_disc"><span class="menuTitle">BBC Micro disc Elite</span> <span class="menuSummary menuSummarySubmenu">Using a disc drive to create canonical Elite</span>
+								<ul id="submenu_deep_dives_bbc_micro_disc">
+									<li class="menuItemHeader">BBC Micro disc Elite</li>
+									<li><a id="deep_dives_bbc_micro_disc_docked_and_flight_code" href="/deep_dives/docked_and_flight_code.html"><span class="menuTitle">Swapping between the docked and flight code</span> <span class="menuSummary">Using the BBC's disc drive to swap out the game binaries when launching and docking</span></a></li>
+									<li><a id="deep_dives_bbc_micro_disc_ship_blueprints_in_the_disc_version" href="/deep_dives/ship_blueprints_in_the_disc_version.html"><span class="menuTitle">Ship blueprints in the BBC Micro disc version</span> <span class="menuSummary">How the BBC Micro disc version loads its ship blueprints into memory</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_6502sp_elite"><span class="menuTitle">6502 Second Processor Elite</span> <span class="menuSummary menuSummarySubmenu">Tube APIs, scroll texts, speech support and more</span>
