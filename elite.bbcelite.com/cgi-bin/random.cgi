@@ -49,6 +49,8 @@ $ROOT = '../../elite.bbcelite.com/';
 			 'cassette/main/subroutine/',
 			 'c64/game_loader/subroutine/',
 			 'c64/main/subroutine/',
+			 'apple/loader/subroutine/',
+			 'apple/main/subroutine/',
 			 'disc/docked/subroutine/',
 			 'disc/flight/subroutine/',
 			 'disc/loader_1/subroutine/',

@@ -449,6 +449,19 @@
 									<li><a id="c64_indexes_macros" href="/c64/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the Commodore 64 version of Elite</span></a></li>
 								</ul>
 							</li>
+							<li id="apple_indexes"><span class="menuTitle">Apple II source code indexes</span>
+								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the Apple II version of Elite</span>
+								<ul id="submenu_apple_indexes">
+									<li class="menuItemHeader">A-Z indexes for the Apple II version</li>
+									<li><a id="apple_indexes_a-z" href="/apple/indexes/a-z.html"><span class="menuTitle">A-Z index of the source code</span> <span class="menuSummary">An index of every subroutine, entry point, variable, workspace and macro in the source code</span></a></li>
+									<li><a id="apple_indexes_source_code_cross-references" href="/apple/articles/source_code_cross-references.html"><span class="menuTitle">Source code cross-references</span> <span class="menuSummary">Every label and variable in the source code and where they are used</span></a></li>
+									<li class="menuItemHeader">Indexes by category for the Apple II version</li>
+									<li><a id="apple_indexes_subroutines" href="/apple/indexes/subroutines.html"><span class="menuTitle">List of all subroutines by category</span> <span class="menuSummary">Subroutines in the Apple II version of Elite</span></a></li>
+									<li><a id="apple_indexes_variables" href="/apple/indexes/variables.html"><span class="menuTitle">List of all variables by category</span> <span class="menuSummary">Variables in the Apple II version of Elite</span></a></li>
+									<li><a id="apple_indexes_workspaces" href="/apple/indexes/workspaces.html"><span class="menuTitle">List of all workspaces by category</span> <span class="menuSummary">Workspaces in the Apple II version of Elite</span></a></li>
+									<li><a id="apple_indexes_macros" href="/apple/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the Apple II version of Elite</span></a></li>
+								</ul>
+							</li>
 							<li id="master_indexes"><span class="menuTitle">BBC Master source code indexes</span>
 								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the BBC Master version of Elite</span>
 								<ul id="submenu_master_indexes">
@@ -508,6 +521,7 @@
 							<li><a id="compare_statistics_electron_statistics" href="/electron/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Acorn Electron version</span> <span class="menuSummary">A breakdown of the Acorn Electron source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_sp_statistics" href="/6502sp/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the 6502 Second Processor version</span> <span class="menuSummary">A breakdown of the 6502 Second Processor source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_c64_statistics" href="/c64/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Commodore 64 version</span> <span class="menuSummary">A breakdown of the Commodore 64 source code by category, type and number of instructions</span></a></li>
+							<li><a id="compare_statistics_apple_statistics" href="/apple/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Apple II version</span> <span class="menuSummary">A breakdown of the Apple II source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_master_statistics" href="/master/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the BBC Master version</span> <span class="menuSummary">A breakdown of the BBC Master source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_nes_statistics" href="/nes/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the NES version</span> <span class="menuSummary">A breakdown of the NES source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_elite-a_statistics" href="/elite-a/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for Elite-A</span> <span class="menuSummary">A breakdown of the Elite-A source code by category, type and number of instructions</span></a></li>
