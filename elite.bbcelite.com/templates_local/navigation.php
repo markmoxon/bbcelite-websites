@@ -164,7 +164,7 @@
 									<li><a id="deep_dives_drawing_ships_drawing_ships" href="/deep_dives/drawing_ships.html"><span class="menuTitle">Drawing ships</span> <span class="menuSummary">The main routine for drawing 3D wireframe ships in space</span></a></li>
 									<li><a id="deep_dives_drawing_ships_back-face_culling" href="/deep_dives/back-face_culling.html"><span class="menuTitle">Back-face culling</span> <span class="menuSummary">How Elite draws solid-looking 3D ships by only drawing visible faces</span></a></li>
 									<li><a id="deep_dives_drawing_ships_calculating_vertex_coordinates" href="/deep_dives/calculating_vertex_coordinates.html"><span class="menuTitle">Calculating vertex coordinates</span> <span class="menuSummary">Determining whether a ship's vertex is visible or hidden from us</span></a></li>
-									<li><a id="deep_dives_drawing_ships_flicker-free_ship_drawing" href="/deep_dives/flicker-free_ship_drawing.html"><span class="menuTitle">Flicker-free ship drawing</span> <span class="menuSummary">How the BBC Master version reduces when drawing ships</span></a></li>
+									<li><a id="deep_dives_drawing_ships_flicker-free_ship_drawing" href="/deep_dives/flicker-free_ship_drawing.html"><span class="menuTitle">Flicker-free ship drawing</span> <span class="menuSummary">How the BBC Master and Apple II versions reduce flicker when drawing ships</span></a></li>
 									<li><a id="deep_dives_drawing_ships_backporting_the_flicker-free_algorithm" href="/deep_dives/backporting_the_flicker-free_algorithm.html"><span class="menuTitle">Backporting the flicker-free algorithm</span> <span class="menuSummary">Applying the BBC Master's flicker-free algorithm to the other versions</span></a></li>
 								</ul>
 							</li>
