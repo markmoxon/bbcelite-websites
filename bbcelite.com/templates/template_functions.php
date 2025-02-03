@@ -23,6 +23,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = FALSE;
 		$AJAX_NAVIGATION = FALSE;
+		$DEFAULT_THEME = "themeElite";
 		break;
 
 	case 'elite.bbcelite.com':
@@ -34,6 +35,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
 		$AJAX_NAVIGATION = TRUE;
+		$DEFAULT_THEME = "themeElite";
 		break;
 
 	case 'aviator.bbcelite.com':
@@ -45,6 +47,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
 		$AJAX_NAVIGATION = FALSE;
+		$DEFAULT_THEME = "themeElite";
 		break;
 
 	case 'revs.bbcelite.com':
@@ -56,6 +59,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
 		$AJAX_NAVIGATION = FALSE;
+		$DEFAULT_THEME = "themeElite";
 		break;
 
 	case 'lander.bbcelite.com':
@@ -67,6 +71,7 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = TRUE;
 		$AJAX_NAVIGATION = FALSE;
+		$DEFAULT_THEME = "themeElite";
 		break;
 
 	default:
@@ -77,11 +82,12 @@ switch ($SERVER_NAME) {
 		$SITE_SUBTITLE3 = "";
 		$SHOW_RANDOM_LINK = FALSE;
 		$AJAX_NAVIGATION = FALSE;
+		$DEFAULT_THEME = "themeElite";
 		break;
 }
 
 function page_header($folder, $name, $meta_title, $title, $description, $page_type = "", $page_parameter1 = "", $page_parameter2 = "", $subtitle = "") {
-	global $AJAX_NAVIGATION, $DOMAIN, $SITE_TITLE, $SITE_SUBTITLE1, $SITE_SUBTITLE2, $SITE_SUBTITLE3, $SITE_URL, $SHOW_RANDOM_LINK;
+	global $AJAX_NAVIGATION, $DOMAIN, $SITE_TITLE, $SITE_SUBTITLE1, $SITE_SUBTITLE2, $SITE_SUBTITLE3, $SITE_URL, $SHOW_RANDOM_LINK, $DEFAULT_THEME;
 
 	$title_no_tags = preg_replace('/<[^>]+>/', '', $meta_title);
 
@@ -92,17 +98,17 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 	}
 
 	if (array_key_exists('elite_theme', $_COOKIE)) {
-		$theme = ($_COOKIE['elite_theme'] != '') ? $_COOKIE['elite_theme'] : 'themeElite';
+		$theme = ($_COOKIE['elite_theme'] != '') ? $_COOKIE['elite_theme'] : $DEFAULT_THEME;
 	} else {
-		$theme = 'themeElite';
+		$theme = $DEFAULT_THEME;
 	}
 
 	$body_class = ' class="' . $theme . '"';
 	$meta_data = 'data-section="' . $page_parameter1 . '" data-page="' . $page_parameter2 . '" ';
     if ($AJAX_NAVIGATION) {
-    	$initialise_page = "initialiseElitePage(true);\n";
+    	$initialise_page = "initialiseElitePage(true)";
     } else {
-    	$initialise_page = "initialiseElitePage(false);\n";
+    	$initialise_page = "initialiseElitePage(false)";
     }
 	$theme_div = '<div id="siteTheme"><div class="themeWrapper themeLight" data-theme="themeLight"><div class="circle"></div></div><div class="themeWrapper themeDark" data-theme="themeDark"><div class="circle"></div></div><div class="themeWrapper themeElite" data-theme="themeElite"><div class="circle"></div></div></div>';
 	$theme_class = ' withTheme';
@@ -138,16 +144,6 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 	} else {
 		$twitter_image = 'https://www.bbcelite.com/images/github/github-social-preview.png';		
 	}
-	
-	if (str_ends_with($page_type, '-home')) {
-		$css_files = array("css/base.min.css", "css/screen.min.css");
-	} elseif (str_ends_with($page_type, '-index') || str_ends_with($page_type, '-alias')) {
-		$css_files = array("../../css/base.min.css", "../../css/screen.min.css");
-	} elseif (str_ends_with($page_type, '-code')) {
-		$css_files = array("../../../css/base.min.css", "../../../css/screen.min.css");
-	} else {
-		$css_files = array("../css/base.min.css", "../css/screen.min.css");
-	}
 
 	?>
 <!DOCTYPE html>
@@ -156,62 +152,31 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="author" content="Mark Moxon" />
-		<meta name="robots" content="noodp,noydir" />
-		<meta name="description" content="<?php echo $description ?>" <?php echo $meta_data ?>/>
 
 		<title><?php echo $meta_title ?></title>
 
-		<style><?php
-			foreach($css_files as $css_file) {
-				print file_get_contents($css_file);
-			}
-		?></style>
+		<meta name="author" content="Mark Moxon" />
+		<meta name="description" content="<?php echo $description ?>" <?php echo $meta_data ?>/>
+		<meta name="robots" content="noodp,noydir" />
 
-		<link rel="icon" type="image/png" href="/favicons/favicon-16x16.png" sizes="16x16" />
-		<link rel="icon" type="image/png" href="/favicons/favicon-32x32.png" sizes="32x32" />
-		<link rel="apple-touch-icon" type="image/png" href="/favicons/favicon-180x180.png" sizes="180x180" />
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:creator" content="@markmoxon" />
 		<meta name="twitter:title" content="<?php echo $meta_title ?>" />
 		<meta name="twitter:image" content="<?php echo $twitter_image ?>" />
+
 		<meta name="og:title" content="<?php echo $meta_title ?>" />
 		<meta name="og:image" content="<?php echo $twitter_image ?>" />
-		<link rel="stylesheet" href="/css/20250129/print.min.css" media="print" />
+
+		<link rel="stylesheet" href="/css/20250203/main.min.css" />
+		<link rel="stylesheet" href="/css/20250203/print.min.css" media="print" />
+
+		<link rel="icon" type="image/png" href="/favicons/favicon-16x16.png" sizes="16x16" />
+		<link rel="icon" type="image/png" href="/favicons/favicon-32x32.png" sizes="32x32" />
+		<link rel="apple-touch-icon" type="image/png" href="/favicons/favicon-180x180.png" sizes="180x180" />
+
 		<link rel="home" href="/" title="Home page" />
-		
-		<script>
-			//<![CDATA[
-			function downloadJSAtOnload() {
-				var element = document.createElement("script");
-				element.src = "/javascript/20250129/jquery.min.js";
-				if (element.addEventListener) {
-					element.addEventListener("load", function () {
-						$.ajaxSetup({cache: true});
-						$.getScript("/javascript/20250129/global.min.js", function () {
-							<?php echo $initialise_page ?>
-						});
-					}, false);
-				} else {
-					element.onreadystatechange = function () {
-						if (this.readyState == 'complete' || this.readyState == 'loaded') {
-							$.ajaxSetup({cache: true});
-							$.getScript("/javascript/20250129/global.min.js", function () {
-								<?php echo $initialise_page ?>
-							});
-						}
-					};
-				}
-				document.body.appendChild(element);
-			}
-			
-			if (window.addEventListener)
-				window.addEventListener("load", downloadJSAtOnload, false);
-			else if (window.attachEvent)
-				window.attachEvent("onload", downloadJSAtOnload);
-			else window.onload = downloadJSAtOnload;
-			//]]>
-		</script>
+
+        <script defer="defer" src="/javascript/20250203/main.min.js" onload="<?php echo $initialise_page ?>"></script>
 	</head>
 
 	<body<?php echo $body_class ?>>
@@ -227,15 +192,17 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 			<header>
 				<div class="siteTitle<?php echo $theme_class ?>">
 					<a href="/" class="homeButton">&#x2302;</a>
-					<?php if ($SHOW_RANDOM_LINK) { ?><a href="/cgi-bin/random.cgi" title="Show me something random" class="homeButton random">&#x221E;</a><?php } ?>
+					<?php if ($SHOW_RANDOM_LINK) { ?><a href="/cgi-bin/random.cgi" title="Show me something random" class="homeButton random">&#x221E;</a>
+<?php } ?>
 					<a href="#" id="navDropdownLink" class="navDropdownLink"><?php if ($theme_div) { ?><span class="triangle">&#x25BD;</span> <?php } if ($SITE_SUBTITLE1 != "")  { echo '<span class="subtitle">' . $SITE_SUBTITLE1 . '</span>'; } ?><?php echo $SITE_TITLE ?><?php if ($SITE_SUBTITLE2 != "")  { echo '<span class="subtitle">' . $SITE_SUBTITLE2 . '</span>'; } if ($SITE_SUBTITLE3 != "")  { echo '<span class="subtitle2">' . $SITE_SUBTITLE3 . '</span>'; } if ($theme_div == "") { ?> <span class="triangle">&#x25BD;</span><?php } ?></a><?php echo $theme_div ?>
-				</div>
-				<hr class="header" />
-				<div class="header<?php if ($subtitle != "") { echo " subtitle"; } ?>">
-					<h1 title="The title of this article"><?php echo $title ?></h1>
-					<?php if ($subtitle != "") { echo "<h2>" . $subtitle . "</h2>\n"; } ?>
+
 				</div>
 			</header>
+
+			<div class="header<?php if ($subtitle != "") { echo " subtitle"; } ?>">
+				<h1 title="The title of this article"><?php echo $title ?></h1><?php if ($subtitle != "") { echo "\n\t\t\t\t<h2>" . $subtitle . "</h2>"; } ?>
+
+			</div>
 
 			<div id="navDropdown">
 				<p class="subheading first">My software archaeology sites</p>

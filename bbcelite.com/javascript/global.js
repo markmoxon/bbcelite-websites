@@ -8,23 +8,11 @@ var lastScrollTop = 1;
 function initialiseElitePage(ajaxMenu) {
 	var page, section;
 
-	// Make header sticky
-	$(window).scroll(function() {
-		if ($(this).scrollTop() > 1 && $(this).scrollTop() > lastScrollTop) {  
-			$('header').addClass('sticky');
-			$('article').addClass('sticky');
-		} else {
-			$('header').removeClass('sticky');
-			$('article').removeClass('sticky');
-		}
-		lastScrollTop = $(this).scrollTop();
-	});
-
 	// If we need to load the menu asynchronously
 	if (ajaxMenu) {
 
 		// Set up navigation menus
-		$.getScript('/javascript/20250129/jquery.mmenu.min.js', function () {
+		$.getScript('/javascript/20250203/jquery.mmenu.min.js', function () {
 
 			// Fetch code section of navigation
 			$('#navigation_code').load( "/templates_local/navigation_code.php" , function() {
@@ -56,7 +44,7 @@ function initialiseElitePage(ajaxMenu) {
 	} else {
 
 		// Set up navigation menus
-		$.getScript('/javascript/20250129/jquery.mmenu.min.js', function () {
+		$.getScript('/javascript/20250203/jquery.mmenu.min.js', function () {
 
 			// Clone navigation to burger menu
 			$("#navigation").mmenu({}, { "clone": true });
