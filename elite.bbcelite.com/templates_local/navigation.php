@@ -29,11 +29,19 @@
 					<li class="menuItemHeader showForMobile">Playing with the Elite source code</li>
 					<li id="playing_elite"><a id="playing_elite_index" href="/playing_elite/"><span class="menuTitle">Playing 6502 Elite in the 21st century</span> <span class="menuSummary">How to play all the versions of Elite analysed here</span></a></li>
 					<li id="deep_dives"><span class="menuTitle">Deep dive articles</span>
-						<span class="menuSummary menuSummarySubmenu">Over 120 articles on how Elite weaves its magic</span>
+						<span class="menuSummary menuSummarySubmenu">Over 125 articles on how Elite weaves its magic</span>
 						<ul id="submenu_deep_dives">
 							<li class="menuItemHeader">Index</li>
 							<li><a id="deep_dives_index" href="/deep_dives/"><span class="menuTitle">Index of all deep dive articles</span><span class="menuSummary">Discover how Elite works under the hood</span></a></li>
 							<li class="menuItemHeader">Deep dives</li>
+							<li id="deep_dives_software_archaeology"><span class="menuTitle">Software archaeology</span> <span class="menuSummary menuSummarySubmenu">Historical clues in the original source code</span>
+								<ul id="submenu_deep_dives_software_archaeology">
+									<li class="menuItemHeader">Software archaeology</li>
+									<li><a id="deep_dives_software_archaeology_the_elite_source_code_family_tree" href="/deep_dives/the_elite_source_code_family_tree.html"><span class="menuTitle">The Elite source code family tree</span> <span class="menuSummary">Tracing the development history of 6502 Elite from the BBC Micro to the NES</span></a></li>
+									<li><a id="deep_dives_software_archaeology_building_commodore_64_elite_from_the_source_disk" href="/deep_dives/building_commodore_64_elite_from_the_source_disk.html"><span class="menuTitle">Building Commodore 64 Elite from the source disk</span> <span class="menuSummary">How to build Commodore 64 Elite from the original BBC Micro source disk</span></a></li>
+									<li><a id="deep_dives_software_archaeology_building_apple_ii_elite_from_the_source_disk" href="/deep_dives/building_apple_ii_elite_from_the_source_disk.html"><span class="menuTitle">Building Apple II Elite from the source disk</span> <span class="menuSummary">How to build Apple II Elite from the original BBC Micro source disk</span></a></li>
+								</ul>
+							</li>
 							<li id="deep_dives_memory_maps"><span class="menuTitle">Memory maps</span> <span class="menuSummary menuSummarySubmenu">Details of memory usage in the different versions</span>
 								<ul id="submenu_deep_dives_memory_maps">
 									<li class="menuItemHeader">Memory maps</li>
@@ -63,6 +71,16 @@
 									<li><a id="deep_dives_screen_mode_the_split-screen_mode_nes" href="/deep_dives/the_split-screen_mode_nes.html"><span class="menuTitle">The split-screen mode in NES Elite</span> <span class="menuSummary">How the NES version implements a split-screen mode without hardware timers</span></a></li>
 								</ul>
 							</li>
+							<li id="deep_dives_simulating_the_universe"><span class="menuTitle">Simulating the universe</span> <span class="menuSummary menuSummarySubmenu">Procedural galaxies, system seeds, market prices</span>
+								<ul id="submenu_deep_dives_simulating_the_universe">
+									<li class="menuItemHeader">Simulating the universe</li>
+									<li><a id="deep_dives_simulating_the_universe_galaxy_and_system_seeds" href="/deep_dives/galaxy_and_system_seeds.html"><span class="menuTitle">Galaxy and system seeds</span> <span class="menuSummary">How system data is extracted from the galaxy and system seeds</span></a></li>
+									<li><a id="deep_dives_simulating_the_universe_generating_system_data" href="/deep_dives/generating_system_data.html"><span class="menuTitle">Generating system data</span> <span class="menuSummary">The algorithms behind the procedural generation of system data</span></a></li>
+									<li><a id="deep_dives_simulating_the_universe_generating_system_names" href="/deep_dives/generating_system_names.html"><span class="menuTitle">Generating system names</span> <span class="menuSummary">Producing system names from twisted seeds and two-letter tokens</span></a></li>
+									<li><a id="deep_dives_simulating_the_universe_twisting_the_system_seeds" href="/deep_dives/twisting_the_system_seeds.html"><span class="menuTitle">Twisting the system seeds</span> <span class="menuSummary">How the system seeds are twisted to produce entire galaxies of stars</span></a></li>
+									<li><a id="deep_simulating_the_universe_dives_market_item_prices_and_availability" href="/deep_dives/market_item_prices_and_availability.html"><span class="menuTitle">Market item prices and availability</span> <span class="menuSummary">The algorithms behind the generation of each system's cargo market</span></a></li>
+								</ul>
+							</li>
 							<li id="deep_dives_simulating_the_local_bubble"><span class="menuTitle">Simulating the local bubble</span> <span class="menuSummary menuSummarySubmenu">Spawning and managing ships in our local bubble</span>
 								<ul id="submenu_deep_dives_simulating_the_local_bubble">
 									<li class="menuItemHeader">Simulating the local bubble</li>
@@ -78,16 +96,6 @@
 									<li><a id="deep_dives_ship_data_comparing_ship_specifications" href="/deep_dives/comparing_ship_specifications.html"><span class="menuTitle">Comparing ship specifications</span> <span class="menuSummary">A detailed comparison of in-game statistics for the different ships in Elite</span></a></li>
 									<li><a id="deep_dives_ship_data_ship_data_blocks" href="/deep_dives/ship_data_blocks.html"><span class="menuTitle">Ship data blocks</span> <span class="menuSummary">Storing data for each of the ships in the local bubble of universe</span></a></li>
 									<li><a id="deep_dives_ship_data_the_elusive_cougar" href="/deep_dives/the_elusive_cougar.html"><span class="menuTitle">The elusive Cougar</span> <span class="menuSummary">They say it is vanishingly rare... but just how rare is the mysterious Cougar?</span></a></li>
-								</ul>
-							</li>
-							<li id="deep_dives_simulating_the_universe"><span class="menuTitle">Simulating the universe</span> <span class="menuSummary menuSummarySubmenu">Procedural galaxies, system seeds, market prices</span>
-								<ul id="submenu_deep_dives_simulating_the_universe">
-									<li class="menuItemHeader">Simulating the universe</li>
-									<li><a id="deep_dives_simulating_the_universe_galaxy_and_system_seeds" href="/deep_dives/galaxy_and_system_seeds.html"><span class="menuTitle">Galaxy and system seeds</span> <span class="menuSummary">How system data is extracted from the galaxy and system seeds</span></a></li>
-									<li><a id="deep_dives_simulating_the_universe_generating_system_data" href="/deep_dives/generating_system_data.html"><span class="menuTitle">Generating system data</span> <span class="menuSummary">The algorithms behind the procedural generation of system data</span></a></li>
-									<li><a id="deep_dives_simulating_the_universe_generating_system_names" href="/deep_dives/generating_system_names.html"><span class="menuTitle">Generating system names</span> <span class="menuSummary">Producing system names from twisted seeds and two-letter tokens</span></a></li>
-									<li><a id="deep_dives_simulating_the_universe_twisting_the_system_seeds" href="/deep_dives/twisting_the_system_seeds.html"><span class="menuTitle">Twisting the system seeds</span> <span class="menuSummary">How the system seeds are twisted to produce entire galaxies of stars</span></a></li>
-									<li><a id="deep_simulating_the_universe_dives_market_item_prices_and_availability" href="/deep_dives/market_item_prices_and_availability.html"><span class="menuTitle">Market item prices and availability</span> <span class="menuSummary">The algorithms behind the generation of each system's cargo market</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_moving_and_rotating_in_space"><span class="menuTitle">Moving and rotating in space</span> <span class="menuSummary menuSummarySubmenu">Pitching, rolling and moving in 3D vector space</span>
@@ -115,6 +123,7 @@
 									<li><a id="deep_dives_keyboard_the_key_logger" href="/deep_dives/the_key_logger.html"><span class="menuTitle">The key logger</span> <span class="menuSummary">Supporting concurrent in-flight key presses using a key logger</span></a></li>
 									<li><a id="deep_dives_keyboard_reading_the_commodore_64_keyboard_matrix" href="/deep_dives/reading_the_commodore_64_keyboard_matrix.html"><span class="menuTitle">Reading the Commodore 64 keyboard matrix</span> <span class="menuSummary">Scanning the Commodore 64 keyboard without using the operating system</span></a></li>
 									<li><a id="deep_dives_keyboard_bolting_nes_controllers_onto_the_key_logger" href="/deep_dives/bolting_nes_controllers_onto_the_key_logger.html"><span class="menuTitle">Bolting NES controllers onto the key logger</span> <span class="menuSummary">How the NES version simulates a joystick and keyboard</span></a></li>
+									<li><a id="deep_dives_keyboard_working_with_the_apple_ii_keyboard" href="/deep_dives/working_with_the_apple_ii_keyboard.html"><span class="menuTitle">Working with the Apple II keyboard</span> <span class="menuSummary">Trying to implement a game-ready key logger, one key press at a time</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_tactics_and_combat"><span class="menuTitle">Tactics and combat</span> <span class="menuSummary menuSummarySubmenu">Ranks, weapons and intelligent enemy ships</span>
@@ -140,6 +149,7 @@
 									<li><a id="deep_dives_drawing_pixels_drawing_colour_pixels_in_mode_5" href="/deep_dives/drawing_colour_pixels_in_mode_5.html"><span class="menuTitle">Drawing colour pixels on the BBC Micro</span> <span class="menuSummary">Poking screen memory to display colour pixels in the dashboard view</span></a></li>
 									<li><a id="deep_dives_drawing_pixels_drawing_pixels_in_the_electron_version" href="/deep_dives/drawing_pixels_in_the_electron_version.html"><span class="menuTitle">Drawing pixels in the Electron version</span> <span class="menuSummary">Poking pixels into screen memory in the Acorn Electron version of Elite</span></a></li>
 									<li><a id="deep_dives_drawing_pixels_drawing_pixels_in_the_commodore_64_version" href="/deep_dives/drawing_pixels_in_the_commodore_64_version.html"><span class="menuTitle">Drawing pixels in the Commodore 64 version</span> <span class="menuSummary">Updating the bitmap screen in the Commodore 64 version of Elite</span></a></li>
+									<li><a id="deep_dives_drawing_pixels_drawing_pixels_in_the_apple_ii_version" href="/deep_dives/drawing_pixels_in_the_apple_ii_version.html"><span class="menuTitle">Drawing pixels in the Apple II version</span> <span class="menuSummary">Working with the Apple II's unique high-resolution graphics mode</span></a></li>
 									<li><a id="deep_dives_drawing_pixels_drawing_pixels_in_the_nes_version" href="/deep_dives/drawing_pixels_in_the_nes_version.html"><span class="menuTitle">Drawing pixels in the NES version</span> <span class="menuSummary">How the NES version pokes pixels into the console's tile-based screen</span></a></li>
 									<li><a id="deep_dives_drawing_pixels_extended_screen_coordinates" href="/deep_dives/extended_screen_coordinates.html"><span class="menuTitle">Extended screen coordinates</span> <span class="menuSummary">The extended 16-bit screen coordinate system behind the space view</span></a></li>
 								</ul>
@@ -192,9 +202,9 @@
 									<li><a id="deep_dives_drawing_suns_and_explosions_drawing_explosion_clouds" href="/deep_dives/drawing_explosion_clouds.html"><span class="menuTitle">Drawing explosion clouds</span> <span class="menuSummary">Drawing and storing explosion clouds for ships whose luck runs out...</span></a></li>
 								</ul>
 							</li>
-							<li id="deep_dives_stardust"><span class="menuTitle">Stardust</span> <span class="menuSummary menuSummarySubmenu">How the tiny particles of moving stardust work</span>
+							<li id="deep_dives_stardust"><span class="menuTitle">Drawing stardust</span> <span class="menuSummary menuSummarySubmenu">How the tiny particles of moving stardust work</span>
 								<ul id="submenu_deep_dives_stardust">
-									<li class="menuItemHeader">Stardust</li>
+									<li class="menuItemHeader">Drawing stardust</li>
 									<li><a id="deep_dives_stardust_stardust_in_the_front_view" href="/deep_dives/stardust_in_the_front_view.html"><span class="menuTitle">Stardust in the front view</span> <span class="menuSummary">The algorithms behind the stardust particles in the front view</span></a></li>
 									<li><a id="deep_dives_stardust_stardust_in_the_side_views" href="/deep_dives/stardust_in_the_side_views.html"><span class="menuTitle">Stardust in the side views</span> <span class="menuSummary">The algorithms behind the stardust particles in the side views</span></a></li>
 								</ul>
@@ -215,6 +225,16 @@
 									<li><a id="deep_dives_text_extended_system_descriptions" href="/deep_dives/extended_system_descriptions.html"><span class="menuTitle">Extended system descriptions</span> <span class="menuSummary">The famous "goat soup" algorithm that generates those strange and wonderful system descriptions</span></a></li>
 									<li><a id="deep_dives_text_printing_decimal_numbers" href="/deep_dives/printing_decimal_numbers.html"><span class="menuTitle">Printing decimal numbers</span> <span class="menuSummary">How to print big decimal numbers with decimal points and padding</span></a></li>
 									<li><a id="deep_dives_text_multi-language_support_in_nes_elite" href="/deep_dives/multi-language_support_in_nes_elite.html"><span class="menuTitle">Multi-language support in NES Elite</span> <span class="menuSummary">How the NES version supports English, German and French text</span></a></li>
+								</ul>
+							</li>
+							<li id="deep_dives_sound_and_music"><span class="menuTitle">Sound and music</span> <span class="menuSummary menuSummarySubmenu">Iconic docking music and explosions in space</span>
+								<ul id="submenu_deep_dives_sound_and_music">
+									<li class="menuItemHeader">Sound and music</li>
+									<li><a id="deep_dives_sound_and_music_sound_effects_in_commodore_64_elite" href="/deep_dives/sound_effects_in_commodore_64_elite.html"><span class="menuTitle">Sound effects in Commodore 64 Elite</span> <span class="menuSummary">Making the most of the SID sound synthesiser</span></a></li>
+									<li><a id="deep_dives_sound_and_music_sound_effects_in_apple_ii_elite" href="/deep_dives/sound_effects_in_apple_ii_elite.html"><span class="menuTitle">Sound effects in Apple II Elite</span> <span class="menuSummary">Attempting to make game sounds from a single, solitary click</span></a></li>
+									<li><a id="deep_dives_sound_and_music_sound_effects_in_nes_elite" href="/deep_dives/sound_effects_in_nes_elite.html"><span class="menuTitle">Sound effects in NES Elite</span> <span class="menuSummary">The largest set of sound effects in all the 6502 Elites</span></a></li>
+									<li><a id="deep_dives_sound_and_music_music_in_commodore_64_elite" href="/deep_dives/music_in_commodore_64_elite.html"><span class="menuTitle">Music in Commodore 64 Elite</span> <span class="menuSummary">The music driver behind the iconic Blue Danube and the catchy Elite Theme</span></a></li>
+									<li><a id="deep_dives_sound_and_music_music_in_nes_elite" href="/deep_dives/music_in_nes_elite.html"><span class="menuTitle">Music in NES Elite</span> <span class="menuSummary">How David Whittaker's music module plays The Blue Danube</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_maths"><span class="menuTitle">Maths</span> <span class="menuSummary menuSummarySubmenu">Arithmetic, geometry and random numbers</span>
@@ -255,13 +275,17 @@
 							</li>
 							<li id="deep_dives_c64"><span class="menuTitle">Commodore 64 Elite</span> <span class="menuSummary menuSummarySubmenu">Colours, music, sprites and remote development</span>
 								<ul id="submenu_deep_dives_c64">
-									<li class="menuItemHeader">6502 Second Processor Elite</li>
+									<li class="menuItemHeader">Commodore 64 Elite</li>
 									<li><a id="deep_dives_c64_colouring_the_commodore_64_bitmap_screen" href="/deep_dives/colouring_the_commodore_64_bitmap_screen.html"><span class="menuTitle">Colouring the Commodore 64 bitmap screen</span> <span class="menuSummary">Adding a distinctive dash of colour to the Commodore 64 dashboard</span></a></li>
 									<li><a id="deep_dives_c64_sprite_usage_in_commodore_64_elite" href="/deep_dives/sprite_usage_in_commodore_64_elite.html"><span class="menuTitle">Sprite usage in Commodore 64 Elite</span> <span class="menuSummary">Laser crosshairs, colourful explosions and lots of cuddly, furry Trumbles</span></a></li>
-									<li><a id="deep_dives_c64_sound_effects_in_commodore_64_elite" href="/deep_dives/sound_effects_in_commodore_64_elite.html"><span class="menuTitle">Sound effects in Commodore 64 Elite</span> <span class="menuSummary">Making the most of the SID sound synthesiser</span></a></li>
-									<li><a id="deep_dives_c64_music_in_commodore_64_elite" href="/deep_dives/music_in_commodore_64_elite.html"><span class="menuTitle">Music in Commodore 64 Elite</span> <span class="menuSummary">The music driver behind the iconic Blue Danube and the catchy Elite Theme</span></a></li>
-									<li><a id="deep_dives_c64_building_commodore_64_elite_from_the_source_disk" href="/deep_dives/building_commodore_64_elite_from_the_source_disk.html"><span class="menuTitle">Building Commodore 64 Elite from the source disk</span> <span class="menuSummary">How to build Commodore 64 Elite from the original BBC Micro source disk</span></a></li>
 									<li><a id="deep_dives_c64_developing_commodore_64_elite_on_a_bbc_micro" href="/deep_dives/developing_commodore_64_elite_on_a_bbc_micro.html"><span class="menuTitle">Developing Commodore 64 Elite on a BBC Micro</span> <span class="menuSummary">Sending Elite between 8-bit machines with the Programmer's Development System</span></a></li>
+								</ul>
+							</li>
+							<li id="deep_dives_apple"><span class="menuTitle">Apple II Elite</span> <span class="menuSummary menuSummarySubmenu">Bringing 1970s technology into the 1980s</span>
+								<ul id="submenu_deep_dives_apple">
+									<li class="menuItemHeader">Apple II Elite</li>
+									<li><a id="deep_dives_apple_file_operations_with_embedded_apple_dos" href="/deep_dives/file_operations_with_embedded_apple_dos.html"><span class="menuTitle">File operations with embedded Apple DOS</span> <span class="menuSummary">Saving and loading commander files with a customised version of DOS 3.3</span></a></li>
+									<li><a id="deep_dives_apple_developing_apple_ii_elite_on_a_bbc_micro" href="/deep_dives/developing_apple_ii_elite_on_a_bbc_micro.html"><span class="menuTitle">Developing Apple II Elite on a BBC Micro</span> <span class="menuSummary">Clues about the Apple version of the Programmer's Development System</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_nes"><span class="menuTitle">NES Elite</span> <span class="menuSummary menuSummarySubmenu">Elite on the Nintendo Entertainment System</span>
@@ -279,8 +303,6 @@
 									<li><a id="deep_dives_nes_sprite_usage_in_nes_elite" href="/deep_dives/sprite_usage_in_nes_elite.html"><span class="menuTitle">Sprite usage in NES Elite</span> <span class="menuSummary">Stardust, scanners, images, crosshairs and more</span></a></li>
 									<li><a id="deep_dives_nes_the_nes_combat_demo" href="/deep_dives/the_nes_combat_demo.html"><span class="menuTitle">The NES combat demo</span> <span class="menuSummary">How the scroll text and combat practice works</span></a></li>
 									<li><a id="deep_dives_nes_auto-playing_the_combat_demo" href="/deep_dives/auto-playing_the_combat_demo.html"><span class="menuTitle">Auto-playing the combat demo</span> <span class="menuSummary">The magic of watching Elite playing itself</span></a></li>
-									<li><a id="deep_dives_nes_sound_effects_in_nes_elite" href="/deep_dives/sound_effects_in_nes_elite.html"><span class="menuTitle">Sound effects in NES Elite</span> <span class="menuSummary">The largest set of sound effects in all the 6502 Elites</span></a></li>
-									<li><a id="deep_dives_nes_music_in_nes_elite" href="/deep_dives/music_in_nes_elite.html"><span class="menuTitle">Music in NES Elite</span> <span class="menuSummary">How David Whittaker's music module plays The Blue Danube</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_elite-a"><span class="menuTitle">Elite-A</span> <span class="menuSummary menuSummarySubmenu">How Angus Duggan modified the original Elite</span>
