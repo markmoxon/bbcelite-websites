@@ -42,33 +42,12 @@
 									<li><a id="deep_dives_software_archaeology_building_apple_ii_elite_from_the_source_disk" href="/deep_dives/building_apple_ii_elite_from_the_source_disk.html"><span class="menuTitle">Building Apple II Elite from the source disk</span> <span class="menuSummary">How to build Apple II Elite from the original BBC Micro source disk</span></a></li>
 								</ul>
 							</li>
-							<li id="deep_dives_memory_maps"><span class="menuTitle">Memory maps</span> <span class="menuSummary menuSummarySubmenu">Details of memory usage in the different versions</span>
-								<ul id="submenu_deep_dives_memory_maps">
-									<li class="menuItemHeader">Memory maps</li>
-									<li><a id="deep_dives_memory_maps_the_elite_memory_map" href="/deep_dives/the_elite_memory_map.html"><span class="menuTitle">BBC Micro cassette Elite memory map</span> <span class="menuSummary">Memory usage in the classic version of Elite, where space is really tight</span></a></li>
-									<li><a id="deep_dives_memory_maps_the_elite_memory_map_disc" href="/deep_dives/the_elite_memory_map_disc.html"><span class="menuTitle">BBC Micro disc Elite memory map</span> <span class="menuSummary">Memory usage in the enhanced disc version of Elite</span></a></li>
-									<li><a id="deep_dives_memory_maps_the_elite_memory_map_electron" href="/deep_dives/the_elite_memory_map_electron.html"><span class="menuTitle">Acorn Electron Elite memory map</span> <span class="menuSummary">Memory usage in the smallest and most basic version of Elite</span></a></li>
-									<li><a id="deep_dives_memory_maps_the_elite_memory_map_6502sp" href="/deep_dives/the_elite_memory_map_6502sp.html"><span class="menuTitle">6502 Second Processor Elite memory map</span> <span class="menuSummary">Memory usage in the Tube-based version of Elite</span></a></li>
-									<li><a id="deep_dives_memory_maps_the_elite_memory_map_commodore_64" href="/deep_dives/the_elite_memory_map_commodore_64.html"><span class="menuTitle">Commodore 64 Elite memory map</span> <span class="menuSummary">Memory usage in the musical version of Elite</span></a></li>
-									<li><a id="deep_dives_memory_maps_the_elite_memory_map_apple_ii" href="/deep_dives/the_elite_memory_map_apple_ii.html"><span class="menuTitle">Apple II Elite memory map</span> <span class="menuSummary">Memory usage in the flicker-free version of Elite</span></a></li>
-									<li><a id="deep_dives_memory_maps_the_elite_memory_map_master" href="/deep_dives/the_elite_memory_map_master.html"><span class="menuTitle">BBC Master Elite memory map</span> <span class="menuSummary">Memory usage in the smoothest version of Elite</span></a></li>
-									<li><a id="deep_dives_memory_maps_the_elite_memory_map_nes" href="/deep_dives/the_elite_memory_map_nes.html"><span class="menuTitle">NES Elite memory map</span> <span class="menuSummary">Memory usage in the only console-based version of Elite</span></a></li>
-								</ul>
-							</li>
-							<li id="deep_dives_main_loop"><span class="menuTitle">The main loop</span> <span class="menuSummary menuSummarySubmenu">The main game loop and task scheduler</span>
+							<li id="deep_dives_main_loop"><span class="menuTitle">The main game loop</span> <span class="menuSummary menuSummarySubmenu">The main game loop and task scheduler</span>
 								<ul id="submenu_deep_dives_main_loop">
-									<li class="menuItemHeader">The main loop</li>
+									<li class="menuItemHeader">The main game loop</li>
 									<li><a id="deep_dives_main_loop_program_flow_of_the_main_game_loop" href="/deep_dives/program_flow_of_the_main_game_loop.html"><span class="menuTitle">Program flow of the main game loop</span> <span class="menuSummary">The sequence of events in the main game loop and the main flight loop</span></a></li>
 									<li><a id="deep_dives_main_loop_scheduling_tasks_with_the_main_loop_counter" href="/deep_dives/scheduling_tasks_with_the_main_loop_counter.html"><span class="menuTitle">Scheduling tasks with the main loop counter</span> <span class="menuSummary">How the main loop counter controls what we do and when we do it</span></a></li>
 									<li><a id="deep_dives_main_loop_splitting_the_main_loop_in_the_nes_version" href="/deep_dives/splitting_the_main_loop_in_the_nes_version.html"><span class="menuTitle">Splitting the main loop in the NES version</span> <span class="menuSummary">How the main flight loop is split and shared with the combat demo</span></a></li>
-								</ul>
-							</li>
-							<li id="deep_dives_screen_mode"><span class="menuTitle">The split-screen mode</span> <span class="menuSummary menuSummarySubmenu">Elite's custom and split-screen modes</span>
-								<ul id="submenu_deep_dives_screen_mode">
-									<li class="menuItemHeader">The split-screen mode</li>
-									<li><a id="deep_dives_screen_mode_the_split-screen_mode" href="/deep_dives/the_split-screen_mode.html"><span class="menuTitle">The split-screen mode in BBC Micro Elite</span> <span class="menuSummary">Elite's famous split-screen mode, dissected and explained in detail</span></a></li>
-									<li><a id="deep_dives_screen_mode_the_split-screen_mode_commodore_64" href="/deep_dives/the_split-screen_mode_commodore_64.html"><span class="menuTitle">The split-screen mode in Commodore 64 Elite</span> <span class="menuSummary">How the VIC-II makes it easy to implement the Commodore version's split screen</span></a></li>
-									<li><a id="deep_dives_screen_mode_the_split-screen_mode_nes" href="/deep_dives/the_split-screen_mode_nes.html"><span class="menuTitle">The split-screen mode in NES Elite</span> <span class="menuSummary">How the NES version implements a split-screen mode without hardware timers</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_simulating_the_universe"><span class="menuTitle">Simulating the universe</span> <span class="menuSummary menuSummarySubmenu">Procedural galaxies, system seeds, market prices</span>
@@ -117,15 +96,6 @@
 									<li><a id="deep_dives_flight_the_docking_computer" href="/deep_dives/the_docking_computer.html"><span class="menuTitle">The docking computer</span> <span class="menuSummary">How the docking computer steers us home in the enhanced versions of Elite</span></a></li>
 								</ul>
 							</li>
-							<li id="deep_dives_keyboard"><span class="menuTitle">Keyboards, joysticks and controllers</span> <span class="menuSummary menuSummarySubmenu">Reading and logging Elite's multiple controls</span>
-								<ul id="submenu_deep_dives_keyboard">
-									<li class="menuItemHeader">Keyboards, joysticks and controllers</li>
-									<li><a id="deep_dives_keyboard_the_key_logger" href="/deep_dives/the_key_logger.html"><span class="menuTitle">The key logger</span> <span class="menuSummary">Supporting concurrent in-flight key presses using a key logger</span></a></li>
-									<li><a id="deep_dives_keyboard_reading_the_commodore_64_keyboard_matrix" href="/deep_dives/reading_the_commodore_64_keyboard_matrix.html"><span class="menuTitle">Reading the Commodore 64 keyboard matrix</span> <span class="menuSummary">Scanning the Commodore 64 keyboard without using the operating system</span></a></li>
-									<li><a id="deep_dives_keyboard_bolting_nes_controllers_onto_the_key_logger" href="/deep_dives/bolting_nes_controllers_onto_the_key_logger.html"><span class="menuTitle">Bolting NES controllers onto the key logger</span> <span class="menuSummary">How the NES version simulates a joystick and keyboard</span></a></li>
-									<li><a id="deep_dives_keyboard_working_with_the_apple_ii_keyboard" href="/deep_dives/working_with_the_apple_ii_keyboard.html"><span class="menuTitle">Working with the Apple II keyboard</span> <span class="menuSummary">Trying to implement a game-ready key logger, one key press at a time</span></a></li>
-								</ul>
-							</li>
 							<li id="deep_dives_tactics_and_combat"><span class="menuTitle">Tactics and combat</span> <span class="menuSummary menuSummarySubmenu">Ranks, weapons and intelligent enemy ships</span>
 								<ul id="submenu_deep_dives_tactics_and_combat">
 									<li class="menuItemHeader">Tactics and combat</li>
@@ -140,6 +110,14 @@
 									<li class="menuItemHeader">The scanner and dashboard</li>
 									<li><a id="deep_dives_the_scanner_and_dashboard_the_3d_scanner" href="/deep_dives/the_3d_scanner.html"><span class="menuTitle">The 3D scanner</span> <span class="menuSummary">The maths behind Elite's famous 3D elliptical scanner</span></a></li>
 									<li><a id="deep_dives_the_scanner_and_dashboard_the_dashboard_indicators" href="/deep_dives/the_dashboard_indicators.html"><span class="menuTitle">The dashboard indicators</span> <span class="menuSummary">How the bar-based dashboard indicators display their data</span></a></li>
+								</ul>
+							</li>
+							<li id="deep_dives_screen_mode"><span class="menuTitle">The split-screen mode</span> <span class="menuSummary menuSummarySubmenu">Elite's custom and split-screen modes</span>
+								<ul id="submenu_deep_dives_screen_mode">
+									<li class="menuItemHeader">The split-screen mode</li>
+									<li><a id="deep_dives_screen_mode_the_split-screen_mode" href="/deep_dives/the_split-screen_mode.html"><span class="menuTitle">The split-screen mode in BBC Micro Elite</span> <span class="menuSummary">Elite's famous split-screen mode, dissected and explained in detail</span></a></li>
+									<li><a id="deep_dives_screen_mode_the_split-screen_mode_commodore_64" href="/deep_dives/the_split-screen_mode_commodore_64.html"><span class="menuTitle">The split-screen mode in Commodore 64 Elite</span> <span class="menuSummary">How the VIC-II makes it easy to implement the Commodore version's split screen</span></a></li>
+									<li><a id="deep_dives_screen_mode_the_split-screen_mode_nes" href="/deep_dives/the_split-screen_mode_nes.html"><span class="menuTitle">The split-screen mode in NES Elite</span> <span class="menuSummary">How the NES version implements a split-screen mode without hardware timers</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_drawing_pixels"><span class="menuTitle">Drawing pixels</span> <span class="menuSummary menuSummarySubmenu">Poking pixels directly into screen memory</span>
@@ -237,6 +215,15 @@
 									<li><a id="deep_dives_sound_and_music_music_in_nes_elite" href="/deep_dives/music_in_nes_elite.html"><span class="menuTitle">Music in NES Elite</span> <span class="menuSummary">How David Whittaker's music module plays The Blue Danube</span></a></li>
 								</ul>
 							</li>
+							<li id="deep_dives_keyboard"><span class="menuTitle">Keyboards, joysticks and controllers</span> <span class="menuSummary menuSummarySubmenu">Reading and logging Elite's multiple controls</span>
+								<ul id="submenu_deep_dives_keyboard">
+									<li class="menuItemHeader">Keyboards, joysticks and controllers</li>
+									<li><a id="deep_dives_keyboard_the_key_logger" href="/deep_dives/the_key_logger.html"><span class="menuTitle">The key logger</span> <span class="menuSummary">Supporting concurrent in-flight key presses using a key logger</span></a></li>
+									<li><a id="deep_dives_keyboard_reading_the_commodore_64_keyboard_matrix" href="/deep_dives/reading_the_commodore_64_keyboard_matrix.html"><span class="menuTitle">Reading the Commodore 64 keyboard matrix</span> <span class="menuSummary">Scanning the Commodore 64 keyboard without using the operating system</span></a></li>
+									<li><a id="deep_dives_keyboard_bolting_nes_controllers_onto_the_key_logger" href="/deep_dives/bolting_nes_controllers_onto_the_key_logger.html"><span class="menuTitle">Bolting NES controllers onto the key logger</span> <span class="menuSummary">How the NES version simulates a joystick and keyboard</span></a></li>
+									<li><a id="deep_dives_keyboard_working_with_the_apple_ii_keyboard" href="/deep_dives/working_with_the_apple_ii_keyboard.html"><span class="menuTitle">Working with the Apple II keyboard</span> <span class="menuSummary">Trying to implement a game-ready key logger, one key press at a time</span></a></li>
+								</ul>
+							</li>
 							<li id="deep_dives_maths"><span class="menuTitle">Maths</span> <span class="menuSummary menuSummarySubmenu">Arithmetic, geometry and random numbers</span>
 								<ul id="submenu_deep_dives_maths">
 									<li class="menuItemHeader">Maths</li>
@@ -257,6 +244,19 @@
 								</ul>
 							</li>
 							<li class="menuItemHeader">Version-specific deep dives</li>
+							<li id="deep_dives_memory_maps"><span class="menuTitle">Memory maps</span> <span class="menuSummary menuSummarySubmenu">Details of memory usage in the different versions</span>
+								<ul id="submenu_deep_dives_memory_maps">
+									<li class="menuItemHeader">Memory maps</li>
+									<li><a id="deep_dives_memory_maps_the_elite_memory_map" href="/deep_dives/the_elite_memory_map.html"><span class="menuTitle">BBC Micro cassette Elite memory map</span> <span class="menuSummary">Memory usage in the classic version of Elite, where space is really tight</span></a></li>
+									<li><a id="deep_dives_memory_maps_the_elite_memory_map_disc" href="/deep_dives/the_elite_memory_map_disc.html"><span class="menuTitle">BBC Micro disc Elite memory map</span> <span class="menuSummary">Memory usage in the enhanced disc version of Elite</span></a></li>
+									<li><a id="deep_dives_memory_maps_the_elite_memory_map_electron" href="/deep_dives/the_elite_memory_map_electron.html"><span class="menuTitle">Acorn Electron Elite memory map</span> <span class="menuSummary">Memory usage in the smallest and most basic version of Elite</span></a></li>
+									<li><a id="deep_dives_memory_maps_the_elite_memory_map_6502sp" href="/deep_dives/the_elite_memory_map_6502sp.html"><span class="menuTitle">6502 Second Processor Elite memory map</span> <span class="menuSummary">Memory usage in the Tube-based version of Elite</span></a></li>
+									<li><a id="deep_dives_memory_maps_the_elite_memory_map_commodore_64" href="/deep_dives/the_elite_memory_map_commodore_64.html"><span class="menuTitle">Commodore 64 Elite memory map</span> <span class="menuSummary">Memory usage in the musical version of Elite</span></a></li>
+									<li><a id="deep_dives_memory_maps_the_elite_memory_map_apple_ii" href="/deep_dives/the_elite_memory_map_apple_ii.html"><span class="menuTitle">Apple II Elite memory map</span> <span class="menuSummary">Memory usage in the flicker-free version of Elite</span></a></li>
+									<li><a id="deep_dives_memory_maps_the_elite_memory_map_master" href="/deep_dives/the_elite_memory_map_master.html"><span class="menuTitle">BBC Master Elite memory map</span> <span class="menuSummary">Memory usage in the smoothest version of Elite</span></a></li>
+									<li><a id="deep_dives_memory_maps_the_elite_memory_map_nes" href="/deep_dives/the_elite_memory_map_nes.html"><span class="menuTitle">NES Elite memory map</span> <span class="menuSummary">Memory usage in the only console-based version of Elite</span></a></li>
+								</ul>
+							</li>
 							<li id="deep_dives_bbc_micro_disc"><span class="menuTitle">BBC Micro disc Elite</span> <span class="menuSummary menuSummarySubmenu">Using a disc drive to create canonical Elite</span>
 								<ul id="submenu_deep_dives_bbc_micro_disc">
 									<li class="menuItemHeader">BBC Micro disc Elite</li>
