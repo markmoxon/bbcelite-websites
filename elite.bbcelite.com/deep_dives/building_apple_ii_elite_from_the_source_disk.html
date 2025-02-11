@@ -11,7 +11,7 @@ page_header("deep_dives", "building_apple_ii_elite_from_the_source_disk.html", "
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How to build Apple II Elite from the original BBC Micro source disk</h2>
 
-						<p>To celebrate the 40th anniversary of Elite on the BBC Micro, Ian Bell <a href="http://www.elitehomepage.org/fourty/index.htm">released a number of interesting disk images</a> on his personal website. One of these was the original source disk for the Apple II version of Elite, which was the second non-Acorn version to be built from the 6502 sources, after the Commodore 64.</p>
+						<p>To celebrate the 40th anniversary of Elite on the BBC Micro, Ian Bell <a href="http://www.elitehomepage.org/fourty/index.htm">released a number of interesting disk images</a> on his personal website. One of these was the original source disk for the 1986 Apple II version of Elite, which was the second non-Acorn version to be built from the 6502 sources, following the release of the 1985 Commodore 64 version.</p>
 
 						<p>Let's take a look at the source disk and see what's involved in building Apple II Elite from the source.</p>
 
@@ -30,7 +30,7 @@ page_header("deep_dives", "building_apple_ii_elite_from_the_source_disk.html", "
 
 						<p>The disk contents can be viewed on any BBC Micro with DFS, but to actually run the build it needs to be loaded into a BBC Micro with a 6502 Second Processor. It will also work on emulators: my personal favourite is Tom Seddon's <a href="https://github.com/tom-seddon/b2">b2 emulator</a>, but any emulator with support for a second processor will do, even the browser-based JSBeeb (which you can use to run the build by following the links below).</p>
 
-						<p>That said, if you try to run the build process using Ian Bell's disk image, then you quickly run out of disk space. To make it easier to run the build yourself, I have produced a stripped-down version of the disk that only contains the source files that the build needs, so there's enough room to run the whole end-to-end process.</p>
+						<p>That said, if you try to run the build process using Ian Bell's disk image, then you quickly run out of disk space, and you also get various "Bad command" errors. To make it easier to run the build yourself, I have produced a stripped-down version of the disk that only contains the source files that the build needs, so there's enough room to run the whole end-to-end process. This disk image also includes the fixes that allow us to run the build without giving any errors about missing transmission utilities (see the next section for details).</p>
 
 						<p>For ultimate convenience, you can <a href="https://bbc.xania.org/?coProcessor=true&amp;autoboot&amp;disc=https://elite.bbcelite.com/versions/sources/A6010080-stripped-to-sources.dsd">open JSBeeb with the stripped-down source disk already loaded</a>. Then you can follow the process below to build Apple II Elite yourself, all within your browser. If you want to follow along with your own setup, you can download the <a href="/versions/sources/A6010080-stripped-to-sources.dsd">stripped-down image as a DSD file</a> that you can load directly into your emulator. </p>
 
@@ -40,46 +40,117 @@ page_header("deep_dives", "building_apple_ii_elite_from_the_source_disk.html", "
 
 						<p>If you would like to look at the source files but don't want to be messing about with disk images from a bygone era, I have converted all the BASIC programs into text and uploaded them to the accompanying repository, where <a href="https://github.com/markmoxon/elite-source-code-apple-ii/tree/main/1-source-files/original-sources">you can browse them at your convenience</a>.</p>
 
+						<h2 class="articleSubheader">Fixing the build process<br />
+													 ------------------------</h2>
+
+						<p>The Apple II Elite build process was designed to produce game binaries that could be transmitted to an Apple II, connected to the development BBC Micro machine via a cable. Two utilities were used for this transmission: MSEND and APPLE (which could be run using *MSEND or *APPLE, or using the OSCLI command in BASIC). Unfortunately these utilities are missing, so when the build process tries to run either of these commands, we get a "Bad command" error.</p>
+
+						<p>I have fixed this in the stripped-down build process, by changing the build programs to print out what the commands would be, rather than trying to run them. This does not affect the build itself, it just skips the steps that will no longer work.</p>
+
+						<p>I have also copied the game font file onto the disk, which would normally be loaded from a separate disk (which isn't included in Ian Bell's archive).</p>
+
+						<p>These are all the changes I have made to the original build files:</p>
+
+						<ul>
+
+							<li>Copy A.FLOWY to drive 2 (A.FLOWY contains the game font, extracted from the released game)</li>
+
+							<li>In S.DATAS, change the load command so it loads the font from drive 2 rather than drive 1:
+
+<pre class="articleIndented">  250OSCLI("L.:1.A.FLOWY "+STR$~(FONT+CODE-DL%))
+</pre>
+
+							to:
+
+<pre class="articleIndented">  250OSCLI("L.:2.A.FLOWY "+STR$~(FONT+CODE-DL%))
+</pre>
+							</li>
+
+							<li>In S.SCREEN2, disable the *MSEND command by changing it to a PRINT statement:
+
+<pre class="articleIndented">  3200OSCLI("MSEND "+STR$~SP +" +2000 2000")
+</pre>
+
+							to:
+
+<pre class="articleIndented">  3200PRINT("*MSEND "+STR$~SP +" +2000 2000")
+</pre>
+							</li>
+
+							<li>In S.APMAKES, disable the *MSEND and *APPLE commands by changing them to PRINT statements:
+
+<pre class="articleIndented">  160 OSCLI"MSEND "+STR$~CODE%+" +"+STR$~(&C000-&9000+&3600)+" A00"
+  ...
+  180 VDU7,7:*APPLE
+  ...
+  200 OSCLI"MSEND "+STR$~CODE%+" +"+STR$~(&9000-C%)+" "+STR$~C%
+  ...
+  220 VDU7,7:*APPLE
+</pre>
+
+							to:
+
+<pre class="articleIndented">  160 PRINT"*MSEND "+STR$~CODE%+" +"+STR$~(&C000-&9000+&3600)+" A00"
+  ...
+  180 VDU7,7:PRINT"*APPLE"
+  ...
+  200 PRINT"*MSEND "+STR$~CODE%+" +"+STR$~(&9000-C%)+" "+STR$~C%
+  ...
+  220 VDU7,7:PRINT"*APPLE"
+</pre>
+							</li>
+
+							<li>Also in S.APMAKES, add two save commands to save the ELA and ELB binaries to the disk, rather than trying to transmit them:
+
+<pre class="articleIndented">  185 OSCLI"SAVE :2.ELA "+STR$~CODE%+"+"+STR$~(&C000-&9000+&3600)
+  215 OSCLI"SAVE :2.ELB "+STR$~CODE%+"+"+STR$~(&9000-C%)
+</pre>
+							</li>
+						</ul>
+
+						<p>This updates the build process to save the ELA and ELB binaries to the source disk, rather than trying (and failing) to run the missing utilities that would transmit the binaries to an attached Apple II.</p>
+
 						<h2 class="articleSubheader">What the programs do<br />
 													 --------------------</h2>
 
 						<p>Before we run through the build process itself, here's a quick summary of what the core source files do, in the order that they appear in the build pipeline. These are all BBC BASIC programs, with most of them including inline assembly language. All of them produce files as output, with some of them taking other files as input.</p>
 
-						<p>There are also three prerequisite files that are required by the build process: A.SHIPS, DIALS25 and C.FONT. These are described in the section below on running the build.</p>
+						<p>There are also three prerequisite files that are required by the build process: A.SHIPS, $.DIALS25 and :1.A.FLOWY. These are described in the section below on running the build.</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Program</th><th>Input</th><th>Output</th></tr>
-							<tr><td>S.CSHIPS</td><td>-</td><td>A.SHIPS</td></tr>
-							<tr><td>S.FONTS</td><td>C.FONT</td><td>A.FONT</td></tr>
+							<tr><td>S.ASHIPS</td><td>Ship source disk (<a href="http://www.elitehomepage.org/archive/a/a4100082.zip">download</a>)</td><td>A.SHIPS</td></tr>
 							<tr><td>S.GENWORD</td><td>-</td><td>A.WORDS</td></tr>
-							<tr><td>S.IANTOKS</td><td>-</td><td>IANTOK</td></tr>
-							<tr><td>S.DATAS</td><td>A.WORDS<br />:1.FLOWY<br />A.IANTOK</td><td>A.DATA</td></tr>
+							<tr><td>S.IANTOKS</td><td>-</td><td>A.IANTOK</td></tr>
+							<tr><td>S.DATAS</td><td>A.WORDS<br />:1.A.FLOWY<br />A.IANTOK</td><td>A.DATA</td></tr>
 							<tr><td>S.SCREEN2</td><td>$.DIALS25</td><td>A.SCREEN</td></tr>
-							<tr><td>A.ELITEA</td><td>A.ELITEB<br />A.ELITEC<br />A.ELITED<br />A.ELITEE<br />A.ELITEF<br />A.ELITEG<br />A.ELITEH<br />A.ELITEI<br />A.ELITEJ<br />A.ELITEK<br />A.COMUDAT</td><td>ELTA<br />ELTB<br />ELTC<br />ELTD<br />ELTE<br />ELTF<br />ELTG<br />ELTH<br />ELTI<br />ELTJ<br />ELTK</td></tr>
-							<tr><td>S.SCODES</td><td>ELTA<br />ELTB<br />ELTC<br />ELTD<br />ELTE<br />ELTF<br />ELTG<br />ELTH<br />ELTI<br />ELTJ<br />ELTK<br />A.SHIPS</td><td>CODE1<br />CODE2</td></tr>
-							<tr><td>S.APMAKES</td><td>DATA<br />SCREEN<br />CODE2<br />CODE1</td><td>ELA<br />ELB</td></tr>
+							<tr><td>A.ELITEA</td><td>A.ELITEB<br />A.ELITEC<br />A.ELITED<br />A.ELITEE<br />A.ELITEF<br />A.ELITEG<br />A.ELITEH<br />A.ELITEI<br />A.ELITEJ<br />A.ELITEK<br />A.COMUDAT</td><td>$.ELTA<br />$.ELTB<br />$.ELTC<br />$.ELTD<br />$.ELTE<br />$.ELTF<br />$.ELTG<br />$.ELTH<br />$.ELTI<br />$.ELTJ<br />$.ELTK</td></tr>
+							<tr><td>S.SCODES</td><td>$.ELTA<br />$.ELTB<br />$.ELTC<br />$.ELTD<br />$.ELTE<br />$.ELTF<br />$.ELTG<br />$.ELTH<br />$.ELTI<br />$.ELTJ<br />$.ELTK<br />A.SHIPS</td><td>$.CODE1<br />$.CODE2</td></tr>
+							<tr><td>S.APMAKES</td><td>$.DATA<br />$.SCREEN<br />$.CODE2<br />$.CODE1</td><td>$.ELA<br />$.ELB</td></tr>
 						</table>
-
-						<p>Note that on the stripped-down source disk image, I have made a couple of minor change to the font filenames, so the build can actually complete:</p>
-
-						<ul>
-							<li>In the original source disk, the S.FONTS program loads the Commodore 64 font from :3.C.FONT, which is the C.FONT on drive 3 - so it expects the Commodore 64 source disk in drive 1. To save you fishing out the Commodore 64 source disk as well, I've put C.FONT on side 2 of the stripped-down source disk and have tweaked S.FONTS to load :2.C.FONT instead. The process is the same, it just all fits on one disk.</li>
-
-							<li>Also in the original, the S.DATAS loads a font file called FLOWY from drive 1, which isn't included in any of the disks. To enable the build to complete, I have updated this to load the A.FONT file instead, as that file is present on the source disk. I suspect that FLOWY might have refer to the Apple II version's more flowing font, but it's hard to tell.</li>
-						</ul>
 
 						<p>The following programs are also on the source disk:</p>
 
 						<ul>
+							<li>A.APLINE, A.APLINE2 and A.APTES are test programs that contain iterations of the line-drawing code</li>
+
+							<li>$.DIALS2, $.DIALS23, $.DIALS24, $.DIALS5 and E.DIALS4 are variations of the dashboard image</li>
+
+							<li>S.FONTS converts the font from Commodore 64 Elite into an Apple-compatible format. It looks for :3.C.FONT, so it expects the Commodore 64 Elite source disk in drive 1. It produces the A.FONT file on the source disk, though this file is not used in the build process.</li>
+
+							<li>$.RAMCTST checks whether there is a RAM card fitted to the attached Apple II</li>
+
+							<li>S.SCREEN is like S.SCREEN2 but it converts DIALS5 into Apple format rather than DIALS25</li>
+
 							<li>$.SCRNOP5 is an image editor</li>
-							<li>A.TESTER is like S.APMAKES but ???</li>
-							<li>S.SCREEN is like S.SCREEN2 but it converts DIALS5 rather than DIALS25</li>
-							<li>??? SLIDE takes DIALS5, does something and sends to Apple II</li>
-							<li>DIALS2 23 24 25 5, E.DIALS4 ??? dial variations</li>
-							<li>A.APLINE, A.APLINE2, A.APTES are line code tests</li>
-							<li>A.RECIEVE pokes bytes into an Apple II? (depends on what *APPLE does)</li>
-							<li>RAMCTST tests a RAM card</li>
-							<li>V.APDOC</li>
+
+							<li>A.SLIDE loads the dashboard in E.DIALS4 and draws vertical edges in the space view, possibly as part of creating the loading screen</li>
+
+							<li>A.TESTER is like S.APMAKES but replaces the *APPLE commands with *CALL commands</li>
+
+							<li>A.RECIEVE seems to take byte input from the keyboard to send to an Apple II (depending on what *APPLE command actually does)</li>
+
+							<li>V.APDOC is a VIEW word processor document that contains information about the Apple II version</li>
 						</ul>
 
 						<p>Now let's take a look at the build process itself.</p>
@@ -92,7 +163,7 @@ page_header("deep_dives", "building_apple_ii_elite_from_the_source_disk.html", "
 						<p>Specifically, the build process creates two binary files:</p>
 
 						<ul>
-							<li>ELA, which contains the second part of the main game binary, plus the game data and loading screen, and a routine that copies CODE2 into bank-switched RAM as part of the development system</li>
+							<li>ELA, which contains the second part of the main game binary (CODE2), plus the game data and loading screen, and a routine that copies the CODE2 binary into bank-switched RAM as part of the development process</li>
 
 							<li>ELB, which contains the first part of the main game binary</li>
 						</ul>
@@ -100,7 +171,7 @@ page_header("deep_dives", "building_apple_ii_elite_from_the_source_disk.html", "
 						<p>These binaries are themselves composed of lots of smaller binaries that are produced during the build. This is how the finished product is composed:</p>
 
 						<ul>
-							<li>DATA = A.WORDS + A.IANTOK + A.FONT</li>
+							<li>DATA = A.WORDS + A.IANTOK + :1.A.FLOWY</li>
 
 							<li>CODE = ELTA + ELTB + ELTC + ELTD + ELTE + ELTF + ELTG + ELTH + ELTI + ELTJ + ELTK + A.SHIPS</li>
 
@@ -123,23 +194,18 @@ page_header("deep_dives", "building_apple_ii_elite_from_the_source_disk.html", "
 						<ul>
 							<li>A.SHIPS contains the ship data. There is a separate source disk for creating ship data, which <a href="http://www.elitehomepage.org/archive/a/a4100082.zip">can be found on Ian Bell's site</a>. The sources on this separate disk create individual ship files called MISSILE, ANACONDA and so on, which the S.ASHIPS program on the Apple II source disk combines into the A.SHIPS file. The Apple II source disk contains a pre-compiled A.SHIPS file, so we can just use that.</li>
 
-							<li>DIALS25 contains the dashboard bitmap image ???.</li>
+							<li>:1.A.FLOWY contains the game font, which is unique to the Apple version of Elite. It's a more flowing font that in the other versions, hence the name.</li>
 
-							<li>A.FONT is the game font, which is unique to the Apple version of Elite.</li>
+							<li>$.DIALS25 contains the dashboard bitmap image, as a BBC Micro mode 2 screen image.</li>
 						</ul>
 
-						<p>These three files are already included in the source disk from Ian Bell's site, so now let's look at the actual build process. The following assumes you are using the <a href="/versions/sources/A6010080-stripped-to-sources.dsd">stripped-down disk image</a> that frees up enough space to run the build.</p>
+						<p>The first two prerequisite files are already included in the source disk from Ian Bell's site, but the FLOWY file is missing (as it comes from a different disk that we are supposed to put into drive 1). To enable us to run the build, I have extracted the font from the released game and added it to the stripped-down source disk image, as the A.FLOWY file on drive 2.</p>
+
+						<p>Now let's look at the actual build process. The following assumes you are using the <a href="/versions/sources/A6010080-stripped-to-sources.dsd">stripped-down disk image</a> that frees up enough space to run the build.</p>
 
 						<p>First, load up your emulator and change the machine type to a BBC Micro with a 6502 Second Processor (or if you are running this on a real BBC Micro, make sure your co-processor is turned on).</p>
 
 						<p>Put the disk image in drive 0 and press SHIFT-CTRL-BREAK. This will run a set of commands that will appear on the screen. If you are using JSBeeb, then you can simply <a href="https://bbc.xania.org/?coProcessor=true&amp;autoboot&amp;disc=https://elite.bbcelite.com/versions/sources/A6010080-stripped-to-sources.dsd">fire it up with this link</a> to complete this step.</p>
-
-						<p>Now type the following and press RETURN:</p>
-
-<pre class="articleIndented">  CHAIN ":2.S.FONTS"
-</pre>
-
-						<p>This takes the C.FONT font file from the Commodore 64 version and generates the Apple II A.FONT font file on drive 2.</p>
 
 						<p>Now type the following and press RETURN:</p>
 
@@ -160,16 +226,14 @@ page_header("deep_dives", "building_apple_ii_elite_from_the_source_disk.html", "
 <pre class="articleIndented">  CHAIN ":2.S.DATAS"
 </pre>
 
-						<p>This takes A.WORDS, A.FONT and A.IANTOK and produces the A.DATA file on drive 2.</p>
+						<p>This takes A.WORDS, A.FLOWY and A.IANTOK and produces the A.DATA file on drive 2.</p>
 
 						<p>Now type the following and press RETURN:</p>
 
 <pre class="articleIndented">  CHAIN ":2.S.SCREEN2"
 </pre>
 
-						<p>This converts the DIALS25 dashboard image into an Apple II format loading screen image in A.SCREEN on drive 2. It takes a while.</p>
-
-						<p>Ignore the "bad command" error at the end; this is the computer trying to run a MSEND command to send the resulting screen to a connected Apple II, but the MSEND utility isn't on the source disk and we don't have a copy, so this just fails to run the command.</p>
+						<p>This converts the DIALS25 dashboard image into an Apple II format loading screen image in A.SCREEN on drive 2. It takes a while. It ends by sending the screen to a connected Apple II, but I have modified the source to print out the MSEND command rather than executing it, as we no longer have a copy of the MSEND utility.</p>
 
 						<p>Next, press SHIFT-CTRL-BREAK to reboot the disk.</p>
 
@@ -184,10 +248,10 @@ page_header("deep_dives", "building_apple_ii_elite_from_the_source_disk.html", "
 
 						<p>When it's finished, tap f4 and then RETURN, which will enter the following for you:</p>
 
-<pre class="articleIndented">  CHAIN ":2.S.SCODES"
+<pre class="articleIndented">  CHAIN ":2.S.CODES"
 </pre>
 
-						<p>Again, press RETURN at the "insert destination disk" prompt. This will ingest A.ELTA through A.ELTK to produce the CODE1 and CODE2 files on drive 2.</p>
+						<p>This will ingest A.ELTA through A.ELTK to produce the CODE1 and CODE2 files on drive 2.</p>
 
 						<p>Now type the following and press RETURN after each line:</p>
 
@@ -199,114 +263,11 @@ page_header("deep_dives", "building_apple_ii_elite_from_the_source_disk.html", "
 
 						<p>And that's it! We now have the two files we want: ELA and ELB on drive 2. These will be identical to the binaries produced by the modern build process when the variant build parameter is set to source-disk-build - see the <a href="https://github.com/markmoxon/elite-source-code-apple-ii#building-the-source-disk-build-variant">repository for details</a>.</p>
 
+						<p>If you don't want to run through the above process but want to see the final result, you can download <a href="/versions/sources/A6010080-results-of-build.dsd">a disk image of the build result</a>.</p>
+
 						<p>In the original development environment, the APMAKES program would also send the ELA and ELB binaries to a connected Apple II, using the MSEND and APPLE utilities, before running the transmitted code directly on the Apple II (see the deep dive on <a href="developing_apple_ii_elite_on_a_bbc_micro.html">developing Apple IIElite on a BBC Micro</a> for more details). Unfortunately neither of these utilities are included on the source disk, so that's where the process ends for us.</p>
 
 						<p>And that is how you build Apple II Elite on a BBC Micro, just like Bell and Braben did back in 1986...</p>
-
-
-<!--
-Build process on original source disc
--------------------------------------
-
-A.SHIPS (can be generated with CHAIN "S.ASHIPS" from individual ship files from Ian Bell's site, e.g. MISSILE, ANACONDA etc.)
-CHAIN "S.ASHIPS"
--> :2.A.SHIPS
-
-Pre-requisite files:
-A.SHIPS
-DIALS25
-C64 build disc (for C.FONT)
-
-Changes made to files to build properly:
-Rename 1.A.FLOWY to :2.A.FONT in S.DATAS line 250
-Change APMAKES to save to disc rather than transmitting to Apple II
-
-
-Set machine to BBC Micro with 6502SP
-
-Put disc in drive 0
-Put C64 source disc into drive 1
-
-SHIFT-CTRL-BREAK
-
-CHAIN ":2.S.FONTS"
-:3.C.FONT -> :2.A.FONT
-
-
-CHAIN ":2.S.GENWORD"
--> :2.A.WORDS
-
-CHAIN ":2.S.IANTOKS"
--> :2.A.IANTOK
-
-CHAIN ":2.S.DATAS" (just press Return at prompt)
-A.WORDS, :1.FLOWY (should be A.FONT), A.IANTOK -> :2.A.DATA
-
-CHAIN ":2.S.SCREEN2" (ignore the error at the end)
-$.DIALS25 -> :2.A.SCREEN
-
-SHIFT-CTRL-BREAK
-
-Press f0, Return: CHAIN "ELITEA"
--> :0.A.ELTA-K
-
-Press f4, Return: CHAIN ":2.S.SCODES"
-A.ELTA-K, A.SHIPS -> :2.CODE1, :2.CODE2
-
-HIMEM=&B800
-
-CHAIN ":2.S.APMAKES"
-DATA, SCREEN, CODE2 -> ELA
-CODE1 -> ELB
-
-In the priginal build process, this final step transmits these amalgamated files to an Apple II
-
-
-What the programs do
---------------------
-
-A.ELITEA -> ELTA to ELTK
-A.SCODES = ELT* (on disc), SHIPS (on disc) -> CODE1, CODE2 (on disc as A.CODE1, A.CODE2)
-(S.HICODES = ELT* -> HICODE)
-
-S.GENWORD -> A.WORDS (on disc)
-S.IANTOKS -> IANTOK (on disc as A.IANTOK)
-S.DATAS = A.WORDS (on disc), :1.FLOWY (not on disc, maybe FONT?), A.IANTOK (on disc) -> A.DATA (on disc)
-
-S.FONTS = :3.C.FONT -> FONT (converts C64 font?)
-
-S.SCREEN2 = DIALS25 (on disc) -> A.SCREEN (on disc)
-
-S.ASHIPS -> A.SHIPS (on disc)
-
-S.APMAKES = DATA, SCREEN, CODE2 -> ELA, ELB (sent to Apple)
-
-
-
-
-
-
-A.TESTER = DATA, SCREEN, CODE2 -> ELA, ELB
-S.SCREEN = DIALS5 (on disc) -> A.SCREEN (on disc)
-
-
-$.SCRNOP5 is an image editor
-A.SLIDE takes E.DIALS4 and draws on screen?
-SLIDE takes DIALS5, does something and sends to Apple II
-
-DIALS2 23 24 25 5 ??? dial variations
-E.DIALS4
-
-A.APLINE is a line code test
-A.APLINE2 is a line code test
-A.APTES is a line code test
-
-A.RECIEVE pokes bytes into an Apple II? (depends on what *APPLE does)
-
-RAMCTST tests a RAM card
-
-V.APDOC
--->
 					</div>
 				</div>
 
