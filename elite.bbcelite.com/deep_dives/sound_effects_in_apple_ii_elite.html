@@ -11,23 +11,60 @@ page_header("deep_dives", "sound_effects_in_apple_ii_elite.html", "Sound effects
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Attempting to make game sounds from a single, solitary click</h2>
 
-						<p>This deep dive is currently being written and should be ready to be published in the second half of February.</p>
+						<p>One of the things I love about analysing assembly code from the 1980s is just how close you get to the hardware. There's nowhere to hide: there's absolutely nothing between the machine code (which we choose to write down as assembly language) and the voltages on the chip legs inside the box.</p>
 
-<!--
-BELL
-BOOP
-BEEP
-CLICK
+                        <p>Take this example. 6502 assembly instructions are essentially representations of bit patterns - so if we consider the LDA #7 instruction, this is just a way of writing $A9 $07 in machine code, or %10101011 %00000111 if we think of it in binary. When this instruction is sent to the CPU, the zeroes and ones in the binary machine code are passed into the silicon with 5v for a set bit and 0v for a clear bit, giving the following voltages on the D0-D7 pins along the right edge of the 6502's black plastic DIP package:</p>
 
-EXNO
-SOHISS
-EXNO3
-SOEXPL
-SOBLIP
-LASNOISE
-LASNOISE2 (unused)
-SOBOMB
--->
+<pre class="articleIndented">
+    LDA                         #7
+  = $A9                         $07
+  = 1010 1001                   0000 0111
+  = 5v 0v 5v 0v 5v 0v 0v 5v     0v 0v 0v 0v 0v 5v 5v 5v
+</pre>
+
+						<p>The 6502 doesn't use microcode, so by writing in assembly language, we are literally configuring the voltages in each beat of the CPU's silicon heart. For those of us who work as modern coders, this is such a breath of fresh air. There is no game engine, no framework, no compiler, no interpreter, no API, no bytecode, no library, no virtualisation, no kernel, no BIOS, no microcode and no operating system. It's surprisingly liberating.</p>
+
+						<p>More than any other version of Elite, the Apple II celebrates this simplicity and puts you directly in touch with the hardware. It does it with the disk routines (see the deep dive on <a href="file_operations_with_embedded_apple_dos.html">file operations with embedded Apple DOS</a>), and it does it with the interference patterns that colour the high-resolution graphics (see the deep dive on <a href="drawing_pixels_in_the_apple_ii_version.html">drawing pixels in the Apple II version</a>).</p>
+
+						<p>But in the case of the sound effects in Apple II Elite, this simplicity is almost brutalist, because while all the other 6502 systems that run Elite have dedicated sound chips that manage the generation of the game sounds, the Apple II has just a single, solitary click, and that's it. Heck, the stock Apple II doesn't even have timers or expose any interrupts for us to use to build our own sound driver. This is bare-metal binary at its finest.</p>
+
+						<p>Let's see how Elite manages add its own click-track to everything from a laser beam to a missile launch.</p>
+
+						<h2 class="articleSubheader">Making sounds on the Apple II<br />
+													 -----------------------------</h2>
+
+                        <p>xxx</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Routine</th><th>Sound effect</th><th>Called by</th><th>Length (Y)</th><th>Period (X)</th></tr>
+							<tr><td><a href="/apple/main/subroutine/click.html">CLICK</a></td><td>Toggle the state of the speaker</td><td><a href="/apple/main/subroutine/bomboff.html">BOMBOFF</a></td><td>N/A</td><td>N/A</td></tr>
+							<tr><td><a href="/apple/main/subroutine/lasnoise.html">LASNOISE</a></td><td>Our laser firing</td><td><a href="/apple/main/subroutine/main_flight_loop_part_3_of_16.html">Main flight loop (Part 3 of 16)</a></td><td>11</td><td>150<br /><br />+2 each Y</td></tr>
+							<tr><td><a href="/apple/main/subroutine/lasnoise.html">LASNOISE</a></td><td>Us being hit by lasers</td><td><a href="/apple/main/subroutine/tactics_part_6_of_7.html">TACTICS (Part 6 of 7)</a></td><td>11</td><td>150<br /><br />+2 each Y</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soblip.html">SOBLIP</a></td><td>E.C.M (called once per main loop iteration while ECMA counts from 32 down to 1)</td><td><a href="/apple/main/subroutine/main_flight_loop_part_16_of_16.html">Main flight loop (Part 16 of 16)</a></td><td>20</td><td>ECMA + 192</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soblip.html">SOBLIP</a></td><td>Hyperspace drive being engaged (called multiple times with X going from 255 to 185 in jumps of 10)</td><td><a href="/apple/main/subroutine/ll164.html">LL164</a></td><td>90</td><td>255, 245, 235 ... 185</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sobomb.html">SOBOMB</a></td><td>Energy bomb (called once with each new zig-zag lightning bolt)</td><td><a href="/apple/main/subroutine/bombeff2.html">BOMBEFF2</a></td><td>25</td><td>7 * RND(224, 255)</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sobeep.html">SOBEEP</a></td><td>Long, low beep</td><td><a href="/apple/main/subroutine/boop.html">BOOP</a></td><td>99</td><td>255</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sobeep.html">SOBEEP</a></td><td>Short, high beep</td><td><a href="/apple/main/subroutine/beep.html">BEEP</a>/<a href="/apple/main/subroutine/bell.html">BELL</a></td><td>30</td><td>110</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Laser strike on another ship</td><td><a href="/apple/main/subroutine/exno.html">EXNO</a></td><td>15</td><td>50 + 7 * RND(255)<br /><br />+1 each Y</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Collision, exploding cargo canister/missile</td><td><a href="/apple/main/subroutine/exno3.html">EXNO3</a></td><td>40</td><td>50 + 7 * RND(255)<br /><br />+1 each Y</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Ship exploding</td><td><a href="/apple/main/subroutine/exno2.html">EXNO2</a></td><td>55</td><td>50 + 7 * RND(255)<br /><br />+1 each Y</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Us dying</td><td><a href="/apple/main/subroutine/death.html">DEATH</a></td><td>210</td><td>50 + 7 * RND(255)<br /><br />+1 each Y</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Launch or hyperspace tunnel (called for each ring)</td><td><a href="/apple/main/subroutine/hfs2.html">HFS2</a></td><td>10</td><td>RND(255)</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Enemy missile launch</td><td><a href="/apple/main/subroutine/sfrmis.html">SFRMIS</a></td><td>50</td><td>RND(255)</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Our missile launch</td><td><a href="/apple/main/subroutine/frmis.html">FRMIS</a></td><td>120</td><td>RND(255)</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Launching from a station (called twice)</td><td><a href="/apple/main/subroutine/laun.html">LAUN</a></td><td>256</td><td>RND(255)</td></tr>
+						</table>
+
+						<p>In the above, RND(x) represents a random number between 0 and x inclusive, while RND(x, y) represents a random number between x and y inclusive.</p>
+
+
+X = The period of the sound (a bigger value means a lower pitch)
+
+Y = The length of the sound
+
+
+Mention LASNOISE2, which appears to be a different laser noise that is unused and not wired in properly
+
 					</div>
 				</div>
 
