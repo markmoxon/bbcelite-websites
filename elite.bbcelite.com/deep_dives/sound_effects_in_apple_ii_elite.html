@@ -13,10 +13,9 @@ page_header("deep_dives", "sound_effects_in_apple_ii_elite.html", "Sound effects
 
 						<p>One of the things I love about analysing assembly code from the 1980s is just how close you get to the hardware. There's nowhere to hide: there's absolutely nothing between the machine code (which we choose to write down as assembly language) and the voltages on the chip legs inside the box.</p>
 
-                        <p>Take this example. 6502 assembly instructions are essentially representations of bit patterns - so if we consider the LDA #7 instruction, this is just a way of writing $A9 $07 in machine code, or %10101011 %00000111 if we think of it in binary. When this instruction is sent to the CPU, the zeroes and ones in the binary machine code are passed into the silicon with 5v for a set bit and 0v for a clear bit, giving the following voltages on the D0-D7 pins along the right edge of the 6502's black plastic DIP package:</p>
+						<p>Take this example. 6502 assembly instructions are essentially representations of bit patterns, so if we consider the LDA #7 instruction, this is just a way of writing $A9 $07 in machine code, or %10101011 %00000111 if we think of it in binary. When this instruction is sent to the CPU, the zeroes and ones in the binary machine code are passed into the silicon with 5v for a set bit and 0v for a clear bit, giving the following voltages on the D0-D7 pins along the right edge of the 6502's black plastic DIP package:</p>
 
-<pre class="articleIndented">
-    LDA                         #7
+<pre class="articleIndented">    LDA                         #7
   = $A9                         $07
   = 1010 1001                   0000 0111
   = 5v 0v 5v 0v 5v 0v 0v 5v     0v 0v 0v 0v 0v 5v 5v 5v
@@ -26,45 +25,263 @@ page_header("deep_dives", "sound_effects_in_apple_ii_elite.html", "Sound effects
 
 						<p>More than any other version of Elite, the Apple II celebrates this simplicity and puts you directly in touch with the hardware. It does it with the disk routines (see the deep dive on <a href="file_operations_with_embedded_apple_dos.html">file operations with embedded Apple DOS</a>), and it does it with the interference patterns that colour the high-resolution graphics (see the deep dive on <a href="drawing_pixels_in_the_apple_ii_version.html">drawing pixels in the Apple II version</a>).</p>
 
-						<p>But in the case of the sound effects in Apple II Elite, this simplicity is almost brutalist, because while all the other 6502 systems that run Elite have dedicated sound chips that manage the generation of the game sounds, the Apple II has just a single, solitary click, and that's it. Heck, the stock Apple II doesn't even have timers or expose any interrupts for us to use to build our own sound driver. This is bare-metal binary at its finest.</p>
+						<p>But in the case of the sound effects in Apple II Elite, this simplicity is almost brutalist, because while all the other 6502 systems that run Elite have dedicated sound chips that manage the generation of the game sounds, the Apple II has just a single, solitary click, and that's it. Heck, the stock Apple II doesn't even have timers or expose any interrupts that we can use to build our own sound driver. This is bare-metal binary at its finest.</p>
 
-						<p>Let's see how Elite manages add its own click-track to everything from a laser beam to a missile launch.</p>
+						<p>Let's see how Elite manages to add its own click-track to everything from a laser beam to a missile launch.</p>
 
 						<h2 class="articleSubheader">Making sounds on the Apple II<br />
 													 -----------------------------</h2>
 
-                        <p>xxx</p>
+						<p>In the Apple II, there is only one way to make sound. The speaker is mapped to a soft switch at address $C030 (called SPEAKER). Accessing this address in any way, using any kind of write or read instruction, will move the position of the speaker cone once, either from "in" to "out", or from "out" to "in".</p>
+
+						<p>Each movement makes a clicking sound, and you can create notes by moving the speaker in and out at high-enough frequencies, which generates sound as a square wave. Higher notes need higher frequency clicks while lower notes need lower frequency clicks, and this corresponds to a shorter pause between clicks giving a higher note, and a longer pause between clicks giving a lower note. The pause between clicks is known as the period, so higher notes consist of more rapid clicks at higher frequencies and with shorter periods, while lower notes have lower frequencies and longer periods.</p>
+
+						<p>And that's it. To make any kind of sound, Elite has to make the correct number of clicks with the correct period to create the desired sound. Randomly changing the period while making a sound can create a white noise effect (which is particularly useful for explosions), and sounds can rise or fall in pitch by shortening or lengthening the period between each click.</p>
+
+						<p>Elite chooses to use the LDA $C030 instruction to create each click, so each time you see this instruction, that moves the speaker cone in or out. Sound effects are typically implemented using a loop where we make one click on each iteration around the loop. The length of the sound is defined by the number of iterations we make around this loop, and the pitch and type of sound is defined by the amount of time we pause between each iteration (which defines the amount of time between each click - in other words, it defines the period).</p>
+
+						<p>There is no sound chip, there is no sound synthesis, there is no operating system sound call, there is interrupt-driven background sound, and there is nowhere to hide. Let's see what Elite does with this incredibly basic sound system.</p>
+
+						<h2 class="articleSubheader">The game sounds in Apple II Elite<br />
+													 ---------------------------------</h2>
+
+						<p>There are various sound routines in the Apple version of Elite. Some take parameters and can generate multiple sounds from the same loop structure, while others are dedicated to making specific noises.</p>
+
+						<p>Here's a list of all the sound routines, with details of where they are called from and the sounds they make. There is more explanation after the table.</p>
 
 						<table class="spacedTableBorder codeSummary">
-							<tr class="codeSummaryHeader"><th>Routine</th><th>Sound effect</th><th>Called by</th><th>Length (Y)</th><th>Period (X)</th></tr>
-							<tr><td><a href="/apple/main/subroutine/click.html">CLICK</a></td><td>Toggle the state of the speaker</td><td><a href="/apple/main/subroutine/bomboff.html">BOMBOFF</a></td><td>N/A</td><td>N/A</td></tr>
-							<tr><td><a href="/apple/main/subroutine/lasnoise.html">LASNOISE</a></td><td>Our laser firing</td><td><a href="/apple/main/subroutine/main_flight_loop_part_3_of_16.html">Main flight loop (Part 3 of 16)</a></td><td>11</td><td>150<br /><br />+2 each Y</td></tr>
-							<tr><td><a href="/apple/main/subroutine/lasnoise.html">LASNOISE</a></td><td>Us being hit by lasers</td><td><a href="/apple/main/subroutine/tactics_part_6_of_7.html">TACTICS (Part 6 of 7)</a></td><td>11</td><td>150<br /><br />+2 each Y</td></tr>
-							<tr><td><a href="/apple/main/subroutine/soblip.html">SOBLIP</a></td><td>E.C.M (called once per main loop iteration while ECMA counts from 32 down to 1)</td><td><a href="/apple/main/subroutine/main_flight_loop_part_16_of_16.html">Main flight loop (Part 16 of 16)</a></td><td>20</td><td>ECMA + 192</td></tr>
-							<tr><td><a href="/apple/main/subroutine/soblip.html">SOBLIP</a></td><td>Hyperspace drive being engaged (called multiple times with X going from 255 to 185 in jumps of 10)</td><td><a href="/apple/main/subroutine/ll164.html">LL164</a></td><td>90</td><td>255, 245, 235 ... 185</td></tr>
-							<tr><td><a href="/apple/main/subroutine/sobomb.html">SOBOMB</a></td><td>Energy bomb (called once with each new zig-zag lightning bolt)</td><td><a href="/apple/main/subroutine/bombeff2.html">BOMBEFF2</a></td><td>25</td><td>7 * RND(224, 255)</td></tr>
-							<tr><td><a href="/apple/main/subroutine/sobeep.html">SOBEEP</a></td><td>Long, low beep</td><td><a href="/apple/main/subroutine/boop.html">BOOP</a></td><td>99</td><td>255</td></tr>
-							<tr><td><a href="/apple/main/subroutine/sobeep.html">SOBEEP</a></td><td>Short, high beep</td><td><a href="/apple/main/subroutine/beep.html">BEEP</a>/<a href="/apple/main/subroutine/bell.html">BELL</a></td><td>30</td><td>110</td></tr>
-							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Laser strike on another ship</td><td><a href="/apple/main/subroutine/exno.html">EXNO</a></td><td>15</td><td>50 + 7 * RND(255)<br /><br />+1 each Y</td></tr>
-							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Collision, exploding cargo canister/missile</td><td><a href="/apple/main/subroutine/exno3.html">EXNO3</a></td><td>40</td><td>50 + 7 * RND(255)<br /><br />+1 each Y</td></tr>
-							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Ship exploding</td><td><a href="/apple/main/subroutine/exno2.html">EXNO2</a></td><td>55</td><td>50 + 7 * RND(255)<br /><br />+1 each Y</td></tr>
-							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Us dying</td><td><a href="/apple/main/subroutine/death.html">DEATH</a></td><td>210</td><td>50 + 7 * RND(255)<br /><br />+1 each Y</td></tr>
-							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Launch or hyperspace tunnel (called for each ring)</td><td><a href="/apple/main/subroutine/hfs2.html">HFS2</a></td><td>10</td><td>RND(255)</td></tr>
-							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Enemy missile launch</td><td><a href="/apple/main/subroutine/sfrmis.html">SFRMIS</a></td><td>50</td><td>RND(255)</td></tr>
-							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Our missile launch</td><td><a href="/apple/main/subroutine/frmis.html">FRMIS</a></td><td>120</td><td>RND(255)</td></tr>
-							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Launching from a station (called twice)</td><td><a href="/apple/main/subroutine/laun.html">LAUN</a></td><td>256</td><td>RND(255)</td></tr>
+							<tr class="codeSummaryHeader"><th>Routine</th><th>Sound effect</th><th>Called by</th><th>Clicks</th><th style="width: 17ch">Period loops</th></tr>
+							<tr><td><a href="/apple/main/subroutine/click.html">CLICK</a></td><td>Toggle the state of the speaker</td><td><a href="/apple/main/subroutine/bomboff.html">BOMBOFF</a></td><td>1</td><td>N/A</td></tr>
+							<tr><td><a href="/apple/main/subroutine/lasnoise.html">LASNOISE</a></td><td>Our laser firing</td><td><a href="/apple/main/subroutine/main_flight_loop_part_3_of_16.html">Main flight loop (Part 3 of 16)</a></td><td>12</td><td>150<br /><br />+2 each loop</td></tr>
+							<tr><td><a href="/apple/main/subroutine/lasnoise.html">LASNOISE</a></td><td>Us being hit by lasers</td><td><a href="/apple/main/subroutine/tactics_part_6_of_7.html">TACTICS (Part 6 of 7)</a></td><td>12</td><td>150<br /><br />+2 each loop</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soblip.html">SOBLIP</a></td><td>E.C.M (called once per main loop iteration while ECMA counts from 32 down to 1)</td><td><a href="/apple/main/subroutine/main_flight_loop_part_16_of_16.html">Main flight loop (Part 16 of 16)</a></td><td>21</td><td>ECMA + 192</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soblip.html">SOBLIP</a></td><td>Hyperspace drive being engaged (called multiple times, passing a period in X that goes from 255 to 185 in jumps of 10)</td><td><a href="/apple/main/subroutine/ll164.html">LL164</a></td><td>91</td><td>255 for 90 loops<br />245 for 90 loops<br />...<br />195 for 90 loops<br />185 for 90 loop</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sobomb.html">SOBOMB</a></td><td>Energy bomb (called once with each new zig-zag lightning bolt)</td><td><a href="/apple/main/subroutine/bombeff2.html">BOMBEFF2</a></td><td>26</td><td>7 * RND(224, 255)</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sobeep.html">SOBEEP</a></td><td>Long, low beep</td><td><a href="/apple/main/subroutine/boop.html">BOOP</a></td><td>100</td><td>255</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sobeep.html">SOBEEP</a></td><td>Short, high beep</td><td><a href="/apple/main/subroutine/beep.html">BEEP</a>/<a href="/apple/main/subroutine/bell.html">BELL</a></td><td>31</td><td>110</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Laser strike on another ship</td><td><a href="/apple/main/subroutine/exno.html">EXNO</a></td><td>16</td><td>50 + 7 * RND(255)<br /><br />+1 each loop</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Collision, exploding cargo canister/missile</td><td><a href="/apple/main/subroutine/exno3.html">EXNO3</a></td><td>41</td><td>50 + 7 * RND(255)<br /><br />+1 each loop</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Ship exploding</td><td><a href="/apple/main/subroutine/exno2.html">EXNO2</a></td><td>56</td><td>50 + 7 * RND(255)<br /><br />+1 each loop</td></tr>
+							<tr><td><a href="/apple/main/subroutine/soexpl.html">SOEXPL</a></td><td>Us dying</td><td><a href="/apple/main/subroutine/death.html">DEATH</a></td><td>211</td><td>50 + 7 * RND(255)<br /><br />+1 each loop</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Launch or hyperspace tunnel (called for each ring)</td><td><a href="/apple/main/subroutine/hfs2.html">HFS2</a></td><td>11</td><td>RND(255)</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Enemy missile launch</td><td><a href="/apple/main/subroutine/sfrmis.html">SFRMIS</a></td><td>51</td><td>RND(255)</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Our missile launch</td><td><a href="/apple/main/subroutine/frmis.html">FRMIS</a></td><td>121</td><td>RND(255)</td></tr>
+							<tr><td><a href="/apple/main/subroutine/sohiss.html">SOHISS</a></td><td>Launching from a station (called twice in succession)</td><td><a href="/apple/main/subroutine/laun.html">LAUN</a></td><td>257</td><td>RND(255)</td></tr>
 						</table>
 
 						<p>In the above, RND(x) represents a random number between 0 and x inclusive, while RND(x, y) represents a random number between x and y inclusive.</p>
 
+						<p>The number of clicks defines the length of each sound, woth the speaker moving in on one click and out on the next. If this value is passed to the sound routine as a parameter, then it is passed in the Y register. If a parameter is passed, then the number of clicks made is the parameter value plus 1, as every sound routine ends with an extra click.</p>
 
-X = The period of the sound (a bigger value means a lower pitch)
+						<p>The number of period loops defines the length of the pause between each click, so this defines the pitch and type of the sound effect. If this is passed to the sound routine as a parameter, it is passed in the X register.</p>
 
-Y = The length of the sound
+						<p>Let's take a closer look at how these different sounds are generated.</p>
 
+						<h2 class="articleSubheader">A simple beep<br />
+													 -------------</h2>
 
-Mention LASNOISE2, which appears to be a different laser noise that is unused and not wired in properly
+						<p>Some sound effects are very simple, and the short, high beep generated by the <a href="/apple/main/subroutine/beep.html">BEEP</a> routine is a good example. This sets two parameters - the length of the sound in Y (which is set to 30 for a short beep) and the period in X (which is set to 110 for a high beep) - and calls the <a href="/apple/main/subroutine/sobeep.html">SOBEEP</a> routine, which contains the following sound loop:</p>
 
+<pre class="articleIndented">   STX T3               \ Store the period in T3
+
+  .BEEPL1
+
+   LDA $C030            \ 4 CPU cycles
+
+   LDX T3               \ 3 CPU cycles
+
+   DEX                  \ 2 CPU cycles
+   BNE P%-1             \ 3 CPU cycles when branch is taken, 2 otherwise
+
+   DEY                  \ 2 CPU cycles
+
+   BNE BEEPL1           \ 3 CPU cycles when branch is taken, 2 otherwise
+</pre>
+
+						<p>Inside the loop I have noted the number of cycles that each instruction takes, to feed into the following discussion. See the <a href="/apple/main/subroutine/sobeep.html">SOBEEP</a> routine in the annotated source for an explanation of what the instructions actually do.</p>
+
+						<p>For a short, high beep sound, we enter the BEEPL1 loop with the number of iterations in Y (which was set to 30 by BEEP) and the period in T3 (which we've set to 110 with the STX T3 instruction). The loop now does the following:</p>
+
+						<ul>
+							<li>Make a click, which takes four CPU cycles for the LDA $C030 instruction.</li>
+
+							<li>Set X to the period length in T3 (which we already set to 110), using a load instruction from zero page that takes three CPU cycles.</li>
+
+							<li>Wait for a total of 5 * 110 - 1 CPU cycles, as each DEX takes two cycles and each successful BNE takes three cycles, giving five cycles per loop, and we repeat the loop X times where X = 110, with the final non-branching BNE taking two cycles rather than three (so we subtract one cycle). The branch destination of P%-1 means we branch back one instruction, so we keep repeating the DEX and BNE instructions until X reaches zero.</li>
+
+							<li>Repeat the process 30 times (as Y = 30), taking another two and three cycles on each iteration to do the DEY and BNE instructions (with the final BNE only taking two cycles as the last branch is not taken).</li>
+						</ul>
+
+						<p>There is one more final click after the end of this loop, so in all the BEEP routine makes 31 clicks, with a pause between each click of:</p>
+
+<pre class="articleIndented">  4 + 3 + 5 * 110 - 1 + 2 + 3 = 561 CPU cycles
+</pre>
+
+						<p>To be totally accurate, there is a pause of 560 cycles before the final click, but this isn't significant.</p>
+
+						<p>The standard Apple II has its 6502 CPU clocked at 1.023 MHz, so each cycle takes around:</p>
+
+<pre class="articleIndented">  1 / 1,023,000 seconds = 0.000000978 seconds
+</pre>
+
+						<p>(The Apple's CPU timing is a bit more convoluted than this, but this figure is close enough for our purposes.)</p>
+
+						<p>So BEEP makes a click every 561 cycles, which is every:</p>
+
+<pre class="articleIndented">  561 * 0.000000978 = 0.0005484 seconds
+</pre>
+
+						<p>or:</p>
+
+<pre class="articleIndented">  1 / 0.0005484 = 1824 clicks per second
+</pre>
+
+						<p>Each click represents one half of a square wave - with the microphone either going in or out to represent the wave going up or down - so this is equivalent to a square wave of frequency:</p>
+
+<pre class="articleIndented">  1824 / 2 = 912 Hz
+</pre>
+
+						<p>This is pretty close to the frequency of A# in octave 5 (which is 923 Hz), so this is indeed a high beep sound. It lasts for 30 iterations, so that's:</p>
+
+<pre class="articleIndented">  30 * 0.0005484 = 0.016 seconds
+</pre>
+
+						<p>which is indeed a short, high beep.</p>
+
+						<p>For the lower, longer beep that's produced by the <a href="/apple/main/subroutine/boop.html">BOOP</a> routine, we enter the exact same loop, but with the number of iterations in Y set to 99 and the period in T3 set to 255. This leads to a pause between clicks of:</p>
+
+<pre class="articleIndented">  4 + 3 + 5 * 255 - 1 + 5 = 1286 CPU cycles
+</pre>
+
+						<p>This is every:</p>
+
+<pre class="articleIndented">  1286 * 0.000000978 = 0.0012571 seconds
+</pre>
+
+						<p>or:</p>
+
+<pre class="articleIndented">  1 / 0.0012571 = 795 clicks per second
+</pre>
+
+						<p>which is a square wave with a frequency of:</p>
+
+<pre class="articleIndented">  795 / 2 = 398 Hz
+</pre>
+
+						<p>This is around the frequency of G in octave 4 (which is 392 Hz), so that's a nice low beep sound. It lasts for 99 iterations, so that's:</p>
+
+<pre class="articleIndented">  99 * 0.0012571 = 0.12 seconds
+</pre>
+
+						<p>which is quite a lot longer than the short beep.</p>
+
+						<p>All of the sound generation routines follow this same pattern: there's a loop of a specific duration, during which one click is made and we pause for the specified period before moving on the next click. It's the behaviour of the period during this loop that defines the sound, so let's take a look at a slightly more complicated example.</p>
+
+						<h2 class="articleSubheader">Variable pitch<br />
+													 --------------</h2>
+
+						<p>One approach to creating new sound effects is to vary the period as the sound progresses, causing the sound's frequency to rise or fall. The E.C.M. sound produced by <a href="/apple/main/subroutine/soblip.html">SOBLIP</a> is a good example of this, as the period in T3 gets decremented on each iteration, so the length of the pause between clicks goes down and the sound's frequency goes up.
+
+						<p>This is achieved with a couple of relatively simple changes to the beep routine above:</p>
+
+<pre class="articleIndented">  .BEEPL2
+
+   LDA $C030            \ 4 CPU cycles
+
+   DEC T3               \ 5 CPU cycles
+   LDX T3               \ 3 CPU cycles
+
+   DEX                  \ 2 CPU cycles
+   NOP                  \ 2 CPU cycles
+   BNE P%-2             \ 3 CPU cycles when branch is taken, 2 otherwise
+
+   DEY                  \ 2 CPU cycles
+
+   BNE BEEPL2           \ 3 CPU cycles when branch is taken, 2 otherwise
+</pre>
+
+						<p>During each iteration, the period in T3 now gets decremented, so the pause code does one less loop on each successive iteration and the sound's frequency goes up. The pause code takes two more cycles per loop when compared to BEEP, as there is an extra NOP in there (which takes two cycles, so this lowers the sound's frequency compared to BEEP), but the logic is otherwise the same.</p>
+
+						<p>So each call to SOBLIP produces a sound that rises in frequency, and to make the full E.C.M. sound, we call SOBLIP once on each iteration of the main loop, passing the value of the E.C.M. counter into the routine as the starting period. The actual value passed is ECMA + 192, where ECMA counts down from 31 to 1 while the E.C.M. is activated, decrementing once on each main loop iteration. So the E.C.M. sound is made up of a sequence of pulse sounds, each of which rises in frequency as it plays, with the starting frequency of each pulse rising over the course of the whole sound (as the starting period drops as ECMA counts down).</p>
+
+						<p>The <a href="/apple/main/subroutine/lasnoise.html">LASNOISE</a> routine, which makes the sound of our lasers firing, works along similar lines. It looks like this:</p>
+
+<pre class="articleIndented">  .BEEPL3
+
+   LDA $C030            \ 4 CPU cycles
+
+   INC T3               \ 5 CPU cycles
+   INC T3               \ 5 CPU cycles
+   LDX T3               \ 3 CPU cycles
+
+   DEX                  \ 2 CPU cycles
+   BNE P%-1             \ 3 CPU cycles when branch is taken, 2 otherwise
+
+   DEY                  \ 2 CPU cycles
+
+   BNE BEEPL3           \ 3 CPU cycles when branch is taken, 2 otherwise
+</pre>
+
+						<p>This is similar to the E.C.M. sound, except the period in T3 gets incremented twice on each loop rather than being decremented once, so the sound goes down in frequency, twice as fast as the E.C.M. sound goes up. And because LASNOISE doesn't have the extra NOP either, the overall frequency is higher than in the E.C.M. sound.</p>
+
+						<h2 class="articleSubheader">White noise<br />
+													 -----------</h2>
+
+						<p>Another approach is to vary the period randomly on each iteration, to produce white noise. The <a href="/apple/main/subroutine/sohiss.html">SOHISS</a> routine is a good example, with a loop that looks like this:</p>
+
+<pre class="articleIndented">  .SOHISS2
+
+   LDA $C030            \ 4 CPU cycles
+
+   JSR DORND            \ 42 CPU cycles
+
+   DEX                  \ 2 CPU cycles
+   NOP                  \ 2 CPU cycles
+   NOP                  \ 2 CPU cycles
+   BNE P%-3             \ 3 CPU cycles when branch is taken, 2 otherwise
+
+   DEY                  \ 2 CPU cycles
+
+   BNE SOHISS2          \ 3 CPU cycles when branch is taken, 2 otherwise
+</pre>
+
+						<p>This isn't that different from the SOBEEP routine, except the length of the pause in each iteration, which is stored in the X register, is set to a random number between 0 and 255 by calling DORND, with the number changing for each pause loop. Each iteration of the pause loop takes nine clock cycles, as there are two NOP instructions in the loop, each of which takes two cycles. Also, the JSR DORND routine itself takes 42 cycles, so on average the period for this sound will be quite a lot longer than our standard beep, and it will also vary considerably between each click of the loudspeaker, leading to white noise.</p>
+
+						<p>The only parameter that is passed to the SOHISS routine is the length of the sound effect, so an enemy missile launch will last 50 iterations, compared to our missile launch at 120 iterations. The actual sound will be the same, though.</p>
+
+						<h2 class="articleSubheader">White noise and variable pitch<br />
+													 ------------------------------</h2>
+
+						<p>Finally there is the <a href="/apple/main/subroutine/soexpl.html">SOEXPL</a> routine, which combines random white noise with an increasing period, like this:
+
+<pre class="articleIndented">  .BEEPL4
+
+   LDA $C030            \ 4 CPU cycles
+
+   INC T3               \ 5 CPU cycles
+   LDX T3               \ 3 CPU cycles
+
+   DEX                  \ 2 CPU cycles
+   NOP                  \ 2 CPU cycles
+   NOP                  \ 2 CPU cycles
+   BNE P%-3             \ 3 CPU cycles when branch is taken, 2 otherwise
+
+   JSR DORND            \ 42 CPU cycles
+
+   DEX                  \ 2 CPU cycles
+   NOP                  \ 2 CPU cycles
+   BNE P%-2             \ 3 CPU cycles when branch is taken, 2 otherwise
+
+   DEY                  \ 2 CPU cycles
+
+   BNE BEEPL4           \ 3 CPU cycles when branch is taken, 2 otherwise
+</pre>
+
+						<p>The first part increments the period like <a href="/apple/main/subroutine/lasnoise.html">LASNOISE</a>, while the second part creates white noise like <a href="/apple/main/subroutine/sohiss.html">SOHISS</a>. The overall effect is of a laser strike with a descending pitch, mixed with the white noise of an explosion.</p>
+
+						<p>It's also worth noting that when we call one of these sound routines, the entire CPU is devoted to making that sound, and everything else stops. Interestingly, the stock Apple II doesn't actually use any interrupts; these only come into play when expansion cards are fitted, so there is no system-wide interrupt system that we can use to implement background sounds. As a result, we need our sound routines to be short and snappy so they don't hog the processor for too long, or that will slow the game down too much.</p>
+
+						<p>So that's how the Apple II version of Elite makes sound effects from nothing but a simple click. The results might not win any prizes, but as an exercise in understanding the very basics of sound generation, it's a fascinating system.</p>
 					</div>
 				</div>
 
