@@ -11,51 +11,37 @@ page_header("deep_dives", "working_with_the_apple_ii_keyboard.html", "Working wi
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Trying to implement a game-ready key logger, one key press at a time</h2>
 
-						<p>This deep dive is currently being written and should be ready to be published in the second half of February.</p>
+						<p>The Apple II is an interesting computer to work with. On one hand, it puts you so closely in touch with the hardware that it can be a bit of a shock: the sound system is particularly extreme example, giving the programmer nothing more than a single switch to flip the loudspeaker cone in and out (see the deep dive on <a href="sound_effects_in_apple_ii_elite.html">sound effects in Apple II Elite</a> for the details).</p>
 
-<!--
+						<p>But other aspects feel as if the hardware is hidden from the programmer, with no way to access the low-level electronics. The keyboard is probably the most obvious example, and the effect that it has on Elite is quite profound. Let's see why.</p>
 
-Only the IIe had joystick ports II and II+ had a 16-pin DIP on the motherboard - mention this in keyboard article?
-https://nerdlypleasures.blogspot.com/2021/08/digital-joysticks-and-apple-ii.html
+						<h2 class="articleSubheader">One key at a time<br />
+													 -----------------</h2>
 
+						<p>The other versions of 6502 Elite contain some pretty sophisticated keyboard routines. The game originated on the BBC Micro, whose keyboard is a thing of beauty, and the authors took full advantage of this sophisticated hardware, building a key logging system that enables multiple flight keys to be read at the same time (see the deep dive on <a href="the_key_logger.html">the key logger</a> for details).</p>
 
+						<p>This same model is used in all the versions of 6502 Elite, from the Commodore 64's keyboard to the NES version's controllers: see the deep dives on <a href="reading_the_commodore_64_keyboard_matrix.html">reading the Commodore 64 keyboard matrix</a> and <a href="bolting_nes_controllers_onto_the_key_logger.html">bolting NES controllers onto the key logger</a>. The result is a system where you can roll and pitch and fire lasers and speed up, all at the same time; all you need are lots of fingers.</p>
 
+						<p>The Apple II version also uses the key logger, but only because it was used in the Commodore 64 codebase from which the Apple version is derived; unplugging the key logger would be a big job, and it isn't necessary, but it does mean the Apple version had a sophisticated logger that is only ever used to log one key press at time. This is down to the hardware: the Apple keyboard controller only reads one key at a time, and that's it.</p>
 
-https://groups.google.com/g/comp.emulators.apple2/c/-G8M5osbdUg
+						<p>The other versions of Elite all scan their keyboards or controllers for multiple flight keys during each iteration of the main loop, but there simply isn't the hardware support for this approach in the Apple II. Instead, the Apple exposes the keyboard via two memory-mapped soft switches at $C000 and $C010. If the byte at $C000 has bit 7 set, then bits 0 to 6 contain the ASCII code of the last key to be pressed; and accessing $C010 resets the keyboard strobe so the keyboard controller looks for the next key press, and updates $C000 accordingly. And that's it: only one key press is ever exposed.</p>
 
-On the II and II Plus, the best that you can do is determine that no key
-is being pressed when you read the keyboard for input. You would have to
-save the ASCII code of the last key press, and then when you read the
-keyboard for input, but find no keypress, you assume that that last key
-pressed has been released. However, because the keyboard doesn't auto
-repeat, the user could still be holding down that key!
+						<p>You can see this in action in the <a href="/apple/main/subroutine/rdkey.html">RDKEY</a> routine, which is the only place in the whole game where the keyboard is read (there is another routine called <a href="/apple/main/subroutine/dksanykey.html">DKSANYKEY</a> that detects whether any key is being pressed, but this is not used anywhere). The DOKEY routine starts with a call to the <a href="/apple/main/subroutine/zektran.html">ZEKTRAN</a> routine, which resets the key logger at <a href="/apple/main/workspace/zp.html#keylook">KEYLOOK</a>, and then it checks bit 7 of $C000 to see if a key press has been registered, and if it has, it updates the relevant entry in the key logger. And that's it - that's the entire keyboard scanning routine.</p>
 
->
-> The Apple II/II+ didn't have this functionality. I don't think the IIe
-> did, but I could be wrong.
->
+						<h2 class="articleSubheader">Impact on gameplay<br />
+													 ------------------</h2>
 
-I recall most II and II Plus era games had a separate key to stop movement.
-This no doubt stems from the limitation that their keyboard is not
-auto-repeat. You can tell from software that a key was pressed, but you
-can't tell for how long it was pressed, or if it is still pressed.
+						<p>Not surprisingly, this impacts the gameplay quite a bit. Apple II Elite is perfectly playable on the keyboard, and if you grew up with this as your only version, you wouldn't know what you were missing. But coming from the BBC Micro to the Apple II version, the difference in the keyboard controls is quite profound.</p>
 
+						<p>For example, one of my favourite moves in Elite is to roll and pitch at the same time - it's an efficient way of getting those pesky pirates into your sights. But you simply can't do this on the Apple version: when you press a key, the game forgets about any other keys that you are pressing, and only processes the latest key press. So if you press climb ("X") and then roll right (">"), you will only roll right, as that's the last key you pressed. And if you are pitching down ("S") and decide to fire your lasers at your foe ("A"), the game will forget that you are holding down the "S" key, and you will slowly stop pitching down as the damping kicks in, even though you are still holding down "S". To add to the confusion, if you then release the "A" key to stop firing but continue to press "S", the game will not spot this, and you won't start pitching down again.</p>
 
+						<p>The reason is that the Apple II keyboard controller only notices when keys are actually pressed down, at which point the ASCII value of the key being pressed is stored in $C000 and bit 7 is set. If a new key is then pressed, then $C000 is updated to the new value and the old key press is discarded, even if that key is still being pressed. If the latest key is then held down and no other keys are pressed, then the key being held down will auto-repeat, updating the $C000 soft switch at a repeat rate of roughly ten times a second; but as soon as the current key is released or any other key is pressed, the system forgets about the original key and moves on to the latest key press (if there is one).</p>
 
+						<p>We can't access the keyboard matrix to scan the keyboard ourselves, so we simply have to live with this limitation. In other words, we can tell when a key is pressed, and the keyboard controller repeats the key press for us if the key is held down, but that's it: we can't tell if a key has been released.</p>
 
-Apple II keyboard only notices key down, not hold down or key up: "You can tell from software that a key was pressed, but you can't tell for how long it was pressed, or if it is still pressed."
+						<p>This is perhaps for the best, as the even though the keyboard controller in the Apple II supports n-key rollover (i.e. holding down multiple keys at once), the keyboard itself doesn't contain the diodes needed to make this work, so ghosting on an Apple keyboard would be a major issue if the matrix was exposed. Instead, the controller hides the keyboard from the programmer and exposes just one key - the last one to be pressed.</p>
 
-no repeat (REPT key does this using a hardware 555 timer)
-
-$C000 = one byte containing ASCII of last key pressed
-bit 7 set if this is new data since the last time we cleared the strobe
-
-Elite does not read the any-key-down bit 7 from $C010, as it isn't supported on Apple II, only later models - it only accesses it to clear the strobe to signal fetching of the next key press
-
-THIS IS WHY WE USE JOYSTICKS
-
--->
-
+						<p>Luckily, like the BBC Micro, the Apple II supports analogue joysticks, which provides much more fine-tuned control over your ship than the Apple keyboard... though on the Apple II and Apple II+, the joystick port was little more than a 16-pin DIP socket on the motherboard, so even installing this option required getting involved with the hardware.</p>
 					</div>
 				</div>
 
