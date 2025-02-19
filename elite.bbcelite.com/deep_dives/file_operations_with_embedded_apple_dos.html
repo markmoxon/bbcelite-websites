@@ -11,39 +11,146 @@ page_header("deep_dives", "file_operations_with_embedded_apple_dos.html", "File 
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Saving and loading commander files with a customised version of DOS 3.3</h2>
 
-						<p>This deep dive is currently being written and should be ready to be published in the second half of February.</p>
+						<p>Just like all the other versions of Elite on the 6502, the Apple II version of Elite was written by Ian Bell and David Braben... and just like all the other non-Acorn versions that they wrote, they didn't do it entirely alone. Tucked away inside the cover of the Apple version's Space Trader's Flight Training Manual is this credit:</p>
 
-<!--
+						<blockquote class="articleIndented">
+							<p>Technical Assistance by Rob Northan</p>
+						</blockquote>
 
-File operations with embedded Apple DOS
+						<p>They may have spelled his name incorrectly, but this is the same Rob Northen who was responsible for the devious copy protection system in the original BBC Micro version of Elite. So what did he contribute to Apple II Elite?</p>
 
-"Why Elite contains code by Steve Wozniak, Randy Wigginton and Rob Northen"
+						<p>Luckily there's a pretty big clue in the source code, at the top of the <a href="https://github.com/markmoxon/elite-source-code-apple-ii/blob/main/1-source-files/original-sources/A.ELITEJ.TXT">A.ELITEJ</a> source file:</p>
 
-"Apple DOS 1.00 from Rob Northen" in source
-DOS memory map is on page 49
-BigTextDocument (which I've used for source) is from PDF:
-Apple II DOS 3.3 C Source Code Listing
-In loader too
+<pre class="articleIndented">  30REM ELITE &lt;J&gt;  AP   /  Apple DOS 1.00 from Rob Northen
+</pre>
 
+						<p>This source file contains the code to load and save commander files... and there is an awful lot of it, too. So let's take a look at this contribution, because it turns out that Rob Northen wasn't working alone either.</p>
 
-DOS source:
-https://computerhistory.org/blog/apple-ii-dos-source-code/
-https://computerhistory.org/blog/apple-ii-dos-source-code/?key=apple-ii-dos-source-code
+						<h2 class="articleSubheader">Apple DOS<br />
+													 ---------</h2>
 
-Annotated source as a PDF:
-https://brutaldeluxe.fr/documentation/dos33/apple2_SRC_DOS33C_1983.pdf
+						<p>Putting the Apple II version to one side for a minute, Elite on the 6502 typically contains pretty terse file-related code.</p>
 
-DOS links:
-https://6502disassembly.com/other-a2.html
+						<p>For example, the Acorn versions all use the operating system's built-in OSFILE routine to load and save files, which involves little more than setting up a small data block containing the file details and passing the address of this block to OSFILE. The operating system takes care of everything else, and the resulting code is nice and simple: for example, the <a href="/cassette/main/subroutine/lod.html">LOD</a> and <a href="/cassette/main/subroutine/qus1.html">QUS1</a> routines in the BBC Micro cassette version load a commander file and move it to the correct location in memory, all in a few instructions, and the same approach works for the disc-based versions too.</p>
 
-DOS source in git with annotations (but is full of snarky shit):
-https://github.com/Michaelangel007/apple2_dos33
-https://htmlpreview.github.io/?https://github.com/Michaelangel007/apple2_dos33/blob/master/dos33.html
+						<p>The Commodore 64 code is similarly snappy, and it uses the Kernal's SETLFS, SETNAM, LOAD and SAVE functions in a comparable fashion. And the NES version doesn't even bother with saving or loading - it just copies the commander file into battery-backed RAM in the cartridge, and that's it.</p>
 
-How the disk controller card works:
-https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/
+						<p>The Apple II does things a little differently, to put it mildly. At launch, the Apple II only supported cassettes for loading and saving files; this was 1977, and floppy disks were a prohibitively expensive technology. This led to one of the most impressive developments in the early history of computing, when Steve Wozniak created the Disk II Interface card.</p>
 
--->
+						<p>Designed with just eight simple chips, this groundbreaking board changed the rules by shifting the complexity of contemporary disk interfaces from hardware into software. The interface itself was brilliantly simple and worked with a disk drive with all the control electronics removed, so the hardware cost was tiny compared to the other disk systems on the market. This was because all the heavy lifting had been moved into the supporting software that ran on the Apple II - software called Apple DOS.</p>
+
+						<p>To be honest, I can't do this story justice, so if you want to bask in the brilliance of Woz's design and why it was so astonishing, I recommend you read this <a href="https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/">excellent article from Big Mess o' Wires</a>. Just be warned - this is a rabbit hole that it's difficult to emerge from!</p>
+
+						<p>Apple DOS itself is an epic bit of coding. At its heart is a set of low-level routines called the "read/write track-sector" routines, or RWTS for short; and sitting on top of these routines is a user interface that lets you enter disk commands such as BSAVE or CATALOG. The RWTS routines were written by Steve Wozniak and Randy Wigginton during the Christmas holidays in 1977, and they formed the basis for the first demos in early 1978; Paul Laughton then wrote what would become Apple DOS on top of these low-level routines. If you want to know more, the Computer History Museum has <a href="https://computerhistory.org/blog/apple-ii-dos-source-code/">released the sources for everyone to play with</a>, along with a great summary of the development history of DOS.</p>
+
+						<p>Apple DOS is very much a disk-based product, and every DOS disk contains a copy of the Apple DOS routines. The Disk II Interface contains a tiny 251-byte program that loads the first bit of DOS from disk, and then this in turn loads the rest of DOS into memory. It's an involved process that's nicely described in the <a href="https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/">Big Mess o' Wires article</a>, but if you're really interested in how this works, I can highly recommend the go-to reference on the subject, in the form of the <a href="https://archive.org/details/beneath-apple-dos-2020/">Beneath Apple DOS</a> book.</p>
+
+						<p>This approach of loading DOS from disk differs considerably from the BBC Micro and Commodore 64. On the BBC Micro, the disc interface contains a powerful 8271 or 1770 controller chip and the Disc Filing System (DFS) lives in a separate ROM, while the 1541 disk drive for the Commodore 64 plugs into the machine's IEEE-488 serial port and is powered by the drive's own dedicated 6502 CPU, which has its own on-board disk controller and disk operating system. In both cases that's a lot more hardware than with the Apple II, so there's no need to load DOS into memory, as it's already present in ROM.</p>
+
+						<p>Let's see what Apple DOS means for Elite.</p>
+
+						<h2 class="articleSubheader">Embedded Apple DOS<br />
+													 ------------------</h2>
+
+						<p>When a bootable floppy disk is put into an Apple II disk drive, the first thing that happens is that DOS gets loaded into memory. When it's fully loaded, DOS consumes quite a bit of space. According to the memory map in chapter 5 of Beneath Apple DOS, it grabs the whole block from $9600 to $BFFF, inserting itself just below I/O memory at $C000.</p>
+
+						<p>This is what it looks like once everything is loaded:</p>
+
+<pre class="articleIndented">  :                                   :
+  :                                   :
+  +-----------------------------------+   $C100
+  |                                   |
+  | I/O memory                        |
+  |                                   |
+  +-----------------------------------+   $C000
+  |                                   |
+  | RWTS                              |
+  |                                   |
+  +-----------------------------------+   $B600
+  |                                   |
+  | File manager                      |
+  |                                   |
+  +-----------------------------------+   $AAC9
+  |                                   |
+  | Main DOS routines                 |
+  |                                   |
+  +-----------------------------------+   $9D00
+  |                                   |
+  | DOS file buffers                  |
+  |                                   |
+  +-----------------------------------+   $9600
+  :                                   :
+  :                                   :
+</pre>
+
+						<p>This is quite a big memory footprint: it's 10.5K of RAM, to be exact, which is a significant chunk of memory in a 48K machine. Elite uses almost all of that 48K when it's loaded, so there's no way that Elite and DOS can co-exist in the same machine - see the <a href="the_elite_memory_map_apple_ii.html">Apple II Elite memory map</a> for details. Something has to give, and it isn't going to be Elite.
+
+						<p>The solution is to ignore DOS once it has loaded the game binaries from disk. If we don't call any DOS routines or use any DOS commands, then the DOS code will never be run and we can use the memory from $9600 to $BFFF for Elite.</p>
+
+						<p>But if we decide to ignore DOS, how do we load and save commander files? The answer is to embed a cut-down version of DOS within the game itself, and this is the "Apple DOS 1.0" that Rob Northen wrote for the game.</p>
+
+						<p>The disk routines in Apple II Elite fall into two categories. First, there's a set of routines by Rob Northen that let us examine the disk catalog and free space map to work out how to save and load commander files; and second, there's a copy of the RWTS routines from Apple DOS 3.3, with only minor changes from the official release of DOS, that do the low-level disk access. Rob Northen's code calls the relevant RWTS routines when it needs to read or write a disk sector, and because the RWTS code in Elite is self-contained and only contains the essentials, it looks after the DOS aspects and we can simply ignore the DOS code that loaded the original game and can overwrite it with game code.</p>
+
+						<p>The result takes up a lot less memory than the 10.5K of standard DOS. Indeed, the combined memory footprint of Rob Northen's code and the RWTS routines comes to just under 1.5K, and Elite saves even more memory by storing the DOS file buffers at K%, sharing space with the ship data blocks. We can do this because we only ever do disk operations when saving or loading commander files, and we only do that when we're docked, at which point there are no ships in the local bubble that need data blocks. It's all very efficient, and it enables Elite to enjoy the required functionality from Apple DOS but without taking a huge memory hit.</p>
+
+						<p>It also means that Apple II Elite contains a whole chunk of code that was written by Steve Wozniak and Randy Wigginton, right there in the game binary. It's in the second part of the main game, which is on the final game disk in the form of the ELA file. So the ELA file in Firebird Elite contains code by Ian Bell, David Braben, Steve Wozniak, Randy Wigginton and Rob Northen, all in the same file. I mean, just how many coding heroes can you fit into one place? It's giddy stuff.</p>
+
+						<h2 class="articleSubheader">The disk routines<br />
+													 -----------------</h2>
+
+						<p>Here are the details of all the major disk routines and lookup variables in Apple II Elite.</p>
+
+						<p>The first table below shows all the low-level RWTS routines that have been included from Apple DOS 3.3, in the order in which they appear in the Elite source. The table also shows the equivalent routine name in DOS, and if you click the Elite routine name to see the commented code, you'll see I've included the original source code from Apple DOS 3.3 alongside the version in the Elite source code. This includes all the original Wozniak/Wigginton commentary, so you can see exactly how the two versions match up.</p>
+
+						<p>For reference, you can also see the original DOS routines in the <a href="/pdfs/apple2_SRC_DOS33C_1983.pdf">Apple II DOS 3.3 C Source Code Listing</a> PDF. Note that the rtable variable in Elite maps to an unlabelled table in DOS at address $3A96, which can be found on page 99 of the source listing PDF, just after the PD2 label.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Routine</th><th>Description</th><th style="width: 11ch">DOS routine</th></tr>
+							<tr><td><a href="/apple/main/variable/wtable.html">wtable</a></td><td>6-bit to 7-bit nibble conversion table</td><td>NIBL</td></tr>
+							<tr><td><a href="/apple/main/subroutine/rwts.html">rwts</a></td><td>Read or write a specific sector</td><td>RWTS</td></tr>
+							<tr><td><a href="/apple/main/subroutine/trytrk.html">trytrk</a></td><td>Try finding a specific track on the disk</td><td>TRYTRK</td></tr>
+							<tr><td><a href="/apple/main/subroutine/rdrght.html">rdrght</a></td><td>Check that this is the correct track</td><td>RDRIGHT</td></tr>
+							<tr><td><a href="/apple/main/subroutine/read.html">read</a></td><td>Read a sector's worth of data into the buffr2 buffer</td><td>READ16</td></tr>
+							<tr><td><a href="/apple/main/subroutine/write.html">write</a></td><td>Write a sector's worth of data from the buffr2 buffer to the current track and sector</td><td>WRITE16</td></tr>
+							<tr><td><a href="/apple/main/subroutine/rdaddr.html">rdaddr</a></td><td>Read a track address field</td><td>RDADR16</td></tr>
+							<tr><td><a href="/apple/main/subroutine/seek.html">seek</a></td><td>Fast seek routine</td><td>SEEK</td></tr>
+							<tr><td><a href="/apple/main/subroutine/armwat.html">armwat</a></td><td>Implement the arm move delay</td><td>MSWAIT</td></tr>
+							<tr><td><a href="/apple/main/variable/armtab.html">armtab</a></td><td>Phase-on time table in 100-usec intervals</td><td>ONTABLE</td></tr>
+							<tr><td><a href="/apple/main/variable/armtb2.html">armtb2</a></td><td>Phase-off time table in 100-usec intervals</td><td>OFFTABLE</td></tr>
+							<tr><td><a href="/apple/main/subroutine/prenib.html">prenib</a></td><td>Convert 256 8-bit bytes in buffer into 342 6-bit nibbles in buffr2</td><td>PRENIB16</td></tr>
+							<tr><td><a href="/apple/main/subroutine/pstnib.html">pstnib</a></td><td>Convert 342 6-bit nibbles in buffr2 into 256 8-bit bytes in buffer</td><td>POSTNB16</td></tr>
+							<tr><td><a href="/apple/main/subroutine/wbyte.html">wbyte</a></td><td>Write one byte to disk</td><td>WNIBL9</td></tr>
+							<tr><td><a href="/apple/main/variable/scttab.html">scttab</a></td><td>Lookup table to translate logical (requested) sector number to physical sector number</td><td>INTRLEAV</td></tr>
+							<tr><td><a href="/apple/main/variable/rtable.html">rtable</a></td><td>64 disk nibbles of "6-and-2" Read Translate Table</td><td>$3A96</td></tr>
+						</table>
+
+						<p>The second table below shows the high-level routines by Rob Northen, again in the order in which they appear in the Elite source.</p>
+
+						<p>These routines mainly deal with the structure of data on the disk, and specifically the Virtual Table of Contents (VTOC), the catalog sector, file entries and the track/sector lists. These routines implement tasks like searching the disk for free space or finding existing files in the catalog. They call the RWTS routines above when they need to access the disk itself.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Routine</th><th>Description</th></tr>
+							<tr><td><a href="/apple/main/subroutine/diskerror.html">diskerror</a></td><td>Print a disk error, make a beep and wait for a key press</td></tr>
+							<tr><td><a href="/apple/main/subroutine/rfile.html">rfile</a></td><td>Read a commander file from a DOS disk into the buffer</td></tr>
+							<tr><td><a href="/apple/main/subroutine/wfile.html">wfile</a></td><td>Write a commander file from the buffer to a DOS disk</td></tr>
+							<tr><td><a href="/apple/main/subroutine/findf.html">findf</a></td><td>Search the disk catalog for an existing file</td></tr>
+							<tr><td><a href="/apple/main/subroutine/finde.html">finde</a></td><td>Search the disk catalog for an empty file entry</td></tr>
+							<tr><td><a href="/apple/main/subroutine/rentry.html">rentry</a></td><td>Search the disk catalog for an existing file or an empty file entry</td></tr>
+							<tr><td><a href="/apple/main/subroutine/getsct.html">getsct</a></td><td>Analyse the VTOC sector to allocate one free sector</td></tr>
+							<tr><td><a href="/apple/main/subroutine/isfull.html">isfull</a></td><td>Check the disk to ensure there are least two free sectors, one for the file's track/sector list and one for the file's contents</td></tr>
+							<tr><td><a href="/apple/main/subroutine/gettsl.html">gettsl</a></td><td>Read a file's track/sector list</td></tr>
+							<tr><td><a href="/apple/main/subroutine/rvtoc.html">rvtoc</a></td><td>Read the VTOC sector into the buffer</td></tr>
+							<tr><td><a href="/apple/main/subroutine/rsect.html">rsect</a></td><td>Read a specific sector from disk into the buffer</td></tr>
+							<tr><td><a href="/apple/main/subroutine/wsect.html">wsect</a></td><td>Write a specific sector from the buffer to disk</td></tr>
+							<tr><td><a href="/apple/main/subroutine/prterr.html">prterr</a></td><td>Return from the RWTS code with a "Disk write protected" error</td></tr>
+							<tr><td><a href="/apple/main/subroutine/rttrk.html">rttrk</a></td><td>Read or write a sector on the current track</td></tr>
+							<tr><td><a href="/apple/main/subroutine/drverr.html">drverr</a></td><td>Return from the RWTS code with a "Disk I/O error"</td></tr>
+							<tr><td><a href="/apple/main/subroutine/rttrk3.html">rttrk3</a></td><td>Successfully return from the RWTS code with no error reported</td></tr>
+						</table>
+
+						<p>Together, these routines form the save and load system in Apple II Elite. Compared to the simple operating system calls in the other versions of Elite, they are really quite involved, but that's the Apple II for you; more than any other system that runs Elite, you have to get really involved in programming the low-level hardware.</p>
+
+						<p>It's an absolute delight, and analysing this code lets us rub shoulders with the giants of the 1970s home computer revolution... even if it's a bit closer to the bare metal than most of us are used to.</p>
 					</div>
 				</div>
 
