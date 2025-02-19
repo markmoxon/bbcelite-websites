@@ -285,7 +285,7 @@
 								<ul id="submenu_deep_dives_apple">
 									<li class="menuItemHeader">Apple II Elite</li>
 									<li><a id="deep_dives_apple_file_operations_with_embedded_apple_dos" href="/deep_dives/file_operations_with_embedded_apple_dos.html"><span class="menuTitle">File operations with embedded Apple DOS</span> <span class="menuSummary">Saving and loading commander files with a customised version of DOS 3.3</span></a></li>
-									<li><a id="deep_dives_apple_developing_apple_ii_elite_on_a_bbc_micro" href="/deep_dives/developing_apple_ii_elite_on_a_bbc_micro.html"><span class="menuTitle">Developing Apple II Elite on a BBC Micro</span> <span class="menuSummary">Clues about the Apple version of the Programmer's Development System</span></a></li>
+									<li><a id="deep_dives_apple_developing_apple_ii_elite_on_a_bbc_micro" href="/deep_dives/developing_apple_ii_elite_on_a_bbc_micro.html"><span class="menuTitle">Developing Apple II Elite on a BBC Micro</span> <span class="menuSummary">Clues about the remote development of the Apple II version of Elite</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_nes"><span class="menuTitle">NES Elite</span> <span class="menuSummary menuSummarySubmenu">Elite on the Nintendo Entertainment System</span>
