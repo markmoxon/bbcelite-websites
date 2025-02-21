@@ -15,9 +15,18 @@ page_header("deep_dives", "galaxy_and_system_seeds.html", "Galaxy and system see
 
 						<img class="titleImage" src="/images/cassette/long-range_chart.png" alt="The Long-range Chart in the BBC Micro cassette version of Elite" />
 
-						<p>You can read all about this process in the deep dives on <a href="generating_system_data.html">generating system data</a> and <a href="twisting_the_system_seeds.html">twisting the system seeds</a>.</p>
+						<p>Each of these systems has its own set of seeds, which can be calculated using a simple process called "twisting". For details of this process and how it can be used to generate 2048 different sets of seeds for the 256 systems in each of the game's eight galaxies, see the deep dive on <a href="twisting_the_system_seeds.html">twisting the system seeds</a>.</p>
 
-						<p>The three seeds are stored in <a href="/cassette/main/workspace/zp.html#qq15">QQ15</a> (for the selected system) and <a href="/cassette/main/workspace/t_per_cent.html#qq21">QQ21</a> (for system 0 in the current galaxy) as little-endian 16-bit numbers, so the low (least significant) byte is first followed by the high (most significant) byte. That means if the seeds are s0, s1 and s2, they are stored like this:</p>
+						<p>Each set of seeds contains all the data for one specific system. In this article we'll take an overview of everything that's captured in the seeds, and for more detailed analysis you can read the deep dives on <a href="generating_system_data.html">generating system data</a>, <a href="generating_system_names.html">generating system names</a> and <a href="market_item_prices_and_availability.html">market item prices and availability</a>.</p>
+
+						<h2 class="articleSubheader">Structure of the system seeds<br />
+													 -----------------------------</h2>
+
+						<p>The seeds are stored in two places: <a href="/cassette/main/workspace/zp.html#qq15">QQ15</a> contains the seeds for the currently selected system in the system chart, and <a href="/cassette/main/workspace/t_per_cent.html#qq21">QQ21</a> contains the seeds for system 0 in the current galaxy.</p>
+
+						<p>Seeds for each system in the galaxy can be generated from the seeds for system 0 in QQ21 by repeatedly twisting the seeds for system 0 - see the deep dive on <a href="twisting_the_system_seeds.html">twisting the system seeds</a> for details.</p>
+
+						<p>The seeds are stored as three little-endian 16-bit numbers, so the low (least significant) byte is first followed by the high (most significant) byte, in the same way that the 6502 stores 16-bit addresses. That means if the seeds are s0, s1 and s2, they are stored like this:</p>
 
 <pre class="articleIndented">      low byte  high byte
   s0  QQ15      QQ15+1
@@ -25,27 +34,26 @@ page_header("deep_dives", "galaxy_and_system_seeds.html", "Galaxy and system see
   s2  QQ15+4    QQ15+5
 </pre>
 
-						<p>In this documentation, we denote the low byte of s0 as s0_lo and the high byte as s0_hi, and so on for s1_lo, s1_hi, s2_lo and s2_hi.</p>
+						<p>Throughout this documentation, we denote the low byte of s0 as s0_lo and the high byte as s0_hi, and so on for s1_lo, s1_hi, s2_lo and s2_hi.</p>
 
-						<p>The seeds for the selected system are stored at QQ15, while the seeds for the current galaxy are in QQ21.</p>
-
-						<p>Here's a summary of which bits in which seeds are used to generate the various bits of data in the universe. The routine names where these data are generated are shown on the right.</p>
+						<p>Given a set of seeds for a specific system, we can extract all the system data from those seeds. Here's a summary of which bits in which seeds are used to generate the various bits of data in the universe. The routine names where these data are generated are shown on the right.</p>
 
 <pre class="articleIndented">   s0_hi    s0_lo    s1_hi    s1_lo    s2_hi    s2_lo
 76543210 76543210 76543210 76543210 76543210 76543210
 
+                                             ^------- Species is human    <a href="/cassette/main/subroutine/tt25.html">TT25</a>
                                        ^^^----------- Species adjective 1 <a href="/cassette/main/subroutine/tt25.html">TT25</a>
                                     ^^^-------------- Species adjective 2 <a href="/cassette/main/subroutine/tt25.html">TT25</a>
       ^^----------------^^--------------------------- Species adjective 3 <a href="/cassette/main/subroutine/tt25.html">TT25</a>
                                           ^^--------- Species type        <a href="/cassette/main/subroutine/tt25.html">TT25</a>
                   ^^^^^^^^--------------^^^^--------- Average radius      <a href="/cassette/main/subroutine/tt25.html">TT25</a>
                              ^^^--------------------- Government type     <a href="/cassette/main/subroutine/tt24.html">TT24</a>
-      ^^--------------------------------------------- Prosperity level    <a href="/cassette/main/subroutine/tt24.html">TT24</a>
+     ^^^--------------------------------------------- Prosperity level    <a href="/cassette/main/subroutine/tt24.html">TT24</a>
      ^----------------------------------------------- Economy type        <a href="/cassette/main/subroutine/tt24.html">TT24</a>
                         ^^--------------------------- Tech level          <a href="/cassette/main/subroutine/tt24.html">TT24</a>
                   ^^^^^^^^--------------------------- Galactic x-coord    <a href="/cassette/main/subroutine/tt24.html">TT24</a>
 ^^^^^^^^--------------------------------------------- Galactic y-coord    <a href="/cassette/main/subroutine/tt24.html">TT24</a>
-                                              ^-^---- Long-range dot size <a href="/cassette/main/subroutine/tt22.html">TT22</a>
+                                               ^-^^^^ Long-range dot size <a href="/cassette/main/subroutine/tt22.html">TT22</a>
                                                     ^ Short-range size    <a href="/cassette/main/subroutine/tt23.html">TT23</a>
           ^------------------------------------------ Name length          <a href="/cassette/main/subroutine/cpl.html">cpl</a>
                                        ^^^^^--------- Name token (x4)      <a href="/cassette/main/subroutine/cpl.html">cpl</a>
@@ -56,6 +64,74 @@ page_header("deep_dives", "galaxy_and_system_seeds.html", "Galaxy and system see
 76543210 76543210 76543210 76543210 76543210 76543210
    s0_hi    s0_lo    s1_hi    s1_lo    s2_hi    s2_lo
 </pre>
+
+						<h2 class="articleSubheader">An example<br />
+													 ----------</h2>
+
+						<p>Let's take a look at how this works with the starting system of Lave, which has a Data on System screen like this:</p>
+
+						<img class="titleImage" src="/images/disc/data_on_lave.png" alt="The Data on System screen for Lave in the BBC Micro disc version of Elite" />
+
+						<p>at this location on the Long-range Chart (where it's shown as a two-pixel dash):</p>
+
+						<img class="titleImage" src="/images/cassette/long-range_chart.png" alt="The Long-range Chart in the BBC Micro cassette version of Elite" />
+
+						<p>and this appearance on the Short-range Chart (where it's shown as a medium star):</p>
+
+						<img class="titleImage" src="/images/cassette/short-range_chart.png" alt="The Short-range Chart in the BBC Micro cassette version of Elite" />
+
+						<p>Lave's seeds are as follows:</p>
+
+<pre class="articleIndented">   s0_hi    s0_lo    s1_hi    s1_lo    s2_hi    s2_lo
+10101101 00111000 00010100 10011100 00010101 00011101
+
+                                             ^------- Species is human    <a href="/cassette/main/subroutine/tt25.html">TT25</a>
+                                       ^^^----------- Species adjective 1 <a href="/cassette/main/subroutine/tt25.html">TT25</a>
+                                    ^^^-------------- Species adjective 2 <a href="/cassette/main/subroutine/tt25.html">TT25</a>
+      ^^----------------^^--------------------------- Species adjective 3 <a href="/cassette/main/subroutine/tt25.html">TT25</a>
+                                          ^^--------- Species type        <a href="/cassette/main/subroutine/tt25.html">TT25</a>
+                  ^^^^^^^^--------------^^^^--------- Average radius      <a href="/cassette/main/subroutine/tt25.html">TT25</a>
+                             ^^^--------------------- Government type     <a href="/cassette/main/subroutine/tt24.html">TT24</a>
+     ^^^--------------------------------------------- Prosperity level    <a href="/cassette/main/subroutine/tt24.html">TT24</a>
+     ^----------------------------------------------- Economy type        <a href="/cassette/main/subroutine/tt24.html">TT24</a>
+                        ^^--------------------------- Tech level          <a href="/cassette/main/subroutine/tt24.html">TT24</a>
+                  ^^^^^^^^--------------------------- Galactic x-coord    <a href="/cassette/main/subroutine/tt24.html">TT24</a>
+^^^^^^^^--------------------------------------------- Galactic y-coord    <a href="/cassette/main/subroutine/tt24.html">TT24</a>
+                                               ^-^^^^ Long-range dot size <a href="/cassette/main/subroutine/tt22.html">TT22</a>
+                                                    ^ Short-range size    <a href="/cassette/main/subroutine/tt23.html">TT23</a>
+          ^------------------------------------------ Name length          <a href="/cassette/main/subroutine/cpl.html">cpl</a>
+                                       ^^^^^--------- Name token (x4)      <a href="/cassette/main/subroutine/cpl.html">cpl</a>
+     ^^^--------------------------------------------- Planet distance    <a href="/cassette/main/subroutine/solar.html">SOLAR</a>
+                       ^^^--------------------------- Sun distance       <a href="/cassette/main/subroutine/solar.html">SOLAR</a>
+                                          ^^--------- Sun x-y offset     <a href="/cassette/main/subroutine/solar.html">SOLAR</a>
+
+10101101 00111000 00010100 10011100 00010101 00011101
+   s0_hi    s0_lo    s1_hi    s1_lo    s2_hi    s2_lo
+</pre>
+
+						<p>We interpret these seeds as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Data</th><th>Seed bits</th><th>Result</th></tr>
+							<tr><td>Species is human</td><td>%0</td><td>Human Colonials</td></tr>
+							<tr><td>Average radius</td><td>%00010100 %0101</td><td>(%0101 + 11) * 256 + %00010100 = 4116<br /><br />Shown as 4116 km</td></tr>
+							<tr><td>Government type</td><td>%011</td><td>Dictatorship</td></tr>
+							<tr><td>Prosperity level</td><td>%101</td><td>Rich</td></tr>
+							<tr><td>Economy type</td><td>%1</td><td>Agricultural</td></tr>
+							<tr><td>Tech level</td><td>%00</td><td>~%101 + %00 + ceiling(%011 / 2) = 4<br /><br />Shown as Tech level 5</td></tr>
+							<tr><td>Population</td><td>-</td><td>4 * 4 + %101 + %011 + 1 = 25<br /><br />Shown as 2.5 billion</td></tr>
+							<tr><td>Productivity</td><td>-</td><td>(~%101 + 3) * (%011 + 4) * 25 * 8 = 7000<br /><br />Shown as 7000 M CR</td></tr>
+							<tr><td>Galactic x-coord</td><td>%00010100</td><td>20</td></tr>
+							<tr><td>Galactic y-coord</td><td>%10101101</td><td>173 >> 1 = 86</td></tr>
+							<tr><td>Long-range dot size</td><td>%x0x11101</td><td>%x0x11101 OR %01010000 = %01011101 = 93<br /><br />Shown as a single-height two-pixel dot</td></tr>
+							<tr><td>Short-range size</td><td>%1</td><td>%1 + 2 + no carry from cpl = 3<br /><br />Shown as a medium-sized star</td></tr>
+							<tr><td>Name length</td><td>%0</td><td>Generate three pairs of letters for name</td></tr>
+							<tr><td>Name token (x4)</td><td>%10101<br /><br />%10110<br /><br />%00000<br /><br />%01100</td><td>128 + %10101 = 149 ("LA")<br /><br />128 + %10110 = 150 ("VE")<br /><br />%00000 = 0 = skip<br /><br />Ignore fourth pair</td></tr>
+							<tr><td>Planet distance</td><td>%101</td><td>(%101 + 6 + bit 0 of FIST) >> 1<br /><br />= %1011 >> 1 if bit 0 of FIST was 0<br />so planet spawns at:<br />x = -(2 0 0)<br />y = -(2 0 0)<br />z = (5 0 0)<br /><br />= %1100 >> 1 if bit 0 of FIST was 1<br />so planet spawns at:<br />x = (3 0 0)<br />y = (3 0 0)<br />z = (6 0 0)</td></tr>
+							<tr><td>Sun distance</td><td>%100</td><td>%101 OR %10000001 = %10000101 = -5<br />so sun spawns at:<br />z = -(5 0 0)</td></tr>
+							<tr><td>Sun x-y offset</td><td>%01</td><td>So sun spawns at:<br />x = (1 0 0)<br />y = (1 0 0)</td></tr>
+						</table>
+
 					</div>
 				</div>
 
