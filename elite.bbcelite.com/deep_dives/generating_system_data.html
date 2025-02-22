@@ -15,23 +15,56 @@ page_header("deep_dives", "generating_system_data.html", "Generating system data
 
 						<img class="titleImage" src="/images/cassette/data_on_lave.png" alt="The Data on System screen for Lave in the BBC Micro cassette version of Elite" />
 
-						<p>For more details on the system seeds see the deep dive on <a href="galaxy_and_system_seeds.html">galaxy and system seeds</a>, but given a set of seeds, let's see how we can generate the data shown in the Data on System screen.</p>
+						<p>For more details on the system seeds see the deep dive on <a href="galaxy_and_system_seeds.html">galaxy and system seeds</a>, but given a set of seeds, let's see how we can generate the data shown in the Data on System screen, and at the end of the article we'll look at how the system charts are generated, and how the seeds determine the layout of the system's planet and sun for our arrival from hyperspace.</p>
 
 						<h2 class="articleSubheader">Summary<br />
 													 -------</h2>
 
 						<p>The following bits of data are generated in routine <a href="/cassette/main/subroutine/tt24.html">TT24</a> and are stored in locations QQ3 to QQ7:</p>
 
-<pre class="articleIndented">  QQ3 = economy (0-7)
-  QQ4 = government (0-7)
-  QQ5 = technology level (0-14)
-  QQ6 = population * 10 (1-71)
-  QQ7 = productivity (96-62480)
+<pre class="articleIndented">  QQ3 = economy (0 to 7)
+  QQ4 = government (0 to 7)
+  QQ5 = technology level (0 to 14)
+  QQ6 = population * 10 (1 to 71)
+  QQ7 = productivity (96 to 62480)
 </pre>
 
 						<p>The species type and average radius aren't stored anywhere, but are generated on-the-fly in routine <a href="/cassette/main/subroutine/tt25.html">TT25</a> when displaying the system data.</p>
 
 						<p>Let's look at how these bits of data are all generated.</p>
+
+						<h2 class="articleSubheader">Economy<br />
+													 -------</h2>
+
+						<p>The economy is given by a 3-bit value, taken from bits 0-2 of s0_hi. This value determines the prosperity of the economy:</p>
+
+<pre class="articleIndented">  0 or 5 = %000 or %101 = Rich
+  1 or 6 = %001 or %110 = Average
+  2 or 7 = %010 or %111 = Poor
+  3 or 4 = %011 or %100 = Mainly
+</pre>
+
+						<p>while bit 2 determines the type of economy:</p>
+
+<pre class="articleIndented">  bit 2 = %0 = Industrial
+  bit 2 = %1 = Agricultural
+</pre>
+
+						<p>Putting these two together, we get the following range of economies:</p>
+
+<pre class="articleIndented">  0 = Rich Industrial
+  1 = Average Industrial
+  2 = Poor Industrial
+  3 = Mainly Industrial
+  4 = Mainly Agricultural
+  5 = Rich Agricultural
+  6 = Average Agricultural
+  7 = Poor Agricultural
+</pre>
+
+						<p>If the government is an anarchy or feudal state, we need to fix the economy so it can't be rich (as that wouldn't make sense). We do this by setting bit 1 of the economy value, giving possible values of %010, %011, %110, %111. Looking at the prosperity list above, we can see this forces the economy to be poor, mainly, average, or poor respectively, so there's now a 50% chance of the system being poor, a 25% chance of it being average, and a 25% chance of it being "Mainly Agricultural" or "Mainly Industrial".</p>
+
+						<p>The highest economy value is 7 and the lowest is 0.</p>
 
 						<h2 class="articleSubheader">Government<br />
 													 ----------</h2>
@@ -50,41 +83,8 @@ page_header("deep_dives", "generating_system_data.html", "Generating system data
 
 						<p>The highest government value is 7 and the lowest is 0.</p>
 
-						<h2 class="articleSubheader">Economy<br />
-													 -------</h2>
-
-						<p>The economy is given by a 3-bit value, taken from bits 0-2 of s0_hi. This value determine the prosperity of the economy:</p>
-
-<pre class="articleIndented">  0 or 5 = %000 or %101 = Rich
-  1 or 6 = %001 or %110 = Average
-  2 or 7 = %010 or %111 = Poor
-  3 or 4 = %011 or %100 = Mainly
-</pre>
-
-						<p>while bit 2 determines the type of economy:</p>
-
-<pre class="articleIndented">  bit 2 = %0 = Industrial
-  bit 2 = %1 = Agricultural
-</pre>
-
-						<p>Putting these two together, we get:</p>
-
-<pre class="articleIndented">  0 = Rich Industrial
-  1 = Average Industrial
-  2 = Poor Industrial
-  3 = Mainly Industrial
-  4 = Mainly Agricultural
-  5 = Rich Agricultural
-  6 = Average Agricultural
-  7 = Poor Agricultural
-</pre>
-
-						<p>If the government is an anarchy or feudal state, we need to fix the economy so it can't be rich (as that wouldn't make sense). We do this by setting bit 1 of the economy value, giving possible values of %010, %011, %110, %111. Looking at the prosperity list above, we can see this forces the economy to be poor, mainly, average, or poor respectively, so there's now a 50% chance of the system being poor, a 25% chance of it being average, and a 25% chance of it being "Mainly Agricultural" or "Mainly Industrial".</p>
-
-						<p>The highest economy value is 7 and the lowest is 0.</p>
-
-						<h2 class="articleSubheader">Technology level<br />
-													 ----------------</h2>
+						<h2 class="articleSubheader">Tech level<br />
+													 ----------</h2>
 
 						<p>The tech level is calculated as follows:</p>
 
@@ -118,18 +118,6 @@ page_header("deep_dives", "generating_system_data.html", "Generating system data
 						<p>This means that systems with higher tech levels, better economies and more stable governments have higher populations, with the tech level having the most influence. The number stored is actually the population * 10 (in billions), so we can display it to one decimal place by calling the pr2 subroutine (so if the population value is 52, it means 5.2 billion).</p>
 
 						<p>The highest population is 14 * 4 + 7 + 7 + 1 = 71 (7.1 billion) and the lowest is 1 (0.1 billion).</p>
-
-						<h2 class="articleSubheader">Productivity<br />
-													 ------------</h2>
-
-						<p>The productivity is calculated as follows:</p>
-
-<pre class="articleIndented">  (flipped_economy + 3) * (government + 4) * population * 8
-</pre>
-
-						<p>Productivity is measured in millions of credits, so a productivity of 23740 would be displayed as "23740 M CR".</p>
-
-						<p>The highest productivity is 10 * 11 * 71 * 8 = 62480, while the lowest is 3 * 4 * 1 * 8 = 96 (so the range is between 96 and 62480 million credits).</p>
 
 						<h2 class="articleSubheader">Species type<br />
 													 ------------</h2>
@@ -203,6 +191,18 @@ page_header("deep_dives", "generating_system_data.html", "Generating system data
 
 						<p>So however hard you look, you will never find slimy humanoids, bony insects, fat rodents or furry frogs, which is probably for the best.</p>
 
+						<h2 class="articleSubheader">Gross productivity<br />
+													 ------------------</h2>
+
+						<p>The gross productivity is calculated as follows:</p>
+
+<pre class="articleIndented">  (flipped_economy + 3) * (government + 4) * population * 8
+</pre>
+
+						<p>Productivity is measured in millions of credits, so a productivity of 23740 would be displayed as "23740 M CR".</p>
+
+						<p>The highest productivity is 10 * 11 * 71 * 8 = 62480, while the lowest is 3 * 4 * 1 * 8 = 96 (so the range is between 96 and 62480 million credits).</p>
+
 						<h2 class="articleSubheader">Average radius<br />
 													 --------------</h2>
 
@@ -212,6 +212,142 @@ page_header("deep_dives", "generating_system_data.html", "Generating system data
 </pre>
 
 						<p>The highest average radius is (15 + 11) * 256 + 255 = 6911 km, and the lowest is 11 * 256 = 2816 km.</p>
+
+						<h2 class="articleSubheader">System charts<br />
+													 -------------</h2>
+
+						<p>We also use the system seeds to generate each system's position and appearance on the system charts.</p>
+
+						<p>The coordinates of the system on the Long-range Chart are given in s1_hi (for the x-coordinate) and s0_hi (for the y-coordinate). As the galactic chart is half as tall as it is wide, the y-coordinate is halved using a right shift, so the final result is:</p>
+
+<pre class="articleIndented">  Galactic x-coordinate = s1_hi
+
+  Galactic y-coordinate = s0_hi >> 1
+</pre>
+
+						<p>The size of the dot on the Long-range Chart is determined as follows:</p>
+
+<pre class="articleIndented">  s2_lo OR %01010000
+</pre>
+
+						<p>This result is passed to the <a href="/cassette/main/subroutine/pixel.html">PIXEL</a> routine as the ZZ parameter, which draws pixels in these sizes:</p>
+
+						<ul>
+							<li>Double-height four-pixel square ZZ &lt; 80</li>
+
+							<li>Single-height two-pixel dash when 80 &lt;= ZZ &lt;= 143</li>
+
+							<li>Single-height one-pixel dot when ZZ > 143</li>
+						</ul>
+
+						<p>Because the calculation above is always at least 80 (as %01010000 = 80), systems are shown on the chart as single-height one-pixel dots or single-height two-pixel dashes.</p>
+
+						<p>The size of the star on the Short-range Chart is determined as follows:</p>
+
+<pre class="articleIndented">  (s2_lo AND %00000001) + 2 + C flag
+</pre>
+
+						<p>This will be either 2, 3 or 4, depending on the value of bit 0, and whether the C flag is set. The latter will vary depending on the result of the call to the <a href="/cassette/main/subroutine/cpl.html">cpl</a> routine, which prints the system name. If cpl returns with the C flag clear then it will be either a small or medium star, and if it returns with the C flag set then it will be either a medium or large star.</p>
+
+						<h2 class="articleSubheader">Spawning the planet<br />
+													 -------------------</h2>
+
+						<p>The seeds also determine the position of the planet in 3D space when we hyperspace to a new system. The position also depends on bit 0 of FIST at the point when we arrive in the system. FIST contains our legal status.</p>
+
+						<p>Whenever we arrive in a new system, the <a href="/cassette/main/subroutine/solar.html">SOLAR</a> starts by shifting the value of FIST to the right by one place, so every time we arrive in a new system, our legal status improves a bit. Bit 0 of FIST shifts out into the C flag, and we use that bit in the following calculation.</p>
+
+						<p>In the following, the high and low bytes of the 24-bit space coordinates are all zero, and only the x_sign, y_sign and z_sign bytes are set by the seeds, so the results are (x_sign 0 0), (y_sign 0 0) and (z_sign 0 0).</p>
+
+						<p>The space coordinates of the planet are determined as follows:</p>
+
+<pre class="articleIndented">  ((s0_hi AND %00000111) + 6 + bit 0 of FIST) >> 1
+</pre>
+
+						<p>This value is used for z_sign, the top byte of the planet's coordinate, which is set to (z_sign 0 0).</p>
+
+						<p>The above calculation includes a right-shift, which sets the C flag to bit 0 of the result before the shift is performed. To set x_sign and y_sign, we right-rotate the value we just put into z_sign, so that bit 7 is set to the C flag and shifts the rest of z_sign along by one.</p>
+
+						<p>For example, s0_hi for Lave is %10101101, so the calculation is:</p>
+
+<pre class="articleIndented">    ((%10101101 AND %00000111) + 6 + bit 0 of FIST) >> 1
+
+  = (%101 + 6 + bit 0 of FIST) >> 1
+
+  = %1011 >> 1   if bit 0 of FIST was clear before we arrived in the system
+
+    %1100 >> 1   if bit 0 of FIST was set before we arrived in the system
+</pre>
+
+						<p>So if bit 0 of FIST was clear before we arrived in the system, we get:</p>
+
+<pre class="articleIndented">  z_sign = %1011 >> 1 = %101 = 5 (and this sets the C flag)
+
+  x_sign = ROR %101 = %10000010 = -2
+
+  y_sign = x_sign
+</pre>
+
+						<p>and if bit 0 of FIST was set before we arrived in the system, we get:</p>
+
+<pre class="articleIndented">  z_sign = %1100 >> 1 = %110 = 6 (and this clears the C flag)
+
+  x_sign = ROR %110 = %00000011 = 3
+
+  y_sign = x_sign
+</pre>
+
+						<p>so the planet Lave is spawned at:</p>
+
+<pre class="articleIndented">  x = -(2 0 0)
+  y = -(2 0 0)
+  z =  (5 0 0)
+</pre>
+
+						<p>if we arrive there with bit 0 of FIST clear, or:</p>
+
+<pre class="articleIndented">  x = (3 0 0)
+  y = (3 0 0)
+  z = (6 0 0)
+</pre>
+
+						<p>if we arrive there with bit 0 of FIST set.</p>
+
+						<h2 class="articleSubheader">Spawning the sun<br />
+													 ----------------</h2>
+
+						<p>The sun's position is also determined by the seeds in the <a href="/cassette/main/subroutine/solar.html">SOLAR</a> routine, but this calculation is a little simpler.</p>
+
+						<p>The z-coordinate of the sun is determined as follows:</p>
+
+<pre class="articleIndented">  (s1_hi AND %00000111) OR %10000001
+</pre>
+
+						<p>This value is used for z_sign, the top byte of the sun's coordinate, which is set to (z_sign 0 0). As the above calculation sets bit 7, this ensures the sun is always behind us when we arrive, with the distance ranging from (1 0 0) to (7 0 0).</p>
+
+						<p>The x- and y-coordinates of the sun are determined as follows:</p>
+
+<pre class="articleIndented">  s2_hi AND %00000011
+</pre>
+
+						<p>This value is used for both x_sign and y_sign, so the sun is either dead centre in our rear laser crosshairs, or off to the top left by a distance of (1 0 0) or (2 0 0) when we look out the back.</p>
+
+						<p>For Lave, s1_hi is %00010100 and s2_hi is %00010101, so we have:</p>
+
+<pre class="articleIndented">  z_sign = (%00010100 AND %00000111) OR %10000001 = %10000101 = -5
+
+  x_sign = %00010101 AND %00000011 = %01 = 1
+
+  y_sign = x_sign
+</pre>
+
+						<p>So the sun around Lave is always spawned at:</p>
+
+<pre class="articleIndented">  x =  (1 0 0)
+  y =  (1 0 0)
+  z = -(5 0 0)
+</pre>
+
+						<p>which is a fair distance behind us and slightly off to the top left if we look out of the rear view.</p>
 					</div>
 				</div>
 
