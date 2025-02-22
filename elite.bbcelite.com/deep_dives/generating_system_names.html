@@ -15,17 +15,206 @@ page_header("deep_dives", "generating_system_names.html", "Generating system nam
 
 						<img class="titleImage" src="/images/cassette/short-range_chart.png" alt="The Short-range Chart in the BBC Micro cassette version of Elite" />
 
-						<p>System names aren't stored as text, as there simply isn't enough memory in the BBC Micro. Instead they are generated from the three 16-bit seeds for that system. In the case of the selected system, those seeds live at <a href="/cassette/main/workspace/zp.html#qq15">QQ15</a>. The process of printing the system name, which is done by the <a href="/cassette/main/subroutine/cpl.html">cpl</a> routine, works as follows, where s0, s1, s2 are the seeds for the system in question:</p>
+						<p>System names aren't stored as plain text, as there simply isn't enough memory in Elite. Instead they are generated from the three 16-bit seeds for that system, and in the case of the selected system, those seeds live at <a href="/cassette/main/workspace/zp.html#qq15">QQ15</a>. See the deep dive on <a href="galaxy_and_system_seeds.html">galaxy and system seeds</a> for more information about the seeds.</p>
+
+						<p>The process of printing the system name is done by the <a href="/cassette/main/subroutine/cpl.html">cpl</a> routine. It works as follows, where s0, s1, s2 are the seeds for the system in question:</p>
 
 						<ol>
 							<li>Check bit 6 of s0_lo. If it is set then we will generate four two-letter pairs for the name (8 characters in total), otherwise we will generate three pairs (6 characters).</li>
 
 							<li>Generate the first two letters by taking bits 0-4 of s2_hi. If this is zero, jump to the next step, otherwise we have a number in the range 1-31. Add 128 to get a number in the range 129-159, and convert this to a two-letter token (see variable <a href="/cassette/main/variable/qq16.html">QQ16</a> for the list of two-letter tokens).</li>
 
-							<li>Twist the seeds by calling <a href="/cassette/main/subroutine/tt54.html">TT54</a> and repeat the previous step, until we have processed three or four pairs, depending on step 1.</li>
+							<li>Twist the seeds by calling <a href="/cassette/main/subroutine/tt54.html">TT54</a> and repeat the previous step, until we have processed three or four pairs, depending on step 1. The results of the final twist are ignored.</li>
 						</ol>
 
-						<p>One final note. As the process above involves twisting the seeds three or four times, they will be changed, so we also need to back up the original seeds before starting the above process, and restore them afterwards.</p>
+						<p>See the deep dive on <a href="twisting_the_system_seeds.html">twisting the system seeds</a> for an explanation of the twisting process.</p>
+
+						<p>As the process above involves twisting the seeds three or four times, they will be changed, so we also need to back up the original seeds before starting the above process, and restore them afterwards. Also, the C flag is changed by the twisting process, and the C flag that results from the final twist feeds into the calculation of the system's star size on the Short-range Chart (with a clear C flag producing either a small or medium star, and a set C flag producing either a medium or large star).</p>
+
+						<p>Probably the best way to understand the process is to run through some examples, so let's do that now.</p>
+
+						<h2 class="articleSubheader">Two-letter system name: Ra<br />
+													 --------------------------</h2>
+
+						<p>There is only one system in the whole game with a two-letter name: Ra in the first galaxy.</p>
+
+						<p>To generate the letter pairs, we start with the system's seeds and twist them twice to generate three letter pairs. The twists are as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>s0_hi</th><th>s0_lo</th><th>s1_hi</th><th>s1_lo</th><th>s2_hi</th><th>s2_lo</th></tr>
+							<tr><td>-</td><td>%10000111</td><td>%10101010</td><td>%00001100</td><td>%00111000</td><td>%10000000</td><td>%01010011</td></tr>
+							<tr><td>1</td><td>%00001100</td><td>%00111000</td><td>%10000000</td><td>%01010011</td><td>%00010100</td><td>%00110101</td></tr>
+							<tr><td>2</td><td>%10000000</td><td>%01010011</td><td>%00010100</td><td>%00110101</td><td>%10100000</td><td>%11000000</td></tr>
+						</table>
+
+						<p>And this gives us the following result:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>Seed bits</th><th>Bits</th><th>Calculation</th><th>Result</th></tr>
+							<tr><td>-</td><td>s0_lo bit 6</td><td>%0</td><td>-</td><td>Three pairs</td></tr>
+							<tr><td>-</td><td>s2_hi bits 0-4</td><td>%00000</td><td>0</td><td>Pair 1: Skip</td></tr>
+							<tr><td>1</td><td>s2_hi bits 0-4</td><td>%10100</td><td>128 + %10100 = 148</td><td>Pair 2: "RA"</td></tr>
+							<tr><td>2</td><td>s2_hi bits 0-4</td><td>%00000</td><td>0</td><td>Pair 3: Skip</td></tr>
+						</table>
+
+						<h2 class="articleSubheader">Three-letter system name: Ara<br />
+													 -----------------------------</h2>
+
+						<p>There are two system in the whole game with three-letter names: Ara in the first galaxy and Rea in the third galaxy. Let's look at Ara here.</p>
+
+						<p>To generate the letter pairs, we start with the system's seeds and twist them twice to generate three letter pairs. The twists are as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>s0_hi</th><th>s0_lo</th><th>s1_hi</th><th>s1_lo</th><th>s2_hi</th><th>s2_lo</th></tr>
+							<tr><td>-</td><td>%00101000</td><td>%00000000</td><td>%00011100</td><td>%11000000</td><td>%01001111</td><td>%01001101</td></tr>
+							<tr><td>1</td><td>%00011100</td><td>%11000000</td><td>%01001111</td><td>%01001101</td><td>%10010100</td><td>%00001101</td></tr>
+							<tr><td>2</td><td>%01001111</td><td>%01001101</td><td>%10010100</td><td>%00001101</td><td>%00000000</td><td>%00011010</td></tr>
+						</table>
+
+						<p>And this gives us the following result:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>Seed bits</th><th>Bits</th><th>Calculation</th><th>Result</th></tr>
+							<tr><td>-</td><td>s0_lo bit 6</td><td>%0</td><td>-</td><td>Three pairs</td></tr>
+							<tr><td>-</td><td>s2_hi bits 0-4</td><td>%01111</td><td>128 + %01111 = 143</td><td>Pair 1: "A"</td></tr>
+							<tr><td>1</td><td>s2_hi bits 0-4</td><td>%10100</td><td>128 + %10100 = 148</td><td>Pair 2: "RA"</td></tr>
+							<tr><td>2</td><td>s2_hi bits 0-4</td><td>%00000</td><td>0</td><td>Pair 3: Skip</td></tr>
+						</table>
+
+
+						<h2 class="articleSubheader">Four-letter system name: Lave<br />
+													 -----------------------------</h2>
+
+						<p>Lave is the iconic starting system in Elite, so let's see how this name is generated.</p>
+
+						<p>To generate the letter pairs, we start with the system's seeds and twist them twice to generate three letter pairs. The twists are as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>s0_hi</th><th>s0_lo</th><th>s1_hi</th><th>s1_lo</th><th>s2_hi</th><th>s2_lo</th></tr>
+							<tr><td>-</td><td>%10101101</td><td>%00111000</td><td>%00010100</td><td>%10011100</td><td>%00010101</td><td>%00011101</td></tr>
+							<tr><td>1</td><td>%00010100</td><td>%10011100</td><td>%00010101</td><td>%00011101</td><td>%11010110</td><td>%11110001</td></tr>
+							<tr><td>2</td><td>%00010101</td><td>%00011101</td><td>%11010110</td><td>%11110001</td><td>%00000000</td><td>%10101010</td></tr>
+						</table>
+
+						<p>And this gives us the following result:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>Seed bits</th><th>Bits</th><th>Calculation</th><th>Result</th></tr>
+							<tr><td>-</td><td>s0_lo bit 6</td><td>%0</td><td>-</td><td>Three pairs</td></tr>
+							<tr><td>-</td><td>s2_hi bits 0-4</td><td>%10101</td><td>128 + %10101 = 149</td><td>Pair 1: "LA"</td></tr>
+							<tr><td>1</td><td>s2_hi bits 0-4</td><td>%10110</td><td>128 + %10110 = 150</td><td>Pair 2: "VE"</td></tr>
+							<tr><td>2</td><td>s2_hi bits 0-4</td><td>%00000</td><td>0</td><td>Pair 3: Skip</td></tr>
+						</table>
+
+						<h2 class="articleSubheader">Five-letter system name: Arexe<br />
+													 ------------------------------</h2>
+
+						<p>Arexe is a key system in the Constrictor mission, as that's where the stolen ship jumps from the first to the second galaxy. The clue appears when you dock at Reesdice:</p>
+
+						<blockquote class="articleIndented">
+							<p>A STRANGE LOOKING SHIP LEFT HERE A WHILE BACK. LOOKED BOUND FOR AREXE.</p>
+						</blockquote>
+
+						<p>To generate the letter pairs, we start with the system's seeds and twist them three times to generate four letter pairs. The twists are as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>s0_hi</th><th>s0_lo</th><th>s1_hi</th><th>s1_lo</th><th>s2_hi</th><th>s2_lo</th></tr>
+							<tr><td>-</td><td>%01011001</td><td>%01111010</td><td>%10100100</td><td>%11110000</td><td>%11101111</td><td>%10110011</td></tr>
+							<tr><td>1</td><td>%10100100</td><td>%11110000</td><td>%11101111</td><td>%10110011</td><td>%11101110</td><td>%00011101</td></tr>
+							<tr><td>2</td><td>%11101111</td><td>%10110011</td><td>%11101110</td><td>%00011101</td><td>%10000010</td><td>%11000000</td></tr>
+							<tr><td>3</td><td>%11101110</td><td>%00011101</td><td>%10000010</td><td>%11000000</td><td>%01100000</td><td>%10010000</td></tr>
+						</table>
+
+						<p>And this gives us the following result:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>Seed bits</th><th>Bits</th><th>Calculation</th><th>Result</th></tr>
+							<tr><td>-</td><td>s0_lo bit 6</td><td>%1</td><td>-</td><td>Four pairs</td></tr>
+							<tr><td>-</td><td>s2_hi bits 0-4</td><td>%01111</td><td>128 + %01111 = 143</td><td>Pair 1: "A"</td></tr>
+							<tr><td>1</td><td>s2_hi bits 0-4</td><td>%01110</td><td>128 + %01110 = 142</td><td>Pair 2: "RE"</td></tr>
+							<tr><td>2</td><td>s2_hi bits 0-4</td><td>%00010</td><td>128 + %00010 = 130</td><td>Pair 3: "XE"</td></tr>
+							<tr><td>3</td><td>s2_hi bits 0-4</td><td>%00000</td><td>0</td><td>Pair 4: Skip</td></tr>
+						</table>
+
+						<h2 class="articleSubheader">Six-letter system name: Errius<br />
+													 ------------------------------</h2>
+
+						<p>Also a key player in the Constrictor mission, Errius is the first clue we get when we arrive in the second galaxy - and its hint is certainly the most memorable:</p>
+
+						<blockquote class="articleIndented">
+							<p>GET YOUR IRON ASS OVER TO ERRIUS.</p>
+						</blockquote>
+
+						<p>To generate the letter pairs, we start with the system's seeds and twist them twice to generate three letter pairs. The twists are as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>s0_hi</th><th>s0_lo</th><th>s1_hi</th><th>s1_lo</th><th>s2_hi</th><th>s2_lo</th></tr>
+							<tr><td>-</td><td>%10010101</td><td>%10000000</td><td>%10111000</td><td>%10100000</td><td>%01110000</td><td>%11011010</td></tr>
+							<tr><td>1</td><td>%10111000</td><td>%10100000</td><td>%01110000</td><td>%11011010</td><td>%10111110</td><td>%11111010</td></tr>
+							<tr><td>2</td><td>%01110000</td><td>%11011010</td><td>%10111110</td><td>%11111010</td><td>%11101000</td><td>%01110100</td></tr>
+						</table>
+
+						<p>And this gives us the following result:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>Seed bits</th><th>Bits</th><th>Calculation</th><th>Result</th></tr>
+							<tr><td>-</td><td>s0_lo bit 6</td><td>%0</td><td>-</td><td>Three pairs</td></tr>
+							<tr><td>-</td><td>s2_hi bits 0-4</td><td>%10000</td><td>128 + %10000 = 144</td><td>Pair 1: "ER"</td></tr>
+							<tr><td>1</td><td>s2_hi bits 0-4</td><td>%11110</td><td>128 + %11110 = 158</td><td>Pair 2: "RI"</td></tr>
+							<tr><td>2</td><td>s2_hi bits 0-4</td><td>%01000</td><td>128 + %01000 = 136</td><td>Pair 3: "US"</td></tr>
+						</table>
+
+						<h2 class="articleSubheader">Seven-letter system name: Geinona<br />
+													 ---------------------------------</h2>
+
+						<p>Let's look at a seven-letter name now - and how about picking the 42nd system in the first galaxy, as that's an auspicious number?</p>
+
+						<p>To generate the letter pairs, we start with the system's seeds and twist them three times to generate four letter pairs. The twists are as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>s0_hi</th><th>s0_lo</th><th>s1_hi</th><th>s1_lo</th><th>s2_hi</th><th>s2_lo</th></tr>
+							<tr><td>-</td><td>%10011001</td><td>%11000000</td><td>%10001111</td><td>%00001000</td><td>%01100011</td><td>%10111101</td></tr>
+							<tr><td>1</td><td>%10001111</td><td>%00001000</td><td>%01100011</td><td>%10111101</td><td>%10001100</td><td>%10000101</td></tr>
+							<tr><td>2</td><td>%01100011</td><td>%10111101</td><td>%10001100</td><td>%10000101</td><td>%01111111</td><td>%01001010</td></tr>
+							<tr><td>3</td><td>%10001100</td><td>%10000101</td><td>%01111111</td><td>%01001010</td><td>%01101111</td><td>%10001100</td></tr>
+						</table>
+
+						<p>And this gives us the following result:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>Seed bits</th><th>Bits</th><th>Calculation</th><th>Result</th></tr>
+							<tr><td>-</td><td>s0_lo bit 6</td><td>%1</td><td>-</td><td>Four pairs</td></tr>
+							<tr><td>-</td><td>s2_hi bits 0-4</td><td>%00011</td><td>128 + %00011 = 131</td><td>Pair 1: "GE"</td></tr>
+							<tr><td>1</td><td>s2_hi bits 0-4</td><td>%01100</td><td>128 + %01100 = 140</td><td>Pair 2: "IN"</td></tr>
+							<tr><td>2</td><td>s2_hi bits 0-4</td><td>%11111</td><td>128 + %11111 = 159</td><td>Pair 3: "ON"</td></tr>
+							<tr><td>3</td><td>s2_hi bits 0-4</td><td>%01111</td><td>128 + %01111 = 143</td><td>Pair 4: "A"</td></tr>
+						</table>
+
+						<h2 class="articleSubheader">Eight-letter system name: Tibedied<br />
+													 ----------------------------------</h2>
+
+						<p>Tibedied is the first system in the first galaxy, so these are the only seeds that are hard-coded into the game. They are embedded into the default commander at <a href="/cassette/main/variable/na_per_cent.html">NA%</a>, in bytes #3 to #8.</p>
+
+						<p>To generate the letter pairs, we start with the system's seeds and twist them three times to generate four letter pairs. The twists are as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>s0_hi</th><th>s0_lo</th><th>s1_hi</th><th>s1_lo</th><th>s2_hi</th><th>s2_lo</th></tr>
+							<tr><td>-</td><td>%01011010</td><td>%01001010</td><td>%00000010</td><td>%01001000</td><td>%10110111</td><td>%01010011</td></tr>
+							<tr><td>1</td><td>%00000010</td><td>%01001000</td><td>%10110111</td><td>%01010011</td><td>%00010011</td><td>%11100101</td></tr>
+							<tr><td>2</td><td>%10110111</td><td>%01010011</td><td>%00010011</td><td>%11100101</td><td>%11001101</td><td>%10000000</td></tr>
+							<tr><td>3</td><td>%00010011</td><td>%11100101</td><td>%11001101</td><td>%10000000</td><td>%10011000</td><td>%10111000</td></tr>
+						</table>
+
+						<p>And this gives us the following result:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Twist</th><th>Seed bits</th><th>Bits</th><th>Calculation</th><th>Result</th></tr>
+							<tr><td>-</td><td>s0_lo bit 6</td><td>%1</td><td>-</td><td>Four pairs</td></tr>
+							<tr><td>-</td><td>s2_hi bits 0-4</td><td>%10111</td><td>128 + %10111 = 151</td><td>Pair 1: "TI"</td></tr>
+							<tr><td>1</td><td>s2_hi bits 0-4</td><td>%10011</td><td>128 + %10011 = 147</td><td>Pair 2: "BI"</td></tr>
+							<tr><td>2</td><td>s2_hi bits 0-4</td><td>%01101</td><td>128 + %01101 = 141</td><td>Pair 3: "DI"</td></tr>
+							<tr><td>3</td><td>s2_hi bits 0-4</td><td>%11000</td><td>128 + %11000 = 152</td><td>Pair 4: "ED"</td></tr>
+						</table>
 					</div>
 				</div>
 
