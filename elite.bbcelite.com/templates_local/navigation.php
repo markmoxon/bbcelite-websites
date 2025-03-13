@@ -370,6 +370,7 @@
 									<li><a id="hacks_elite_over_econet_downloads" href="/hacks/elite_over_econet_downloads.html"><span class="menuTitle">Playing Elite over Econet</span> <span class="menuSummary">How to download and play Elite over Econet</span></a></li>
 									<li><a id="hacks_elite_over_econet_installing" href="/hacks/elite_over_econet_installing.html"><span class="menuTitle">Installing Elite over Econet</span> <span class="menuSummary">How to install Elite on an Econet fileserver</span></a></li>
 									<li><a id="hacks_elite_over_econet_scoreboard" href="/hacks/elite_over_econet_scoreboard.html"><span class="menuTitle">The Elite multiplayer scoreboard</span> <span class="menuSummary">Running multiplayer Elite competitions with a live Econet-based scoreboard</span></a></li>
+									<li><a id="hacks_elite_over_econet_in_an_emulator" href="/hacks/elite_over_econet_in_an_emulator.html"><span class="menuTitle">Playing Elite over Econet in an emulator</span> <span class="menuSummary">How to set up BeebEm with an emulated Econet network that runs Elite</span></a></li>
 									<li><a id="hacks_elite_over_econet_technical_information" href="/hacks/elite_over_econet_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of how Elite over Econet works</span></a></li>
 								</ul>
 							</li>
