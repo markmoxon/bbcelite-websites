@@ -35,9 +35,9 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 						<p>We'll take a look at the solutions to these challenges below, but if you want to follow along, then the accompanying repository contains all of the changes that I've made to Elite to make it work over Econet. Specifically, the <a href="https://github.com/markmoxon/elite-over-econet">elite-over-econet repository</a> includes the updated code as submodules, so to find all the changes, search the source files for "Mod:" in these repositories:</p>
 
 						<ul>
-							<li>The <a href="https://github.com/markmoxon/elite-source-code-bbc-micro-disc/tree/econet/1-source-files/main-sources">econet branch of elite-source-code-bbc-micro-disc</a></li>
-							<li>The <a href="https://github.com/markmoxon/elite-source-code-6502-second-processor/tree/econet/1-source-files/main-sources">econet branch of elite-source-code-6502-second-processor</a></li>
-							<li>The <a href="https://github.com/markmoxon/elite-source-code-bbc-master/tree/econet/1-source-files/main-sources">econet branch of elite-source-code-bbc-master</a></li>
+							<li>The econet-flicker-free branch of <a href="https://github.com/markmoxon/elite-source-code-bbc-micro-disc/tree/econet-flicker-free/1-source-files/main-sources">elite-source-code-bbc-micro-disc</a></li>
+							<li>The econet-flicker-free branch of <a href="https://github.com/markmoxon/elite-source-code-6502-second-processor/tree/econet-flicker-free/1-source-files/main-sources">elite-source-code-6502-second-processor</a></li>
+							<li>The econet-flicker-free branch of <a href="https://github.com/markmoxon/elite-source-code-bbc-master/tree/econet-flicker-free/1-source-files/main-sources">elite-source-code-bbc-master</a></li>
 						</ul>
 
 						<p>Let's take a look at what these mods do to enable Elite to load over Econet.</p>
@@ -74,7 +74,7 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 
 						<p>But what about BBC Micros without sideways RAM? Alas, the only solution is to drop enough flight features to enable the flight binary to fit in memory along with the Econet workspace and the ship blueprints. I chose to drop the docking computer sequence (so docking is instant), and planetary details (so there are no craters, meridians or equators), as these do not affect gameplay. This approach saves enough memory for a standard BBC Micro to be able to load Elite over Econet.</p>
 
-						<p>There is one more issue. The majority of BBC Micros that have Econet fitted include the network code in a DNFS ROM, which combines the disc filing system and net filing system ROMs in one chip. To get PAGE down to &amp;1200 on these systems, we need to disable just the DFS part of the DNFS ROM, leaving the NFS part to load Elite. This can be done, but it requires poking memory locations, depending on the bank number containing the DNFS ROM, so Elite over Econet comes with a utility program, FixPAGE, that does the hard work for you. This utility disables all ROMs except for BASIC and NFS, even if the NFS comes as part of the DNFS ROM, and this brings the start of user memory down to a level where Elite can successfully run.</p>
+						<p>There is one more issue. The majority of BBC Micros that have Econet fitted include the network code in a DNFS ROM, which combines the disc filing system and net filing system ROMs in one chip. To get PAGE down to &amp;1200 on these systems, we need to disable just the DFS part of the DNFS ROM, leaving the NFS part to load Elite. This can be done, but it requires poking memory locations, depending on the bank number containing the DNFS ROM, so Elite over Econet comes with a built-in utility program, FixPAGE, that does the hard work for us. This utility disables all ROMs except for BASIC and NFS, even if the NFS comes as part of the DNFS ROM, and this brings the start of user memory down to a level where Elite can successfully run. It is automatically run by the loading process when required.</p>
 
 						<p>So we now have versions of Elite that shouldn't clash with Econet, at least in terms of memory. Let's look at what else needs to be done.</p>
 
@@ -92,15 +92,29 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 
 						<p>We're almost there, but there is one more area where Elite clashes with Econet, and that's in the file structure. Econet uses a hierarchical directory structure like ADFS, but most versions of Elite were built to run on DFS. Not only that, but they rely on all of the game files being on the same disc, and that's a problem for Econet.</p>
 
-						<p>In an ideal world, players would load Elite from a central library on the fileserver, but would be able to save their commander files locally into their own main user directories. We can achieve this by creating loader programs that go into the Econet library directories, while keeping the game binaries out of the library and in a separate game folder (to avoid filling the library with too many files). If we then switch directory to the user's main directory once the game is loaded, then loading and saving commander files will work as required.</p>
+						<p>In an ideal world, players would load Elite from a central library on the fileserver, but would be able to save their commander files locally into their own main user directories. We can achieve this by creating loader programs in the Econet library directories, while keeping the game binaries out of the library and in a separate game folder (to avoid filling the library with too many files). If we then switch directory to the user's main directory once the game is loaded, then loading and saving commander files will work as required.</p>
 
-						<p>To achieve this, there are four loader programs that go into the Econet library, which are built by the <a href="https://github.com/markmoxon/elite-over-econet">elite-over-econet repository</a>: they are called Elite, EliteB, EliteM and EliteSP, and they go in the $.Library and $.Library1 folders on the server. This means that if a user types a *Elite command, then the Elite loader gets executed, irrespective of the current directory. The Elite loader is very simple and just does some basic platform checks: if this is a Master then it runs *EliteM, if this is a 6502 Second Processor then it runs *EliteSP, and if this is a BBC Micro then it runs *EliteB.</p>
+						<p>To achieve this, there are two loader programs that go into the Econet library, which are built by the <a href="https://github.com/markmoxon/elite-over-econet">elite-over-econet repository</a>: they are called Elite and EliteB, and they go in the $.Library and $.Library1 folders on the server. This means that if a user types a *Elite command, then the Elite loader gets executed, irrespective of the current directory. When run without a parameter, the loader does some basic platform checks, and runs the correct game binary depending on the machine type: if this is a Master then it runs ELTME, if this is a 6502 Second Processor then it runs ELTSE, and if this is a BBC Micro then it runs EliteB (see the next section).</p>
 
-						<p>The EliteM and EliteSP loaders are also very simple: they just change directory to the location of the game binaries and run the relevant game. By default the game binaries are in $.EliteGame, though you can add an EliteConf file to point to a different directory if required.</p>
+						<p>The Elite loader can also take four parameters, which do the following rather than running the game:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th style="width: 10ch">Command</th><th>Effect</th></tr>
+							<tr><td>*Elite V</td><td>Show the version details and build date for the installed game</td></tr>
+
+							<tr><td>*Elite X</td><td>Run the Executive version of 6502 Second Processor Elite (see <a href="/deep_dives/secrets_of_the_executive_version.html">secrets of the Executive version</a> for more details)</td></tr>
+
+							<tr><td>*Elite S</td><td>Run the Elite over Econet scoreboard (see <a href="elite_over_econet_scoreboard.html">the Elite multiplayer scoreboard</a>)</td></tr>
+
+							<tr><td>*Elite D</td><td>Run the Elite over Econet debugger (see <a href="elite_over_econet_scoreboard.html">the Elite multiplayer scoreboard</a>)</td></tr>
+						</table>
 
 						<p>The various game binaries have a consistent naming convention to make them easier to manage in NFS. Files called ELTA* are for the standard BBC Micro version, ELTB* files are for the sideways RAM version, ELTS* files are for the 6502 Second Processor version, and ELTM* files are for the BBC Master version. This convention gets around issues with the original games, which have files called T.CODE, D.CODE and so on, which would need lots of nested directories in NFS. There is one nested directory, however: alongside the game binaries are the ship blueprint files for the standard disc version, which all live in the sub-directory $.EliteGame.D (as in the original discs they have names D.MOA to D.MOP, and it's a bit tidier to group them together in one place).</p>
 
-						<p>The EliteB loader for the BBC Micro is a lot more complicated than EliteM and EliteSP. Once the BBC Master and 6502 Second Processor versions have loaded the game binaries, they don't need to do it again - there is enough memory to load the entire game, so from this point onwards they only need to access the filing system to load and save commander files. So in these versions, the game binaries have one extra step when they load for the first time: they switch directory to the user's main directory, like this:</p>
+						<h2 class="articleSubheader">The EliteB loader program<br />
+													 -------------------------</h2>
+
+						<p>The EliteB loader for the BBC Micro is a bit more complicated than the Elite loader. Once the BBC Master and 6502 Second Processor versions have loaded the game binaries, they don't need to do it again - there is enough memory to load the entire game, so from this point onwards they only need to access the filing system to load and save commander files. So in these versions, the game binaries have one extra step when they load for the first time: they switch directory to the user's main directory, like this:</p>
 
 <pre class="articleIndented">  *DIR
   *DIR EliteCmdrs
@@ -110,7 +124,7 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 
 						<p>The disc version also changes to the EliteCmdrs directory when it loads, but there's a problem with this. When you launch from the space station, the disc version goes looking for the flight code and (in the standard version) the ship blueprint files. But these aren't in the EliteCmdrs directory, so we need a way of flipping between the game binary folder in $.EliteGame and the commander files in EliteCmdrs.</p>
 
-						<p>Simply doing a *DIR $.EliteGame won't do, though. Because we want users to be able to install the Elite binaries wherever they want to, we can't be sure that the binaries are actually in $.EliteGame, so we can't simply switch to that folder. Instead, if there is an EliteConf file present in the library, then the loader will fetch the new location from EliteConf, so *EliteM, for example, will *DIR into the correct game binary folder before running the relevant executable for the BBC Master. In the same vein, *EliteB will *DIR into the game binary folder before running the relevant executable for the BBC Micro, and this means we can extend *EliteB to take a parameter that lets us load a specific binary from the correct directory, without the game itself having to know where that binary is.</p>
+						<p>Simply doing a *DIR $.EliteGame won't do, though. Because we want users to be able to install the Elite binaries wherever they want to, we can't be sure that the binaries are actually in $.EliteGame, so we can't simply switch to that folder. Instead, if there is an EliteConf file present alongside the Elite loader (typically in the library), then the loader will fetch the new location from EliteConf, so if we're on, say, a BBC Master, *Elite will *DIR into the correct game binary folder before running the ELTME executable for the BBC Master version of Elite. In the same vein, *EliteB will *DIR into the game binary folder before running the relevant executable for the BBC Micro, and this means we can extend *EliteB to take a parameter that lets us load a specific binary from the correct directory, without the game itself having to know where that binary is.</p>
 
 						<p>These are the various commands that the *EliteB loader supports:</p>
 
@@ -136,18 +150,18 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
  							<li>*RUN ELTBI for the sideways RAM version (*RUN INTRO in the original)</li>
 						</ul>
 
-						<p>And there you have it - Elite loading over Econet.</p>
+						<p>And there you have it - BBC Micro Elite loading over Econet.</p>
 
 						<h2 class="articleSubheader">Multiplayer scoreboards<br />
 													 -----------------------</h2>
 
 						<p>Elite over Econet also supports multiplayer scoreboards - see <a href="elite_over_econet_scoreboard.html">the Elite multiplayer scoreboard</a> for details. Individual instances of Elite can be configured to send score information to another machine on the network, which can then display a live scoreboard showing the status of multiple players across the net.</p>
 
-						<p>The core of this functionality is a new routine, TransmitCmdrData, which transmits a 20-byte block of data that contains the player's status. The data block contains the following information:</p>
+						<p>The core of this functionality is the TransmitCmdrData routine, which transmits a 20-byte block of data containing the player's status. The data block contains the following information:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th style="width: 11ch">Byte</th><th>Details</th></tr>
-							<tr><td>#0-7</td><td>Player's name, terminated by a carriage return</td></tr>
+							<tr><td>#0-7</td><td>Player's name, terminated by a carriage return (maximum seven characters plus CR)</td></tr>
 							<tr><td>#8</td><td>Player's legal status:<br /><br />
 								0 = clean<br />
                                 1 = offender<br />
@@ -161,10 +175,11 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 							<tr><td>#11</td><td>Player's death count</td></tr>
 							<tr><td>#12-15</td><td>Player's credits (low byte first)</td></tr>
 							<tr><td>#16</td><td>Machine type:<br /><br />
-								0 = BBC Micro with sideways RAM<br />
+								0 = BBC Micro with sideways RAM, B+ or B+128<br />
 								1 = Master<br />
 								2 = 6502 Second Processor<br />
-								3 = BBC Micro</td></tr>
+								3 = BBC Micro<br />
+								4 = Archimedes</td></tr>
 							<tr><td>#17</td><td>Player's station number (when data is being forwarded):<br /><br />
 								0 = this transmission is coming directly from Elite and the player's station number can be found in the transmission itself<br /><br />
 								Non-zero = this data packet is being forwarded, so bytes #17 and #18 contain the player's station and network numbers, and the transmission itself will contain the address of the forwarding machine</td></tr>
@@ -196,12 +211,11 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th style="width: 11ch">File</th><th>Details</th></tr>
-							<tr><td>Elite</td><td>An Econet loader that runs the correct version of Elite over Econet, depending on the machine type, so users can just type *Elite to play the game (this program simply runs one of the following, as appropriate)</td></tr>
+							<tr><td>Elite</td><td>An Econet loader that runs the correct version of Elite over Econet, depending on the machine type, so users can just type *Elite to play the game; also supports parameters to show the version details or run the scoreboard, debugger or Executive version</td></tr>
 							<tr><td>EliteB</td><td>The Econet loader for the BBC Micro version, which also loads the docked and flight binaries and ship blueprints when docking or launching</td></tr>
-							<tr><td>EliteM</td><td>The Econet loader for the BBC Master version</td></tr>
-							<tr><td>EliteSP</td><td>The Econet loader for the 6502 Second Processor version</td></tr>
-							<tr><td>EliteX</td><td>The Econet loader for the Executive version</td></tr>
 						</table>
+
+						<p>The 2024 version of Elite over Econet also contained EliteM, EliteSP and EliteX loader files, but these were rolled into the Elite binary in 2025, so if you are upgrading, these files can be removed from the library.</p>
 
 						<p>These are the files for the standard BBC Micro version of Elite over Econet (note that the game binaries all start with ELTA, while the ship blueprints live in subdirectory D):</p>
 
