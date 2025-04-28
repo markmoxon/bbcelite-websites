@@ -1,0 +1,74 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("hacks", "elite_over_econet_acorn_archimedes.html", "Elite over Econet on the Acorn Archimedes", "Elite over Econet on the Acorn Archimedes", "Details of how to play Elite over Econet on an Acorn Archimedes", "elite", "hacks_elite_over_econet", "acorn_archimedes");
+?>
+				<!-- Start of article -->
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="elite_over_econet_technical_information.html">Technical information</a><a class="next" rel="next" title="Next page" href="elite_3d.html">About Elite 3D</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">Joining multiplayer scoreboards from the RISC OS version of Elite</h2>
+
+						<p>If you are playing Archimedes Elite and want to send scores to a multiplayer scoreboard over Econet, then you only need two things: version 1.14 of Archimedes Elite and the !EliteNet application. You can find download links for both of these on the <a href="elite_over_econet_installing.html">installing Elite over Econet</a> page.</p>
+
+						<img class="titleImage lightBorder" style="width: 320px" src="/images/elite_over_econet/elitenet.png" alt="The !EliteNet application" />
+
+						<p>Once you have both ArcElite and !EliteNet installed on your system, you can load !&eacute;lite as usual, and simply run the !EliteNet application alongside, as in the screenshot above. Archimedes Elite already works fine when loaded from an Econet fileserver, so you can install !&eacute;lite and !EliteNet on your network if you want, but this isn't essential; you might find it quicker to load the game from a hard disc.</p>
+
+						<p>Configuring !EliteNet to point to the scoreboard is pretty simple: you just fill in the configuration window and enable transmissions, and your scores should appear in the scoreboard (though note scores are only transmitted when you are actually in the game). For full instructions on how to configure and use !EliteNet, click Menu on the application icon in the Filer and choose Help from the App. '!EliteNet' submenu.</p>
+
+						<p>Let's look at how !EliteNet works under hood, but first here's some advice on how kills are counted.</p>
+
+						<h2 class="articleSubheader">Counting kills in Archimedes Elite<br />
+													 ----------------------------------</h2>
+
+						<p>Archimedes Elite is similar to BBC Master Elite in that each combat kill awards a variable number of kill points, with more difficult kills giving more points. To make things fair in multiplayer competitions, the BBC Master version reverts to the one-point-per-kill approach of the original BBC Micro version, so everyone is on a level playing field.</p>
+
+						<p>To do the same with Archimedes Elite, the !EliteNet application observes the game running alongside it, rather than hacking into it (see below for the details). To obtain the combat score, it checks the player's rank twice every second, and if the rank has gone up since the last check, it awards one kill point in the multiplayer scoreboard.</p>
+
+						<p>This approach typically works well, but if you manage to kill a second ship within half a second of killing the first, then the second kill might not be recorded. Also, energy bombs in Archimedes Elite only award one kill point, rather than many, as the rank only goes up once for all those kills.</p>
+
+						<p>For the rest of this article, let's take a look at exactly how this observing is done.</p>
+
+						<h2 class="articleSubheader">Adding scoreboard support to Archimedes Elite<br />
+													 ---------------------------------------------</h2>
+
+						<p>I haven't disassembled Archimedes Elite, and as quite a bit of it was written in C, I'm not sure I ever will. So if we can't easily hack the transmission routines into the game code, how can we persuade it to send scores to a multiplayer scoreboard over Econet?</p>
+
+						<p>The answer is buried inside the !EliteNet application, which contains a relocatable module called EliteOverEconet that looks after the whole thing. Indeed, the application is little more than a friendly user interface that sits on top of the module to make it easier to configure, and it's the module itself that does all the hard work. If you want to, it's possible to do away with the desktop application altogether and configure the module purely via star-commands or SWIs.</p>
+
+						<p>Relocatable modules are always resident in memory, so the EliteOverEconet module can effectively pull the scores out of the running game and transmit them to the configured Econet scoreboard. It does this in a very hands-off way, by observing the game rather than hacking into it. The module is configured to send score data at a regular interval (every ten seconds by default), and every time that interval elapses, the module checks whether the game is paged into main memory at &amp;8000 (which it will be if it's the currently running task). If the game is paged in, the module fetches the relevant data from within game memory and transmits a data packet to the scoreboard.</p>
+
+						 <p>These two scheduled tasks (transmit and rank check) are implemented as ticker events using OS_CallEvery. They both start by checking three specific memory locations within application memory to make sure they match the Elite binary, and if they all match, the task knows that Elite is loaded and running, so it can get on with its task. The three locations that are checked contain parts of the two authors' surnames ("Burch" and "Gringras") and the version number ("1.14"), so this reliably identifies version 1.14 of Archimedes Elite.</p>
+
+						<p>This approach works well for all the data except the kill tally and the death count, which aren't directly stored anywhere in the Elite application. Let's look at these in turn.</p>
+
+						<p>Like the BBC Master, Archimedes Elite awards multiple points for each kill, with more difficult kills awarding more points. To make multiplayer competitions fair, we need all versions to support the one-point-per-kill approach of the original BBC Micro version, including Archimedes Elite. So, independently of the scheduled transmissions mentioned above, the module checks the player's rank twice a second, and if the rank has gone up, it awards one kill point in the multiplayer scoreboard.</p>
+
+						<p>The death count is trickier, as the game doesn't keep a track of deaths anywhere. To get around this, the EliteOverEconet module injects two SWI calls into the game binary. The first is a call to the module's Elite_GameOver SWI, which is injected into the code that prints the "GAME OVER" text. This only ever appears when we die, so it's a reliable trigger for counting deaths. Unfortunately the text is actually drawn on every frame, as it's shown in front of the spinning remains of our plucky Cobra, so we can't simply increase the death count in this routine; instead we set a flag to say the SWI has been called, and we inject a second call into the code that prints the copyright message on the title screen. This second injection calls the module's Elite_GameRestart SWI, which checks the flag that gets set by Elite_GameOver. If the flag is set then this second SWI increments the death count before resetting the flag. This ensures that we count one death when the title screen appears, but only if it's being shown following the game over screen.</p>
+
+						<p>If you want to find out exactly how this is all done, the source code for the EliteOverEconet module is fully documented. You can find this and the source for the !EliteNet application in the <a href="https://github.com/markmoxon/elite-over-econet-acorn-archimedes">elite-over-econet-archimedes repository</a>.</p>
+
+						<p>To see a full list of star-commands supported by the module, load the module (or run !EliteNet), press F12 and enter:</p>
+
+<pre class="articleIndented">  *HELP EL.
+</pre>
+
+						<p>The module also supports two SWIs, Elite_GetStatus and Elite_SetStatus. To find out more about these, look at the comments in the SWI_Elite_GetStatus and SWI_Elite_SetStatus routines in the <a href="https://github.com/markmoxon/elite-over-econet-acorn-archimedes/blob/main/1-source-files/main-sources/EliteOverEconet.arm">module's source</a>. You can see these SWIs being used in the application's <a href="https://github.com/markmoxon/elite-over-econet-acorn-archimedes/blob/main/1-source-files/main-sources/!RunImage.txt">!RunImage source</a> - search for "XElite" to see how they can be called.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="elite_over_econet_technical_information.html">Technical information</a><a class="next" rel="next" title="Next page" href="elite_3d.html">About Elite 3D</a></nav>
+				</div>
+				<!-- End of article -->
+			</article>
+
+<?php
+include("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

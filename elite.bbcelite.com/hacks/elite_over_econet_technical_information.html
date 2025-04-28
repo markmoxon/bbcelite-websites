@@ -4,7 +4,7 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 ?>
 				<!-- Start of article -->
 				<div class="codeBlockWrapper nav">
-					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="elite_over_econet_in_an_emulator.html">Playing Elite over Econet in an emulator</a><a class="next" rel="next" title="Next page" href="elite_3d.html">Elite 3D</a></nav>
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="elite_over_econet_in_an_emulator.html">Playing Elite over Econet in an emulator</a><a class="next" rel="next" title="Next page" href="elite_over_econet_acorn_archimedes.html">Econet Elite on the Archimedes</a></nav>
 				</div>
 
 				<div class="codeBlockWrapper">
@@ -24,7 +24,7 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 						<h2 class="articleSubheader">Loading Elite over Econet<br />
 													 -------------------------</h2>
 
-						<p>On the BBC Micro and BBC Master, Elite doesn't normally load from an Econet fileserver; the Archimedes version works fine, but the 8-bit versions simply hang. The main reason is that Econet uses various blocks of memory in the BBC's memory map, and Elite uses the same blocks of memory. It's therefore no surprise that trying to load the standard version of Elite over an Econet network causes memory clashes that crash the computer.</p>
+						<p>On the BBC Micro and BBC Master, Elite doesn't normally load from an Econet fileserver; the Archimedes version works fine (see <a href="elite_over_econet_acorn_archimedes.html">Elite over Econet on the Acorn Archimedes</a> for details), but the 8-bit versions simply hang. The main reason is that Econet uses various blocks of memory in the BBC's memory map, and Elite uses the same blocks of memory. It's therefore no surprise that trying to load the standard version of Elite over an Econet network causes memory clashes that crash the computer.</p>
 
 						<p>The solution to getting Elite to run over Econet is to prevent this memory clash. Very few versions of Econet allow you to change the memory locations that it uses, so instead we have to update Elite so it avoids using the memory that Econet needs to use.</p>
 
@@ -271,39 +271,11 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 						</table>
 
 						<p>By default, all the game binaries and scoreboard programs live in $.EliteGame, while the loaders are deployed to the $.Library and $.Library1 folders.</p>
-
-						<h2 class="articleSubheader">Adding scoreboard support to Archimedes Elite<br />
-													 ---------------------------------------------</h2>
-
-						<p>I haven't disassembled Archimedes Elite, and as quite a bit of it was written in C, I'm not sure I ever will. So if we can't easily hack the transmission routines into the game code, how can we persuade it to send scores to a multiplayer scoreboard over Econet?</p>
-
-						<p>The answer is in the !EliteNet application, which contains a relocatable module called EliteOverEconet that looks after the whole thing. Indeed, the application is little more than a friendly user interface that sits on top of the module to make it easier to configure, and it's the module itself that does all the hard work. If you want to, it's possible to do away with the desktop application altogether and configure the module purely via star-commands or SWIs.</p>
-
-						<img class="titleImage lightBorder" style="width: 320px" src="/images/elite_over_econet/elitenet.png" alt="The !EliteNet application" />
-
-						<p>Relocatable modules are always resident in memory, so the EliteOverEconet module can effectively pull the scores out of the running game and transmit them to the configured Econet scoreboard. It does this in a very hands-off way, by observing the game rather than hacking into it. The module is configured to send score data at a regular interval (every ten seconds by default), and every time that interval elapses, the module checks whether the game is paged into main memory at &amp;8000 (which it will be if it's the currently running task). If the game is paged in, the module fetches the relevant data from within game memory and transmits a data packet to the scoreboard.</p>
-
-						 <p>These two scheduled tasks (transmit and rank check) are implemented as ticker events using OS_CallEvery. They both start by checking three specific memory locations within application memory to make sure they match the Elite binary, and if they all match, the task knows that Elite is loaded and running, so it can get on with its task. The three locations that are checked contain parts of the two authors' surnames ("Burch" and "Gringras") and the version number ("1.14"), so this reliably identifies version 1.14 of Archimedes Elite.</p>
-
-						<p>This approach works well for all the data except the kill tally and the death count, which aren't directly stored anywhere in the Elite application. Let's look at these in turn.</p>
-
-						<p>Like the BBC Master, Archimedes Elite awards multiple points for each kill, with more difficult kills awarding more points. To make multiplayer competitions fair, we need all versions to support the one-point-per-kill approach of the original BBC Micro version, including Archimedes Elite. So, independently of the scheduled transmissions mentioned above, the module checks the player's rank twice a second, and if the rank has gone up, it awards one kill point in the multiplayer scoreboard.</p>
-
-						<p>The death count is trickier, as the game doesn't keep a track of deaths anywhere. To get around this, the EliteOverEconet module injects two SWI calls into the game binary. The first is a call to the module's Elite_GameOver SWI, which is injected into the code that prints the "GAME OVER" text. This only ever appears when we die, so it's a reliable trigger for counting deaths. Unfortunately the text is actually drawn on every frame, as it's shown in front of the spinning remains of our plucky Cobra, so we can't simply increase the death count in this routine; instead we set a flag to say the SWI has been called, and we inject a second call into the code that prints the copyright message on the title screen. This second injection calls the module's Elite_GameRestart SWI, which checks the flag that gets set by Elite_GameOver. If the flag is set then this second SWI increments the death count before resetting the flag. This ensures that we count one death when the title screen appears, but only if it's being shown following the game over screen.</p>
-
-						<p>If you want to find out exactly how this is all done, the source code for the EliteOverEconet module is fully documented. You can find this and the source for the !EliteNet application in the <a href="https://github.com/markmoxon/elite-over-econet-acorn-archimedes">elite-over-econet-archimedes repository</a>.</p>
-
-						<p>To see a full list of star-commands supported by the module, load the module (or run !EliteNet), press F12 and enter:</p>
-
-<pre class="articleIndented">  *HELP EL.
-</pre>
-
-						<p>The module also supports two SWIs, Elite_GetStatus and Elite_SetStatus. To find out more about these, look at the comments in the SWI_Elite_GetStatus and SWI_Elite_SetStatus routines in the <a href="https://github.com/markmoxon/elite-over-econet-acorn-archimedes/blob/main/1-source-files/main-sources/EliteOverEconet.arm">module's source</a>. You can see these SWIs being used in the application's <a href="https://github.com/markmoxon/elite-over-econet-acorn-archimedes/blob/main/1-source-files/main-sources/!RunImage.txt">!RunImage source</a> - search for "XElite" to see how they can be called.</p>
 					</div>
 				</div>
 
 				<div class="codeBlockWrapper nav">
-					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="elite_over_econet_in_an_emulator.html">Playing Elite over Econet in an emulator</a><a class="next" rel="next" title="Next page" href="elite_3d.html">Elite 3D</a></nav>
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="elite_over_econet_in_an_emulator.html">Playing Elite over Econet in an emulator</a><a class="next" rel="next" title="Next page" href="elite_over_econet_acorn_archimedes.html">Econet Elite on the Archimedes</a></nav>
 				</div>
 				<!-- End of article -->
 			</article>

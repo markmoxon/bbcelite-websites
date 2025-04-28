@@ -372,6 +372,7 @@
 									<li><a id="hacks_elite_over_econet_scoreboard" href="/hacks/elite_over_econet_scoreboard.html"><span class="menuTitle">The Elite multiplayer scoreboard</span> <span class="menuSummary">Running multiplayer Elite competitions with a live Econet-based scoreboard</span></a></li>
 									<li><a id="hacks_elite_over_econet_in_an_emulator" href="/hacks/elite_over_econet_in_an_emulator.html"><span class="menuTitle">Playing Elite over Econet in an emulator</span> <span class="menuSummary">How to set up BeebEm with an emulated Econet network that runs Elite</span></a></li>
 									<li><a id="hacks_elite_over_econet_technical_information" href="/hacks/elite_over_econet_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of how Elite over Econet works</span></a></li>
+									<li><a id="hacks_elite_over_econet_acorn_archimedes" href="/hacks/elite_over_econet_acorn_archimedes.html"><span class="menuTitle">Elite over Econet on the Acorn Archimedes</span> <span class="menuSummary">Joining multiplayer scoreboards from the RISC OS version of Elite</span></a></li>
 								</ul>
 							</li>
 							<li id="hacks_elite_3d"><span class="menuTitle">Elite 3D</span> <span class="menuSummary menuSummarySubmenu">BBC Micro Elite in full anaglyph 3D - just add a pair of fancy coloured glasses</span>
