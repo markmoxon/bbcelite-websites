@@ -349,8 +349,8 @@
 							<li id="hacks_flicker-free_elite"><span class="menuTitle">Flicker-free Elite</span> <span class="menuSummary menuSummarySubmenu">Improved ship drawing on the BBC Micro, Commodore 64 and Commodore Plus/4</span>
 								<ul id="submenu_hacks_flicker-free_elite">
 									<li class="menuItemHeader">Flicker-free Elite</li>
-									<li><a id="hacks_flicker-free_elite_index" href="/hacks/flicker-free_elite.html"><span class="menuTitle">An introduction to flicker-free Elite</span> <span class="menuSummary">Improved ship drawing on the BBC Micro, Commodore 64 and Commodore Plus/4</span></a></li>
-									<li><a id="hacks_flicker-free_elite_downloads" href="/hacks/flicker-free_elite_downloads.html"><span class="menuTitle">Playing flicker-free Elite</span> <span class="menuSummary">How to download and play flicker-free Elite, on both the BBC and Commodore</span></a></li>
+									<li><a id="hacks_flicker-free_elite_index" href="/hacks/flicker-free_elite.html"><span class="menuTitle">An introduction to flicker-free Elite</span> <span class="menuSummary">Improved ship drawing on the BBC Micro, Electron, Commodore and Apple</span></a></li>
+									<li><a id="hacks_flicker-free_elite_downloads" href="/hacks/flicker-free_elite_downloads.html"><span class="menuTitle">Playing flicker-free Elite</span> <span class="menuSummary">How to download and play flicker-free Elite, on the BBC, Commodore and Apple</span></a></li>
 									<li><a id="hacks_flicker-free_elite_technical_information" href="/hacks/flicker-free_elite_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of how flicker-free Elite weaves its magic</span></a></li>
 								</ul>
 							</li>
