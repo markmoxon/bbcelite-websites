@@ -366,7 +366,7 @@
 							<li id="hacks_elite_over_econet"><span class="menuTitle">Elite over Econet</span> <span class="menuSummary menuSummarySubmenu">Elite that loads over an Econet network and supports live multiplayer scoreboards</span>
 								<ul id="submenu_hacks_elite_over_econet">
 									<li class="menuItemHeader">Elite over Econet</li>
-									<li><a id="hacks_elite_over_econet_index" href="/hacks/elite_over_econet.html"><span class="menuTitle">About Elite over Econet</span> <span class="menuSummary">Econet support and multiplayer scoreboards for BBC Micro and Archimedes Elite</span></a></li>
+									<li><a id="hacks_elite_over_econet_index" href="/hacks/elite_over_econet.html"><span class="menuTitle">About Elite over Econet</span> <span class="menuSummary">Econet support and multiplayer scoreboards for the BBC Micro, Electron and Archimedes</span></a></li>
 									<li><a id="hacks_elite_over_econet_installing" href="/hacks/elite_over_econet_installing.html"><span class="menuTitle">Installing Elite over Econet</span> <span class="menuSummary">How to install Elite on an Econet fileserver</span></a></li>
 									<li><a id="hacks_elite_over_econet_downloads" href="/hacks/elite_over_econet_downloads.html"><span class="menuTitle">Playing Elite over Econet</span> <span class="menuSummary">How to play Elite over an Econet network</span></a></li>
 									<li><a id="hacks_elite_over_econet_scoreboard" href="/hacks/elite_over_econet_scoreboard.html"><span class="menuTitle">The Elite multiplayer scoreboard</span> <span class="menuSummary">Running multiplayer Elite competitions with a live Econet-based scoreboard</span></a></li>
