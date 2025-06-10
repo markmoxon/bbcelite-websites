@@ -24,18 +24,19 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 						<h2 class="articleSubheader">Loading Elite over Econet<br />
 													 -------------------------</h2>
 
-						<p>On the BBC Micro and BBC Master, Elite doesn't normally load from an Econet fileserver; the Archimedes version works fine (see <a href="elite_over_econet_acorn_archimedes.html">Elite over Econet on the Acorn Archimedes</a> for details), but the 8-bit versions simply hang. The main reason is that Econet uses various blocks of memory in the BBC's memory map, and Elite uses the same blocks of memory. It's therefore no surprise that trying to load the standard version of Elite over an Econet network causes memory clashes that crash the computer.</p>
+						<p>On the BBC Micro, BBC Master and Acorn Electron, Elite doesn't normally load from an Econet fileserver; the Archimedes version works fine (see <a href="elite_over_econet_acorn_archimedes.html">Elite over Econet on the Acorn Archimedes</a> for details), but the 8-bit versions simply hang. The main reason is that Econet uses various blocks of memory in the BBC's memory map, and Elite uses the same blocks of memory. It's therefore no surprise that trying to load the standard version of Elite over an Econet network causes memory clashes that crash the computer.</p>
 
 						<p>The solution to getting Elite to run over Econet is to prevent this memory clash. Very few versions of Econet allow you to change the memory locations that it uses, so instead we have to update Elite so it avoids using the memory that Econet needs to use.</p>
 
 						<p>On top of this, the BBC Master version needs to deal with NMIs from Econet, as otherwise network activity can fatally interrupt the game. Also, the interface for loading and saving commander files needs to work with the hierarchical filing system used by Econet (NFS), which is quite different to the standard disc filing system (DFS) that Elite normally uses.</p>
 
-						<p>And for the BBC Micro version of Elite, there's an even more pressing issue: Econet steals so much memory that there simply isn't enough room to fit both the game and the Econet workspace into main memory.</p>
+						<p>And for the BBC Micro and Electron versions of Elite, there's an even more pressing issue: Econet steals so much memory that there simply isn't enough room to fit both the game and the Econet workspace into main memory.</p>
 
 						<p>We'll take a look at the solutions to these challenges below, but if you want to follow along, then the accompanying repository contains all of the changes that I've made to Elite to make it work over Econet. Specifically, the <a href="https://github.com/markmoxon/elite-over-econet">elite-over-econet repository</a> includes the updated code as submodules, so to find all the changes, search the source files for "Mod:" in these repositories:</p>
 
 						<ul>
 							<li>The econet-flicker-free branch of <a href="https://github.com/markmoxon/elite-source-code-bbc-micro-disc/tree/econet-flicker-free/1-source-files/main-sources">elite-source-code-bbc-micro-disc</a></li>
+							<li>The econet-flicker-free branch of <a href="https://github.com/markmoxon/elite-source-code-acorn-electron/tree/econet-flicker-free/1-source-files/main-sources">elite-source-code-acorn-electron</a></li>
 							<li>The econet-flicker-free branch of <a href="https://github.com/markmoxon/elite-source-code-6502-second-processor/tree/econet-flicker-free/1-source-files/main-sources">elite-source-code-6502-second-processor</a></li>
 							<li>The econet-flicker-free branch of <a href="https://github.com/markmoxon/elite-source-code-bbc-master/tree/econet-flicker-free/1-source-files/main-sources">elite-source-code-bbc-master</a></li>
 						</ul>
@@ -52,14 +53,16 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 
 							<li>On the Master, pages &amp;B and &amp;C are reserved for Econet, so that's &amp;0B00 to &amp;0CFF.</li>
 
-							<li>On the BBC Micro, Econet pushes PAGE up by rather more than DFS (PAGE being the start of user memory). On standard disc systems PAGE gets set to &amp;1900 by default, but it's possible to reduce this to &amp;1100 in typical usage (which is the level that BBC Micro disc Elite expects). However, on Econet systems with DFS still available, PAGE rises two pages higher to &amp;1B00, and the lowest Econet can get is &amp;1200 (when DFS is not being used). This is &amp;100 bytes higher than the lowest value for DFS, and it's &amp;100 bytes higher than the value that Elite expects.</li>
+							<li>On the BBC Micro and Acorn electron, Econet pushes PAGE up by rather more than DFS (PAGE being the start of user memory). On standard disc systems PAGE gets set to &amp;1900 by default, but it's possible to reduce this to &amp;1100 in typical usage (which is the level that BBC Micro disc Elite expects). However, on Econet systems with DFS still available, PAGE rises two pages higher to &amp;1B00, and the lowest Econet can get is &amp;1200 (when DFS is not being used). This is &amp;100 bytes higher than the lowest value for DFS, and it's &amp;100 bytes higher than the value that Elite expects.</li>
 						</ul>
 
 						<p>For the first one - freeing up 16 bytes in zero page - this is an easy fix in the 6502 Second Processor version of Elite. In this version, it's the I/O Processor (i.e. the BBC Micro) that deals with file operations, so it's the memory map of the I/O Processor code that we need to check for clashes, rather than the Parasite code that runs in the co-processor. 6502 Second Processor Elite hardly uses any of zero page in the I/O Processor, so all that needs doing there is to move the variables so they don't clash with &amp;90 to &amp;9F.</p>
 
-						<p>Freeing up 16 bytes in zero page in the BBC Micro and BBC Master versions is a lot trickier, but a lot of the hard work has already been done when adding music to Elite, as the music player requires ten bytes in zero page to work properly (see the <a href="bbc_elite_with_music_technical_information.html">technical information for musical BBC Micro Elite</a> for details). Finding a further six bytes on the Master version isn't too hard, as there are some zero page locations that aren't used at all, and there's also plenty of spare memory in the WP workspace at &amp;0E41, so we can move some of the less-used zero page variables there, at the expense of an extra byte in each instruction that accesses these variables (memory we can easily spare). On the BBC Micro space is a bit tighter, but there are still savings to be made, and there is some extra space at the end of the UP workspace that can be used to rehouse some of the less-used variables.</p>
+						<p>Freeing up 16 bytes in zero page in the BBC Micro and BBC Master versions is a lot trickier, but a lot of the hard work was already done when I added music to Elite, as the music player requires ten bytes in zero page to work properly (see the <a href="bbc_elite_with_music_technical_information.html">technical information for musical BBC Micro Elite</a> for details). Finding a further six bytes on the Master version isn't too hard, as there are some zero page locations that aren't used at all, and there's also plenty of spare memory in the WP workspace at &amp;0E41, so we can move some of the less-used zero page variables there, at the expense of an extra byte in each instruction that accesses these variables (memory we can easily spare). On the BBC Micro space is a bit tighter, but there are still savings to be made, and there is some extra space at the end of the UP workspace that can be used to rehouse some of the less-used variables.</p>
 
-						<p>Freeing up &amp;0B00 to &amp;0CFF on the BBC Master is pretty easy too. On the standard Master version, &amp;0B00 to &amp;0CFF is only used by the ship heap for the ship hangar, and as we don't use pages &amp;9 and &amp;A, it's an easy change to move the hanger heap to &amp;0900 to &amp;0AFF instead. And if we're running the 6502 Second Processor version on a Master, then this part of the I/O processor's memory is only used for the <a href="/deep_dives/the_tina_hook.html">TINA hook</a>, which we can safely ignore as it's unused anyway. </p>
+						<p>Interestingly, the Electron version of Elite already avoids using addresses &amp;90 to &amp;9F, so that makes life a bit easier. That said, we also need to avoid using any zero page locations that are used for handling NMIs, so that we can support the NMI-based NFS instead of the cassette filing system of the original. It turns out that the simplest solution is to apply the zero page structure from the disc version of Elite over Econet to the Electron version, which involves relocating the keyboard buffer from zero page into main memory. This is pretty easy as in the Electron version, we have an extra 16K of sideways RAM to play with.</p>
+
+						<p>Freeing up &amp;0B00 to &amp;0CFF on the BBC Master is pretty easy too. On the standard Master version, &amp;0B00 to &amp;0CFF is only used by the ship heap for the ship hangar, and as we don't use pages &amp;9 and &amp;A, it's an easy change to move the hanger heap to &amp;0900 to &amp;0AFF instead. And if we're running the 6502 Second Processor version on a Master, then this part of the I/O processor's memory is only used for the <a href="/deep_dives/the_tina_hook.html">TINA hook</a>, which we can safely ignore as it's unused anyway.</p>
 
 						<p>But what about the high value of PAGE on the BBC Micro? For the 6502 Second Processor version running on a BBC Micro, there is nothing to fix; the I/O Processor code loads at &amp;2300 anyway, which is well above the value of PAGE with Econet fitted, so there is nothing to do here. But for the standard BBC Micro there is hardly any spare memory at all, so instead we have to make some compromises...</p>
 
@@ -81,9 +84,9 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 						<h2 class="articleSubheader">Playing nicely with NFS and NMIs<br />
 													 --------------------------------</h2>
 
-						<p>Now that Elite should run happily without clashing with Econet, we need to update any DFS-specific code to work with the hierarchical NFS. We also need to ensure that the BBC Master version deals with NMIs correctly, as otherwise the Master will get interrupted by network traffic while we're trying to play Elite (the BBC Micro doesn't appear to have the same issue with NMIs).</p>
+						<p>Now that Elite should run happily without clashing with Econet, we need to update any DFS-specific code to work with the hierarchical NFS (or, in the case of the Electron, backport the entire disc access menu to the game). We also need to ensure that the BBC Master version deals with NMIs correctly, as otherwise the Master will get interrupted by network traffic while we're trying to play Elite (the BBC Micro doesn't appear to have the same issue with NMIs, so thay remain enabled in the Econet version).</p>
 
-						<p>The good news is that the <a href="https://elite.bbcelite.com/master/releases.html#compact">BBC Master Compact variant</a>, released by Superior Software in 1987, contains most of what we need. This is BBC Master 128 Elite, updated to work with ADFS, which is also hierarchical. As part of this, the disk access menu was changed to make more sense with the single ADFS drive on the Compact - so things like "drive number" were removed and replaced by a request for a directory name, and the catalogue code was updated to display files in a single column and across multiple pages, as there's too much information to fit two columns on one screen. Finally, routines were added to claim and release the NMI workspace before and after file access, which is exactly what we need to implement for Econet.</p>
+						<p>The good news is that the <a href="https://elite.bbcelite.com/master/releases.html#compact">BBC Master Compact variant</a>, released by Superior Software in 1987, contains most of what we need. This is BBC Master 128 Elite, updated to work with ADFS, which is also hierarchical. As part of this, the disc access menu was changed to make more sense with the single ADFS drive on the Compact - so things like "drive number" were removed and replaced by a request for a directory name, and the catalogue code was updated to display files in a single column and across multiple pages, as there's too much information to fit two columns on one screen. Finally, routines were added to claim and release the NMI workspace before and after file access, which is exactly what we need to implement for Econet.</p>
 
 						<p>It turns out that the Compact's updates work nicely with NFS, with just a few tweaks needed to the OS commands for switching to the commander file directory (which is $.E in the ADFS version, but we want to switch to EliteCmdrs in the user's main directory for Elite over Econet). The code changes are also suitable for porting to the I/O Processor code in the 6502 Second Processor version, to update the file menu for NFS. A few OS command strings need the drive number removing in the Parasite code, but that's about it.</p>
 
@@ -94,7 +97,7 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 
 						<p>In an ideal world, players would load Elite from a central library on the fileserver, but would be able to save their commander files locally into their own main user directories. We can achieve this by creating loader programs in the Econet library directories, while keeping the game binaries out of the library and in a separate game folder (to avoid filling the library with too many files). If we then switch directory to the user's main directory once the game is loaded, then loading and saving commander files will work as required.</p>
 
-						<p>To achieve this, there are two loader programs that go into the Econet library, which are built by the <a href="https://github.com/markmoxon/elite-over-econet">elite-over-econet repository</a>: they are called Elite and EliteB, and they go in the $.Library and $.Library1 folders on the server. This means that if a user types a *Elite command, then the Elite loader gets executed, irrespective of the current directory. When run without a parameter, the loader does some basic platform checks, and runs the correct game binary depending on the machine type: if this is a Master then it runs ELTME, if this is a 6502 Second Processor then it runs ELTSE, and if this is a BBC Micro then it runs EliteB (see the next section).</p>
+						<p>To achieve this, there are two loader programs that go into the Econet library, which are built by the <a href="https://github.com/markmoxon/elite-over-econet">elite-over-econet repository</a>: they are called Elite and EliteB, and they go in the $.Library and $.Library1 folders on the server. This means that if a user types a *Elite command, then the Elite loader gets executed, irrespective of the current directory. When run without a parameter, the loader does some basic platform checks, and runs the correct game binary depending on the machine type: if this is a Master then it runs ELTME, if this is a 6502 Second Processor then it runs ELTSE, if this is an Electron then it runs ELTEE, and if this is a BBC Micro then it runs EliteB (see the next section).</p>
 
 						<p>The Elite loader can also take four parameters, which do the following rather than running the game:</p>
 
@@ -109,7 +112,7 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 							<tr><td>*Elite D</td><td>Run the Elite over Econet debugger (see <a href="elite_over_econet_scoreboard.html">the Elite multiplayer scoreboard</a>)</td></tr>
 						</table>
 
-						<p>The various game binaries have a consistent naming convention to make them easier to manage in NFS. Files called ELTA* are for the standard BBC Micro version, ELTB* files are for the sideways RAM version, ELTS* files are for the 6502 Second Processor version, and ELTM* files are for the BBC Master version. This convention gets around issues with the original games, which have files called T.CODE, D.CODE and so on, which would need lots of nested directories in NFS. There is one nested directory, however: alongside the game binaries are the ship blueprint files for the standard disc version, which all live in the sub-directory $.EliteGame.D (as in the original discs they have names D.MOA to D.MOP, and it's a bit tidier to group them together in one place).</p>
+						<p>The various game binaries have a consistent naming convention to make them easier to manage in NFS. Files called ELTA* are for the standard BBC Micro version, ELTB* files are for the sideways RAM version, ELTS* files are for the 6502 Second Processor version, ELTE* files are for the Acorn Electron version, and ELTM* files are for the BBC Master version. This convention gets around issues with the original games, which have files called T.CODE, D.CODE and so on, which would need lots of nested directories in NFS. There is one nested directory, however: alongside the game binaries are the ship blueprint files for the standard disc version, which all live in the sub-directory $.EliteGame.D (as in the original discs they have names D.MOA to D.MOP, and it's a bit tidier to group them together in one place).</p>
 
 						<h2 class="articleSubheader">The EliteB loader program<br />
 													 -------------------------</h2>
@@ -179,7 +182,8 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 								1 = Master<br />
 								2 = 6502 Second Processor<br />
 								3 = BBC Micro<br />
-								4 = Archimedes</td></tr>
+								4 = Archimedes<br />
+								5 = Acorn Electron</td></tr>
 							<tr><td>#17</td><td>Player's station number (when data is being forwarded):<br /><br />
 								0 = this transmission is coming directly from Elite and the player's station number can be found in the transmission itself<br /><br />
 								Non-zero = this data packet is being forwarded, so bytes #17 and #18 contain the player's station and network numbers, and the transmission itself will contain the address of the forwarding machine</td></tr>
@@ -248,6 +252,17 @@ page_header("hacks", "elite_over_econet_technical_information.html", "Technical 
 							<tr><td>ELTME</td><td>M128Elt from the original disc, updated for Econet</td></tr>
 							<tr><td>ELTMD</td><td>BDATA from the original disc, which contains the game data, updated for Econet</td></tr>
 							<tr><td>ELTMC</td><td>BCODE from the original disc, which contains the game code, updated for Econet</td></tr>
+						</table>
+
+						<p>These are the files for the Acorn Electron version of Elite over Econet (note that the game binaries all start with ELTE):</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th style="width: 11ch">File</th><th>Details</th></tr>
+							<tr><td>ELTEL</td><td>A loader for the sideways RAM image in ELTER</td></tr>
+							<tr><td>ELTER</td><td>The speed-critical code for Electron Elite, to load into sideways RAM</td></tr>
+							<tr><td>ELTEE</td><td>ELITE from the original disc, which displays the mode 7 Acornsoft loading screen</td></tr>
+							<tr><td>ELTED</td><td>ELITEDA from the original disc, which displays the Saturn loading screen</td></tr>
+							<tr><td>ELTEC</td><td>ELITECO from the original disc, which contains the game code, updated for Econet</td></tr>
 						</table>
 
 						<p>These are the files for the 6502 Second Processor version of Elite over Econet (note that the game binaries all start with ELTS):</p>
