@@ -332,13 +332,14 @@
 									<li class="menuItemHeader">Elite Compendium</li>
 									<li><a id="hacks_elite_compendium_index" href="/hacks/elite_compendium.html"><span class="menuTitle">About the Elite Compendium</span> <span class="menuSummary">Bringing all the best Elite hacks together in one feature-packed disc</span></a></li>
 									<li><a id="hacks_elite_compendium_downloads" href="/hacks/elite_compendium_downloads.html"><span class="menuTitle">Playing the Elite Compendium</span> <span class="menuSummary">How to download and play the Elite Compendium</span></a></li>
+									<li><a id="hacks_elite_compendium_acorn_electron" href="/hacks/elite_compendium_acorn_electron.html"><span class="menuTitle">Acorn Electron Elite (Compendium version)</span> <span class="menuSummary">Updating Acorn Electron Elite with all the bells and whistles</span></a></li>
 									<li><a id="hacks_elite_compendium_technical_information" href="/hacks/elite_compendium_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of all the hacks and enhancements in the Elite Compendium</span></a></li>
 								</ul>
 							</li>
 							<li id="hacks_elite_universe_editor"><span class="menuTitle">Elite Universe Editor</span> <span class="menuSummary menuSummarySubmenu">Create your own Elite universes and "press play" to bring them to life</span>
 								<ul id="submenu_hacks_elite_universe_editor">
 									<li class="menuItemHeader">Elite Universe Editor</li>
-									<li><a id="hacks_elite_universe_editor_index" href="/hacks/elite_universe_editor.html"><span class="menuTitle">An introduction to the Elite Universe Editor</span> <span class="menuSummary">Create your own Elite universes and "press play" to bring them to life</span></a></li>
+									<li><a id="hacks_elite_universe_editor_index" href="/hacks/elite_universe_editor.html"><span class="menuTitle">About the Elite Universe Editor</span> <span class="menuSummary">Create your own Elite universes and "press play" to bring them to life</span></a></li>
 									<li><a id="hacks_elite_universe_editor_downloads" href="/hacks/elite_universe_editor_downloads.html"><span class="menuTitle">Playing the Elite Universe Editor</span> <span class="menuSummary">How to download and play the Elite Universe Editor</span></a></li>
 									<li><a id="hacks_elite_universe_editor_summary_of_keys" href="/hacks/elite_universe_editor_summary_of_keys.html"><span class="menuTitle">A summary of keys</span> <span class="menuSummary">All the keys used in all the different versions of the Elite Universe Editor</span></a></li>
 									<li><a id="hacks_elite_universe_editor_instructions_bbc" href="/hacks/elite_universe_editor_instructions_bbc.html"><span class="menuTitle">Instructions for the BBC version</span> <span class="menuSummary">Full instructions for the Elite Universe Editor on the BBC Micro and Master</span></a></li>
@@ -349,7 +350,7 @@
 							<li id="hacks_flicker-free_elite"><span class="menuTitle">Flicker-free Elite</span> <span class="menuSummary menuSummarySubmenu">Improved ship drawing on the BBC Micro, Commodore 64 and Commodore Plus/4</span>
 								<ul id="submenu_hacks_flicker-free_elite">
 									<li class="menuItemHeader">Flicker-free Elite</li>
-									<li><a id="hacks_flicker-free_elite_index" href="/hacks/flicker-free_elite.html"><span class="menuTitle">An introduction to flicker-free Elite</span> <span class="menuSummary">Improved ship drawing on the BBC Micro, Electron, Commodore and Apple</span></a></li>
+									<li><a id="hacks_flicker-free_elite_index" href="/hacks/flicker-free_elite.html"><span class="menuTitle">About flicker-free Elite</span> <span class="menuSummary">Improved ship drawing on the BBC Micro, Electron, Commodore and Apple</span></a></li>
 									<li><a id="hacks_flicker-free_elite_downloads" href="/hacks/flicker-free_elite_downloads.html"><span class="menuTitle">Playing flicker-free Elite</span> <span class="menuSummary">How to download and play flicker-free Elite, on the BBC, Commodore and Apple</span></a></li>
 									<li><a id="hacks_flicker-free_elite_technical_information" href="/hacks/flicker-free_elite_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of how flicker-free Elite weaves its magic</span></a></li>
 								</ul>
@@ -357,7 +358,7 @@
 							<li id="hacks_teletext_elite"><span class="menuTitle">Teletext Elite</span> <span class="menuSummary menuSummarySubmenu">The disc version of BBC Micro Elite, converted to run in teletext</span>
 								<ul id="submenu_hacks_teletext_elite">
 									<li class="menuItemHeader">Teletext Elite</li>
-									<li><a id="hacks_teletext_elite_index" href="/hacks/teletext_elite.html"><span class="menuTitle">An introduction to Teletext Elite</span> <span class="menuSummary">The disc version of BBC Micro Elite, converted to run in teletext</span></a></li>
+									<li><a id="hacks_teletext_elite_index" href="/hacks/teletext_elite.html"><span class="menuTitle">About Teletext Elite</span> <span class="menuSummary">The disc version of BBC Micro Elite, converted to run in teletext</span></a></li>
 									<li><a id="hacks_teletext_elite_downloads" href="/hacks/teletext_elite_downloads.html"><span class="menuTitle">Playing Teletext Elite</span> <span class="menuSummary">How to download and play Teletext Elite</span></a></li>
 									<li><a id="hacks_teletext_elite_instructions" href="/hacks/teletext_elite_instructions.html"><span class="menuTitle">Instructions for Teletext Elite</span> <span class="menuSummary">Full instructions for Teletext Elite on the BBC Micro</span></a></li>
 									<li><a id="hacks_teletext_elite_technical_information" href="/hacks/teletext_elite_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of how Elite was converted to use teletext</span></a></li>
