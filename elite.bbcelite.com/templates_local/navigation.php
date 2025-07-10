@@ -332,7 +332,7 @@
 									<li class="menuItemHeader">Elite Compendium</li>
 									<li><a id="hacks_elite_compendium_index" href="/hacks/elite_compendium.html"><span class="menuTitle">About the Elite Compendium</span> <span class="menuSummary">Bringing all the best Elite hacks together in one feature-packed disc</span></a></li>
 									<li><a id="hacks_elite_compendium_downloads" href="/hacks/elite_compendium_downloads.html"><span class="menuTitle">Playing the Elite Compendium</span> <span class="menuSummary">How to download and play the Elite Compendium</span></a></li>
-									<li><a id="hacks_elite_compendium_acorn_electron" href="/hacks/elite_compendium_acorn_electron.html"><span class="menuTitle">Acorn Electron Elite (Compendium version)</span> <span class="menuSummary">Updating Acorn Electron Elite with all the bells and whistles</span></a></li>
+									<li><a id="hacks_elite_compendium_acorn_electron" href="/hacks/elite_compendium_acorn_electron.html"><span class="menuTitle">Compendium version of Acorn Electron Elite</span> <span class="menuSummary">Updating Acorn Electron Elite with all the bells and whistles</span></a></li>
 									<li><a id="hacks_elite_compendium_technical_information" href="/hacks/elite_compendium_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of all the hacks and enhancements in the Elite Compendium</span></a></li>
 								</ul>
 							</li>
