@@ -4,7 +4,7 @@
 			</footer>
 
 			<div id="logo">
-				<a href="/" accesskey="1">Home page</a>
+				<a href="/">Home page</a>
 			</div>
 
 			<nav id="navigation">
@@ -404,7 +404,7 @@
 						</ul>
 					</li>
 
-                    <div id="navigation_code"></div>
+					<div id="navigation_code"></div>
 
 					<li id="indexes"><span class="menuTitle">Indexes to the source code</span>
 						<span class="menuSummary menuSummarySubmenu">A-Z indexes, code usage analysis and more</span>

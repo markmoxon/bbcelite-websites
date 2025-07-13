@@ -176,7 +176,7 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 
 		<link rel="home" href="/" title="Home page" />
 
-        <script defer="defer" src="/javascript/20250204/main.min.js" onload="<?php echo $initialise_page ?>"></script>
+		<script defer="defer" src="/javascript/20250204/main.min.js" onload="<?php echo $initialise_page ?>"></script>
 	</head>
 
 	<body<?php echo $body_class ?>>

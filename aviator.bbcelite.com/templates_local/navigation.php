@@ -4,7 +4,7 @@
 			</footer>
 
 			<div id="logo">
-				<a href="/" accesskey="1">Home page</a>
+				<a href="/">Home page</a>
 			</div>
 
 			<nav id="navigation">
