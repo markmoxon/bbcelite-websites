@@ -14,7 +14,7 @@ page_header("deep_dives", "docked_and_flight_code.html", "Swapping between the d
 
 						<p>Elite blew all of this out of the water. The cassette version of Elite was great, and squeezed every ounce of performance out of the BBC's 32K of RAM (leaving almost no free memory in its wake - see the <a href="the_elite_memory_map.html">BBC Micro cassette Elite memory map</a> for details). I started on the cassette version, and I fell in love with it. But for those of us poring over the manual and control guide, it hurt to be a lowly tape user, because a noticeable number of features had asterisks next to them, indicating that they were only present in the disc version.</p>
 
-						<img class="titleImage" src="/images/disc/docking_computer.png" alt="The docking computer in action in the disc version of BBC Micro Elite" />
+						<img class="titleImage" src="/images/disc/docking_computer.png" alt="The docking computer in action in the disc version of BBC Micro Elite">
 
 						<p>More ships! Military lasers! Asteroid mining! Extended system descriptions! Better enemy tactics! Missions! A proper docking computer! Bitstik support! The list went on. And OK, perhaps nobody really cared about the last one, but this exotic menu of extra features was utterly mouthwatering for those of with our noses pressed up against the glass. To see what I mean, check out the <a href="/compare/feature_comparison.html">feature comparison table</a> for a comprehensive list of all the extra features in the disc version.</p>
 
@@ -22,12 +22,12 @@ page_header("deep_dives", "docked_and_flight_code.html", "Swapping between the d
 
 						<p>In this article, we'll take a look at how Bell and Braben managed to fit so many extra features into the disc version, by splitting the codebase into two parts: the docked code and the flight code.</p>
 
-						<h2 class="articleSubheader">T.CODE, D.CODE and the ship blueprint files<br />
+						<h2 class="articleSubheader">T.CODE, D.CODE and the ship blueprint files<br>
 													 -------------------------------------------</h2>
 
 						<p>If you look at the disc contents for the BBC Micro disc version of Elite, there are an awful lot of files on there:</p>
 
-						<img class="titleImage lightBorder" src="/images/disc/disc_contents.png" alt="The contents of the disc for the BBC Micro disc version of Elite" />
+						<img class="titleImage lightBorder" src="/images/disc/disc_contents.png" alt="The contents of the disc for the BBC Micro disc version of Elite">
 
 						<p>Most of these files - the ones called D.MOA to D.MOP - contain different combinations of ship blueprints, and one of these files gets loaded every time we launch from the station or do a hyperspace jump. These are discussed in the deep dive on <a href="ship_blueprints_in_the_disc_version.html">ship blueprints in the BBC Micro disc version</a>.</p>
 
@@ -39,7 +39,7 @@ page_header("deep_dives", "docked_and_flight_code.html", "Swapping between the d
 
 						<p>All of this code and data stays in memory for the duration of the game, leaving a gap in the memory map from &amp;11E2 all the way to the start of screen memory at &amp;6000. This is where the main game binary is loaded: when the game first starts, when we dock at a station or when we die in space, the docked code in T.CODE gets loaded at &amp;11E2. When we launch from the space station, the flight code in D.CODE gets loaded at &amp;11E2, which in turn loads one of the D.MOA to D.MOP ship blueprint files to address &amp;5600. And when we hyperspace, the flight code remains in-place and we load a different ship blueprint file to address &amp;5600.</p>
 
-						<img class="titleImage" src="/images/cassette/launch.png" alt="The launch tunnel in the BBC Micro cassette version of Elite" />
+						<img class="titleImage" src="/images/cassette/launch.png" alt="The launch tunnel in the BBC Micro cassette version of Elite">
 
 						<p>This approach enables us to cram more functionality into the game, at the expense of a short pause for loading when switching between the station and space. The T.CODE binary contains all the routines that are needed to run the game while docked, so it covers buying and selling cargo, equipping our ship, mission briefings, the ship hangar and so on. Meanwhile the D.CODE binary contains all the flight code, along with the ship blueprints that contain the 3D wireframes.</p>
 
@@ -51,18 +51,18 @@ page_header("deep_dives", "docked_and_flight_code.html", "Swapping between the d
 
 						<p>Let's take a closer look at the process of swapping the docked and flight code.
 
-						<h2 class="articleSubheader">Swapping between the docked and flight code<br />
+						<h2 class="articleSubheader">Swapping between the docked and flight code<br>
 													 -------------------------------------------</h2>
 
 						<p>When we launch from the space station, the game loads and runs the flight code with a simple *RUN D.CODE command in the <a href="/disc/docked/variable/rdli.html">RDLI</a> variable. The load and execution address of D.CODE are both set to &amp;11E3, and the first instruction in the D.CODE binary at <a href="/disc/flight/workspace/s_per_cent.html">S%</a> is a jump to <a href="/disc/flight/subroutine/deeor.html">DEEOR</a> in the flight code, which decrypts the binary and jumps into the flight loop to display the space view.</p>
 
-						<img class="titleImage" src="/images/ellipses/lave.png" alt="The launch view of Lave in the BBC Micro cassette version of Elite" />
+						<img class="titleImage" src="/images/ellipses/lave.png" alt="The launch view of Lave in the BBC Micro cassette version of Elite">
 
 						<p>Things are slightly more complex when going the other way, as there are two ways to leave the flight code: by docking, or by dying. When docking, we want to load the docked code, display the ship hangar and show the Status Mode screen. When dying, we want to load the docked code and jump to the title screen.</p>
 
 						<p>The flight code deals with these two scenarios by editing the command string that we use to load the docked code. The command string lives in the <a href="/disc/flight/variable/ltli.html">LTLI</a> variable, and by default it contains a *LOAD T.CODE command, which is the command we run when we die in space (we'll look at this below). However, if we execute a successful docking, then the <a href="/disc/flight/subroutine/doentry.html">DOENTRY</a> routine in the flight code changes this command to *RUN T.CODE instead, which is executed in the flight code's <a href="/disc/flight/subroutine/inbay.html">INBAY</a> routine. The load and execution address of T.CODE are both set to &amp;11E3, and the first instruction in the T.CODE binary at <a href="/disc/docked/workspace/s_per_cent.html">S%</a> is a jump to <a href="/disc/docked/subroutine/doentry.html">DOENTRY</a> in the docked code, which shows the ship hangar, checks for mission progression and shows the Status Mode screen.</p>
 
-						<img class="titleImage" src="/images/disc/status_mode.png" alt="The Status Mode screen in the BBC Micro disc version of Elite" />
+						<img class="titleImage" src="/images/disc/status_mode.png" alt="The Status Mode screen in the BBC Micro disc version of Elite">
 
 						<p>So what happens if we die in space, with the command still left at *LOAD T.CODE? Well, the docked code in T.CODE gets loaded at its load address of &amp;11E3, and then the CPU continues executing instructions as if nothing had happened. The load command is executed in the flight code's <a href="/disc/flight/subroutine/inbay.html">INBAY</a> routine, which calls the operating system's OSCLI routine with a JSR, so when the T.CODE file has been loaded, execution continues with the instruction after the JSR OSCLI instruction... which has now been replaced by the docked code.</p>
 
@@ -86,12 +86,12 @@ page_header("deep_dives", "docked_and_flight_code.html", "Swapping between the d
 
 						<p>The S% workspace is followed by the INBAY routine. <a href="/disc/flight/subroutine/inbay.html">INBAY in the flight code</a> contains three instructions that run the OS command to load the docked code. <a href="/disc/docked/subroutine/inbay.html">INBAY in the docked code</a> also contains three instructions with the exact same format, but they are placeholders that are never run, as they simply exist to ensure the next instruction - a JMP SCRAM instruction - appears at the correct place in memory, i.e. just after the three instructions that perform the *LOAD. This ensures that when the JSR OSCLI instruction in the flight code returns after *LOADing the docked code over the top of the currently executing flight code, execution continues with the next instruction, which is now the JMP SCRAM instruction that we just loaded. And the jump to <a href="/disc/docked/subroutine/scram.html">SCRAM</a> restarts the game, which is what we want to do when we die.</p>
 
-						<h2 class="articleSubheader">Saving the disc catalogue with CATD<br />
+						<h2 class="articleSubheader">Saving the disc catalogue with CATD<br>
 													 -----------------------------------</h2>
 
 						<p>If you look at the <a href="the_elite_memory_map_disc.html">memory map</a> for the BBC Micro disc version of Elite, you'll see that the <a href="/disc/docked/workspace/wp.html">WP workspace</a> from &amp;0E00 to &amp;0FD2 uses the same memory as the DFS disc catalogue. On DFS discs, the disc catalogue takes up sectors 0 and 1, and the Disc Filing System loads these two sectors into pages &amp;E and &amp;F, so it can work with the disc's file catalogue data in-memory before saving it back to disc. Elite uses the same part of memory for the WP workspace, where it stores flight-specific data such as line heaps and stardust coordinates. This is acceptable as the flight code doesn't require disc access (you can only save or load commander files when docked).</p>
 
-						<img class="titleImage" src="/images/cassette/docking_checks.png" alt="A space station in BBC Micro cassette Elite" />
+						<img class="titleImage" src="/images/cassette/docking_checks.png" alt="A space station in BBC Micro cassette Elite">
 
 						<p>The only issue is that using this part of memory for flight data obviously corrupts the disc catalogue that normally lives there, so before doing any disc activity, Elite calls the <a href="/disc/loader_3/subroutine/catd.html">CATD</a> routine at &amp;0D7A, which reloads sectors 0 and 1 into pages &amp;E and &amp;F. This routine is itself tucked away in the middle of the DFS workspace, this time in a safe spot in the NMI vector workspace that persists between disc operations, so the CATD routine persists throughout the game.</p>
 
@@ -101,7 +101,7 @@ page_header("deep_dives", "docked_and_flight_code.html", "Swapping between the d
 
 						<p>You can see this in action in Elite-A, as Angus removed the CATD routine to make way for the updated scanner in <a href="/elite-a/loader/subroutine/iff_index.html">iff_index</a>. As a result, Elite-A will crash if you launch, pause and press ESCAPE before the disc has stopped spinning, demonstrating the bug that the disc version of Elite fixes with CATD.</p>
 
-						<h2 class="articleSubheader">Handling disc and system errors<br />
+						<h2 class="articleSubheader">Handling disc and system errors<br>
 													 -------------------------------</h2>
 
 						<p>The final thing to mention about this code-swapping process are the three break handlers.</p>
@@ -110,7 +110,7 @@ page_header("deep_dives", "docked_and_flight_code.html", "Swapping between the d
 
 						<p>For the docked code, there is a slightly more civilised break handler at <a href="/disc/docked/subroutine/brbr.html">BRBR</a>, which restarts the game to display the title screen, where the error pointed to by (&amp;FD &amp;FE) gets displayed without having to hang the computer.</p>
 
-						<img class="titleImage" src="/images/disc/disk_access_menu.png" alt="The disc access menu in BBC Micro disc Elite" />
+						<img class="titleImage" src="/images/disc/disk_access_menu.png" alt="The disc access menu in BBC Micro disc Elite">
 
 						<p>On top of this, there is a third break handler at <a href="/disc/docked/subroutine/mebrk.html">MEBRK</a> that is used when saving or loading commander files; this handler makes a beep and prints the system error message in the block pointed to by (&amp;FD &amp;FE). It then waits for a key press and returns to the disc access menu. This ensures that any disc errors in the disc access menu are handled gracefully, in case the user tries to load or delete a non-existent file, for example.</p>
 

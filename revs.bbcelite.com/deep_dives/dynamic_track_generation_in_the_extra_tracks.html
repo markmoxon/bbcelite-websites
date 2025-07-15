@@ -14,11 +14,11 @@ page_header("deep_dives", "dynamic_track_generation_in_the_extra_tracks.html", "
 
 						<p>But there's a problem with this approach, as the track data file format used for Silverstone, which is described in the deep dive on <a href="the_track_data_file_format.html">the track data file format</a>, turns out to have a serious limitation. To see what it is, take a look at this map of the Silverstone track, as extracted from the game data:</p>
 
-						<img class="titleImage themeLight" style="width: 715px" src="/images/track/silverstone_track_white.png" alt="The Silverstone track in Revs" /><img class="titleImage themeDark" style="width: 715px" src="/images/track/silverstone_track_black.png" alt="The Silverstone track in Revs" /><img class="titleImage themeElite" style="width: 715px" src="/images/track/silverstone_track_black.png" alt="The Silverstone track in Revs" />
+						<img class="titleImage themeLight" style="width: 715px" src="/images/track/silverstone_track_white.png" alt="The Silverstone track in Revs"><img class="titleImage themeDark" style="width: 715px" src="/images/track/silverstone_track_black.png" alt="The Silverstone track in Revs"><img class="titleImage themeElite" style="width: 715px" src="/images/track/silverstone_track_black.png" alt="The Silverstone track in Revs">
 
 						<p>Straight sections are shown in blue, while curved sections are in orange, and you can see that Silverstone is mainly made up of straight sections, with a handful of short curved sections between. But now take a look at Oulton Park, one of the tracks that comes with the Revs 4 Tracks expansion. This is what the track looks like when extracted from the game data:</p>
 
-						<img class="titleImage themeLight" style="width: 450px" src="/images/track/oulton_park_track_white.png" alt="The Oulton Park track in Revs" /><img class="titleImage themeDark" style="width: 450px" src="/images/track/oulton_park_track_black.png" alt="The Oulton Park track in Revs" /><img class="titleImage themeElite" style="width: 450px" src="/images/track/oulton_park_track_black.png" alt="The Oulton Park track in Revs" />
+						<img class="titleImage themeLight" style="width: 450px" src="/images/track/oulton_park_track_white.png" alt="The Oulton Park track in Revs"><img class="titleImage themeDark" style="width: 450px" src="/images/track/oulton_park_track_black.png" alt="The Oulton Park track in Revs"><img class="titleImage themeElite" style="width: 450px" src="/images/track/oulton_park_track_black.png" alt="The Oulton Park track in Revs">
 
 						<p>This is a really curvy track when compared to Silverstone, and the balance of orange to blue is the other way around. Unfortunately, this turns out to be a problem. The track data file format stores straight sections efficiently; a straight can be described using just one vector, namely the vector from one segment to the next as we work our way along the straight, stepping from one blue dot to the next. This vector is the same for every step along the straight line, but for curved sections, the vector is different for each step along the track, i.e. when stepping from one orange dot to the next. This makes curves much more memory-hungry, as we need to store lots of segment vectors rather than just one.</p>
 
@@ -28,7 +28,7 @@ page_header("deep_dives", "dynamic_track_generation_in_the_extra_tracks.html", "
 
 						<p>Also note that all the extra track files contain the same code and use the same approach; the only thing that differs is the data. Links in the following will take you to the source code for Oulton Park, but you could equally pick any of the five extra tracks.</p>
 
-						<h2 class="articleSubheader">The problem<br />
+						<h2 class="articleSubheader">The problem<br>
 													 -----------</h2>
 
 						<p>So just how bad is this space problem, and why can't we store a track like Oulton Park in the standard track data file format? Let's take a look at the figures.</p>
@@ -45,7 +45,7 @@ page_header("deep_dives", "dynamic_track_generation_in_the_extra_tracks.html", "
 
 						<p>So how do the extra tracks implement all these extra curved sections, and without needing a new version of the main game? Let's take a look.</p>
 
-						<h2 class="articleSubheader">Dynamic generation of segment vectors<br />
+						<h2 class="articleSubheader">Dynamic generation of segment vectors<br>
 													 -------------------------------------</h2>
 
 						<p>Geoff Crammond's solution to the above problem is characteristically elegant. Instead of devoting 69% of the track data file to segment vectors, the extra track files contain code in place of the data. This code contains a number of modifications to the main game code, most of which are nothing to do with segment vectors; see the deep dive on <a href="secrets_of_the_extra_tracks.html">secrets of the extra tracks</a> for details of how the code modifications in the extra track files work, and see the deep dive on <a href="code_hooks_in_the_extra_tracks.html">code hooks in the extra tracks</a> for details of all the modifications.</p>
@@ -68,7 +68,7 @@ page_header("deep_dives", "dynamic_track_generation_in_the_extra_tracks.html", "
 
 						<p>Underlying these routines are quite a few variables and subroutines, which generate the track data required by the main game. Let's take a look at how segment vectors are generated on demand by the hook routines above.</p>
 
-						<h2 class="articleSubheader">Encoding curves<br />
+						<h2 class="articleSubheader">Encoding curves<br>
 													 ---------------</h2>
 
 						<p>In the Silverstone track, each segment vector is stored as exactly that - a vector. For the inner segment vectors, this is the vector that takes us from the current segment to the next segment, so we can construct a track section by taking the starting coordinates for the section, and adding the relevant inner segment vectors to work our way along the track verge, one segment at a time. Given the segment's inner coordinates, we can calculate the segment's outer coordinates by simply adding the outer segment vector to take us from the inner verge to the outer verge.</p>
@@ -80,13 +80,13 @@ page_header("deep_dives", "dynamic_track_generation_in_the_extra_tracks.html", "
 
 							<li>Step along the track by the first inner segment vector for this section</li>
 
-							<li>Step along the track by the second inner segment vector for this section<br /><br />...</li>
+							<li>Step along the track by the second inner segment vector for this section<br><br>...</li>
 
 							<li>Step along the track by the last inner segment vector for this section</li>
 
 							<li>Go to the next section's start coordinates</li>
 
-							<li>Step along the track by the first inner segment vector for this new section<br /><br />...</li>
+							<li>Step along the track by the first inner segment vector for this new section<br><br>...</li>
 						</ul>
 
 						<p>Each step along the track creates one track segment, represented by a dot in the images above. For curved sections, there is a different segment vector for each step along the section, while for straight sections, we use the same segment vector for each step along the straight line. The segment vector tables describe the shape of the track by effectively storing the shape of each individual segment.</p>
@@ -104,7 +104,7 @@ page_header("deep_dives", "dynamic_track_generation_in_the_extra_tracks.html", "
 
 							<li>Fetch the size and curve characteristics of the second sub-section's curve</li>
 
-							<li>Step along the track for the length of the second sub-section, updating the direction at each step by the curve characteristics<br /><br />...</li>
+							<li>Step along the track for the length of the second sub-section, updating the direction at each step by the curve characteristics<br><br>...</li>
 
 							<li>Fetch the size and curve characteristics of the last sub-section's curve</li>
 
@@ -112,7 +112,7 @@ page_header("deep_dives", "dynamic_track_generation_in_the_extra_tracks.html", "
 
 							<li>Go to the next section's start coordinates</li>
 
-							<li>Calculate the direction of the track at the start of this new section<br /><br />...</li>
+							<li>Calculate the direction of the track at the start of this new section<br><br>...</li>
 						</ul>
 
 						<p>We'll talk more about sub-sections below, but they essentially break the track down into smaller curves that each have a constant rate of change. The "curve characteristics" mentioned above are the rate of change of the track's direction, expressed in terms of a yaw angle delta and a slope delta (i.e. a change in compass heading and a change in slope).</p>
@@ -125,7 +125,7 @@ page_header("deep_dives", "dynamic_track_generation_in_the_extra_tracks.html", "
 
 						<p>Let's look at how this new algorithm is implemented in the extra tracks.</p>
 
-						<h2 class="articleSubheader">Curve characteristics<br />
+						<h2 class="articleSubheader">Curve characteristics<br>
 													 ---------------------</h2>
 
 						<p>In the new system, each track section has two important bits of associated data:</p>
@@ -182,7 +182,7 @@ page_header("deep_dives", "dynamic_track_generation_in_the_extra_tracks.html", "
 
 						<p>That, in a nutshell, is how the Revs extra tracks generate segment vectors on-the-fly. Next, let's take a closer look at how sections and sub-sections work together.</p>
 
-						<h2 class="articleSubheader">Sub-sections<br />
+						<h2 class="articleSubheader">Sub-sections<br>
 													 ------------</h2>
 
 						<p>As mentioned above, the extra tracks are not only broken down into sections, but they're also broken down into sub-sections. For example, in Oulton Park, there are 27 track sections (0 to 26) that between them contain a total of 58 sub-sections (0 to 57). These two concepts work together, so the track is made up of section 0, then section 1, and so on up to section 27, and the track is equivalently made up of sub-section 0, then sub-section 1, and so on up to sub-section 57.</p>
@@ -235,7 +235,7 @@ page_header("deep_dives", "dynamic_track_generation_in_the_extra_tracks.html", "
 
 						<p>That's how sub-sections work, so let's finish off with a look at straight sections.</p>
 
-						<h2 class="articleSubheader">Straight sections<br />
+						<h2 class="articleSubheader">Straight sections<br>
 													 -----------------</h2>
 
 						<p>We have talked a lot about generating curves, but straight sections are just as vital, so how do these work? Not surprisingly, they work in the same way as straight sections in the original Silverstone track, but the single segment vector that is required for straight sections is generated rather than read from a hard-coded table.</p>

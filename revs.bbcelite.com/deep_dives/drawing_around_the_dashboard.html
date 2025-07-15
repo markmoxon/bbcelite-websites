@@ -18,7 +18,7 @@ page_header("deep_dives", "drawing_around_the_dashboard.html", "Drawing around t
 
 						<p>This might take some explaining, so bear with me as we pop the hood and take a deep dive into the heart of the Revs codebase.</p>
 
-						<h2 class="articleSubheader">Dash data<br />
+						<h2 class="articleSubheader">Dash data<br>
 													 ---------</h2>
 
 						<p>To understand how Geoff Crammond forged the internals of Revs in the image of a racing car, you need to understand about the dash data, and how it unfolds itself from within the body of the game every time we visit the track. This process is explained in detail in the deep dive on <a href="the_jigsaw_puzzle_binary.html">the jigsaw puzzle binary</a>, but to save you wading through this rather complicated read, here's a very quick summary.</p>
@@ -33,19 +33,19 @@ page_header("deep_dives", "drawing_around_the_dashboard.html", "Drawing around t
 
 						<p>Which begs the question: what on earth is all this jigsaw madness for? Well, our first clue is in the dashDataOffset table, which contains the offset of the start of the data within each block. If we plot the contents of the dashDataOffset table on a graph, showing the offset for each of the blocks 0 to 39, then it looks like this:</p>
 
-						<img class="titleImage themeLight" style="width: 608px" src="/images/dash_data/offsets_white.png" alt="Graph of dash data offsets in Revs" /><img class="titleImage themeDark" style="width: 608px" src="/images/dash_data/offsets_black.png" alt="Graph of dash data offsets in Revs" /><img class="titleImage themeElite" style="width: 608px" src="/images/dash_data/offsets_black.png" alt="Graph of dash data offsets in Revs" />
+						<img class="titleImage themeLight" style="width: 608px" src="/images/dash_data/offsets_white.png" alt="Graph of dash data offsets in Revs"><img class="titleImage themeDark" style="width: 608px" src="/images/dash_data/offsets_black.png" alt="Graph of dash data offsets in Revs"><img class="titleImage themeElite" style="width: 608px" src="/images/dash_data/offsets_black.png" alt="Graph of dash data offsets in Revs">
 
 						<p>Huh, there's something familiar about this shape. It's symmetrical, it goes up in the middle and slopes down towards the sides, rising up again as it reaches the edges... ah! That's interesting. I wonder what would happen if...</p>
 
 						<p>...OK, got it! Here's the same shape, squashed vertically and with each data point replaced by a dot containing the block number, superimposed on the view we all know and love from the practice grid:</p>
 
-						<img class="titleImage themeLight" style="width: 605px" src="/images/dash_data/offset_overlay_white.png" alt="Graph of dash data offsets overlaid onto a Revs screenshot" /><img class="titleImage themeDark" style="width: 605px" src="/images/dash_data/offset_overlay_black.png" alt="Graph of dash data offsets in Revs" /><img class="titleImage themeElite" style="width: 605px" src="/images/dash_data/offset_overlay_black.png" alt="Graph of dash data offsets in Revs" />
+						<img class="titleImage themeLight" style="width: 605px" src="/images/dash_data/offset_overlay_white.png" alt="Graph of dash data offsets overlaid onto a Revs screenshot"><img class="titleImage themeDark" style="width: 605px" src="/images/dash_data/offset_overlay_black.png" alt="Graph of dash data offsets in Revs"><img class="titleImage themeElite" style="width: 605px" src="/images/dash_data/offset_overlay_black.png" alt="Graph of dash data offsets in Revs">
 
 						<p>So the dash data is literally shaped like the dashboard of a Ralt RT3 Toyota Novamotor Formula 3 racing car? That's a pretty big clue, right?</p>
 
 						<p>It sure is. Let's see why.</p>
 
-						<h2 class="articleSubheader">Screen buffer<br />
+						<h2 class="articleSubheader">Screen buffer<br>
 													 -------------</h2>
 
 						<p>If we disassemble the graphics routines that get unrolled from the dash data, we can work out what's going on. When the dash data blocks are copied out of the main game code and reassembled in and above screen memory, they leave behind 40 blocks of memory that we can now use for something else - and it turns out that we use the dash data blocks as a screen buffer.</p>
@@ -55,7 +55,7 @@ page_header("deep_dives", "drawing_around_the_dashboard.html", "Drawing around t
 						<p>To see what I mean, take a look at how the dash data blocks are laid out in memory. We have a block of 79 (&amp;4F) bytes every 128 (&amp;80) bytes, with the data stored towards the end of that block. Let's lay out the entire block of memory from the start of the first block at &amp;3000, all the way to the end of the last block and beyond. If we colour the data in each block in green, and colour the rest of memory in blue, with address &amp;3000 in the bottom left corner and the address increasing as you go up and right, then we can see the structure of the dash data blocks:</p>
 
 						<table class="spacedTable">
-							<tr><td style="vertical-align: bottom">&amp;307F<br /><br /><br />&amp;3050<br /><br /><br /><br />&amp;3000</td><td><div style="border: none; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 320px; height: 128px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block;" src="/images/dash_data/blocks.png" alt="The dash data blocks in memory" /></div></td><td style="vertical-align: bottom">&amp;43FF<br /><br /><br />&amp;43D0<br /><br /><br /><br />&amp;4380</td></tr>
+							<tr><td style="vertical-align: bottom">&amp;307F<br><br><br>&amp;3050<br><br><br><br>&amp;3000</td><td><div style="border: none; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 320px; height: 128px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block;" src="/images/dash_data/blocks.png" alt="The dash data blocks in memory"></div></td><td style="vertical-align: bottom">&amp;43FF<br><br><br>&amp;43D0<br><br><br><br>&amp;4380</td></tr>
 						</table>
 
 						<p>To be more specific about what's in this image, let's look at the first column on the left, starting from the bottom left corner at address &amp;3000. Each column is one byte wide, so by stepping up each column, we are moving through memory one byte at a time. Starting in the bottom left corner at &amp;3000, where the first dash data block starts, we first have the text tokens token26 and token24, which form the blue section at the bottom of the first column, and then we have the data in the first dash data block at <a href="/source/main/variable/dashdata0.html">dashData0</a>, which is the green strip in the middle of the first column. The dash data offset for the block is the distance between the bottom of the first column and the start of the green block. The green block of data takes us up to address &amp;3050, at which point we have more blue in the form of the <a href="/source/main/variable/tyreEdgeIndex.html">tyreEdgeIndex</a> table and a few other variables that take us to the top of the first column at address &amp;307F.</p>
@@ -64,7 +64,7 @@ page_header("deep_dives", "drawing_around_the_dashboard.html", "Drawing around t
 
 						<p>You can clearly see that the dash data is the same shape as the dashboard, and it's even more obvious when this data gets drawn on-screen to create the track view. If we actually drew each dash data block in green, rather than as a track, it would look like this:</p>
 
-						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/dash_data/blocks_and_dashboard.png" alt="BBC Micro Revs screenshot with dash data blocks highlighted" />
+						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/dash_data/blocks_and_dashboard.png" alt="BBC Micro Revs screenshot with dash data blocks highlighted">
 
 						<p>Each of these stripes gets its contents from the corresponding dash data block in the screen buffer. On each iteration of the main game loop, the game draws the track view into the 40 dash data blocks, populating the blocks with the track, cars, signposts, corner markers, horizon, grass and sky, and then the graphics engine takes that data from the dash data blocks and updates the screen by poking directly into screen memory (though note that we don't just copy data blindly from the screen buffer to the screen, as the screen buffer has a different data structure to screen memory). In this way the game can spend as long as it likes simulating the driving model and drawing the results into the screen buffer, but the amount of time spent updating the screen is kept to an absolute minimum, and this enables the graphics routines to produce a rock-steady, flicker-free display.</p>
 
@@ -76,27 +76,27 @@ page_header("deep_dives", "drawing_around_the_dashboard.html", "Drawing around t
 
 						<p>To finish off, let's take a deeper look at how the data in the screen buffer makes it from the dash data blocks onto the screen.</p>
 
-						<h2 class="articleSubheader">Buffer to screen<br />
+						<h2 class="articleSubheader">Buffer to screen<br>
 													 ----------------</h2>
 
 						<p>The process of drawing into the screen buffer is covered in detail in the deep dive on <a href="drawing_the_track_view.html">drawing the track view</a>, so let's assume the game has already drawn all the various cars, signs and tracks into the dash data blocks, and we are now ready to update the screen. This is done by the <a href="/source/main/subroutine/drawtrackview_part_1_of_4.html">DrawTrackView</a> routine, which is called once on each iteration of the main driving loop, as the last in a long sequence of subroutine calls in <a href="/source/main/subroutine/maindrivingloop_part_2_of_5.html">part 2 of MainDrivingLoop</a>.</p>
 
 						<p>The DrawTrackView routine takes the data from each of the 40 dash data blocks, and draws the resulting track view on-screen, making sure to trim the edges carefully around the dashboard and tyres. In other words, it takes the screen buffer data from the dash data blocks, as discussed above:</p>
 
-						<img class="titleImage" style="width: 320px; height: 128px;" src="/images/dash_data/blocks.png" alt="The dash data blocks in memory" />
+						<img class="titleImage" style="width: 320px; height: 128px;" src="/images/dash_data/blocks.png" alt="The dash data blocks in memory">
 
 						<p>and feathers the edges as it draws on-screen, like this:</p>
 
-						<img class="titleImage" style="width: 320px; height: 128px;" src="/images/dash_data/blocks_shape.png" alt="The dash data blocks, feathered to match the dashboard" />
+						<img class="titleImage" style="width: 320px; height: 128px;" src="/images/dash_data/blocks_shape.png" alt="The dash data blocks, feathered to match the dashboard">
 
 						<p>resulting in a track view that fits perfectly around the dashboard and tyres.</p>
 
 						<p>The DrawTrackView routine draws this feathered track view one horizontal pixel line at a time, starting from the top line of the track view, and working down to the bottom track line. This is done in three stages, as follows:</p>
 
 						<table class="spacedTable">
-							<tr><td style="vertical-align: middle">1</td><td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 320px; height: 36px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block;" src="/images/dash_data/blocks_shape_1.png" alt="Track view stage 1" /></div></td><td style="vertical-align: middle">Track lines 79 to 44</td></tr>
-							<tr><td style="vertical-align: middle">2</td><td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 320px; height: 16px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block;" src="/images/dash_data/blocks_shape_2.png" alt="Track view stage 2" /></div></td><td style="vertical-align: middle">Track lines 43 to 28</td></tr>
-							<tr><td style="vertical-align: middle">3</td><td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 320px; height: 25px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block;" src="/images/dash_data/blocks_shape_3.png" alt="Track view stage 3" /></div></td><td style="vertical-align: middle">Track lines 27 to 3</td></tr>
+							<tr><td style="vertical-align: middle">1</td><td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 320px; height: 36px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block;" src="/images/dash_data/blocks_shape_1.png" alt="Track view stage 1"></div></td><td style="vertical-align: middle">Track lines 79 to 44</td></tr>
+							<tr><td style="vertical-align: middle">2</td><td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 320px; height: 16px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block;" src="/images/dash_data/blocks_shape_2.png" alt="Track view stage 2"></div></td><td style="vertical-align: middle">Track lines 43 to 28</td></tr>
+							<tr><td style="vertical-align: middle">3</td><td><div style="border: 1px solid grey; padding: 10px; margin: 10px 0 10px 0;"><img style="width: 320px; height: 25px; image-rendering: crisp-edges; margin: 0; padding: 0; display: block;" src="/images/dash_data/blocks_shape_3.png" alt="Track view stage 3"></div></td><td style="vertical-align: middle">Track lines 27 to 3</td></tr>
 						</table>
 
 						<p>The top line of the track view is track line 79, and the bottom line of the track view is track line 0, though we don't waste time drawing track lines 0 to 2, as they are always hidden by the dashboard. The biggest dash data block is therefore 77 bytes, which is one byte for each track line from 79 to 3 - see the deep dive on <a href="the_jigsaw_puzzle_binary.html">the jigsaw puzzle binary</a> for details of the various dash data block sizes.</p>
@@ -105,18 +105,18 @@ page_header("deep_dives", "drawing_around_the_dashboard.html", "Drawing around t
 
 						<p>Just to make things interesting, Revs implements all three stages using the same routines for each one, but for the second and third stages it modifies the code to truncate each track line to fit around the dashboard and tyres. This makes the code a bit difficult to follow, especially as the various routines have been split up into separate parts that are linked by JMP instructions. This structure ensures that the relevant parts of the line-drawing routine start on page boundaries, which makes it easier to calculate the addresses that need to be modified to truncate the track lines. It does make it a bit trickier to follow, though, but let's take a look anyway.</p>
 
-						<h2 class="articleSubheader">Drawing in stages<br />
+						<h2 class="articleSubheader">Drawing in stages<br>
 													 -----------------</h2>
 
 						<p>The first stage is relatively simple, and is implemented in <a href="/source/main/subroutine/drawtrackview_part_1_of_4.html">part 1 of DrawTrackView</a>, which draws this part of the track view:</p>
 
-						<img class="titleImage" style="width: 320px; height: 36px;" src="/images/dash_data/blocks_shape_1.png" alt="BBC Micro Revs screenshot with dash data blocks extracted for stage 1" />
+						<img class="titleImage" style="width: 320px; height: 36px;" src="/images/dash_data/blocks_shape_1.png" alt="BBC Micro Revs screenshot with dash data blocks extracted for stage 1">
 
 						<p>There's a routine called <a href="/source/main/subroutine/drawtrackline_part_1_of_2.html">DrawTrackLine</a> that sets up the addresses of the screen and the screen buffer for the top track line, before falling through into the <a href="/source/main/subroutine/drawtrackbytes_part_1_of_3.html">DrawTrackBytes</a> routine to do the actual drawing. This draws all the individual bytes along the length of the one-pixel-high track line, according to the corresponding values in the screen buffer. One byte covers four pixels - that's one green column in the above image - so by the time all 40 bytes have been drawn, we have our 160-pixel-wide track line on-screen. We then update the screen and screen buffer addresses to point to the next line down, and loop back to the start of DrawTrackLine to draw consecutive lines until the first stage is done.</p>
 
 						<p>Things get more interesting in the second stage. This is implemented in <a href="/source/main/subroutine/drawtrackview_part_2_of_4.html">part 2 of DrawTrackView</a>, which draws this part of the track view:</p>
 
-						<img class="titleImage" style="width: 320px; height: 16px;" src="/images/dash_data/blocks_shape_2.png" alt="BBC Micro Revs screenshot with dash data blocks extracted for stage 2" />
+						<img class="titleImage" style="width: 320px; height: 16px;" src="/images/dash_data/blocks_shape_2.png" alt="BBC Micro Revs screenshot with dash data blocks extracted for stage 2">
 
 						<p>To draw this shape we modify the code in <a href="/source/main/subroutine/drawtrackview_part_1_of_4.html">DrawTrackLine</a> and <a href="/source/main/subroutine/drawtrackbytes_part_1_of_3.html">DrawTrackBytes</a> so they draw two separate lines on each pixel row to avoid the dashboard in the middle. The structure of the DrawTrackBytes routine is designed to support this modification; you might expect a routine that prints 40 pixel bytes in a row to contain a loop, but instead that loop is unrolled into 40 consecutive instances of the byte-drawing code. Each instance is implemented using the DRAW_BYTE macro, which is explained in the deep dive on <a href="drawing_the_track_view.html">drawing the track view</a> but for the purposes of this article, we just need to know that each instance of DRAW_BYTE takes one byte from the screen buffer and draws one pixel byte on-screen, resetting that byte in the screen buffer as it goes.</p>
 
@@ -126,7 +126,7 @@ page_header("deep_dives", "drawing_around_the_dashboard.html", "Drawing around t
 
 						<p>The third stage is implemented in <a href="/source/main/subroutine/drawtrackview_part_3_of_4.html">part 3 of DrawTrackView</a>. It draws this part of the track view:</p>
 
-						<img class="titleImage" style="width: 320px; height: 25px;" src="/images/dash_data/blocks_shape_3.png" alt="BBC Micro Revs screenshot with dash data blocks extracted for stage 3" />
+						<img class="titleImage" style="width: 320px; height: 25px;" src="/images/dash_data/blocks_shape_3.png" alt="BBC Micro Revs screenshot with dash data blocks extracted for stage 3">
 
 						<p>The code for this stage uses the same self-modification approach as part 2, but it's also applied to the outer ends of the track lines where they run into the tyres. For these lines, the <a href="/source/main/variable/lefttyremask.html">leftTyreMask</a>, <a href="/source/main/variable/lefttyrepixels.html">leftTyrePixels</a>, <a href="/source/main/variable/righttyremask.html">rightTyreMask</a> and <a href="/source/main/variable/righttyrepixels.html">rightTyrePixels</a> tables define the feathering process for the left and right tyres. They work in a similar way to the dashboard tables, though an extra bit of memory is saved by indexing the mask and pixel bytes via the tyreEdgeIndex table, which removes the need for four large tables that would otherwise contain quite a few duplicate values.</p>
 

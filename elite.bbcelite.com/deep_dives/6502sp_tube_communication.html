@@ -12,7 +12,7 @@ page_header("deep_dives", "6502sp_tube_communication.html", "6502 Second Process
 
 						<p>One of the more intriguing features of the BBC Micro is the Tube interface, which allows users to expand their systems by adding "Second Processors". Sporting a distinctive wedge-shaped box design, this range of expansion boxes included 6502, Z80 and 32016 Second Processor options, and by 1986 there was even an ARM Evaluation System available containing an 8 Mhz ARM1 processor, the first version of the now ubiquitous ARM processor.</p>
 
-						<img class="titleImage photo" style="width: 400px" src="/images/6502sp/second_processor.jpg" alt="The 6502 Second Processor" />
+						<img class="titleImage photo" style="width: 400px" src="/images/6502sp/second_processor.jpg" alt="The 6502 Second Processor">
 
 						<p>The basic concept of the Tube system is that the fast processor in the expansion box runs the majority of tasks, delegating input and output to the attached BBC Micro (input and output in this context meaning keyboard, display, keyboard, sound and so on). In this relationship the BBC Micro is known as the "I/O processor" (or sometimes the "host"), while the Second Processor is known as the "parasite". Communication between the two is via the high-speed Tube interface, and both computers run independently using their own CPUs and memory.</p>
 
@@ -20,7 +20,7 @@ page_header("deep_dives", "6502sp_tube_communication.html", "6502 Second Process
 
 						<p>One of the reasons for Elite's reputation as a Second Processor killer app is that it is naturally suited to such a split. Most games from this era were based on bitmap graphics, from space-invading sprites to platform-jumping cavemen, but the 3D universe at the heart of Elite is mathematical, and it's drawn using vector graphics that are made up of lines rather than dots. A line can be described succinctly using just four bytes - two bytes for the (X1, Y1) start point and two more for the (X2, Y2) endpoint - and this lends itself beautifully to the Second Processor setup. The parasite does all the complicated vector mathematics with its faster processor, and it sends the results to the I/O processor as relatively small bundles of coordinate data, which the BBC Micro then draws on-screen. It's a perfect fit for the Tube-based system.</p>
 
-						<h2 class="articleSubheader">Talking over the Tube<br />
+						<h2 class="articleSubheader">Talking over the Tube<br>
 													 ---------------------</h2>
 
 						<p>There are various ways that the parasite and I/O processor can communicate, and for programs that use the standard OS commands, most of the heavy lifting is done by the Tube code that's built into the system. For example, when saving and loading commander files in the <a href="/6502sp/main/subroutine/qus1.html">QUS1</a> routine, the parasite just calls the standard OSFILE routine and the system takes care of the rest - there's no need to contact the I/O processor explicitly.</p>
@@ -29,7 +29,7 @@ page_header("deep_dives", "6502sp_tube_communication.html", "6502 Second Process
 
 						<p>These special commands are implemented by custom OSWRCH and OSWORD handlers in the I/O processor. These are installed in the usual manner by redirecting the WRCHV and WORDV vectors to custom handlers, in this case to the <a href="/6502sp/i_o_processor/subroutine/usoswrch.html">USOSWRCH</a> and <a href="/6502sp/i_o_processor/subroutine/nwoswd.html">NWOSWD</a> routines. These routines use the address tables at <a href="/6502sp/i_o_processor/variable/jmptab.html">JMPTAB</a> and <a href="/6502sp/i_o_processor/variable/oswvecs.html">OSWVECS</a> to jump to the relevant routines in the I/O processor code to implement the specified commands.</p>
 
-						<h2 class="articleSubheader">The OSWRCH commands<br />
+						<h2 class="articleSubheader">The OSWRCH commands<br>
 													 -------------------</h2>
 
 						<p>Elite implements custom OSWRCH commands for values of A from 128 to 147. In the commentary, we might therefore refer to the OSWRCH 129 command (which tells the I/O processor we are about to send over a batch of line coordinates for drawing), or the OSWRCH 130 command (which sends one of those line coordinates, and tells the I/O processor to draw the line once the last coordinate is sent). Some of these commands have associated configuration variables for their numbers, so we might talk about the #SETXC command, which moves the text cursor to a specific column, for example. The SETXC variable has the value 133, so this is the same as the OSWRCH 133 command, but using the variable name makes things a bit easier to follow. Here's a list of supported commands:</p>
@@ -71,7 +71,7 @@ page_header("deep_dives", "6502sp_tube_communication.html", "6502 Second Process
 
 						<p>The most extreme example of an OSWRCH call with parameters is the #RDPARAMS command, which tells the I/O processor to expect a set of 15 dashboard values, such as speed and altitude. Once all 15 are received, the I/O processor updates the various dials on the dashboard. You can see these OSWRCH calls in the parasite's <a href="/6502sp/main/subroutine/dials.html">DIALS</a> routine, each of which triggers either the I/O processor's <a href="/6502sp/i_o_processor/subroutine/rdparams.html">RDPARAMS</a> routine (for the first command, which tells the I/O processor to expect a batch of dashboard values) or the <a href="/6502sp/i_o_processor/subroutine/adparams.html">ADPARAMS</a> routine (for all the calls that actually send those values).</p>
 
-						<h2 class="articleSubheader">The OSWORD commands<br />
+						<h2 class="articleSubheader">The OSWORD commands<br>
 													 -------------------</h2>
 						<p>The other approach to Tube communication in Elite is via the OSWORD command. While the OSWRCH command can send one byte of information in one direction (to the I/O processor) with each call, OSWORD commands can both send and receive entire blocks of data, with up to 128 bytes being transmitted between the parasite and I/O processor as part of each call. For OSWORD calls with A >= 128, this data transmission is automatically handled by the Tube's own host code, so it's an ideal way to pass large amounts of data between the second processor and the BBC Micro. Here's a list of supported commands:</p>
 
@@ -95,7 +95,7 @@ page_header("deep_dives", "6502sp_tube_communication.html", "6502 Second Process
 
 						<p>Apart from the payload size, there's another important difference between OSWRCH and OSWORD. Calls to OSWRCH return immediately, so when the parasite issues an OSWRCH command, the I/O processor starts working on it while the parasite goes back about its business. It's a bit like having a two-core processor on-hand, and it means that when the parasite sends the last coordinate in a long sequence of lines, or it sends the last value in a dashboard update, then the main game running on the parasite can get straight back to running the game while the BBC Micro updates the screen. OSWORD calls, on the other hand, do not have this kind of parallel processing, and instead the parasite will stop and wait after sending the OSWORD command, until the I/O processor responds by returning an updated parameter block. It's a bit like the difference between simply issuing an order (OSWRCH) and having a conversation (OSWORD).</p>
 
-						<h2 class="articleSubheader">Putting it all together<br />
+						<h2 class="articleSubheader">Putting it all together<br>
 													 -----------------------</h2>
 
 						<p>So the parasite and I/O processor communicate, and code runs on both processors at various times, but how does Elite set up this meeting of digital minds? It's all in the loader, which, once it has configured things like the screen mode and sound effects and drawn the loading screen, then *RUNs not one but two different binaries:</p>

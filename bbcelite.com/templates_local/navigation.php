@@ -1,5 +1,5 @@
 			<footer id="copyrightMessage">
-				<p>&copy; Mark Moxon <span id="copyrightYear"></span><br />
+				<p>&copy; Mark Moxon <span id="copyrightYear"></span><br>
 				All Rights Reserved</p>
 			</footer>
 

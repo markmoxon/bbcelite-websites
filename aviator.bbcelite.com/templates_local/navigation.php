@@ -1,5 +1,5 @@
 			<footer id="copyrightMessage">
-				<p><a title="Copyright information for this website" href="/about_site/acknowledgements.html">Aviator, written by Geoffrey J Crammond, &copy; Acornsoft 1983<br />Commentary &copy; Mark Moxon <span id="copyrightYear">2021</span><br />
+				<p><a title="Copyright information for this website" href="/about_site/acknowledgements.html">Aviator, written by Geoffrey J Crammond, &copy; Acornsoft 1983<br>Commentary &copy; Mark Moxon <span id="copyrightYear">2021</span><br>
 				All Rights Reserved</a></p>
 			</footer>
 

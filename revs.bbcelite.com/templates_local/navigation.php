@@ -1,5 +1,5 @@
 			<footer id="copyrightMessage">
-				<p><a href="/about_site/acknowledgements.html">Revs, written by Geoffrey J Crammond, &copy; Acornsoft 1985<br />N&uuml;rburgring track, written by Geoffrey J Crammond, &copy; Firebird 1987<br />Commentary &copy; Mark Moxon <span id="copyrightYear">2022</span><br />
+				<p><a href="/about_site/acknowledgements.html">Revs, written by Geoffrey J Crammond, &copy; Acornsoft 1985<br>N&uuml;rburgring track, written by Geoffrey J Crammond, &copy; Firebird 1987<br>Commentary &copy; Mark Moxon <span id="copyrightYear">2022</span><br>
 				All Rights Reserved</a></p>
 			</footer>
 

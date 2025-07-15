@@ -150,31 +150,31 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 
 <html lang="en-GB">
 	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 
 		<title><?php echo $meta_title ?></title>
 
-		<meta name="author" content="Mark Moxon" />
-		<meta name="description" content="<?php echo $description ?>" <?php echo $meta_data ?>/>
-		<meta name="robots" content="noodp,noydir" />
+		<meta name="author" content="Mark Moxon">
+		<meta name="description" content="<?php echo $description ?>" <?php echo $meta_data ?>>
+		<meta name="robots" content="noodp,noydir">
 
-		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:creator" content="@markmoxon" />
-		<meta name="twitter:title" content="<?php echo $meta_title ?>" />
-		<meta name="twitter:image" content="<?php echo $twitter_image ?>" />
+		<meta name="twitter:card" content="summary_large_image">
+		<meta name="twitter:creator" content="@markmoxon">
+		<meta name="twitter:title" content="<?php echo $meta_title ?>">
+		<meta name="twitter:image" content="<?php echo $twitter_image ?>">
 
-		<meta name="og:title" content="<?php echo $meta_title ?>" />
-		<meta name="og:image" content="<?php echo $twitter_image ?>" />
+		<meta name="og:title" content="<?php echo $meta_title ?>">
+		<meta name="og:image" content="<?php echo $twitter_image ?>">
 
-		<link rel="stylesheet" href="/css/20250714/main.min.css" />
-		<link rel="stylesheet" href="/css/20250714/print.min.css" media="print" />
+		<link rel="stylesheet" href="/css/20250714/main.min.css">
+		<link rel="stylesheet" href="/css/20250714/print.min.css" media="print">
 
-		<link rel="icon" type="image/png" href="/favicons/favicon-16x16.png" sizes="16x16" />
-		<link rel="icon" type="image/png" href="/favicons/favicon-32x32.png" sizes="32x32" />
-		<link rel="apple-touch-icon" type="image/png" href="/favicons/favicon-180x180.png" sizes="180x180" />
+		<link rel="icon" type="image/png" href="/favicons/favicon-16x16.png" sizes="16x16">
+		<link rel="icon" type="image/png" href="/favicons/favicon-32x32.png" sizes="32x32">
+		<link rel="apple-touch-icon" type="image/png" href="/favicons/favicon-180x180.png" sizes="180x180">
 
-		<link rel="home" href="/" title="Home page" />
+		<link rel="home" href="/" title="Home page">
 
 		<script defer="defer" src="/javascript/20250714/main.min.js" onload="<?php echo $initialise_page ?>"></script>
 	</head>

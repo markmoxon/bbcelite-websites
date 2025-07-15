@@ -18,22 +18,22 @@ page_header("deep_dives", "drawing_the_track_view.html", "Drawing the track view
 
 						<p>Let's take a deeper look at what's involved.</p>
 
-						<h2 class="articleSubheader">The screen buffer<br />
+						<h2 class="articleSubheader">The screen buffer<br>
 													 -----------------</h2>
 
 						<p>Spread throughout the Revs codebase are 40 memory blocks - the "dash data blocks" - which Revs uses as a screen buffer when we're on the track. The mechanics of these blocks are pretty complicated, and are covered in detail in the deep dives on <a href="the_jigsaw_puzzle_binary.html">the jigsaw puzzle binary</a> and <a href="drawing_around_the_dashboard.html">drawing around the dashboard</a>. For the purposes of this deep dive, all you need to know is that the 40 dash data blocks are used as a screen buffer for the contents of the track view, which breaks down like this:</p>
 
-						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/dash_data/blocks_and_dashboard.png" alt="BBC Micro Revs screenshot with dash data blocks highlighted" />
+						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/dash_data/blocks_and_dashboard.png" alt="BBC Micro Revs screenshot with dash data blocks highlighted">
 
 						<p>Each of the green strips is one of the dash data blocks, and together they form a screen buffer that covers the whole track view - so that's the lower part of the sky, the horizon, the grass verges, the track verges, the track itself, the cars, the road signs, corner markers and starting flags. Here's a typical screenshot, for comparison:</p>
 
-						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/general/Revs.png" alt="BBC Micro Revs screenshot" />
+						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/general/Revs.png" alt="BBC Micro Revs screenshot">
 
 						<p>To draw something on-screen, we draw into the relevant part of the screen buffer (i.e. into the relevant dash data block), and then the drawing routines take the contents of the screen buffer and update the screen.</p>
 
 						<p>The key to understanding the screen buffer lies in the routine that copies the screen buffer to the screen. This forms a core part of the Revs graphics engine, so let's take a look at this next.</p>
 
-						<h2 class="articleSubheader">The DRAW_BYTE macro<br />
+						<h2 class="articleSubheader">The DRAW_BYTE macro<br>
 													 -------------------</h2>
 
 						<p>The most important element of the graphics engine is the <a href="/source/main/macro/draw_byte.html">DRAW_BYTE</a> macro. This tiny bit of highly optimised code is responsible for copying one byte - i.e. four pixels - from the screen buffer, drawing it on-screen and resetting the screen buffer as it does so. Each dash data block is one byte wide (so the green columns in the above picture are each one byte wide), so this macro draws a one-pixel-high and one-column-wide line from one of those green columns.</p>
@@ -77,7 +77,7 @@ page_header("deep_dives", "drawing_the_track_view.html", "Drawing the track view
 
 						<p>So DRAW_BYTE is the key to understanding the screen buffer, but what does the above logic mean? Let's take a closer look.</p>
 
-						<h2 class="articleSubheader">Fast filling with the screen buffer<br />
+						<h2 class="articleSubheader">Fast filling with the screen buffer<br>
 													 -----------------------------------</h2>
 
 						<p>To recap, the DRAW_BYTE macro copies data from the screen buffer into screen memory, applying the following logic as it does so:</p>
@@ -94,13 +94,13 @@ page_header("deep_dives", "drawing_the_track_view.html", "Drawing the track view
 
 						<p>Let's look at an example of filled graphics in action. Consider the view that we get at the start of each practice lap:</p>
 
-						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/screen_buffer/practice_start.png" alt="The view at the start of the practice lap in BBC Micro Revs" />
+						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/screen_buffer/practice_start.png" alt="The view at the start of the practice lap in BBC Micro Revs">
 
 						<p>This looks like a scene where you would need to do a lot of filling. In particular there's the grass and the sky, which are all surely colour-filled in some way, but it turns out that this excellent example of beautiful filled graphics doesn't actually contain any fills.</p>
 
 						<p>To see this, we can tweak the DRAW_BYTE macro to remove the above logic, so instead of displaying the normal track view, it simply copies the contents of the screen buffer directly to the screen without making any changes. If we do this, then we get the following:</p>
 
-						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/screen_buffer/practice_start_buffer.png" alt="The contents of the screen buffer at the start of the practice lap in BBC Micro Revs" />
+						<img class="titleImage" style="width: 320px; height: 208px;" src="/images/screen_buffer/practice_start_buffer.png" alt="The contents of the screen buffer at the start of the practice lap in BBC Micro Revs">
 
 						<p>So it turns out that there's not actually much in the screen buffer - just a few pixels along the edges of the track, a few more around the dashboard, and then a block of pixels for the road sign. This is because the screen buffer only needs to contain edge data, and the DRAW_BYTE macro converts these edges into filled objects.</p>
 

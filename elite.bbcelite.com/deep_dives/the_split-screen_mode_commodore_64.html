@@ -14,17 +14,17 @@ page_header("deep_dives", "the_split-screen_mode.html", "The split-screen mode i
 
 						<p>Here it is in all its glory, combining the high-resolution monochrome space view with the lower-resolution, four-colour dashboard:</p>
 
-						<img class="titleImage" src="/images/general/Elite-BBCMicro.png" alt="BBC Micro Elite screenshot" />
+						<img class="titleImage" src="/images/general/Elite-BBCMicro.png" alt="BBC Micro Elite screenshot">
 
 						<p>This devilry was implemented using timers and interrupts and ULAs and CRTC controllers, and it's still an impressive achievement, even all these years later. You can read about how it's done in the deep dive on <a href="the_split-screen_mode.html">the split-screen mode in BBC Micro Elite</a>.</p>
 
 						<p>It turns out that the Commodore 64 version of Elite also has a split-screen mode, but nobody really talks about it. The reason? It turns out it's easy to create split-screen modes using the Commodore 64's powerful VIC-II video controller chip, without needing to jump through all the hoops that the original version of Elite has to.</p>
 
-						<img class="titleImage c64" src="/images/general/Elite-Commodore64.png" alt="Commodore 64 Elite screenshot" />
+						<img class="titleImage c64" src="/images/general/Elite-Commodore64.png" alt="Commodore 64 Elite screenshot">
 
 						<p>Let's see how the Commodore 64's split-screen mode works in Elite.</p>
 
-						<h2 class="articleSubheader">The two different screen modes<br />
+						<h2 class="articleSubheader">The two different screen modes<br>
 													 ------------------------------</h2>
 
 						<p>The BBC Micro and Commodore 64 have a surprising amount in common when it comes to the Elite screen. For example, both versions have a monochrome space view in the upper part of the screen, and the structure of the space view in screen memory is identical between the two platforms (it's one bit per pixel, arranged in character blocks of eight rows of eight pixels). And both versions have a colour dashboard, and again the structure of screen memory is the same (this time it's two bits per pixel, arranged in character blocks of eight rows of four pixels). Pixels in the dashboard are twice as wide as pixels in the space view, to enable the colour information to jump from two possible values to four.</p>
@@ -33,13 +33,13 @@ page_header("deep_dives", "the_split-screen_mode.html", "The split-screen mode i
 
 						<p>On top of this, the Commodore 64 has eight hardware sprites, which are used to include coloured laser sights, with different colours and designs depending on the type of laser. In fact, if you accept the Trumbles mission, the monochrome space view gets smothered in a whole rainbow of colours:</p>
 
-						<img class="titleImage" style="width: 384px" src="/images/c64/trumbles_on_screen.png" alt="The Trumbles in Commodore 64 Elite" />
+						<img class="titleImage" style="width: 384px" src="/images/c64/trumbles_on_screen.png" alt="The Trumbles in Commodore 64 Elite">
 
 						<p>The only downside of the Commodore 64's implementation is the reduced vertical resolution: the BBC Micro screen is 248 pixels high, while the Commodore 64 screen is just 200 pixels high. It's the space view that takes the hit, at a height of 144 pixels compared to the BBC's 192 pixels, which makes the BBC's space view about 35% taller than on the Commodore 64.</p>
 
 						<p>But beautiful things come in small packages, and the Commodore 64 version is certainly a looker. Let's see how this mix of colours and resolutions is achieved.</p>
 
-						<h2 class="articleSubheader">The raster interrupt<br />
+						<h2 class="articleSubheader">The raster interrupt<br>
 													 --------------------</h2>
 
 						<p>As with the BBC Micro, the split-screen mode in the Commodore 64 version is implemented using interrupts. The idea is the same: the CRT screen on these old-school computers gets drawn by an electron beam hitting the screen, and the beam starts at the top-left of the screen and moves horizontally to the right, drawing each line pixel by pixel before moving down to the next line and drawing that one in the same way. When the beam reaches the bottom of the screen, it jumps back to the top-left corner again and repeats this process. On PAL systems this is done 50 times a second to produce a 50Hz screen, while on NTSC systems it is done 60 times a second for a 60Hz screen.</p>
@@ -60,7 +60,7 @@ page_header("deep_dives", "the_split-screen_mode.html", "The split-screen mode i
 
 						<p>Importantly, the raster line number is actually a 9-bit number, with the top bit being configured in bit 7 of VIC register $11, so we also have to make sure to clear this, as the line numbers we want to interrupt are less than 256. It's important to get all this right, but it's still nothing compared to the hoops we have to jump through on the BBC Micro...</p>
 
-						<h2 class="articleSubheader">The interrupt routine<br />
+						<h2 class="articleSubheader">The interrupt routine<br>
 													 ---------------------</h2>
 
 						<p>The interrupt routine at <a href="/c64/main/subroutine/comirq1.html">COMIRQ1</a> handles all the game's interrupt logic, including the raster interrupt. This routine is also responsible for setting the next raster interrupt, so when it gets called at the top of the screen, it sets up another raster interrupt for the top of the dashboard, and when it gets called at the top of the dashboard, it sets another raster interrupt for the top of the screen. As a result COMIRQ1 gets called twice every screen refresh, and on each call it flips the <a href="/c64/main/variable/rastct.html">RASTCT</a> variable between 0 and 1, to record which part of the screen is now being drawn. This flip happens after it tells the VIC-II chip to change the screen mode, so on entry into the routine, a 0 in RASTCT indicates that we are about to draw the space view, while a 1 in RASTCT means we are about to draw the dashboard.</p>
@@ -85,13 +85,13 @@ page_header("deep_dives", "the_split-screen_mode.html", "The split-screen mode i
 
 						<p>Note that unlike BBC Micro Elite, the dashboard in Commodore 64 Elite is not a permanent on-screen fixture. To fit the non-flight views onto the shorter screen, we need to remove the dashboard, which means the text views look like this:</p>
 
-						<img class="titleImage c64" src="/images/c64/status.png" alt="The Status Mode screen in Commodore 64 Elite" />
+						<img class="titleImage c64" src="/images/c64/status.png" alt="The Status Mode screen in Commodore 64 Elite">
 
 						<p>and both system charts are also dashboard-free:</p>
 
-						<img class="titleImage c64" src="/images/c64/short-range_chart.png" alt="The Short-range Chart in Commodore 64 Elite" />
+						<img class="titleImage c64" src="/images/c64/short-range_chart.png" alt="The Short-range Chart in Commodore 64 Elite">
 
-						<img class="titleImage c64" src="/images/c64/long-range_chart.png" alt="The Long-range Chart in Commodore 64 Elite" />
+						<img class="titleImage c64" src="/images/c64/long-range_chart.png" alt="The Long-range Chart in Commodore 64 Elite">
 
 						<p>When switching to a text view, we must therefore update the values in the interrupt variables to prevent the bottom portion of the screen from switching into low-resolution multicolour mode. Specifically, we update caravanserai to switch off the split screen, and we update abraxas to point to a bank of screen RAM that contains colour information for the text views, so that text in the bottom portion of the screen is shown in white rather than the mixed colours of the dashboard. This logic is implemented in the <a href="/c64/main/subroutine/ttx66k.html">TTX66K</a> routine.</p>
 

@@ -12,24 +12,24 @@ page_header("deep_dives", "the_split-screen_mode_nes.html", "The split-screen mo
 
 						<p>The split-screen mode in BBC Micro Elite is a technical showstopper. You can read all about it in the deep dive on <a href="the_split-screen_mode.html">the split-screen mode in BBC Micro Elite</a>, but just take a moment to appreciate this thing of beauty:</p>
 
-						<img class="titleImage" src="/images/general/Elite-BBCMicro.png" alt="BBC Micro Elite screenshot" />
+						<img class="titleImage" src="/images/general/Elite-BBCMicro.png" alt="BBC Micro Elite screenshot">
 
 						<p>With a monochrome high-resolution space view in the top and a four-colour low-resolution dashboard below, it's a brilliant balance of form and function. I'm still impressed with it, even all these years later.</p>
 
 						<p>What isn't quite so apparent is that NES Elite also has a split-screen mode, albeit one that is rather harder to spot. Here's the split-screen space view mode in action:</p>
 
-						<img class="titleImage" src="/images/nes/general/station.png" alt="The space view showing a space station in NES Elite" />
+						<img class="titleImage" src="/images/nes/general/station.png" alt="The space view showing a space station in NES Elite">
 
 						<p>This time there's no clear difference in resolution or colour balance between the space view and the dashboard, but there is still a split, and in the same place, too. Let's take a closer look at what's going on behind the scenes.</p>
 
-						<h2 class="articleSubheader">The problem<br />
+						<h2 class="articleSubheader">The problem<br>
 													 -----------</h2>
 
 						<p>The NES display is made up of 8x8-pixel tiles, and each tile has an associated 8x8-pixel pattern (see the deep dive on <a href="understanding_the_nes_for_elite.html">understanding the NES for Elite</a> for details). Patterns are stored in two pattern tables, with each pattern table holding 256 different patterns.</p>
 
 						<p>Now consider this deep space screenshot:</p>
 
-						<img class="titleImage" src="/images/nes/bitplanes/planet_asteroid.png" alt="A deep space view showing a planet and an asteroid in NES Elite" />
+						<img class="titleImage" src="/images/nes/bitplanes/planet_asteroid.png" alt="A deep space view showing a planet and an asteroid in NES Elite">
 
 						<p>If we look at the contents of pattern table 0 for this screen, then the 256 patterns look a bit like this (though ignore the colours, as this is a pattern table, and palettes only get applied to patterns when they are combined with attributes on-screen, so these patterns aren't necessarily in the same colours as above):</p>
 
@@ -58,7 +58,7 @@ page_header("deep_dives", "the_split-screen_mode_nes.html", "The split-screen mo
 
 						<p>Let's see how the authors solved this problem, persuading the screen to show patterns from two different pattern tables at the same time.</p>
 
-						<h2 class="articleSubheader">A split-screen solution<br />
+						<h2 class="articleSubheader">A split-screen solution<br>
 													 -----------------------</h2>
 
 						<p>The split-screen mode on the NES allows each section of the screen to use a different nametable and pattern table, and it does this in a manner that's surprisingly similar to the original BBC Micro wizardry.</p>
@@ -69,7 +69,7 @@ page_header("deep_dives", "the_split-screen_mode_nes.html", "The split-screen mo
 
 						<p>The only problem is that the NES doesn't have any hardware timers, so we can't start a timer ticking down from VBlank. So instead, we have to do things by brute force...</p>
 
-						<h2 class="articleSubheader">Sprite 0 collision<br />
+						<h2 class="articleSubheader">Sprite 0 collision<br>
 													 ------------------</h2>
 
 						<p>The BBC Micro's split-screen mode is not only elegant in execution, but in implementation too. All the logic is encapsulated in the main interrupt handler, and it just works. It's deceptively simple, and a thing of beauty.</p>
@@ -102,11 +102,11 @@ page_header("deep_dives", "the_split-screen_mode_nes.html", "The split-screen mo
 
 						<p>It's worth noting that sprite 0 doesn't have to be on the icon bar - it can be anywhere on-screen. For example, the Equip Ship screen places sprite 0 on the right of the screen, behind the box edge and just above the Cobra Mk III that shows our equipment. The patterns for the Cobra and equipment are in pattern table 0 (as pattern table 1 contains the font patterns), so this ensures we switch to the correct table before displaying both the Cobra and the icon bar along the bottom of the screen:<p>
 
-						<img class="titleImage" src="/images/nes/general/equipment.png" alt="The Equip Ship screen in NES Elite" />
+						<img class="titleImage" src="/images/nes/general/equipment.png" alt="The Equip Ship screen in NES Elite">
 
 						<p>So we now have a way of telling whether the PPU has started drawing the icon bar, but how does our code get alerted to this fact, given that we can't attach an interrupt to this event, or set a timer to go off at the right point? The answer, unfortunately, is where things get a bit messy, so let's take a look now.</p>
 
-						<h2 class="articleSubheader">Detecting the collision<br />
+						<h2 class="articleSubheader">Detecting the collision<br>
 													 -----------------------</h2>
 
 						<p>To recap, we now have a flag in bit 6 of PPU_STATUS that gets set at the exact point in our split-screen mode where we want to switch the PPU to use nametable and pattern table 0, so the icon bar and dashboard get drawn correctly. All we have to do now is work out how to detect this change.</p>
@@ -138,7 +138,7 @@ page_header("deep_dives", "the_split-screen_mode_nes.html", "The split-screen mo
 
 						<p>In total there are 236 occurrences of the SETUP_PPU_FOR_ICON_BAR macro dotted throughout the codebase and 32 calls to the SetupPPUForIconBar routine, so that's 268 points in the game code where we check to see whether the PPU has started drawing the icon bar. It might not be as accurate or elegant as a timer or interrupt, but it works, and that's the main thing.</p>
 
-						<h2 class="articleSubheader">Catering for delays<br />
+						<h2 class="articleSubheader">Catering for delays<br>
 													 -------------------</h2>
 
 						<p>On the subject of accuracy, it's extremely likely that the code will only come across a macro or subroutine call after the PPU has started drawing the icon bar - after all, bit 6 of PPU_STATUS gets set as soon as the PPU finishes with the space view, but the speed of our reaction to this is determined by the gaps between the macro insertions in the code, and some of them are more spaced out than others. BBC Micro Elite demonstrates what can go wrong if you don't have accurate timing, as the line between the space view and dashboard flickers when accessing the disc drive, as this causes the lower-priority timer interrupt to be delayed slightly while the CPU services the high-priority drive interrupt.</p>
