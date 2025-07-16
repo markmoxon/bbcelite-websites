@@ -404,7 +404,7 @@
 						</ul>
 					</li>
 
-					<div id="navigation_code"></div>
+					<li id="navigation_code"></li>
 
 					<li id="indexes"><span class="menuTitle">Indexes to the source code</span>
 						<span class="menuSummary menuSummarySubmenu">A-Z indexes, code usage analysis and more</span>
