@@ -26,7 +26,8 @@
 							<li><a id="about_site_to-do_list" href="/about_site/to-do_list.html"><span class="menuTitle">To-do list</span> <span class="menuSummary">Code that could benefit from a bit more analysis</span></a></li>
 						</ul>
 					</li>
-					<li class="menuItemHeader showForMobile">Understanding the Revs source code</li>
+					<li class="menuItemHeader showForMobile">Playing with the Revs source code</li>
+					<li id="playing_revs"><a id="playing_revs_index" href="/playing_revs/"><span class="menuTitle">Playing Revs in the 21st century</span> <span class="menuSummary">How to play all the versions of Revs analysed here</span></a></li>
 					<li id="deep_dives"><span class="menuTitle">Deep dive articles</span>
 						<span class="menuSummary menuSummarySubmenu">Over 45 articles on how Revs weaves its magic</span>
 						<ul id="submenu_deep_dives">
