@@ -26,7 +26,8 @@
 							<li><a id="about_site_to-do_list" href="/about_site/to-do_list.html"><span class="menuTitle">To-do list</span> <span class="menuSummary">Code that could benefit from a bit more analysis</span></a></li>
 						</ul>
 					</li>
-					<li class="menuItemHeader showForMobile">Understanding the Lander source code</li>
+					<li class="menuItemHeader showForMobile">Playing with the Lander source code</li>
+					<li id="playing_lander"><a id="playing_lander_index" href="/playing_lander/"><span class="menuTitle">Playing Lander in the 21st century</span> <span class="menuSummary">How to play all the versions of Lander analysed here</span></a></li>
 					<li id="deep_dives"><span class="menuTitle">Deep dive articles</span>
 						<span class="menuSummary menuSummarySubmenu">Over 20 articles on how Lander weaves its magic</span>
 						<ul id="submenu_deep_dives">
