@@ -166,6 +166,103 @@ page_header("deep_dives", "a_sense_of_scale.html", "A sense of scale", "A sense 
 
 						<p>larger than the distance in Elite, so the tiny stars in Elite are much, much closer to their solitary planets than the Sun is to the Earth. As Father Ted said, "These are small, but the ones out there are far away..."</p>
 
+						<h2 class="articleSubheader">How hot is the sun?<br>
+													 -------------------</h2>
+
+						<p>So the sun is pretty small, but can we tell how hot it is? Unfortunately the cabin temperature dial doesn't have any real-world units associated with it so coming up with a proper temperature isn't possible. But we can still work out how close we need to get for our cabin temperature to rise, what the optimal distance is for fuel scooping, and how close we can get before we melt.</p>
+
+						<p>The cabin temperature calculations can be found in <a href="/cassette/main/subroutine/main_flight_loop_part_15_of_16.html">part 15 of the main flight loop</a>, where we use the <a href="/cassette/main/subroutine/mas3.html">MAS3</a> routine to calculate the distance between our ship and the centre of the sun. If the sun is at (x, y, z), with each coordinate in the usual (x_sign x_hi x_lo) format, then we only bother to check the distance to the sun when all three sign bytes are zero (as otherwise we are a long way away). If all three sign bytes are zero, we then check the high bytes with the usual Pythagoras calculation (but without the square root at this stage):</p>
+
+<pre class="articleIndented">  (A ?) = x_hi^2 + y_hi^2 + z_hi^2
+</pre>
+
+						<p>The cabin temperature starts to change when the high byte of this calculation (in A) is less than 255, at which point the temperature rises by ~A (i.e. A with all its bits inverted, so the closer we get, the smaller the distance in A and the bigger the temperature rise in ~A).</p>
+
+						<p>The cabin temperature is calculated as 30 plus the inverted high byte in ~A, so we can calculate A from a cabin temperature C like this:</p>
+
+<pre class="articleIndented">  30 + ~A = C
+
+  ~A = C - 30
+
+  A = ~(C - 30)
+</pre>
+
+						<p>So how far away from the sun's centre do we have to be before the temperature starts to rise? Let's imagine that our ship is on one of the coordinate axes, say the x-coordinate. Our distance calculation then becomes:</p>
+
+<pre class="articleIndented">  (A ?) = x_hi^2 + y_hi^2 + z_hi^2
+        = x_hi^2 + 0^2 + 0^2
+        = x_hi^2
+</pre>
+
+						<p>This is the same as saying:</p>
+
+<pre class="articleIndented">  x_hi = SQRT(A ?)
+</pre>
+
+						<p>The cabin temperature starts to rise when A is less than 255, so that's 254, so this gives us:</p>
+
+<pre class="articleIndented">  x_hi = SQRT(A ?)
+       = SQRT(254 ?)
+       = SQRT(254 * 256)
+       = 255
+</pre>
+
+						<p>So the cabin temperature starts to rise when we cross the imaginary line at a distance of (1 0 0) from the sun and move to a distance of (0 255 0). This gives the sun a heat radius of:</p>
+
+<pre class="articleIndented">  (1 0 0) / (96 0) = 65,536 / 24,576
+                   = 2.67 sun radii
+</pre>
+
+						<p>This means that in some systems the sun spawns at its heat radius from our arrival point, or to put it another way, we spawn right on the edge of the sun's heat radius (though in most systems we're further away).</p>
+
+						<p>Now that we know the heat radius, can we work out how close we can get to the sun before we disappear in a fireball? Well, we die when the cabin temperature no longer fits into one byte, so that's when it reaches 256. This equates to the following value of A:</p>
+
+<pre class="articleIndented">  A = ~(C - 30)
+    = ~(256 - 30)
+    = ~(226)
+    = 29
+</pre>
+
+						<p>If we again consider the situation when we are on the x-axis, the safety horizon is when:</p>
+
+<pre class="articleIndented">  x_hi = SQRT(A ?)
+       = SQRT(29 ?)
+       = SQRT(29 * 256)
+       = 86
+</pre>
+
+						<p>So we die when we reach a distance of (0 86 0) from the centre of the sun, which is:</p>
+
+<pre class="articleIndented">  (0 86 0) / (96 0) = 22,016 / 24,576
+                    = 0.90 sun radii
+</pre>
+
+						<p>So we can safely fly through the upper ten percent of the sun's atmosphere, but going any lower than this will be fatal.</p>
+
+						<p>On the subject of the sun's atmosphere, fuel scoops start to work when the cabin temperature reaches 224. This equates to the following value of A:</p>
+
+<pre class="articleIndented">  A = ~(C - 30)
+    = ~(224 - 30)
+    = ~(194)
+    = 64
+</pre>
+
+						<p>which we can convert into a distance like this:</p>
+
+<pre class="articleIndented">  x_hi = SQRT(A ?)
+       = SQRT(64 ?)
+       = SQRT(64 * 256)
+       = 128
+</pre>
+
+						<p>So fuel scoops work at a distance of (0 128 0) from the centre of the sun, or:</p>
+
+<pre class="articleIndented">  (0 128 0) / (96 0) = 32,768 / 24,576
+                     = 1.33 sun radii
+</pre>
+
+						<p>To summarise, we start to feel the heat of the sun at a distance of 2.67 sun radii, the fuel scoops kick in at a distance of 1.33 sun radii, and we plunge into a fiery doom at a distance of 0.90 sun radii.</p>
+
 						<h2 class="articleSubheader">How fast can we fly?<br>
 													 --------------------</h2>
 
