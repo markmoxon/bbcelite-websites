@@ -393,9 +393,9 @@
 									<li><a id="hacks_bbc_elite_with_music_technical_information" href="/hacks/bbc_elite_with_music_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">How the Commodore 64's music was ported to Elite on the BBC Micro</span></a></li>
 								</ul>
 							</li>
-							<li id="hacks_bbc_master_disc_elite"><span class="menuTitle">BBC Master disc Elite</span> <span class="menuSummary menuSummarySubmenu">The disc version of BBC Micro Elite, converted to run on the BBC Master</span>
+							<li id="hacks_bbc_master_disc_elite"><span class="menuTitle">BBC Micro disc Elite on the BBC Master</span> <span class="menuSummary menuSummarySubmenu">The disc version of BBC Micro Elite, converted to run on the BBC Master</span>
 								<ul id="submenu_hacks_bbc_master_disc_elite">
-									<li class="menuItemHeader">BBC Master disc Elite</li>
+									<li class="menuItemHeader">BBC Micro disc Elite on the BBC Master</li>
 									<li><a id="hacks_bbc_master_disc_elite_index" href="/hacks/bbc_master_disc_elite.html"><span class="menuTitle">About BBC Micro disc Elite on the BBC Master</span> <span class="menuSummary">The disc version of BBC Micro Elite, converted to run on the BBC Master</span></a></li>
 									<li><a id="hacks_bbc_master_disc_elite_downloads" href="/hacks/bbc_master_disc_elite_downloads.html"><span class="menuTitle">Playing BBC Micro disc Elite on the BBC Master</span> <span class="menuSummary">How to download and play the original disc version of Elite on the BBC Master</span></a></li>
 									<li><a id="hacks_bbc_master_disc_elite_technical_information" href="/hacks/bbc_master_disc_elite_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of how disc Elite was converted from the BBC Micro to the BBC Master</span></a></li>
