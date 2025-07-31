@@ -332,7 +332,6 @@
 									<li class="menuItemHeader">Elite Compendium</li>
 									<li><a id="hacks_elite_compendium_index" href="/hacks/elite_compendium.html"><span class="menuTitle">About the Elite Compendium</span> <span class="menuSummary">Bringing all the best Elite hacks together in one feature-packed disc</span></a></li>
 									<li><a id="hacks_elite_compendium_downloads" href="/hacks/elite_compendium_downloads.html"><span class="menuTitle">Playing the Elite Compendium</span> <span class="menuSummary">How to download and play the Elite Compendium</span></a></li>
-									<li><a id="hacks_elite_compendium_acorn_electron" href="/hacks/elite_compendium_acorn_electron.html"><span class="menuTitle">Compendium version of Acorn Electron Elite</span> <span class="menuSummary">Updating Acorn Electron Elite with all the bells and whistles</span></a></li>
 									<li><a id="hacks_elite_compendium_technical_information" href="/hacks/elite_compendium_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of all the hacks and enhancements in the Elite Compendium</span></a></li>
 								</ul>
 							</li>
@@ -353,6 +352,14 @@
 									<li><a id="hacks_flicker-free_elite_index" href="/hacks/flicker-free_elite.html"><span class="menuTitle">About flicker-free Elite</span> <span class="menuSummary">Improved ship drawing on the BBC Micro, Electron, Commodore and Apple</span></a></li>
 									<li><a id="hacks_flicker-free_elite_downloads" href="/hacks/flicker-free_elite_downloads.html"><span class="menuTitle">Playing flicker-free Elite</span> <span class="menuSummary">How to download and play flicker-free Elite, on the BBC, Commodore and Apple</span></a></li>
 									<li><a id="hacks_flicker-free_elite_technical_information" href="/hacks/flicker-free_elite_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of how flicker-free Elite weaves its magic</span></a></li>
+								</ul>
+							</li>
+							<li id="hacks_elite_compendium_acorn_electron"><span class="menuTitle">Compendium version of Electron Elite</span> <span class="menuSummary menuSummarySubmenu">Super-fast Electron Elite with all the bells and whistles of the BBC versions</span>
+								<ul id="submenu_hacks_elite_compendium_acorn_electron">
+									<li class="menuItemHeader">Compendium version of Electron Elite</li>
+									<li><a id="hacks_elite_compendium_acorn_electron" href="/hacks/elite_compendium_acorn_electron.html"><span class="menuTitle">About the Compendium version of Acorn Electron Elite</span> <span class="menuSummary">Updating Acorn Electron Elite with all the bells and whistles of the BBC</span></a></li>
+									<li><a id="hacks_elite_compendium_acorn_electron_downloads" href="/hacks/elite_compendium_acorn_electron_downloads.html"><span class="menuTitle">Playing the Compendium version of Acorn Electron Elite</span> <span class="menuSummary">How to download and play the improved version of Acorn Electron Elite</span></a></li>
+									<li><a id="hacks_elite_compendium_acorn_electron_technical_information" href="/hacks/elite_compendium_acorn_electron_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">How to backport BBC Micro disc Elite to the Acorn Electron using sideways RAM</span></a></li>
 								</ul>
 							</li>
 							<li id="hacks_teletext_elite"><span class="menuTitle">Teletext Elite</span> <span class="menuSummary menuSummarySubmenu">The disc version of BBC Micro Elite, converted to run in teletext</span>
@@ -383,6 +390,14 @@
 									<li><a id="hacks_elite_3d_downloads" href="/hacks/elite_3d_downloads.html"><span class="menuTitle">Playing Elite 3D</span> <span class="menuSummary">How to download and play Elite 3D, and how to configure the anaglyph settings</span></a></li>
 									<li><a id="hacks_elite_3d_configuration" href="/hacks/elite_3d_configuration.html"><span class="menuTitle">Configuring Elite 3D</span> <span class="menuSummary">How to configure the anaglyph settings in Elite 3D</span></a></li>
 									<li><a id="hacks_elite_3d_technical_information" href="/hacks/elite_3d_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Details of how Elite 3D works</span></a></li>
+								</ul>
+							</li>
+							<li id="hacks_bbc_micro_b_plus_master_elite"><span class="menuTitle">BBC Master Elite on the BBC Micro B+</span> <span class="menuSummary menuSummarySubmenu">BBC Master Elite, converted to run on the BBC Micro B+</span>
+								<ul id="submenu_hacks_bbc_micro_b_plus_master_elite">
+									<li class="menuItemHeader">BBC Master Elite on the BBC Micro B+</li>
+									<li><a id="hacks_bbc_micro_b_plus_master_elite_index" href="/hacks/bbc_micro_b_plus_master_elite.html"><span class="menuTitle">About BBC Master Elite on the BBC Micro B+</span> <span class="menuSummary">Giving the BBC Micro B+ the full colour version of Elite that it deserves</span></a></li>
+									<li><a id="hacks_bbc_micro_b_plus_master_elite_downloads" href="/hacks/bbc_micro_b_plus_master_elite_downloads.html"><span class="menuTitle">Playing BBC Master Elite on the BBC Micro B+</span> <span class="menuSummary">How to download and play BBC Master Elite on the BBC Micro B+</span></a></li>
+									<li><a id="hacks_bbc_micro_b_plus_master_elite_technical_information" href="/hacks/bbc_micro_b_plus_master_elite_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Squeezing full colour BBC Master Elite into the weird extra memory on the B+</span></a></li>
 								</ul>
 							</li>
 							<li id="hacks_bbc_elite_with_music"><span class="menuTitle">BBC Micro Elite... with music!</span> <span class="menuSummary menuSummarySubmenu">The title and docking music from the Commodore 64, shoehorned into BBC Micro Elite</span>
