@@ -29,7 +29,7 @@
 					<li class="menuItemHeader showForMobile">Playing with the Elite source code</li>
 					<li id="playing_elite"><a id="playing_elite_index" href="/playing_elite/"><span class="menuTitle">Playing 6502 Elite in the 21st century</span> <span class="menuSummary">How to play all the versions of Elite analysed here</span></a></li>
 					<li id="deep_dives"><span class="menuTitle">Deep dive articles</span>
-						<span class="menuSummary menuSummarySubmenu">130 articles on how Elite weaves its magic</span>
+						<span class="menuSummary menuSummarySubmenu">Over 130 articles on how Elite weaves its magic</span>
 						<ul id="submenu_deep_dives">
 							<li class="menuItemHeader">Index</li>
 							<li><a id="deep_dives_index" href="/deep_dives/"><span class="menuTitle">Index of all deep dive articles</span><span class="menuSummary">Discover how Elite works under the hood</span></a></li>
@@ -103,6 +103,7 @@
 									<li><a id="deep_dives_tactics_and_combat_in_the_crosshairs" href="/deep_dives/in_the_crosshairs.html"><span class="menuTitle">In the crosshairs</span> <span class="menuSummary">How the game knows whether an enemy is being hit by our laser fire</span></a></li>
 									<li><a id="deep_dives_tactics_and_combat_program_flow_of_the_tactics_routine" href="/deep_dives/program_flow_of_the_tactics_routine.html"><span class="menuTitle">Program flow of the tactics routine</span> <span class="menuSummary">How ships and missiles work out attack patterns... or how to run away</span></a></li>
 									<li><a id="deep_dives_tactics_and_combat_advanced_tactics_with_the_newb_flags" href="/deep_dives/advanced_tactics_with_the_newb_flags.html"><span class="menuTitle">Advanced tactics with the NEWB flags</span> <span class="menuSummary">How the enhanced versions of Elite give their ships a bit more personality</span></a></li>
+									<li><a id="deep_dives_tactics_and_combat_aggression_and_hostility_in_ship_tactics" href="/deep_dives/aggression_and_hostility_in_ship_tactics.html"><span class="menuTitle">Aggression and hostility in ship tactics</span> <span class="menuSummary">Why some ships are peaceful traders while others seem hell-bent on revenge</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_the_scanner_and_dashboard"><span class="menuTitle">The scanner and dashboard</span> <span class="menuSummary menuSummarySubmenu">The 3D elliptical scanner and other indicators</span>

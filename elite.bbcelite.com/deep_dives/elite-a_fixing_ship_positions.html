@@ -10,7 +10,7 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Why Elite spawns certain ships in certain places, and how Elite-A fixes this</h2>
 
-						<p>I still can't quite believe it, but it turns out that when you're in deep space in 6502 Elite, and something new pops up on the scanner, then you can instantly tell whether it's hostile, friendly or just a bit of space junk, using nothing more than where it spawns on-screen.</p>
+						<p>I still can't quite believe it, but it turns out that when you're in deep space in 6502 Elite, and something new pops up on the scanner, then you can instantly tell whether it's agressive, friendly or just a bit of space junk, using nothing more than where it spawns on-screen.</p>
 
 						<p>How did I not know this? I played Elite religiously back in the day, and I had absolutely no idea that this was a "feature" of the game. I thought I had a pretty good feeling for the intentions of other ships, which I guess could have been me picking up the rules subconsciously, but I must have missed the hints and tips column where this was revealed. And then, not long ago, I saw the following in the <a href="http://knackered.org/angus/beeb/elite.html#Ship%20positions%20and%20numbers">ship positions and numbers</a> section of Angus Duggan's guide to Elite-A:</p>
 
@@ -25,7 +25,7 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
 
 						<p>The key to understanding Elite's predictable spawning behaviour lies in the <a href="/disc/flight/subroutine/dornd.html">DORND</a> routine, which produces random numbers that are used throughout the game. DORND actually composes a sequence of pseudo-random numbers, and returns the newest random number in the sequence in A, and the previous value in the sequence in X (for more on how the routine works, see the deep dive on <a href="generating_random_numbers.html">generating random numbers</a>). So the value of X returned by DORND is not a brand new random number - it's actually the value of A that was returned by the previous call to DORND.</p>
 
-						<p>The next part of the puzzle is the <a href="/disc/flight/subroutine/ze.html">Ze</a> routine, which initialises the INWK workspace to a hostile ship. When we call Ze, it resets the INWK workspace and calls DORND, and then it sets the x-coordinate of the new ship to the value in A, and the y-coordinate to the value in X.</p>
+						<p>The next part of the puzzle is the <a href="/disc/flight/subroutine/ze.html">Ze</a> routine, which initialises the INWK workspace to a fairly aggressive ship. When we call Ze, it resets the INWK workspace and calls DORND, and then it sets the x-coordinate of the new ship to the value in A, and the y-coordinate to the value in X.</p>
 
 						<p>This means that Ze doesn't necessarily spawn our new ship in a completely random place; instead, the y-coordinate is set to the previous value of A that DORND returned... and if we already used that value of A to make a decision about the kind of ship that we are spawning with Ze, then this means the y-coordinate of our new ship will not be random at all, but will instead be related to the kind of ship being spawned.</p>
 
@@ -86,7 +86,7 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
 
 <pre class="articleIndented"> STA T                \ Store our badness level in T
 
- JSR Ze               \ Call Ze to initialise INWK to a potentially hostile
+ JSR Ze               \ Call Ze to initialise INWK to a fairly aggressive
                       \ ship, and set A and X to random values
 
  CMP T                \ If the random value in A >= our badness level, which
@@ -98,7 +98,7 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
 
  LDA #COPS            \ Add a new police ship to the local bubble
  JSR NWSHP
-</pre
+</pre>
 
 						<p>As before, the Ze routine calls DORND and sets the ship's y-coordinate to the value of X that is returned. This value of X is the same as the value of A that was returned from the previous call to DORND, which is the one we checked above to decide whether to jump to MTT1 (i.e. A >= 35). So we know that y_lo >= 35, and y_sign gets set to bit 7 of this previous value of A. This means the y-coordinate can be positive or negative, though there's a higher chance that it's negative as we know the X returned from DORND in Ze is in the range 35 to 255, and most of these values have bit 7 set, giving a negative y_sign. Specifically, 93 values of X (35 to 127, or 42%) give a positive y-coordinate, while 128 values of X (128 to 255, or 58%) give a negative y-coordinate.</p>
 
@@ -131,7 +131,7 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
  JSR Ze               \ Call Ze to initialise INWK
 
  LDA #%11111111       \ Set the AI flag in byte #32 so that the ship has AI,
- STA INWK+32          \ is extremely and aggressively hostile, and has E.C.M.
+ STA INWK+32          \ an aggression level of 63 out of 63, and E.C.M.
 
  LDA #THG             \ Call NWSHP to add a new Thargoid ship to our local
  JSR NWSHP            \ bubble of universe
@@ -175,11 +175,11 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
                       \ Now to spawn a lone bounty hunter, a Thargoid or a
                       \ group of pirates
 
- JSR Ze               \ Call Ze to initialise INWK to a potentially hostile
+ JSR Ze               \ Call Ze to initialise INWK to a fairly aggressive
                       \ ship, and set A and X to random values
 </pre>
 
-						<p>So we call DORND, and if the current system is an anarchy, then we jump to LABEL_2 and call Ze before using either A or X, meaning the hostile ship set up by Ze will be in a random position. However, if this is not an anarchy, then we only continue through to LABEL_2 if A < 120, at which point we call Ze... and Ze sets the ship's y-coordinate to this, the value of A from the previous call to DORND. So this means in non-anarchy systems, the y-coordinate is always positive and in the range 0 to 119.</p>
+						<p>So we call DORND, and if the current system is an anarchy, then we jump to LABEL_2 and call Ze before using either A or X, meaning the aggressive ship set up by Ze will be in a random position. However, if this is not an anarchy, then we only continue through to LABEL_2 if A < 120, at which point we call Ze... and Ze sets the ship's y-coordinate to this, the value of A from the previous call to DORND. So this means in non-anarchy systems, the y-coordinate is always positive and in the range 0 to 119.</p>
 
 						<p>This INWK block is then used to spawn either a lone bounty hunter, the Constrictor (during mission 1), or a pack of pirates, without the coordinates being changed, so in non-anarchy systems, these ships always spawn in the top half of the screen. In the advanced versions, this same block is also used for the <a href="/deep_dives/the_elusive_cougar.html">rarest of rare ships, the Cougar</a>, so even that ship has a predictable spawning location outside of anarchy systems.</p>
 
@@ -200,7 +200,7 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
 
 						<p>Angus clearly knew about this "feature" of the original Elite, because in Elite-A he introduced a new routine, <a href="/elite-a/flight/subroutine/rand_posn.html">rand_posn</a>, which is either called directly (as in part 2 of <a href="/elite-a/flight/subroutine/main_game_loop_part_2_of_6.html#ytq">Elite-A's modified main loop</a>, for example), or by <a href="/elite-a/flight/subroutine/ze.html">Elite-A's modified version of Ze</a>. This new routine still uses the A and X values from DORND to set the x_lo and y_lo values for the x- and y-coordinates, but this time it makes sure to set the sign bits randomly, so the spawned ships can appear anywhere on screen.</p>
 
-						<p>Luckily, in Elite-A, you can pick up an <a href="elite-a_the_iff_system.html">I.F.F. system</a> to tell you whether new arrivals are friendly, hostile or junk, so you can still have your cake and eat it. For a price...</p>
+						<p>Luckily, in Elite-A, you can pick up an <a href="elite-a_the_iff_system.html">I.F.F. system</a> to tell you whether new arrivals are friendly, aggressive or junk, so you can still have your cake and eat it. For a price...</p>
 					</div>
 				</div>
 
