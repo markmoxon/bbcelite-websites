@@ -10,87 +10,107 @@ page_header("deep_dives", "aggression_and_hostility_in_ship_tactics.html", "Aggr
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Why some ships are peaceful traders while others seem hell-bent on revenge</h2>
 
-						<p>In Elite, it can feel as if everyone is out to get you. Supposedly peaceful trading runs rarely go without a hitch, and the onslaught of pirates and bounty hunters is incessant in the dodgier backwaters of the galaxy.</p>
+						<p>In Elite, it can feel as if everyone is out to get you. Trade runs rarely go without a hitch, even in the safest systems, and the onslaught of pirates and bounty hunters is incessant in the dodgier backwaters of the galaxy. The life of a spacer is clearly a tough one.</p>
 
-						<p>This is, of course, the whole point of a game whose very name is an indication of your combat prowess (see the deep dive on <a href="combat_rank.html">combat rank</a> for the gory details). But there are some inhabitants of the galaxy who aren't as aggressive; Transporters and Shuttles plu their trade between the stations and planets, minding their own business so intently that even a wayward Cobra Mk III can't shake them from their course. And in deep space there are peaceful Anacondas travelling the trade routes, armed with fleets of defensive Worms that they'll only deploy if you strike first.</p>
+						<p>This is, of course, the whole point of a game whose very name is an indication of your combat prowess (see the deep dive on <a href="combat_rank.html">combat rank</a> for the gory details). But there are some inhabitants of the galaxy who aren't quite as aggressive; for example, Transporters and Shuttles ply their trade between the stations and planets, minding their own business so intently that even a wayward Cobra Mk III can't shake them from their course (so much so that they will happily plough straight through you if you aren't careful). And in deep space there are peaceful Anacondas flying the trade routes, armed with fleets of defensive Worms that they'll only deploy if you strike first.</p>
 
-						<p>So some ships are peaceful, some are mildly aggressive and some are downright hostile. Let's see how Elite implemented this simple but effective part of the ship tactics.</p>
+						<p>So some ships are peaceful, some are mildly aggressive and some are downright hostile. Let's see how Elite implements this simple but effective aspect of ship tactics.</p>
 
 						<h2 class="articleSubheader">Aggression levels in the standard versions<br>
 													 ------------------------------------------</h2>
 
-						<p>Interestingly, in the BBC Micro cassette and Acorn Electron versions of Elite, everyone <i>is</i> out to get you - quite literally. It's just that some ships are not very aggressive, while others are itching for a fight. The tactics system is fairly simple in these standard versions of Elite, with the more subtle behaviour being introduced in the enhanced versions, starting with the BBC Micro disc version.</p>
+						<p>Interestingly, in the BBC Micro cassette and Acorn Electron versions of Elite, you aren't being paranoid: pretty much everyone <i>is</i> out to get you, quite literally, it's just that some ships are not very aggressive, while others are itching for a fight. The tactics system is fairly simple in these standard versions of Elite; more subtle behaviour was introduced in the enhanced versions, which we'll look at in the next section, but let's start by looking at the simpler system.</p>
 
-						<p>In the standard versions of Elite there is no concept of hostility (that comes later, with the NEWB flags, which we discuss in the next section). Instead, all we have is byte #32 of the ship data flags, which contains an aggression level in the range 0 to 63, along with AI and E.C.M. flags. In all versions of Elite, when we attack a ship, it gets its AI flag enabled (so that it wakes up if it's slumbering), and the aggression level then determines how keen it is to turn towards us, with more aggressive ships being more likely to turn to attack, while non-aggressive ships just ignore being shot at (beyond being given a quick kick of turning and acceleration in the ANGRY routine).</p>
+						<p>In the standard versions of Elite, there is no concept of ships being hostile or friendly (there is such a concept for space stations and missiles - see below - but not for ships). Instead, ship behaviour is determined purely by byte #32 of the ship data, which contains an "AI enabled" flag in bit 7, an "E.C.M. fitted" flag in bit 0, and an aggression level in bits 1 to 6. This gives the ship an aggression level in the range 0 to 63, with 0 representing a calm attitude and 63 representing high aggression.</p>
 
+						<p>When we attack a ship, the <a href="/cassette/main/subroutine/angry.html">ANGRY</a> routine enables its AI flag (so that it wakes up if it's slumbering), gives it a quick burst of acceleration and turn. Then ship's aggression level determines how keen it is to turn towards us, with more aggressive ships being more likely to turn for an attack, and non-aggressive ships just ignoring being shot at beyond the initial kick of speed.</p>
 
-In cassette, all ships are effectively hostile, and all of them may turn towards us or fire at us - the only difference is aggression level, i.e. the chances of doing this
-Traders are always Cobra (trader) spawned in main game loop 1 with random aggression 0-63
-Pirates are Sidewinder or Mamba are spawned in main game loop 4 using Ze (i.e. random 32-63)
-BH are Mamba, Python, Cobra (BH) and are spawned the same
-Thargoid is 63, spawned in main game loop 4 using GTHG
-So they all turn towards us and fire eventually, just some more than others
+						<p>The turning logic is interesting in that it uses the entire byte #32 to determine whether a ship will turn towards us. Assuming the ship isn't too close, the following code in <a href="/cassette/main/subroutine/tactics_part_7_of_7.html">part 7 of the TACTICS routine</a> determines the turn:</p>
 
-COPS?
+<pre class="articleIndented">  JSR DORND              \ Set A and X to random numbers
 
-						<p>That's it - there is no concept of hostility outside of missiles and space stations, as that came along later with the NEWB flags. In all versions, the hostility flag for missiles is in bit 6 of byte #32; in the standard versions, the hostility flag for space stations is in bit 7. In the enhanced versions, NEWB stores the hostility status for the space station, and bit 7 of byte #32 for the station is always set to indicate AI is enabloed, so tactics always get applied.</p>
+  ORA #%10000000         \ Set bit 7 of A, so the following comparison ignores
+                         \ the AI flag in bit 7 (as we already know bit 7 is set
+                         \ in byte #32)
 
+  CMP INWK+32            \ If A >= byte #32 (the ship's AI flag) then jump down
+  BCS TA15               \ to TA15 so it heads away from us
+</pre>
+
+						<p>The ORA instruction ensures that bit 7 is ignored in the whole-byte comparison, but the CMP still includes bit 0, which determines whether the ship has E.C.M. fitted. Including bit 0 along with the aggression level in bits 1-6 only affects the aggression calculation very slightly, however. Specifically, ships with E.C.M. are 0.4% more likely to pick a fight than those without, as the E.C.M. flag in bit 0 adds a 1 in 256 chance to the chance of the ship turning towards us in an aggression manner. This feels right somehow; ships who are more confident in their ship's defence are slightly more likely to turn and fight, which sounds correct.</p>
+
+						<p>In the standard versions of Elite, all ships with lasers will fire at us if we stray into their line of fire and aren't too far away, irrespective of whether we have attacked them, it's just that ships with low aggression will not bother to turn towards us, so the chances of them firing at us are slim. Aggressive ships, on the other hand, will keep trying to line up a shot, and missiles are just extremely aggressive ships that constantly try to fly towards their target, whether that target is us or another ship.</p>
+
+						<p>This same aggression logic is present in all versions of Elite, but the enhanced versions lock this behaviour behind the NEWB flags, so only hostile ships act on their aggression (see the next section). In the standard versions, every ship with AI enabled implements the same turning logic, and even supposedly peaceful traders are spawned with some aggression, so they can potentially line us up for a fight as well.</p>
+
+						<p>There is one more subtle aspect of aggression in Elite; if a ship is genuinely benign, its aggression can be interpreted as motivation. In the standard versions of Elite, there is only one benign ship: the escape pod. Escape pods use the same turning logic as ships and missiles, but instead of turning towards us or a target, escape pods always turn towards the planet. Escape pods are spawned with the highest possible aggression level, but they act on that by running for the nearest landfall as quickly as possible, rather than wading into a fight. So in the case of escape pods, this high aggression level is really a motivation level. Perhaps escape pods can be thought of as aggressively running away, like brave Sir Robin...</p>
+
+						<p>In standard Elite, then, the spawning process creates ships with the following aggression levels:</p>
+
+						<ul>
+							<li>Traders are always spawned using the Cobra Mk III (trader) blueprint. They are spawned in <a href="/cassette/main/subroutine/main_game_loop_part_1_of_6.html">part 1 of the main game loop</a>, and are given a random aggression level in the range 0 to 63. So not all traders are peaceful, but the chances of getting a very aggressive trader are slim.</li>
+
+							<li>Pirates are always spawned using the Sidewinder or Mamba blueprints. They are spawned in <a href="/cassette/main/subroutine/main_game_loop_part_4_of_6.html">part 4 of the main game loop</a> using the <a href="/cassette/main/subroutine/ze.html">Ze</a> routine, which spawns a fairly aggressive ship with a random aggression level in the range 32 to 63.</li>
+
+							<li>Bounty hunters are always spawned using the Mamba, Python or Cobra Mk III (bounty hunter) blueprints. They are also spawned in <a href="/cassette/main/subroutine/main_game_loop_part_4_of_6.html">part 4 of the main game loop</a> using the <a href="/cassette/main/subroutine/ze.html">Ze</a> routine, so they also have random aggression levels in the range 32 to 63.</li>
+
+							<li>Thargoids and Thargons have their own dedicated ship blueprints. They are spawned by the <a href="/cassette/main/subroutine/gthg.html">GTHG</a> routine, and they have the top aggression level possible, at 63 out of 63. When a Thargoid mothership is destroyed, the Thargon's AI flag is set to zero, giving it zero aggression and no AI.</li>
+
+							<li>Cops are always spawned using the Viper blueprint. There are two types of cop in terms of aggression level. If we attack a space station then cops with aggression levels of 56 out of 63 are spawned in <a href="/cassette/main/subroutine/main_game_loop_part_4_of_6.html">part 4 of the main game loop</a>. If we are in deep space and have a dodgy legal status, then the game may spawn cops using the <a href="/cassette/main/subroutine/ze.html">Ze</a> routine, so they also have random aggression levels in the range 32 to 63. The worse our legal status, the higher the chances of the game spawning cops to take us down.</li>
+
+							<li>Escape pods are always spawned using the Escape Pod blueprint. They are spawned by the <a href="/cassette/main/subroutine/sescp.html">SESCP</a> routine and have an aggression level of 63 out of 63, but they turn towards the planet rather than towards us, and they have no lasers, so instead their high aggression level actually means they are highly motivated to run away.</li>
+
+							<li>Missiles are always spawned using the Missile blueprint. Enemy missiles are spawned by the <a href="/cassette/main/subroutine/sfrmis.html">SFRMIS</a> routine, while our own missiles are spawned by the <a href="/cassette/main/subroutine/frmis.html">FRMIS</a> routine. They have an aggression level of 63 out of 63, and they always head towards their target. If it is an enemy missile then the target is us, while our own missiles head towards the target on which they are locked.</li>
+
+							<li>Cargo canisters and asteroids are spawned with zero aggression and no AI, so they just drift aimlessly through space. They are spawned in <a href="/cassette/main/subroutine/main_flight_loop_part_11_of_16.html">part 11 of the main flight loop</a> when a ship is destroyed.</li>
+						</ul>
+
+						<p>It's worth noting that there are two hostility flags that are present in all versions of Elite. The space station has its own hostility flag in bit 7 of byte #32, which is set if we attack the station (so it can send out Vipers to attack us and refuse docking permission). And missiles have a hostility flag in bit 6 of byte #32 that determines whether it is one of our missiles (when bit 6 is clear), or an enemy missile (when bit 6 is set). Enemy missiles are hostile and head towards us, while our own missiles head towards their intended targets.</p>
 
 						<h2 class="articleSubheader">Aggression levels and hostility with the NEWB flags<br>
 													 ---------------------------------------------------</h2>
 
-What makes ships fire at us - is it hostility? In standard versions?
+						<p>The enhanced versions of Elite have a rather more sophisticated system that determines ship behaviour using the NEWB flags - see the deep dive on <a href="/deep_dives/advanced_tactics_with_the_newb_flags.html">advanced tactics with the NEWB flags</a> for details. This additional system works alongside the aggression level described above, and amongst other behavioural aspects, it adds the concept of hostile ships.</p>
 
-In disc, only ships that are NEWB hostile do the turning to attack thing, so behaviour is controlled by NEWB in TACTICS 3
+						<p>In the enhanced versions, only ships that have the hostile flag set in the NEWB flags will turn towards us to attack us. Non-hostile ships will mind their own business, and they will only turn hostile if attacked. The <a href="/disc/flight/subroutine/angry.html">ANGRY</a> routine, which gets called when we attack another ship, is more complicated in the enhanced versions, and it typically makes a ship hostile by setting bit 2 of the ship's NEWB flags in byte #36 of the ship data. This isn't always the case - for example, attacking innocent bystanders will actually make the station hostile rather than the attacked ship - but the point is that hostile ships have their own dedicated flag that is independent from their aggression level.</p>
 
-(Copy TACTICS 3 logic summary here)
+						<p>This means that you can have aggressive ships that are non-hostile, and you can have hostile ships that are not very aggressive. As before, the aggression level determines the chances that the ship will turn towards its destination (i.e. the planet, the station, a missile target or us), but the ship will only try firing its lasers and missiles at us if it is hostile. In the enhanced versions, aggression is kept in check until a ship is provoked, so it's even closer to the concept of a "motivation level" than in the standard versions, at least until the lasers start firing.</p>
 
-Part 2:
+						<p>This behaviour is mostly controlled by the state of the NEWB flags in the tactics logic in <a href="/disc/flight/subroutine/tactics_part_2_of_7.html">part 2</a> and <a href="/disc/flight/subroutine/tactics_part_3_of_7.html">part 3</a> of the TACTICS routine. The logic is as follows, starting with part 2:</p>
 
-\   * If this is a missile, jump up to the missile code in part 1
-\
-\   * If this is the space station and it is hostile, consider spawning a cop
-\     (6.2% chance, up to a maximum of seven) and we're done
-\
-\   * If this is the space station and it is not hostile, consider spawning
-\     (0.8% chance if there are no Transporters around) a Transporter or Shuttle
-\     (equal odds of each type) and we're done
-\
-\   * If this is a rock hermit, consider spawning (22% chance) a highly
-\     aggressive and hostile Sidewinder, Mamba, Krait, Adder or Gecko (equal
-\     odds of each type) and we're done
-\
-\   * Recharge the ship's energy banks by 1
+						<ul>
+							<li>If this is a missile, jump up to the missile code in part 1.</li>
 
+							<li>If this is the space station and it is hostile, consider spawning a cop (6.2% chance, up to a maximum of seven) and we're done.</li>
 
+							<li>If this is the space station and it is not hostile, consider spawning (0.8% chance if there are no Transporters around) a Transporter or Shuttle (equal odds of each type) and we're done.</li>
 
-\   * If this is a lone Thargon without a mothership, set it adrift aimlessly
-\     and we're done
-\
-\   * If this is a trader, 80% of the time we're done, 20% of the time the
-\     trader performs the same checks as the bounty hunter
-\
-\   * If this is a bounty hunter (or one of the 20% of traders) and we have been
-\     really bad (i.e. a fugitive or serious offender), the ship becomes hostile
-\     (if it isn't already)
-\
-\   * If the ship is not hostile, then either perform docking manoeuvres (if
-\     it's docking) or fly towards the planet (if it isn't docking) and we're
-\     done
-\
-\   * If the ship is hostile, and a pirate, and we are within the space station
-\     safe zone, stop the pirate from attacking by removing all its aggression
-\
-\   * Calculate the dot product of the ship's nose vector (i.e. the direction it
-\     is pointing) with the vector between us and the ship. This value will help
-\     us work out later on whether the enemy ship is pointing towards us, and
-\     therefore whether it can hit us with its lasers.
+							<li>In the advanced versions of Elite only: if this is a rock hermit, consider spawning (22% chance) a highly aggressive and hostile Sidewinder, Mamba, Krait, Adder or Gecko (equal odds of each type, 56 out of 63 aggression) and we're done.</li>
 
+							<li>Recharge the ship's energy banks by 1.</li>
+						</ul>
 
+						<p>And moving on to part 3:</p>
 
+						<ul>
+							<li>If this is a lone Thargon without a mothership, set it adrift aimlessly and we're done.</li>
 
+							<li>If this is a trader, 80% of the time we're done, 20% of the time the trader performs the same checks as the bounty hunter.</li>
 
+							<li>If this is a bounty hunter (or one of the 20% of traders) and we have been really bad (i.e. a fugitive or serious offender), the ship becomes hostile (if it isn't already).</li>
 
+							<li>If the ship is not hostile, then either perform docking manoeuvres (if it's docking) or fly towards the planet (if it isn't docking) and we're done.</li>
+
+							<li>If the ship is hostile, and a pirate, and we are within the space station safe zone, stop the pirate from attacking by removing all its aggression.</li>
+
+							<li>Calculate the dot product of the ship's nose vector (i.e. the direction it is pointing) with the vector between us and the ship. This value will help us work out later on whether the enemy ship is pointing towards us, and therefore whether it can hit us with its lasers.</li>
+						</ul>
+
+						<p>You can see that for peaceful ships, such as non-hostile stations or traders, the tactics process ends here. But for hostile ships we fall through into parts 4 to 7, which is where the logic controls whether ships manoeuvre towards and attack their targets. For example, part 4 starts by checking to see if this is an Anaconda under attack, in which case the Anaconda can spawn a hostile Worm with an aggression level of 56 out of 63 (or, in the advanced versions, a hostile Worm or Sidewinder).</p>
+
+						<p>A good example of a ship with a high aggression level but no hostility is the Cougar, which is spawned very rarely in <a href="/master/main/subroutine/main_game_loop_part_4_of_6.html">part 4 of the main game loop</a>, and only in the advanced versions of Elite (see the deep dive on <a href="the_elusive_cougar.html">the elusive Cougar</a> for details of just how rare it is). This ship has a cloaking device that hides it from the 3D scanner, and it is spawned with an E.C.M. and an aggression level of 60 out of 63. However, it is spawned as non-hostile and with AI disabled, so the ship will sit still in space unless it is hit, at which point its AI will wake up and it will defend itself very aggressively. This ensures that the Cougar behaves like a ship with a cloaking device that minds its own business until it's discovered, at which point all hell breaks loose.</p>
+
+						<p>For a deeper look at the behavioural flags in the enhanced versions, including the hostile flag, see the deep dive on <a href="/deep_dives/advanced_tactics_with_the_newb_flags.html">advanced tactics with the NEWB flags</a>.</p>
 					</div>
 				</div>
 
