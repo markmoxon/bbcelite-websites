@@ -358,9 +358,9 @@
 							<li id="hacks_elite_compendium_acorn_electron"><span class="menuTitle">Compendium version of Electron Elite</span> <span class="menuSummary menuSummarySubmenu">Super-fast Electron Elite with all the bells and whistles of the BBC versions</span>
 								<ul id="submenu_hacks_elite_compendium_acorn_electron">
 									<li class="menuItemHeader">Compendium version of Electron Elite</li>
-									<li><a id="hacks_elite_compendium_acorn_electron" href="/hacks/elite_compendium_acorn_electron.html"><span class="menuTitle">About the Compendium version of Acorn Electron Elite</span> <span class="menuSummary">Updating Acorn Electron Elite with all the bells and whistles of the BBC</span></a></li>
+									<li><a id="hacks_elite_compendium_acorn_electron" href="/hacks/elite_compendium_acorn_electron.html"><span class="menuTitle">About the Compendium version of Acorn Electron Elite</span> <span class="menuSummary">Updating Acorn Electron Elite with all the bells and whistles of the BBC version</span></a></li>
 									<li><a id="hacks_elite_compendium_acorn_electron_downloads" href="/hacks/elite_compendium_acorn_electron_downloads.html"><span class="menuTitle">Playing the Compendium version of Acorn Electron Elite</span> <span class="menuSummary">How to download and play the improved version of Acorn Electron Elite</span></a></li>
-									<li><a id="hacks_elite_compendium_acorn_electron_technical_information" href="/hacks/elite_compendium_acorn_electron_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">How to backport BBC Micro disc Elite to the Acorn Electron using sideways RAM</span></a></li>
+									<li><a id="hacks_elite_compendium_acorn_electron_technical_information" href="/hacks/elite_compendium_acorn_electron_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">How I backported BBC Micro disc Elite to the Acorn Electron with sideways RAM</span></a></li>
 								</ul>
 							</li>
 							<li id="hacks_teletext_elite"><span class="menuTitle">Teletext Elite</span> <span class="menuSummary menuSummarySubmenu">The disc version of BBC Micro Elite, converted to run in teletext</span>
