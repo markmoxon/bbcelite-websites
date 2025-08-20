@@ -401,12 +401,12 @@
 									<li><a id="hacks_bbc_micro_b_plus_master_elite_technical_information" href="/hacks/bbc_micro_b_plus_master_elite_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">Squeezing full colour BBC Master Elite into the weird extra memory on the B+</span></a></li>
 								</ul>
 							</li>
-							<li id="hacks_bbc_elite_with_music"><span class="menuTitle">BBC Micro Elite... with music!</span> <span class="menuSummary menuSummarySubmenu">The title and docking music from the Commodore 64, shoehorned into BBC Micro Elite</span>
+							<li id="hacks_bbc_elite_with_music"><span class="menuTitle">Acornsoft Elite... with music!</span> <span class="menuSummary menuSummarySubmenu">The title and docking music from the Commodore 64, shoehorned into Acornsoft Elite</span>
 								<ul id="submenu_hacks_bbc_elite_with_music">
-									<li class="menuItemHeader">BBC Micro Elite... with music!</li>
-									<li><a id="hacks_bbc_elite_with_music_index" href="/hacks/bbc_elite_with_music.html"><span class="menuTitle">About the musical version of BBC Micro Elite</span> <span class="menuSummary">BBC Micro and BBC Master Elite, with added title and docking music</span></a></li>
-									<li><a id="hacks_bbc_elite_with_music_downloads" href="/hacks/bbc_elite_with_music_downloads.html"><span class="menuTitle">Playing musical BBC Micro Elite</span> <span class="menuSummary">How to download and play the musical version of BBC Micro Elite</span></a></li>
-									<li><a id="hacks_bbc_elite_with_music_technical_information" href="/hacks/bbc_elite_with_music_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">How the Commodore 64's music was ported to Elite on the BBC Micro</span></a></li>
+									<li class="menuItemHeader">Acornsoft Elite... with music!</li>
+									<li><a id="hacks_bbc_elite_with_music_index" href="/hacks/bbc_elite_with_music.html"><span class="menuTitle">About the musical version of Acornsoft Elite</span> <span class="menuSummary">BBC Micro and Acorn Electron Elite, with added title and docking music</span></a></li>
+									<li><a id="hacks_bbc_elite_with_music_downloads" href="/hacks/bbc_elite_with_music_downloads.html"><span class="menuTitle">Playing musical Acornsoft Elite</span> <span class="menuSummary">How to download and play the musical version of Acornsoft Elite</span></a></li>
+									<li><a id="hacks_bbc_elite_with_music_technical_information" href="/hacks/bbc_elite_with_music_technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">How the Commodore 64's music was ported to Elite on the BBC Micro and Electron</span></a></li>
 								</ul>
 							</li>
 							<li id="hacks_bbc_master_disc_elite"><span class="menuTitle">BBC Micro disc Elite on the BBC Master</span> <span class="menuSummary menuSummarySubmenu">The disc version of BBC Micro Elite, converted to run on the BBC Master</span>
