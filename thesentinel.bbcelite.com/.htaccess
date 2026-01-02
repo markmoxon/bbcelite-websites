@@ -1,0 +1,74 @@
+Options -Indexes
+
+ErrorDocument 404 /error_documents/missing.html
+ErrorDocument 403 /error_documents/forbidden.html
+ErrorDocument 402 /error_documents/failed_auth.html
+ErrorDocument 500 /error_documents/internal_error.html
+
+# Allow JSBeeb and XR Beeb to load disc images from this site
+SetEnvIf Origin "https://(bbc.xania.org|xr.bbcmic.ro)$" AccessControlAllowOrigin=$0
+Header add Access-Control-Allow-Origin %{AccessControlAllowOrigin}e env=AccessControlAllowOrigin
+Header merge Vary Origin
+
+# Tell web browsers not to even try HTTP on this domain for the next year
+Header set Strict-Transport-Security "max-age=31536000" env=HTTPS
+
+<IfModule mod_deflate.c>
+	SetOutputFilter DEFLATE
+	SetEnvIfNoCase Request_URI \.(gif|jpg|jpeg|png|zip|pdf|epub|kmz|mobi)$ no-gzip dont-vary
+</IfModule>
+
+<IfModule mod_expires.c>
+	ExpiresActive On
+	ExpiresDefault "access plus 2 days"
+	<FilesMatch "\.(ico|gif|jpg|jpeg|png|flv|pdf|swf|mov|mp3|wmv|ppt)$">
+		ExpiresDefault "access plus 1 year"
+		Header append Cache-Control "public"
+	</FilesMatch>
+	<FilesMatch "\.(xml|txt|html|js|css)$">
+		ExpiresDefault "access plus 1 month"
+		Header append Cache-Control "private, must-revalidate"
+	</FilesMatch>
+	<FilesMatch "\.(php|cgi|pl)$">
+		ExpiresDefault "access plus 0 seconds"
+		Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+		Header set Pragma "no-cache"
+	</FilesMatch>
+</IfModule>
+
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteRule ^(css|javascript)(/|-)\d+/(.+)$ $1/$3 [L]
+
+	RewriteCond %{REQUEST_URI} ^/source/
+	RewriteRule ^source/$ /alias/source/ [L,QSA]
+	RewriteRule ^source/releases.html$ /alias/source/releases.html [L,QSA]
+
+	RewriteCond %{REQUEST_URI} ^/source$
+	RewriteRule ^source$ /source/ [R=301,L]
+
+	RewriteCond %{REQUEST_URI} ^/playing_the_sentinel/
+	RewriteRule ^playing_revs/$ /alias/playing_the_sentinel/ [L,QSA]
+
+	RewriteCond %{REQUEST_URI} ^/terminology
+	RewriteRule ^terminology/?$ /about_site/terminology_used_in_this_commentary.html [R=301,L]
+
+	RewriteCond %{REQUEST_URI} ^(.*/)?index\.html?
+	RewriteRule ^(.*/)?index\.html?$ /$1 [R=301,L]
+
+	RewriteCond %{REQUEST_URI} ^(.*)//(.*)$ [NC]
+	RewriteRule . %1/%2 [R=301,L]
+</IfModule>
+
+<IfModule mod_mime.c>
+	AddType application/x-httpd-php .php 		# Mac
+	AddType application/x-httpd-php .html		# Mac
+	#AddHandler fcgid-script .html			# Dreamhost
+	#FcgidWrapper "/dh/cgi-system/php82.cgi" .html	# Dreamhost
+	AddType text/x-component .htc
+	AddType application/vnd.google-earth.kml+xml .kml
+	AddType application/vnd.google-earth.kmz .kmz
+	AddCharset UTF-8 .html
+	AddCharset UTF-8 .php
+	AddCharset UTF-8 .cgi
+</IfModule>
