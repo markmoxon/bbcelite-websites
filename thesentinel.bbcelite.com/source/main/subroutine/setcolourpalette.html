@@ -1,0 +1,141 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("graphics", "subroutine_setcolourpalette.html", "The SetColourPalette subroutine", "Graphics: SetColourPalette", "Annotated code for the SetColourPalette subroutine in The Sentinel", "the_sentinel-code", "source_graphics", "subroutine_setcolourpalette", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/enablekeyboard.html">EnableKeyboard</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/colourpalettes.html">colourPalettes</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">SetColourPalette</span>                                        <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Graphics</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Set the logical colours for each of the four physical colours in</span>
+             <span class="headerEntry">screen mode 5</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_j.html#header-setcolourpalette">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/maingameloop.html">MainGameLoop</a> calls <a href="#setcolourpalette">SetColourPalette</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> calls <a href="#setcolourpalette">SetColourPalette</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/playgame.html">PlayGame</a> calls <a href="#setcolourpalette">SetColourPalette</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/secretcodeerror.html">SecretCodeError</a> calls <a href="#setcolourpalette">SetColourPalette</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">Defines how the four physical colours in the mode 5</span>
+                        <span class="argumentEntry">palette are set:</span>
+
+                        <span class="argumentEntry">  * If bit 7 is clear then bits 0-6 contain the physical</span>
+                        <span class="argumentEntry">    colour to set for all four logical colours (so the</span>
+                        <span class="argumentEntry">    screen is effectively blanked to this colour)</span>
+
+                        <span class="argumentEntry">  * If bit 7 is set then bits 0-6 contain the offset</span>
+                        <span class="argumentEntry">    within the colourPalettes table of the last of the</span>
+                        <span class="argumentEntry">    four physical colours to set for logical colours</span>
+                        <span class="argumentEntry">    3, 2, 1 and 0 (so we work backwards through the</span>
+                        <span class="argumentEntry">    table from the offset in bits 0-6)</span>
+
+</div></div>
+<span class="label">.SetColourPalette</span><a id="setcolourpalette" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\ Store the argument in T</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%01111111</span>         <span class="comment">\ Extract bits 0-6 of the argument into Y</span>
+ <span class="mne">TAY</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ We now work through the logical colours from 3 down</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ to 0, setting the physical colour for each one in</span>
+                        <span class="comment">\ turn, so set a logical colour counter in U</span>
+
+<span class="label">.pall1</span><a id="pall1" class="anchor"></a>
+
+ <span class="mne">LDX</span> <a class="popup variable">T</a>                  <span class="comment">\ Set X to the argument in T</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">pall2</a>              <span class="comment">\ If bit 7 of the argument in T is clear, skip the</span>
+                        <span class="comment">\ following instruction, so X contains the physical</span>
+                        <span class="comment">\ colour in the routine's argument (i.e. the colour to</span>
+                        <span class="comment">\ which we set all four logical colours)</span>
+
+                        <span class="comment">\ If we get here then bit 7 of the argument in T is set,</span>
+                        <span class="comment">\ which means bits 0-6 contain the offset within the</span>
+                        <span class="comment">\ colourPalettes table of the four physical colours in</span>
+                        <span class="comment">\ the palette</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We set Y above to the value of bits 0-6, so we can use</span>
+                        <span class="comment">\ this as the index into the colourPalettes table (we</span>
+                        <span class="comment">\ will decrement Y below for each of the four colours,</span>
+                        <span class="comment">\ so we end up setting all four logical colours to the</span>
+                        <span class="comment">\ four values in the table)</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">colourPalettes</a>,<span class="register">Y</span>   <span class="comment">\ Fetch the physical colour from the Y-th entry in</span>
+                        <span class="comment">\ colourPalettes, which we now want to allocate to</span>
+                        <span class="comment">\ logical colour U</span>
+
+<span class="label">.pall2</span><a id="pall2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">19</span>                <span class="comment">\ Start a VDU 19 command, which sets a logical colour to</span>
+ <span class="mne">JSR</span> <a class="popup destination">OSWRCH</a>             <span class="comment">\ a physical colour using the following format:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   VDU 19, logical, physical, 0, 0, 0</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ which we output as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   VDU 19, U, X, 0, 0, 0</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ Write the value in U, which is the logical colour we</span>
+ <span class="mne">JSR</span> <a class="popup destination">OSWRCH</a>             <span class="comment">\ want to define</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Set A to the value in X</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ Set X = 4 to use as a byte counter as we output the</span>
+                        <span class="comment">\ physical colour and three zeroes</span>
+
+<span class="label">.pall3</span><a id="pall3" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">OSWRCH</a>             <span class="comment">\ Write the value in A, which is the physical colour we</span>
+                        <span class="comment">\ want to set (in the first iteration of the loop), or</span>
+                        <span class="comment">\ one of three trailing zeroes (in later iterations)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set A = 0 so the remaining three iterations of the</span>
+                        <span class="comment">\ loop output the trailing zeroes</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the byte counter</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">pall3</a>              <span class="comment">\ Loop back until we have output the whole VDU command</span>
+
+ <span class="mne">DEY</span>                    <span class="comment">\ Decrement the colourPalettes index in Y</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">U</a>                  <span class="comment">\ Decrement the logical colour counter in U</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">pall1</a>              <span class="comment">\ Loop back until we have defined the logical colours</span>
+                        <span class="comment">\ for all four physical colours</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-oswrch"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Configuration variable <a href="/source/all/workspaces.html#oswrch">OSWRCH</a> = &FFEE</div><div class="summary">The address for the OSWRCH routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-colourpalettes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/colourpalettes.html">colourPalettes</a> (category: Graphics)</div><div class="summary">The logical colours for two mode 5 palettes</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pall1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/setcolourpalette.html#pall1">pall1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pall2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/setcolourpalette.html#pall2">pall2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pall3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/setcolourpalette.html#pall3">pall3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/enablekeyboard.html">EnableKeyboard</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/colourpalettes.html">colourPalettes</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,255 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("maths_geometry", "subroutine_getanglefromcoords_part_1_of_3.html", "The GetAngleFromCoords (Part 1 of 3) subroutine", "Maths (Geometry): GetAngleFromCoords (Part 1 of 3)", "Annotated code for the GetAngleFromCoords (Part 1 of 3) subroutine in The Sentinel", "the_sentinel-code", "source_maths_geometry", "subroutine_getanglefromcoords_part_1_of_3", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/multiply8x8.html">Multiply8x8</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/getanglefromcoords_part_2_of_3.html">GetAngleFromCoords (Part 2 of 3)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetAngleFromCoords (Part 1 of 3)</span>                        <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Maths (Geometry)</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Given the coordinates along two axes, calculate the pitch or yaw</span>
+             <span class="headerEntry">angle to those coordinates</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_a.html#header-getanglefromcoords-part-1-of-3">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/gethypotenuseangle.html">GetHypotenuseAngle</a> calls <a href="#getanglefromcoords">GetAngleFromCoords</a></span>
+</div>
+<hr class="light">
+ The first part of this routine is based on the Divide16x16 routine in Revs,
+ Geoff Crammond's previous game, except it supports a divisor (V W) instead of
+ (V 0), though only the top three bits of W are included in the calculation.
+
+ The calculation is as follows:
+
+   angle(Hi Lo) = arctan( (A T) / (V W) )
+
+ where (A T) &lt; (V W).
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">(A T)</span>                <span class="argumentEntry">First coordinate as an unsigned integer</span>
+
+   <span class="argumentLabel">(V W)</span>                <span class="argumentEntry">Second coordinate as an unsigned integer</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">angle(Hi Lo)</span>         <span class="argumentEntry">The pitch or yaw angle from the origin to the coordinate</span>
+
+   <span class="argumentLabel">angleTangent</span>         <span class="argumentEntry">Contains 256 * (A T) / (V W), which is the tangent of</span>
+                        <span class="argumentEntry">the pitch or yaw angle</span>
+
+</div></div>
+<span class="label">.GetAngleFromCoords</span><a id="getanglefromcoords" class="anchor"></a>
+
+                        <span class="comment">\ We start by calculating the following using a similar</span>
+                        <span class="comment">\ shift-and-subtract algorithm as Revs:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   T = 256 * (A T) / (V W)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ In Revs, W is always zero, so there is some extra code</span>
+                        <span class="comment">\ below to cater for a full 16-bit value in (V W)</span>
+
+ <span class="mne">ASL</span> <a class="popup variable">T</a>                  <span class="comment">\ Shift T left, which clears bit 0 of T, ready for us to</span>
+                        <span class="comment">\ start building the result in T at the same time as we</span>
+                        <span class="comment">\ shift the low byte of (A T) out to the left</span>
+
+                        <span class="comment">\ We now repeat the following seven-instruction block</span>
+                        <span class="comment">\ eight times, one for each bit in T</span>
+
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ Shift the high byte of (A T) to the left to extract</span>
+                        <span class="comment">\ the next bit from the number being divided</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">gang1</a>              <span class="comment">\ If we just shifted a 1 out of A, skip the next few</span>
+                        <span class="comment">\ instructions and jump straight to the subtraction</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">V</a>                  <span class="comment">\ If A &lt; V then jump to gang2 with the C flag clear, so</span>
+ <span class="mne">BCC</span> <a class="popup destination">gang2</a>              <span class="comment">\ we shift a 0 into the result in T</span>
+
+                        <span class="comment">\ This part of the routine has been added to the Revs</span>
+                        <span class="comment">\ algorithm to cater for both arguments being full</span>
+                        <span class="comment">\ 16-bit values (in Revs the second value always has a</span>
+                        <span class="comment">\ low byte of zero)</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">gang1</a>              <span class="comment">\ If A > V then jump to gang1 to calculate a full 16-bit</span>
+                        <span class="comment">\ subtraction</span>
+
+                        <span class="comment">\ If we get here then A = V</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">T</a>                  <span class="comment">\ If T &lt; W then jump to gang2 with the C flag clear, so</span>
+ <span class="mne">CPY</span> <a class="popup variable">W</a>                  <span class="comment">\ we shift a 0 into the result in T</span>
+ <span class="mne">BCC</span> <a class="popup destination">gang2</a>
+
+<span class="label">.gang1</span><a id="gang1" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then T >= W and A >= V, so we know that</span>
+                        <span class="comment">\ (A T) >= (V W)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now calculate (A T) - (V W) as the subtraction part</span>
+                        <span class="comment">\ of the shift-and-subtract algorithm</span>
+
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ Store A in U so we can retrieve it after the following</span>
+                        <span class="comment">\ calculation</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">T</a>                  <span class="comment">\ Subtract the low bytes as T = T - W</span>
+ <span class="mne">SBC</span> <a class="popup variable">W</a>                  <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\ This calculation works as we know the C flag is set,</span>
+                        <span class="comment">\ as we passed through a BCC above</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ Restore the value of A from before the subtraction</span>
+
+ <span class="mne">SBC</span> <a class="popup variable">V</a>                  <span class="comment">\ Subtract the high bytes as A = A - V</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Set the C flag so we shift a 1 into the result in T</span>
+
+<span class="label">.gang2</span><a id="gang2" class="anchor"></a>
+
+ <span class="mne">ROL</span> <a class="popup variable">T</a>                  <span class="comment">\ Shift the result in T to the left, pulling the C flag</span>
+                        <span class="comment">\ into bit 0</span>
+
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ Repeat the 16-bit shift-and-subtract loop for the</span>
+ <span class="mne">BCS</span> <a class="popup destination">gang3</a>              <span class="comment">\ second shift</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BCC</span> <a class="popup destination">gang4</a>
+ <span class="mne">BNE</span> <a class="popup destination">gang3</a>
+ <span class="mne">LDY</span> <a class="popup variable">T</a>
+ <span class="mne">CPY</span> <a class="popup variable">W</a>
+ <span class="mne">BCC</span> <a class="popup destination">gang4</a>
+
+<span class="label">.gang3</span><a id="gang3" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ Repeat the 16-bit subtraction for the second shift</span>
+ <span class="mne">LDA</span> <a class="popup variable">T</a>
+ <span class="mne">SBC</span> <a class="popup variable">W</a>
+ <span class="mne">STA</span> <a class="popup variable">T</a>
+ <span class="mne">LDA</span> <a class="popup variable">U</a>
+ <span class="mne">SBC</span> <a class="popup variable">V</a>
+ <span class="mne">SEC</span>
+
+<span class="label">.gang4</span><a id="gang4" class="anchor"></a>
+
+ <span class="mne">ROL</span> <a class="popup variable">T</a>                  <span class="comment">\ Shift the result for the second shift into T</span>
+
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ Repeat the 16-bit shift-and-subtract loop for the</span>
+ <span class="mne">BCS</span> <a class="popup destination">gang5</a>              <span class="comment">\ third shift</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BCC</span> <a class="popup destination">gang6</a>
+ <span class="mne">BNE</span> <a class="popup destination">gang5</a>
+ <span class="mne">LDY</span> <a class="popup variable">T</a>
+ <span class="mne">CPY</span> <a class="popup variable">W</a>
+ <span class="mne">BCC</span> <a class="popup destination">gang6</a>
+
+<span class="label">.gang5</span><a id="gang5" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ Repeat the 16-bit subtraction for the third shift</span>
+ <span class="mne">LDA</span> <a class="popup variable">T</a>
+ <span class="mne">SBC</span> <a class="popup variable">W</a>
+ <span class="mne">STA</span> <a class="popup variable">T</a>
+ <span class="mne">LDA</span> <a class="popup variable">U</a>
+ <span class="mne">SBC</span> <a class="popup variable">V</a>
+ <span class="mne">SEC</span>
+
+<span class="label">.gang6</span><a id="gang6" class="anchor"></a>
+
+ <span class="mne">PHP</span>                    <span class="comment">\ Store the C flag on the stack, so the stack contains</span>
+                        <span class="comment">\ the result bit from shifting and subtracting the third</span>
+                        <span class="comment">\ shift</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">V</a>                  <span class="comment">\ If A = V then jump to gang10 with the C flag set, as</span>
+ <span class="mne">BEQ</span> <a class="popup destination">gang10</a>             <span class="comment">\ we can skip the rest of the shifts and still get a</span>
+                        <span class="comment">\ good result ???</span>
+
+ <span class="mne">ASL</span> <a class="popup variable">T</a>                  <span class="comment">\ Shift a zero for the third shift into T, so bit 5 of</span>
+                        <span class="comment">\ the result is always clear</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We do this so we can set this bit later, depending on</span>
+                        <span class="comment">\ the value that we stored on the stack above</span>
+
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ Repeat the shift-and-subtract loop for the fourth</span>
+ <span class="mne">BCS</span> <span class="skip">P%+6</span>               <span class="comment">\ shift</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BCC</span> <span class="skip">P%+5</span>
+ <span class="mne">SBC</span> <a class="popup variable">V</a>
+ <span class="mne">SEC</span>
+ <span class="mne">ROL</span> <a class="popup variable">T</a>
+
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ Repeat the shift-and-subtract loop for the fifth shift</span>
+ <span class="mne">BCS</span> <span class="skip">P%+6</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BCC</span> <span class="skip">P%+5</span>
+ <span class="mne">SBC</span> <a class="popup variable">V</a>
+ <span class="mne">SEC</span>
+ <span class="mne">ROL</span> <a class="popup variable">T</a>
+
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ Repeat the shift-and-subtract loop for the sixth shift</span>
+ <span class="mne">BCS</span> <span class="skip">P%+6</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BCC</span> <span class="skip">P%+5</span>
+ <span class="mne">SBC</span> <a class="popup variable">V</a>
+ <span class="mne">SEC</span>
+ <span class="mne">ROL</span> <a class="popup variable">T</a>
+
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ Repeat the shift-and-subtract loop for the seventh</span>
+ <span class="mne">BCS</span> <span class="skip">P%+6</span>               <span class="comment">\ shift</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BCC</span> <span class="skip">P%+5</span>
+ <span class="mne">SBC</span> <a class="popup variable">V</a>
+ <span class="mne">SEC</span>
+ <span class="mne">ROL</span> <a class="popup variable">T</a>
+
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ Repeat the shift-and-subtract loop for the eighth</span>
+ <span class="mne">BCS</span> <span class="skip">P%+6</span>               <span class="comment">\ shift</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BCC</span> <span class="skip">P%+5</span>
+ <span class="mne">SBC</span> <a class="popup variable">V</a>
+ <span class="mne">SEC</span>
+ <span class="mne">ROL</span> <a class="popup variable">T</a>
+
+                        <span class="comment">\ We now have the division result that we want:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   T = 256 * (A T) / (V W)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ but with bit 5 clear rather than the actual result</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This result can be used to look up the resulting angle</span>
+                        <span class="comment">\ from the arctangent table, but first we continue the</span>
+                        <span class="comment">\ division to enable us to improve accuracy</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-v"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#v">V</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-w"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#w">W</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_1_of_3.html#gang1">gang1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang10"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_2_of_3.html#gang10">gang10</a> in subroutine <a href="/source/main/subroutine/getanglefromcoords_part_2_of_3.html">GetAngleFromCoords (Part 2 of 3)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_1_of_3.html#gang2">gang2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_1_of_3.html#gang3">gang3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_1_of_3.html#gang4">gang4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_1_of_3.html#gang5">gang5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_1_of_3.html#gang6">gang6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/multiply8x8.html">Multiply8x8</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/getanglefromcoords_part_2_of_3.html">GetAngleFromCoords (Part 2 of 3)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

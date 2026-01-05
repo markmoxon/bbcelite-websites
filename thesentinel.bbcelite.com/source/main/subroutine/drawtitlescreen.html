@@ -1,0 +1,167 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("title_screen", "subroutine_drawtitlescreen.html", "The DrawTitleScreen subroutine", "Title screen: DrawTitleScreen", "Annotated code for the DrawTitleScreen subroutine in The Sentinel", "the_sentinel-code", "source_title_screen", "subroutine_drawtitlescreen", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/objblocknumber.html">objBlockNumber</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/screentype.html">screenType</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">DrawTitleScreen</span>                                         <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Title screen</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw the title screen or the screen showing the secret code</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_f.html#header-drawtitlescreen">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/finishlandscape.html">FinishLandscape</a> calls <a href="#drawtitlescreen">DrawTitleScreen</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> calls <a href="#drawtitlescreen">DrawTitleScreen</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/secretcodeerror.html">SecretCodeError</a> calls <a href="#drawtitlescreen">DrawTitleScreen</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">Determines the type of screen to draw:</span>
+
+                        <span class="argumentEntry">  * If bit 7 = 0 then draw the title screen</span>
+
+                        <span class="argumentEntry">  * If bit 7 = 1 then draw the secret code screen</span>
+
+</div></div>
+<span class="label">.DrawTitleScreen</span><a id="drawtitlescreen" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">screenType</a>         <span class="comment">\ Store the screen type in A in screenType, so we can</span>
+                        <span class="comment">\ refer to it below</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">128</span>               <span class="comment">\ Set objectYawAngle+63 = 128</span>
+ <span class="mne">STA</span> <a class="popup variable">objectYawAngle</a><span class="operator">+</span><span class="decimal">63</span>  <span class="comment">\</span>
+                        <span class="comment">\ The degree system in the Sentinel looks like this:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\            0</span>
+                        <span class="comment">\      -32   |   +32         Overhead view of object</span>
+                        <span class="comment">\         \  |  /</span>
+                        <span class="comment">\          \ | /             0 = looking straight ahead</span>
+                        <span class="comment">\           \|/              +64 = looking sharp right</span>
+                        <span class="comment">\   -64 -----+----- +64      -64 = looking sharp left</span>
+                        <span class="comment">\           /|\</span>
+                        <span class="comment">\          / | \</span>
+                        <span class="comment">\         /  |  \</span>
+                        <span class="comment">\      -96   |   +96</span>
+                        <span class="comment">\           128</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this makes object #63 face directly out of the</span>
+                        <span class="comment">\ screen</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&E0</span>               <span class="comment">\ For object #63, set the following:</span>
+ <span class="mne">STA</span> <a class="popup variable">yObjectLo</a><span class="operator">+</span><span class="decimal">63</span>       <span class="comment">\</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&02</span>               <span class="comment">\   yObject(Hi Lo) = &2E0</span>
+ <span class="mne">STA</span> <a class="popup variable">yObjectHi</a><span class="operator">+</span><span class="decimal">63</span>       <span class="comment">\</span>
+                        <span class="comment">\ So this sets the altitude of object #63 to just under</span>
+                        <span class="comment">\ three full block heights (2.875, to be precise)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We use object #63 for drawing the 3D text blocks in</span>
+                        <span class="comment">\ the game title in the main title screen, or the code</span>
+                        <span class="comment">\ in the secret code screen, so this ensures that the</span>
+                        <span class="comment">\ text blocks are drawn at the correct height to get the</span>
+                        <span class="comment">\ title effect</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Set bit 7 of drawingTitleScreen to indicate that we</span>
+ <span class="mne">ROR</span> <a class="popup variable">drawingTitleScreen</a> <span class="comment">\ are drawing a title screen</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Call ProcessTileData with A = 0 to zero the tile data</span>
+ <span class="mne">JSR</span> <a class="popup destination">ProcessTileData</a>    <span class="comment">\ for the whole landscape</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">screenType</a>         <span class="comment">\ If bit 7 of the screen type is clear, jump to titl1 to</span>
+ <span class="mne">BPL</span> <a class="popup destination">titl1</a>              <span class="comment">\ draw "THE SENTINEL" in large 3D text for the main</span>
+                        <span class="comment">\ title screen</span>
+
+                        <span class="comment">\ If we get here then bit 7 of the argument is set, so</span>
+                        <span class="comment">\ we now draw the secret code</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">SpawnSecretCode3D</a>  <span class="comment">\ Spawn the secret code in large 3D text blocks</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ Set X = 3 to pass to DrawTitleView so the background</span>
+                        <span class="comment">\ of the secret code screen is black with stars</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set A = 0 so the call to DrawTitleView draws a robot</span>
+                        <span class="comment">\ on the right of the screen</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">titl3</a>              <span class="comment">\ Jump to titl3 to skip the following and draw the robot</span>
+                        <span class="comment">\ (this BEQ is effectively a JMP as A is always zero)</span>
+
+<span class="label">.titl1</span><a id="titl1" class="anchor"></a>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ We now look through all the characters in the title</span>
+                        <span class="comment">\ text, drawing each one in turn, so set X as a</span>
+                        <span class="comment">\ character index</span>
+
+<span class="label">.titl2</span><a id="titl2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">titleText</a>,<span class="register">X</span>        <span class="comment">\ Set A to the X-th character in the title text</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">SpawnCharacter3D</a>   <span class="comment">\ Spawn the 3D text blocks for drawing the character in</span>
+                        <span class="comment">\ A in large 3D text</span>
+
+ <span class="mne">INX</span>                    <span class="comment">\ Increment the character index</span>
+
+ <span class="mne">CPX</span> <span class="hash">#</span><span class="decimal">15</span>                <span class="comment">\ Loop back until we have drawn all 15 characters in the</span>
+ <span class="mne">BCC</span> <a class="popup destination">titl2</a>              <span class="comment">\ title text</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ Set X = 1 to pass to DrawTitleView so the background</span>
+                        <span class="comment">\ of the landscape preview is solid blue</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">5</span>                 <span class="comment">\ Set A = 5 so the call to DrawTitleView draws the</span>
+                        <span class="comment">\ Sentinel on the right of the screen</span>
+
+<span class="label">.titl3</span><a id="titl3" class="anchor"></a>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ Set Y = 1 to pass to DrawTitleView so it draws the</span>
+                        <span class="comment">\ screen with the correct perspective for the title</span>
+                        <span class="comment">\ screen</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">DrawTitleView</a>      <span class="comment">\ Draw the title screen with the object and background</span>
+                        <span class="comment">\ defined in A and X</span>
+
+ <span class="mne">LSR</span> <a class="popup variable">drawingTitleScreen</a> <span class="comment">\ Clear bit 7 of drawingTitleScreen to indicate we are</span>
+                        <span class="comment">\ no longer drawing a title screen</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawtitleview"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawtitleview.html">DrawTitleView</a> (category: Title screen)</div><div class="summary">Draw the main title screen, the secret code screen or the landscape preview</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-processtiledata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/processtiledata.html">ProcessTileData</a> (category: Landscape)</div><div class="summary">Process the tile data for all tiles in the landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-spawncharacter3d"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/spawncharacter3d_part_1_of_2.html">SpawnCharacter3D (Part 1 of 2)</a> (category: Title screen)</div><div class="summary">Spawn a character on the landscape in large 3D blocks for drawing on the main title screen or secret code screen</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-spawnsecretcode3d"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/spawnsecretcode3d.html">SpawnSecretCode3D</a> (category: Title screen)</div><div class="summary">Draw the landscape's secret code by spawning a set of large 3D text block objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawingtitlescreen"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#drawingtitlescreen">drawingTitleScreen</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to indicate whether we are currently drawing a title screen in the DrawTitleScreen routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectyawangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objectyawangle.html">objectYawAngle</a> (category: 3D objects)</div><div class="summary">The yaw angle for each object (i.e. the horizontal direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-screentype"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/screentype.html">screenType</a> (category: Title screen)</div><div class="summary">A variable that determines whether we are drawing the title screen or the secret code screen in the DrawTitleScreen routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-titl1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawtitlescreen.html#titl1">titl1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-titl2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawtitlescreen.html#titl2">titl2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-titl3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawtitlescreen.html#titl3">titl3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-titletext"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/titletext.html">titleText</a> (category: Title screen)</div><div class="summary">The text to draw on the title screen</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yobjecthi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/yobjecthi.html">yObjectHi</a> (category: 3D objects)</div><div class="summary">The y-coordinates in 3D space for the 3D objects (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yobjectlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/yobjectlo.html">yObjectLo</a> (category: 3D objects)</div><div class="summary">The y-coordinates in 3D space for the 3D objects (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/objblocknumber.html">objBlockNumber</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/screentype.html">screenType</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,355 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("3d_objects", "subroutine_getobjectangles.html", "The GetObjectAngles subroutine", "3D objects: GetObjectAngles", "Annotated code for the GetObjectAngles subroutine in The Sentinel", "the_sentinel-code", "source_3d_objects", "subroutine_getobjectangles", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/ztilemaxaltitude.html">zTileMaxAltitude</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/getobjpointangles.html">GetObjPointAngles</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetObjectAngles</span>                                         <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">3D objects</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Calculate the angles and distances of the vector from the viewer</span>
+             <span class="headerEntry">to a specific object</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_j.html#header-getobjectangles">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze (Part 1 of 2)</a> calls <a href="#getobjectangles">GetObjectAngles</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/drawobject.html">DrawObject</a> calls <a href="#getobjectangles">GetObjectAngles</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> calls <a href="#getobjectangles">GetObjectAngles</a></span>
+</div>
+<hr class="light">
+ This routine calculates the following for an object:
+
+ 1. objTypeToAnalyse: Set to the type of the object we are analysing.
+
+ 2. xDelta(Hi Lo), yDelta(Hi Lo), zDelta(Hi Lo): Calculate the difference (the
+ delta) in all three axes between the viewer and the object we are analysing,
+ to give us the 3D vector from the viewer to the object.
+
+ 3. angle(Hi Lo): Calculate the angle of the hypotenuse of the triangle formed
+ by the x-axis and z-axis, which is the projection of the 3D vector from the
+ viewer to the object down onto the ground plane (so imagine a light shining
+ down from above, casting the vector's shadow onto the y = 0 plane, and that's
+ the hypotenuse).
+
+ 4. hypotenuse(Hi Lo): Set to the length of the hypotenuse in the above
+ triangle, so that's the length of the 3D vector from the viewer to the object
+ when projected down onto the ground plane.
+
+ 5. objectViewYaw(Hi Lo): The angle of the hypotenuse is the yaw angle of the
+ 3D vector from the viewer to the object we are analysing. We subtract the
+ viewer's yaw angle and the yaw adjustment, and add half a screen width to get
+ the yaw angle delta from the viewer's gaze to the object, relative to the
+ viewer's gaze, i.e. the screen). This gives us the yaw angle relative to the
+ view. You can think of this as the screen x-coordinate of the object, or how
+ far the object appears from the left edge of the screen.
+
+ 6. objectGazeYaw(Hi Lo): Set to the object's gaze relative to the viewer's
+ gaze.
+
+ 7. If this is the landscape preview, rotate the object to face forwards and
+ scale it so it looks good.
+
+ 8. Set objectAdjacent(Hi Lo) to hypotenuse(Hi Lo) so it can be used as the
+ length of the adjacent side in the vertical right-angled triangle with the
+ projected vector along the bottom and the vector from the viewer to the
+ object as the hypotenuse.
+
+ 9. Set objectOpposite(Hi Lo) to the length of the opposite side in the
+ vertical right-angled triangle with the projected vector along the bottom and
+ the vector from the viewer to the object as the hypotenuse.
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">Y</span>                    <span class="argumentEntry">The number of the object to be analysed</span>
+
+   <span class="argumentLabel">viewType</span>             <span class="argumentEntry">Landscape preview flag:</span>
+
+                        <span class="argumentEntry">  * Zero = this is the landscape preview, so rotate all</span>
+                        <span class="argumentEntry">           the objects in the preview to face the viewer</span>
+
+                        <span class="argumentEntry">  * Non-zero = this is not the landscape preview, so</span>
+                        <span class="argumentEntry">               leave the objects alone</span>
+
+   <span class="argumentLabel">viewingObject</span>        <span class="argumentEntry">The viewing object</span>
+
+</div></div>
+ <span class="mne">RTS</span>                    <span class="comment">\ This instruction appears to be unused</span>
+
+<span class="label">.GetObjectAngles</span><a id="getobjectangles" class="anchor"></a>
+
+ <span class="mne">STY</span> <a class="popup variable">objectToAnalyse</a>    <span class="comment">\ Set objectToAnalyse to the number of the object being</span>
+                        <span class="comment">\ analysed</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectTypes</a>,<span class="register">Y</span>      <span class="comment">\ Set objTypeToAnalyse to the type of the object being</span>
+ <span class="mne">STA</span> <a class="popup variable">objTypeToAnalyse</a>   <span class="comment">\ analysed</span>
+
+                        <span class="comment">\ We start by calculating the difference (the delta) in</span>
+                        <span class="comment">\ all three axes between the viewer and the object we</span>
+                        <span class="comment">\ are analysing, to give us the 3D vector from the</span>
+                        <span class="comment">\ viewer to the object</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">viewingObject</a>      <span class="comment">\ Set X to the object number of the viewer</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetHorizontalDelta</a> <span class="comment">\ Calculate the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   xDelta(Hi Lo) =  x-coordinate of object #Y</span>
+                        <span class="comment">\                   - x-coordinate of object #X</span>
+                        <span class="comment">\                   - xTitleOffset</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   xDeltaAbsoluteHi = |xDeltaAbsoluteHi|</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   zDelta(Hi Lo) =  z-coordinate of object #Y</span>
+                        <span class="comment">\                   - z-coordinate of object #X</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   zDeltaAbsoluteHi = |zDeltaHi|</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this calculates the difference in both horizontal</span>
+                        <span class="comment">\ axes between object #X (the viewer) and object #Y (the</span>
+                        <span class="comment">\ object being analysed)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Note that xTitleOffset is zero during gameplay, and is</span>
+                        <span class="comment">\ only non-zero when we are drawing large 3D text on the</span>
+                        <span class="comment">\ title screen</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetVerticalDelta</a>   <span class="comment">\ Calculate the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   yDelta(Hi Lo) =   y-coordinate of object #Y</span>
+                        <span class="comment">\                   - y-coordinate of object #X</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this calculates the difference in altitude between</span>
+                        <span class="comment">\ object #X (the viewer) and object #Y (the object being</span>
+                        <span class="comment">\ analysed)</span>
+
+                        <span class="comment">\ We now have deltas for all three axes, so we now can</span>
+                        <span class="comment">\ calculate the angle of the hypotenuse of the triangle</span>
+                        <span class="comment">\ formed by the x-axis and z-axis, which is the</span>
+                        <span class="comment">\ projection of the 3D vector from the viewer to the</span>
+                        <span class="comment">\ object down onto the ground plane (so imagine a light</span>
+                        <span class="comment">\ shining down from above, casting the vector's shadow</span>
+                        <span class="comment">\ onto the y = 0 plane - that's the hypotenuse)</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetHypotenuseAngle</a> <span class="comment">\ Calculate the angle of the hypotenuse in the triangle</span>
+                        <span class="comment">\ with the following non-hypotenuse sides:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * xDelta(Hi Lo)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * zDelta(Hi Lo)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and return the angle in angle(Hi Lo), the tangent in</span>
+                        <span class="comment">\ angleTangent, the length of the longer side in</span>
+                        <span class="comment">\ a(Hi Lo) and the length of the shorter side in</span>
+                        <span class="comment">\ b(Hi Lo)</span>
+
+                        <span class="comment">\ The angle of the hypotenuse is the yaw angle of the</span>
+                        <span class="comment">\ 3D vector from the viewer to the object we are</span>
+                        <span class="comment">\ analysing</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We also subtract the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * objectYawAngle,X from the high byte so the result</span>
+                        <span class="comment">\     is the relative yaw angle from object #X (the</span>
+                        <span class="comment">\     viewer's gaze) to the object</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * yawAdjustmentLo from the low byte so if we are</span>
+                        <span class="comment">\     drawing an object for updating, we include the</span>
+                        <span class="comment">\     correct yaw offset to enable the object to be</span>
+                        <span class="comment">\     drawn flush with the left edge of the screen</span>
+                        <span class="comment">\     buffer (see the DrawUpdatedObject routine)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and add the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * (10 0) to add half a screen width (as the screen</span>
+                        <span class="comment">\     is 20 yaw angles wide)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So the result in objectViewYaw(Hi Lo) is the yaw angle</span>
+                        <span class="comment">\ delta from the viewer's gaze to the object, plus</span>
+                        <span class="comment">\ adjustments and half a screen, to give us the yaw</span>
+                        <span class="comment">\ angle relative to the view</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ You can think of this as the screen x-coordinate of</span>
+                        <span class="comment">\ the object, or how far the object appears from the</span>
+                        <span class="comment">\ left edge of the screen</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">viewingObject</a>      <span class="comment">\ Set X to the object number of the viewer</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">angleLo</a>            <span class="comment">\ Set objectViewYaw(Hi Lo) =</span>
+ <span class="mne">SEC</span>                    <span class="comment">\                    angle(Hi Lo) - (0 yawAdjustmentLo)</span>
+ <span class="mne">SBC</span> <a class="popup variable">yawAdjustmentLo</a>    <span class="comment">\                                 - (objectYawAngle,X 0)</span>
+ <span class="mne">STA</span> <a class="popup variable">objectViewYawLo</a>    <span class="comment">\                                 + (10 0)</span>
+ <span class="mne">LDA</span> <a class="popup variable">angleHi</a>
+ <span class="mne">SBC</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>
+ <span class="mne">CLC</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">10</span>
+ <span class="mne">STA</span> <a class="popup variable">objectViewYawHi</a>
+
+ <span class="mne">LDY</span> <a class="popup variable">objectToAnalyse</a>    <span class="comment">\ Set Y to the number of the object being analysed</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set objectGazeYaw(Hi Lo) =</span>
+ <span class="mne">SEC</span>                    <span class="comment">\                    (objectYawAngle,Y 0) - angle(Hi Lo)</span>
+ <span class="mne">SBC</span> <a class="popup variable">angleLo</a>            <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">objectGazeYawLo</a>    <span class="comment">\ This is the difference in yaw angles between the</span>
+ <span class="mne">LDA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">Y</span>   <span class="comment">\ hypotenuse (i.e. the viewer's gaze) and the direction</span>
+ <span class="mne">SBC</span> <a class="popup variable">angleHi</a>            <span class="comment">\ in which the object is facing (i.e. the object's gaze</span>
+ <span class="mne">STA</span> <a class="popup variable">objectGazeYawHi</a>    <span class="comment">\ to wherever it is looking), so that's the object's</span>
+                        <span class="comment">\ gaze relative to the viewer's gaze</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetHypotenuse</a>      <span class="comment">\ Calculate the length of the hypotenuse in the triangle</span>
+                        <span class="comment">\ with side lengths of a(Hi Lo) and b(Hi Lo) and angle</span>
+                        <span class="comment">\ angleTangent, which the call to GetHypotenuseAngle set</span>
+                        <span class="comment">\ to the values for the projection of the 3D vector from</span>
+                        <span class="comment">\ the viewer to the object down onto the ground plane</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The hypotenuse length is returned in hypotenuse(Hi Lo)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">viewType</a>           <span class="comment">\ If viewType is non-zero then this is not the landscape</span>
+ <span class="mne">BNE</span> <a class="popup destination">oang1</a>              <span class="comment">\ preview, so jump to oang1 to skip the following</span>
+
+                        <span class="comment">\ This is the landscape preview, so we rotate the object</span>
+                        <span class="comment">\ to face towards the back of the landscape, so the</span>
+                        <span class="comment">\ Sentinel and sentries all neatly look out of the</span>
+                        <span class="comment">\ screen in the preview</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">128</span>               <span class="comment">\ Set objectGazeYaw(Hi Lo) = (128 0)</span>
+ <span class="mne">STA</span> <a class="popup variable">objectGazeYawHi</a>    <span class="comment">\</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ The degree system in the Sentinel looks like this:</span>
+ <span class="mne">STA</span> <a class="popup variable">objectGazeYawLo</a>    <span class="comment">\</span>
+                        <span class="comment">\            0</span>
+                        <span class="comment">\      -32   |   +32         Overhead view of object</span>
+                        <span class="comment">\         \  |  /</span>
+                        <span class="comment">\          \ | /             0 = looking straight ahead</span>
+                        <span class="comment">\           \|/              +64 = looking sharp right</span>
+                        <span class="comment">\   -64 -----+----- +64      -64 = looking sharp left</span>
+                        <span class="comment">\           /|\</span>
+                        <span class="comment">\          / | \</span>
+                        <span class="comment">\         /  |  \</span>
+                        <span class="comment">\      -96   |   +96</span>
+                        <span class="comment">\           128</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this makes the object face directly out of the</span>
+                        <span class="comment">\ screen</span>
+
+ <span class="mne">CPY</span> <span class="hash">#</span><span class="decimal">63</span>                <span class="comment">\ If we are analysing object #63, then this is either</span>
+ <span class="mne">BEQ</span> <a class="popup destination">oang1</a>              <span class="comment">\ a block of 3D text or the Sentinel's tower, and the</span>
+                        <span class="comment">\ landscape preview doesn't use 3D text so it must be</span>
+                        <span class="comment">\ the Sentinel's tower, so jump to oang1 to skip the</span>
+                        <span class="comment">\ following</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This ensures that all objects apart from the tower</span>
+                        <span class="comment">\ are drawn at double size, so they stand out more</span>
+                        <span class="comment">\ clearly in the landscape preview (the tower is the</span>
+                        <span class="comment">\ biggest object by far, so doubling its size would</span>
+                        <span class="comment">\ make it too large)</span>
+
+ <span class="mne">LSR</span> <a class="popup variable">hypotenuseHi</a>       <span class="comment">\ Halve the hypotenuse length to make the object appear</span>
+ <span class="mne">ROR</span> <a class="popup variable">hypotenuseLo</a>       <span class="comment">\ to be half the distance away, so it is drawn at twice</span>
+                        <span class="comment">\ the size</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Halve the object's altitude in yDelta(Hi Lo) for the</span>
+ <span class="mne">ROR</span> <a class="popup variable">yDeltaHi</a>           <span class="comment">\ same reason</span>
+ <span class="mne">ROR</span> <a class="popup variable">yDeltaLo</a>           <span class="comment">\</span>
+                        <span class="comment">\ Because this is the landscape view, the viewer is very</span>
+                        <span class="comment">\ high above the landscape (as well as a long way in</span>
+                        <span class="comment">\ front of the front edge), so we know that</span>
+                        <span class="comment">\ yDelta(Hi Lo) will be negative, as it's calculated as</span>
+                        <span class="comment">\ the altitude of the object being analysed minus the</span>
+                        <span class="comment">\ altitude of the viewer, and the latter is higher than</span>
+                        <span class="comment">\ any object on the landscape</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we can halve the value of yDelta(Hi Lo) by shifting</span>
+                        <span class="comment">\ a set bit into the top end of yDeltaHi, so we keep the</span>
+                        <span class="comment">\ sign correct</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yDeltaLo</a>           <span class="comment">\ Set yDelta(Hi Lo) = yDelta(Hi Lo) + 112</span>
+ <span class="mne">CLC</span>                    <span class="comment">\</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">112</span>               <span class="comment">\ Starting with the low bytes</span>
+ <span class="mne">STA</span> <a class="popup variable">yDeltaLo</a>
+
+ <span class="mne">BCC</span> <a class="popup destination">oang1</a>              <span class="comment">\ And then the high byte</span>
+ <span class="mne">INC</span> <a class="popup variable">yDeltaHi</a>           <span class="comment">\</span>
+                        <span class="comment">\ This moves the Sentinel and sentries up so they stand</span>
+                        <span class="comment">\ out more clearly in the landscape preview, as</span>
+                        <span class="comment">\ otherwise they would appear to be sinking into the</span>
+                        <span class="comment">\ landscape rather than perching on top of it</span>
+
+<span class="label">.oang1</span><a id="oang1" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">hypotenuseLo</a>       <span class="comment">\ Set objectAdjacent(Hi Lo) to the length of the</span>
+ <span class="mne">STA</span> <a class="popup variable">objectAdjacentLo</a>   <span class="comment">\ hypotenuse, which is the length of the adjacent side</span>
+ <span class="mne">LDA</span> <a class="popup variable">hypotenuseHi</a>       <span class="comment">\ in the right-angled triangle with the vector from the</span>
+ <span class="mne">STA</span> <a class="popup variable">objectAdjacentHi</a>   <span class="comment">\ viewer to the object as the hypotenuse</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yDeltaLo</a>           <span class="comment">\ Set objectOpposite(Hi Lo) to the height of the object</span>
+ <span class="mne">STA</span> <a class="popup variable">objectOppositeLo</a>   <span class="comment">\ relative to the viewer, which is the length of the</span>
+ <span class="mne">LDA</span> <a class="popup variable">yDeltaHi</a>           <span class="comment">\ opposite side in the right-angled triangle with the</span>
+ <span class="mne">STA</span> <a class="popup variable">objectOppositeHi</a>   <span class="comment">\ vector from the viewer to the object as the hypotenuse</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gethorizontaldelta"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gethorizontaldelta.html">GetHorizontalDelta</a> (category: Maths (Geometry))</div><div class="summary">Calculate the difference in the x-axis and z-axis between two objects, as both signed and absolute deltas</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gethypotenuse"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gethypotenuse.html">GetHypotenuse</a> (category: Maths (Geometry))</div><div class="summary">Calculate the hypotenuse from an angle and two triangle sides with one lookup and one multiplication (so without a square root)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gethypotenuseangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gethypotenuseangle.html">GetHypotenuseAngle</a> (category: Maths (Geometry))</div><div class="summary">Calculate the angle of the hypotenuse in a right-angle triangle given the two non-hypotenuse sides (i.e. two orthogonal axes)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getverticaldelta"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getverticaldelta.html">GetVerticalDelta</a> (category: Maths (Geometry))</div><div class="summary">Calculate the difference in the y-axis between two objects as a signed delta</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-anglehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#anglehi">angleHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of an angle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-anglelo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#anglelo">angleLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of an angle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-hypotenusehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#hypotenusehi">hypotenuseHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of the hypotenuse of a triangle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-hypotenuselo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#hypotenuselo">hypotenuseLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of the hypotenuse of a triangle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-oang1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getobjectangles.html#oang1">oang1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objtypetoanalyse"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#objtypetoanalyse">objTypeToAnalyse</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The type of the object being analysed in the GetObjectAngles routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectadjacenthi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objectadjacenthi">objectAdjacentHi</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The distance of an object from the viewer, expressed as the length of the adjacent side in a triangle with the vector from the viewer to the object as the hypotenuse (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectadjacentlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objectadjacentlo">objectAdjacentLo</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The distance of an object from the viewer, expressed as the length of the adjacent side in a triangle with the vector from the viewer to the object as the hypotenuse (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectgazeyawhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#objectgazeyawhi">objectGazeYawHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference in the yaw angle of the viewer's gaze and the yaw angle (i.e. the gaze) of the object being analysed (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectgazeyawlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#objectgazeyawlo">objectGazeYawLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference in the yaw angle of the viewer's gaze and the yaw angle (i.e. the gaze) of the object being analysed (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectoppositehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objectoppositehi">objectOppositeHi</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The height of an object relative to the viewer, expressed as the length of the opposite side in a triangle with the vector from the viewer to the object as the hypotenuse (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectoppositelo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objectoppositelo">objectOppositeLo</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The height of an object relative to the viewer, expressed as the length of the opposite side in a triangle with the vector from the viewer to the object as the hypotenuse (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttoanalyse"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#objecttoanalyse">objectToAnalyse</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the object to analyse in the GetObjectAngles routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttypes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objecttypes.html">objectTypes</a> (category: 3D objects)</div><div class="summary">The object types table for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectviewyawhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objectviewyawhi">objectViewYawHi</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The yaw angle of the object being analysed, relative to the current viewer (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectviewyawlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objectviewyawlo">objectViewYawLo</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The yaw angle of the object being analysed, relative to the current viewer (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectyawangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objectyawangle.html">objectYawAngle</a> (category: 3D objects)</div><div class="summary">The yaw angle for each object (i.e. the horizontal direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewtype"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/viewtype.html">viewType</a> (category: Title screen)</div><div class="summary">Storage for the type of title view we are drawing in DrawTitleView (title screen or landscape preview)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewingobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#viewingobject">viewingObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the viewing object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ydeltahi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ydeltahi">yDeltaHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference between two y-coordinates (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ydeltalo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ydeltalo">yDeltaLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference between two y-coordinates (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yawadjustmentlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yawadjustmentlo">yawAdjustmentLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">A yaw adjustment to apply to the landscape drawing process so that when we update objects on-screen, we can yaw the viewer's gaze to the right to move the left edge of the object to the left edge of the screen so the object will fit into the screen buffer as efficiently as possible (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/ztilemaxaltitude.html">zTileMaxAltitude</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/getobjpointangles.html">GetObjPointAngles</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

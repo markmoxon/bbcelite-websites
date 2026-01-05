@@ -1,0 +1,151 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("3d_objects", "subroutine_spawnobject.html", "The SpawnObject subroutine", "3D objects: SpawnObject", "Annotated code for the SpawnObject subroutine in The Sentinel", "the_sentinel-code", "source_3d_objects", "subroutine_spawnobject", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/objecthalfwidth.html">objectHalfWidth</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/updateplayerenergy.html">UpdatePlayerEnergy</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">SpawnObject</span>                                             <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">3D objects</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Add a new object of the specified type to the objectTypes table</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_d.html#header-spawnobject">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/addenemiestotiles.html">AddEnemiesToTiles</a> calls <a href="#spawnobject">SpawnObject</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/expendenemyenergy.html">ExpendEnemyEnergy</a> calls <a href="#spawnobject">SpawnObject</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/performhyperspace.html">PerformHyperspace</a> calls <a href="#spawnobject">SpawnObject</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/spawnplayer.html">SpawnPlayer</a> calls <a href="#spawnobject">SpawnObject</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/spawntrees.html">SpawnTrees</a> calls <a href="#spawnobject">SpawnObject</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/processactionkeys_part_2_of_2.html">ProcessActionKeys (Part 2 of 2)</a> calls via <a href="#spawnobject">SpawnObject+3</a></span></span>
+</div>
+<hr class="light">
+ This routine spawns a new object by searching the objectFlags table for a free
+ number to allocate. If there is no free number then the routine returns with
+ the C flag set, otherwise the C flag is clear, X and currentObject are set to
+ the number of the new object, and the object type is added to the objectTypes
+ table.
+
+ Note that this routine only adds the object to the objectTypes table; it
+ doesn't update the flags or add any other information about the object.
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">The type of object to spawn:</span>
+
+                        <span class="argumentEntry">  * 0 = Robot (one of which is the player)</span>
+
+                        <span class="argumentEntry">  * 1 = Sentry</span>
+
+                        <span class="argumentEntry">  * 2 = Tree</span>
+
+                        <span class="argumentEntry">  * 3 = Boulder</span>
+
+                        <span class="argumentEntry">  * 4 = Meanie</span>
+
+                        <span class="argumentEntry">  * 5 = The Sentinel</span>
+
+                        <span class="argumentEntry">  * 6 = The Sentinel's tower</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">X</span>                    <span class="argumentEntry">The number of the new object (if successful)</span>
+
+   <span class="argumentLabel">currentObject</span>        <span class="argumentEntry">The number of the new object (if successful)</span>
+
+   <span class="argumentLabel">C flag</span>               <span class="argumentEntry">Status flag:</span>
+
+                        <span class="argumentEntry">  * Clear if the object was successfully spawned</span>
+
+                        <span class="argumentEntry">  * Set if there is no free number for the new object</span>
+
+<hr class="light">
+<span class="subheader"> Other entry points:</span>
+
+   <span class="argumentLabel">SpawnObject+3</span>        <span class="argumentEntry">Spawn an object of the type specified in keyPress</span>
+
+                        <span class="argumentEntry">The keyPress and objectType variables share the same</span>
+                        <span class="argumentEntry">memory location, so this lets us store object types in</span>
+                        <span class="argumentEntry">the key press codes in keyLoggerConfig, so that pressing</span>
+                        <span class="argumentEntry">one of the "create" keys will automatically spawn that</span>
+                        <span class="argumentEntry">type of object</span>
+
+</div></div>
+<span class="label">.SpawnObject</span><a id="spawnobject" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">objectType</a>         <span class="comment">\ Store the object type in objectType for future</span>
+                        <span class="comment">\ reference</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">63</span>                <span class="comment">\ In order to be able to create a new object, we need to</span>
+                        <span class="comment">\ find an unallocated object number in the objectFlags</span>
+                        <span class="comment">\ table</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The game can support up to 64 objects, each with its</span>
+                        <span class="comment">\ own number (0 to 63), so set a counter in X to work</span>
+                        <span class="comment">\ through the object numbers until we find one that is</span>
+                        <span class="comment">\ not allocated to an object</span>
+
+<span class="label">.sobj1</span><a id="sobj1" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectFlags</a>,<span class="register">X</span>      <span class="comment">\ Set A to the object flags for object #X, which are</span>
+                        <span class="comment">\ stored in the X-th entry in the objectFlags table</span>
+
+ <span class="mne">BMI</span> <a class="popup destination">sobj2</a>              <span class="comment">\ If bit 7 of object flags for object #X is set then</span>
+                        <span class="comment">\ this object number is not yet allocated to an object,</span>
+                        <span class="comment">\ so jump to sobj2 use this number for our new object</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Otherwise decrement the counter in X to move on to the</span>
+                        <span class="comment">\ next object number</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">sobj1</a>              <span class="comment">\ Loop back to sobj1 to check the next object number</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ If we get here then we have checked all 64 object</span>
+                        <span class="comment">\ numbers and none of them are free, so set the C flag</span>
+                        <span class="comment">\ to indicate that we have failed to spawn the object</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.sobj2</span><a id="sobj2" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we have found an unallocated</span>
+                        <span class="comment">\ object number in the objectFlags table at index X</span>
+
+ <span class="mne">STX</span> <a class="popup variable">currentObject</a>      <span class="comment">\ Set currentObject to the object number in X</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectType</a>         <span class="comment">\ Set the corresponding entry in the objectTypes table</span>
+ <span class="mne">STA</span> <a class="popup variable">objectTypes</a>,<span class="register">X</span>      <span class="comment">\ to the object type that we are spawning, which we</span>
+                        <span class="comment">\ stored in objectType above</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Clear the C flag to indicate that we have successfully</span>
+                        <span class="comment">\ added a new object to the objectFlags table</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-currentobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#currentobject">currentObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the object we are currently processing</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectflags"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">Object flags for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttype"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objecttype">objectType</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The type of object that we are spawning</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttypes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objecttypes.html">objectTypes</a> (category: 3D objects)</div><div class="summary">The object types table for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sobj1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/spawnobject.html#sobj1">sobj1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sobj2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/spawnobject.html#sobj2">sobj2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/objecthalfwidth.html">objectHalfWidth</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/updateplayerenergy.html">UpdatePlayerEnergy</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

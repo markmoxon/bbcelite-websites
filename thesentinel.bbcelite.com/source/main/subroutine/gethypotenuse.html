@@ -1,0 +1,129 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("maths_geometry", "subroutine_gethypotenuse.html", "The GetHypotenuse subroutine", "Maths (Geometry): GetHypotenuse", "Annotated code for the GetHypotenuse subroutine in The Sentinel", "the_sentinel-code", "source_maths_geometry", "subroutine_gethypotenuse", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/getpitchangledelta.html">GetPitchAngleDelta</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/ystorehypotenuse.html">yStoreHypotenuse</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetHypotenuse</span>                                           <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Maths (Geometry)</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Calculate the hypotenuse from an angle and two triangle sides with</span>
+             <span class="headerEntry">one lookup and one multiplication (so without a square root)</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_i.html#header-gethypotenuse">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a> calls <a href="#gethypotenuse">GetHypotenuse</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/getobjpointangles.html">GetObjPointAngles</a> calls <a href="#gethypotenuse">GetHypotenuse</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles (Part 1 of 4)</a> calls <a href="#gethypotenuse">GetHypotenuse</a></span>
+</div>
+<hr class="light">
+ This routine calculates:
+
+   hypotenuse(Hi Lo) = a(Hi Lo) + tan(theta / 2) * b(Hi Lo)
+
+ for a triangle with angle theta, adjacent side a and opposite side b.
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">angleTangent</span>         <span class="argumentEntry">The triangle angle theta</span>
+
+   <span class="argumentLabel">a(Hi Lo)</span>             <span class="argumentEntry">The length of a, the adjacent side of the triangle</span>
+
+   <span class="argumentLabel">b(Hi Lo)</span>             <span class="argumentEntry">The length of b, the opposite side of the triangle</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">Y</span>                    <span class="argumentEntry">Y is preserved</span>
+
+   <span class="argumentLabel">hypotenuse(Hi Lo)</span>    <span class="argumentEntry">The length of the hypotenuse</span>
+
+</div></div>
+<span class="label">.GetHypotenuse</span><a id="gethypotenuse" class="anchor"></a>
+
+ <span class="mne">STY</span> <a class="popup variable">yStoreHypotenuse</a>   <span class="comment">\ Store Y in yStoreHypotenuse so it can be preserved</span>
+                        <span class="comment">\ across calls to the routine</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">angleTangent</a>       <span class="comment">\ Set Y = angleTangent / 2</span>
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ The ADC instruction rounds the result to the nearest</span>
+ <span class="mne">TAY</span>                    <span class="comment">\ integer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The value of angleTangent ranges from 0 to 255 to</span>
+                        <span class="comment">\ represent the tangent of angles 0 to 45 degrees, but</span>
+                        <span class="comment">\ the tanHalfAngle table ranges from 0 to 128 to</span>
+                        <span class="comment">\ represent the same range of angles, so we have to</span>
+                        <span class="comment">\ halve angleTangent so we can use it as an index into</span>
+                        <span class="comment">\ the tanHalfAngle table to fetch the tangent of the</span>
+                        <span class="comment">\ half angle</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">tanHalfAngle</a>,<span class="register">Y</span>     <span class="comment">\ Set U = 2 * tan(theta / 2)</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">bLo</a>                <span class="comment">\ Set (V T) = b(Hi Lo)</span>
+ <span class="mne">STA</span> <a class="popup variable">T</a>
+ <span class="mne">LDA</span> <a class="popup variable">bHi</a>
+ <span class="mne">STA</span> <a class="popup variable">V</a>
+
+ <span class="mne">JSR</span> <a class="popup destination">Multiply8x16</a>       <span class="comment">\ Set (U T) = U * (V T) / 256</span>
+                        <span class="comment">\           = 2 * tan(theta / 2) * b(Hi Lo)</span>
+
+ <span class="mne">LSR</span> <a class="popup variable">U</a>                  <span class="comment">\ Set (U T) = (U T) / 2</span>
+ <span class="mne">ROR</span> <a class="popup variable">T</a>                  <span class="comment">\           = tan(theta / 2) * b(Hi Lo)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">T</a>                  <span class="comment">\ Calculate:</span>
+ <span class="mne">CLC</span>                    <span class="comment">\</span>
+ <span class="mne">ADC</span> <a class="popup variable">aLo</a>                <span class="comment">\  hypotenuse(Hi Lo)</span>
+ <span class="mne">STA</span> <a class="popup variable">hypotenuseLo</a>       <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\     = a(Hi Lo) + (U T)</span>
+ <span class="mne">ADC</span> <a class="popup variable">aHi</a>                <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">hypotenuseHi</a>       <span class="comment">\     = a(Hi Lo) + tan(theta / 2) * b(Hi Lo)</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">yStoreHypotenuse</a>   <span class="comment">\ Restore the value of Y from yStoreHypotenuse that we</span>
+                        <span class="comment">\ stored at the start of the routine, so that it's</span>
+                        <span class="comment">\ preserved</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-multiply8x16"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/multiply8x16.html">Multiply8x16</a> (category: Maths (Arithmetic))</div><div class="summary">Multiply an 8-bit and a 16-bit number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-v"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#v">V</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ahi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ahi">aHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of the adjacent side of a triangle when calculating the hypotenuse</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-alo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#alo">aLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of the adjacent side of a triangle when calculating the hypotenuse</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-angletangent"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#angletangent">angleTangent</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The tangent of an angle in a right-angled triangle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-bhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#bhi">bHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of the opposite side of a triangle when calculating the hypotenuse</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-blo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#blo">bLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of the opposite side of a triangle when calculating the hypotenuse</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-hypotenusehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#hypotenusehi">hypotenuseHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of the hypotenuse of a triangle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-hypotenuselo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#hypotenuselo">hypotenuseLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of the hypotenuse of a triangle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tanhalfangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/tanhalfangle.html">tanHalfAngle</a> (category: Maths (Geometry))</div><div class="summary">Table for hypotenuse lengths given the tangent of an angle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ystorehypotenuse"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/ystorehypotenuse.html">yStoreHypotenuse</a> (category: Maths (Geometry))</div><div class="summary">Temporary storage for Y so it can be preserved through calls to GetHypotenuse</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/getpitchangledelta.html">GetPitchAngleDelta</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/ystorehypotenuse.html">yStoreHypotenuse</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

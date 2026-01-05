@@ -1,0 +1,146 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("scanner_energy_row", "subroutine_drawicon.html", "The DrawIcon subroutine", "Scanner/energy row: DrawIcon", "Annotated code for the DrawIcon subroutine in The Sentinel", "the_sentinel-code", "source_scanner_energy_row", "subroutine_drawicon", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/irqhandler.html">IRQHandler</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">DrawIcon</span>                                                <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Scanner/energy row</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw a single icon in the top-left corner of the screen (via the</span>
+             <span class="headerEntry">icon screen buffer at iconBuffer) and move along to the right</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_g.html#header-drawicon">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/cleariconsscanner.html">ClearIconsScanner</a> calls <a href="#drawicon">DrawIcon</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a> calls <a href="#drawicon">DrawIcon</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">The type of icon to draw:</span>
+
+                        <span class="argumentEntry">  * 0 = Blank</span>
+
+                        <span class="argumentEntry">  * 1 = Robot</span>
+
+                        <span class="argumentEntry">  * 2 = Tree (left)</span>
+
+                        <span class="argumentEntry">  * 3 = Tree (right)</span>
+
+                        <span class="argumentEntry">  * 4 = Boulder (left)</span>
+
+                        <span class="argumentEntry">  * 5 = Boulder (right)</span>
+
+                        <span class="argumentEntry">  * 6 = High-energy robot</span>
+
+                        <span class="argumentEntry">  * 7 = Scanner box (left)</span>
+
+                        <span class="argumentEntry">  * 8 = Scanner box (middle)</span>
+
+                        <span class="argumentEntry">  * 9 = Scanner box (right)</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">A is preserved</span>
+
+</div></div>
+<span class="label">.DrawIcon</span><a id="drawicon" class="anchor"></a>
+
+ <span class="mne">PHA</span>                    <span class="comment">\ Store the icon type on the stack so we can preserve it</span>
+
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ Set X = (A * 8) + 7</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ Each icon definition in iconData contains eight bytes,</span>
+ <span class="mne">ORA</span> <span class="hash">#</span><span class="decimal">7</span>                 <span class="comment">\ so we can use this as an index into iconData, where it</span>
+ <span class="mne">TAX</span>                    <span class="comment">\ points to the last of the eight bytes for icon A (as</span>
+                        <span class="comment">\ we added 7 to A * 8 with the ORA instruction)</span>
+
+                        <span class="comment">\ We now calculate the address of the icon in the screen</span>
+                        <span class="comment">\ buffer at iconBuffer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The icon needs to be drawn in column xIconCounter,</span>
+                        <span class="comment">\ where each column is eight pixels wide, and because</span>
+                        <span class="comment">\ the screen is split into 8x8-pixel character blocks of</span>
+                        <span class="comment">\ eight bytes in each, the icon is in screen memory at</span>
+                        <span class="comment">\ this address, which we store in (Q P):</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (Q P) = iconBuffer + xIconCounter * 8</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This is calculated by doing half the sum first, and</span>
+                        <span class="comment">\ then doubling the result, like this:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (iconBuffer / 2) + (xIconCounter * 4)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The calculation is done this way to cater for values</span>
+                        <span class="comment">\ of xIconCounter between 32 and 39, as multiplying 32</span>
+                        <span class="comment">\ by 8 won't fit into one byte, but multiplying by 4</span>
+                        <span class="comment">\ will fit (and doubling just requires a simple shift)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xIconCounter</a>       <span class="comment">\ Set P = xIconCounter * 4 + LO(iconBuffer / 2)</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ so those are the low bytes</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="operator">LO</span><span class="bracket">(</span><a class="popup variable">iconBuffer</a><span class="bracket">)</span>/2
+ <span class="mne">STA</span> <a class="popup variable">P</a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="operator">HI</span><span class="bracket">(</span><a class="popup variable">iconBuffer</a><span class="bracket">)</span>/2  <span class="comment">\ Set A = 0 + HI(iconBuffer / 2)</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\</span>
+                        <span class="comment">\ and those are the high bytes, with the result of the</span>
+                        <span class="comment">\ half sum in (A P)</span>
+
+ <span class="mne">ASL</span> <a class="popup variable">P</a>                  <span class="comment">\ Set (Q P) = (A P) * 2</span>
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\           = iconBuffer + xIconCounter * 8</span>
+ <span class="mne">STA</span> <a class="popup variable">Q</a>                  <span class="comment">\</span>
+                        <span class="comment">\ So we now have the address within the icon screen</span>
+                        <span class="comment">\ buffer for the icon we want to draw</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">7</span>                 <span class="comment">\ We now copy eight bytes of icon data into the icon</span>
+                        <span class="comment">\ screen buffer at iconBuffer</span>
+
+<span class="label">.deni1</span><a id="deni1" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">iconData</a>,<span class="register">X</span>         <span class="comment">\ Copy the X-th byte of icon data to the Y-th byte of</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>              <span class="comment">\ (Q P)</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the source byte counter</span>
+
+ <span class="mne">DEY</span>                    <span class="comment">\ Decrement the destination byte counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">deni1</a>              <span class="comment">\ Loop back until we have copied all eight bytes</span>
+
+ <span class="mne">INC</span> <a class="popup variable">xIconCounter</a>       <span class="comment">\ Increment the icon counter to move along to the right</span>
+                        <span class="comment">\ by one column, as we just drew an icon</span>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Restore the icon type into A that we stored on the</span>
+                        <span class="comment">\ stack above</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-p"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#p">P</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-q"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#q">Q</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-deni1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawicon.html#deni1">deni1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-iconbuffer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/iconbuffer.html">iconBuffer</a> (category: Graphics)</div><div class="summary">The icon screen buffer, which is used to buffer the energy icon and scanner row before writing to screen memory</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-icondata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/icondata.html">iconData</a> (category: Graphics)</div><div class="summary">Screen mode 5 bitmap data for the ten icons that make up the energy icon and scanner row at the top of the screen</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xiconcounter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#xiconcounter">xIconCounter</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A counter for drawing the icons in the top-left of the screen that show the player's energy level, as we work from left to right along the x-axis</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/irqhandler.html">IRQHandler</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

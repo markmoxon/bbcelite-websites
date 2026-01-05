@@ -1,0 +1,300 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("graphics", "subroutine_scrollplayerview.html", "The ScrollPlayerView subroutine", "Graphics: ScrollPlayerView", "Annotated code for the ScrollPlayerView subroutine in The Sentinel", "the_sentinel-code", "source_graphics", "subroutine_scrollplayerview", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/irqhandler.html">IRQHandler</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/showscreenbuffer.html">ShowScreenBuffer</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">ScrollPlayerView</span>                                        <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Graphics</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Scroll the screen and copy data from the screen buffer into screen</span>
+             <span class="headerEntry">memory to implement the player's scrolling landscape view</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_g.html#header-scrollplayerview">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/irqhandler.html">IRQHandler</a> calls <a href="#scrollplayerview">ScrollPlayerView</a></span>
+</div>
+</div></div>
+<span class="label">.ScrollPlayerView</span><a id="scrollplayerview" class="anchor"></a>
+
+ <span class="mne">LDY</span> <a class="popup variable">lastPanKeyPressed</a>  <span class="comment">\ Set Y to the direction of the last pan key that was</span>
+                        <span class="comment">\ pressed (which may not still be held down)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this contains the direction of any scrolling that</span>
+                        <span class="comment">\ we still need to apply, as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 0 = pan right</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 1 = pan left</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 2 = pan up</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 3 = pan down</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We use this as an index into various tables, to look</span>
+                        <span class="comment">\ up the correct values for the direction in which we</span>
+                        <span class="comment">\ want to scroll</span>
+
+                        <span class="comment">\ We now scroll the screen in the correct direction to</span>
+                        <span class="comment">\ pan the player's scrolling landscape view</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Note that we scroll the screen in the opposite</span>
+                        <span class="comment">\ direction to the pan direction, so if we are panning</span>
+                        <span class="comment">\ right we move the screen to the left, for example</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The screen address of the player's scrolling landscape</span>
+                        <span class="comment">\ view is stored in viewScreenAddr(1 0), so this is the</span>
+                        <span class="comment">\ address of the screen just below the energy icon and</span>
+                        <span class="comment">\ scanner row</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We therefore start the scrolling process by updating</span>
+                        <span class="comment">\ the screen address in viewScreenAddr(1 0) to point to</span>
+                        <span class="comment">\ the new address after scrolling</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Scrolling is done in individual steps, as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When scrolling horizontally, we scroll by one</span>
+                        <span class="comment">\     column that's one character block wide (i.e. one</span>
+                        <span class="comment">\     byte, two pixels wide)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When scrolling vertically, we scroll by one row</span>
+                        <span class="comment">\     that's one character block tall (i.e. eight bytes,</span>
+                        <span class="comment">\     eight pixels tall)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The amount of change that we need to apply to</span>
+                        <span class="comment">\ viewScreenAddr(1 0) for each of the four directions is</span>
+                        <span class="comment">\ given in the tables scrollScreenHi and scrollScreenLo,</span>
+                        <span class="comment">\ as 16-bit signed values, so we just need to look up</span>
+                        <span class="comment">\ the correct value and apply it to viewScreenAddr(1 0)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ For example, we advance viewScreenAddr(1 0) by eight</span>
+                        <span class="comment">\ bytes when panning right, as we need to scroll the</span>
+                        <span class="comment">\ screen to the left, so the start of the screen in</span>
+                        <span class="comment">\ memory moves on by eight bytes (one character block)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This would scroll the screen to the left by two pixels</span>
+                        <span class="comment">\ as each character block is two pixels wide</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Similarly, we reduce viewScreenAddr(1 0) by 320 bytes</span>
+                        <span class="comment">\ when panning up, as we need to scroll the screen down,</span>
+                        <span class="comment">\ so the start of the screen in memory moves on by eight</span>
+                        <span class="comment">\ bytes (one character row of 40 character blocks with</span>
+                        <span class="comment">\ eight bytes per character block)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This would scroll the screen to down by eight pixels</span>
+                        <span class="comment">\ as each character row is eight pixels wide</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">viewScreenAddr</a>     <span class="comment">\ Apply the change in scrollScreen(Hi Lo) for the</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ current pan direction in Y to the screen address of</span>
+ <span class="mne">ADC</span> <a class="popup variable">scrollScreenLo</a>,<span class="register">Y</span>   <span class="comment">\ the player's scrolling landscape, which is stored in</span>
+ <span class="mne">STA</span> <a class="popup variable">viewScreenAddr</a>     <span class="comment">\ viewScreenAddr(1 0)</span>
+ <span class="mne">LDA</span> <a class="popup variable">viewScreenAddr</a><span class="operator">+</span><span class="decimal">1</span>   <span class="comment">\</span>
+ <span class="mne">ADC</span> <a class="popup variable">scrollScreenHi</a>,<span class="register">Y</span>   <span class="comment">\ We start by calculating this:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (A viewScreenAddr) = viewScreenAddr(1 0)</span>
+                        <span class="comment">\                  + (scrollScreenHi+Y scrollScreenLo+Y)</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="hex">&80</span>               <span class="comment">\ If the high byte in A >= &80 then the new address is</span>
+ <span class="mne">BCC</span> <a class="popup destination">scro1</a>              <span class="comment">\ past the end of screen memory, so subtract &20 from</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="hex">&20</span>               <span class="comment">\ the high byte so the address wraps around within the</span>
+                        <span class="comment">\ range of screen memory between &6000 and &8000</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If the high byte is in range, jump to scro1 to check</span>
+                        <span class="comment">\ the high byte against the start of screen memory</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">scro2</a>              <span class="comment">\ Jump to scro2 to skip the next check, as we know it</span>
+                        <span class="comment">\ doesn't apply</span>
+
+<span class="label">.scro1</span><a id="scro1" class="anchor"></a>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="hex">&60</span>               <span class="comment">\ If the high byte in A &lt; &60 then the new address is</span>
+ <span class="mne">BCS</span> <a class="popup destination">scro2</a>              <span class="comment">\ before the start of screen memory, so add &20 to the</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="hex">&20</span>               <span class="comment">\ high byte so the address wraps around within the range</span>
+                        <span class="comment">\ of screen memory between &6000 and &8000</span>
+
+<span class="label">.scro2</span><a id="scro2" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">viewScreenAddr</a><span class="operator">+</span><span class="decimal">1</span>   <span class="comment">\ Store the high byte of the result, so we now have:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   viewScreenAddr(1 0) = viewScreenAddr(1 0)</span>
+                        <span class="comment">\                  + (scrollScreenHi+Y scrollScreenLo+Y)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ with the address wrapped around as required</span>
+
+                        <span class="comment">\ We now reprogram the 6845 CRTC chip to scroll the</span>
+                        <span class="comment">\ screen in hardware (so-called "hardware scrolling")</span>
+                        <span class="comment">\ by setting 6845 registers R12 and R13 to the new</span>
+                        <span class="comment">\ address for the start of screen memory</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The registers actually require the address to be set</span>
+                        <span class="comment">\ in terms of character rows, so we need to set R12 and</span>
+                        <span class="comment">\ R12 to the address divided by 8 (see below)</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetIconRowAddress</a>  <span class="comment">\ Set iconRowAddr(1 0) to the address in screen memory</span>
+                        <span class="comment">\ of the icon and scanner row at the top of the screen</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This calculates the address from viewScreenAddr(1 0),</span>
+                        <span class="comment">\ so the value returned will be the new start of screen</span>
+                        <span class="comment">\ memory, after the scroll is completed</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ It also sets A to the high byte of the address of</span>
+                        <span class="comment">\ screen memory in iconRowAddr(1 0)</span>
+
+ <span class="mne">STA</span> <a class="popup variable">screenAddrHi</a>       <span class="comment">\ Set (screenAddrHi A) = iconRowAddr(1 0) / 8</span>
+ <span class="mne">LDA</span> <a class="popup variable">iconRowAddr</a>        <span class="comment">\</span>
+ <span class="mne">LSR</span> <a class="popup variable">screenAddrHi</a>       <span class="comment">\ So (screenAddrHi A) contains the new address of screen</span>
+ <span class="mne">ROR</span> <span class="register">A</span>                  <span class="comment">\ memory, divided by 8, which is suitable for passing to</span>
+ <span class="mne">LSR</span> <a class="popup variable">screenAddrHi</a>       <span class="comment">\ the 6845 CRTC to change the address of screen memory</span>
+ <span class="mne">ROR</span> <span class="register">A</span>
+ <span class="mne">LSR</span> <a class="popup variable">screenAddrHi</a>
+ <span class="mne">ROR</span> <span class="register">A</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">13</span>                <span class="comment">\ Set 6845 register R13 = A, for the low byte</span>
+ <span class="mne">STX</span> <a class="popup variable">SHEILA</a><span class="operator">+</span><span class="hex">&00</span>         <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">SHEILA</a><span class="operator">+</span><span class="hex">&01</span>         <span class="comment">\ We do this by writing the register number (13) to</span>
+                        <span class="comment">\ SHEILA &00, and then the value (A) to SHEILA &01</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">12</span>                <span class="comment">\ Set 6845 register R12 = &0F, for the high byte</span>
+ <span class="mne">STX</span> <a class="popup variable">SHEILA</a><span class="operator">+</span><span class="hex">&00</span>         <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">screenAddrHi</a>       <span class="comment">\ We do this by writing the register number (12) to</span>
+ <span class="mne">STA</span> <a class="popup variable">SHEILA</a><span class="operator">+</span><span class="hex">&01</span>         <span class="comment">\ SHEILA &00, and then the value (screenAddrHi) to</span>
+                        <span class="comment">\ SHEILA &01</span>
+
+                        <span class="comment">\ This sets 6845 registers (R12 R13) = (screenAddrHi A)</span>
+                        <span class="comment">\ to point to the start of screen memory in terms of</span>
+                        <span class="comment">\ character rows. There are 8 pixel lines in each</span>
+                        <span class="comment">\ character row, so to get the actual address of the</span>
+                        <span class="comment">\ start of screen memory, we multiply by 8:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (screenAddrHi A) * 8</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ which is iconRowAddr(1 0), as set above</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this whole thing sets the start of screen memory to</span>
+                        <span class="comment">\ the address of iconRowAddr(1 0), which scrolls the</span>
+                        <span class="comment">\ screen by the required amount</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">scrollCounter</a>      <span class="comment">\ Decrement the scroll counter, as we have just scrolled</span>
+                        <span class="comment">\ the screen by one more step</span>
+
+                        <span class="comment">\ We now set viewScreenAddr(1 0) to the new address of</span>
+                        <span class="comment">\ the start of the player's landscape view, so that's</span>
+                        <span class="comment">\ the address of the top-left corner of the view, just</span>
+                        <span class="comment">\ below the energy icon and scanner bar at the top of</span>
+                        <span class="comment">\ the screen</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now need to set toAddr(1 0) to the address in</span>
+                        <span class="comment">\ screen memory that we need to update now that the</span>
+                        <span class="comment">\ screen has been scrolled</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Scrolling the screen leads to the following update</span>
+                        <span class="comment">\ requirements:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When scrolling the screen to the left, we need to</span>
+                        <span class="comment">\     update the column on the right</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When scrolling the screen to the right, we need to</span>
+                        <span class="comment">\     update the column on the left</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When scrolling the screen down, we need to update</span>
+                        <span class="comment">\     the row along the top</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When scrolling the screen up, we need to update</span>
+                        <span class="comment">\     the row along the bottom</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We want to set toAddr(1 0) to the address of the area</span>
+                        <span class="comment">\ in screen memory that we need to update, and the</span>
+                        <span class="comment">\ offset within screen memory of this area for each of</span>
+                        <span class="comment">\ the four directions is given in the tables at</span>
+                        <span class="comment">\ updateOffsetHi and updateOffsetLo, as 16-bit signed</span>
+                        <span class="comment">\ values, so we just need to look up the correct offset</span>
+                        <span class="comment">\ and apply it to viewScreenAddr(1 0) to get the address</span>
+                        <span class="comment">\ of the area of screen memory we need to update</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">viewScreenAddr</a>     <span class="comment">\ Set toAddr(1 0) to the screen address of the player's</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ scrolling landscape, plus the offset for the current</span>
+ <span class="mne">ADC</span> <a class="popup variable">updateOffsetLo</a>,<span class="register">Y</span>   <span class="comment">\ pan direction from updateOffset(Hi Lo)</span>
+ <span class="mne">STA</span> <a class="popup variable">toAddr</a>             <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">viewScreenAddr</a><span class="operator">+</span><span class="decimal">1</span>   <span class="comment">\ We start by calculating this:</span>
+ <span class="mne">ADC</span> <a class="popup variable">updateOffsetHi</a>,<span class="register">Y</span>   <span class="comment">\</span>
+                        <span class="comment">\   (A toAddr) = viewScreenAddr(1 0)</span>
+                        <span class="comment">\                  + (updateOffsetHi+Y updateOffsetLo+Y)</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="hex">&80</span>               <span class="comment">\ If the high byte in A >= &80 then the new address is</span>
+ <span class="mne">BCC</span> <a class="popup destination">scro3</a>              <span class="comment">\ past the end of screen memory, so subtract &20 from</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="hex">&20</span>               <span class="comment">\ the high byte so the address wraps around within the</span>
+                        <span class="comment">\ range of screen memory between &6000 and &8000</span>
+
+<span class="label">.scro3</span><a id="scro3" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">toAddr</a><span class="operator">+</span><span class="decimal">1</span>           <span class="comment">\ Store the high byte of the result, so we now have:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   toAddr(1 0) = viewScreenAddr(1 0)</span>
+                        <span class="comment">\                  + (updateOffsetHi+Y updateOffsetLo+Y)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ with the address wrapped around as required</span>
+
+                        <span class="comment">\ By this point we have done the following to implement</span>
+                        <span class="comment">\ the required screen scrolling:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\  * Updated viewScreenAddr(1 0) to the new address of</span>
+                        <span class="comment">\    the player's scrolling landscape</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\  * Updated the 6845 to scroll the screen by changing</span>
+                        <span class="comment">\    the address of screen memory</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\  * Decremented the counter in scrollCounter</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\  * Set toAddr(1 0) to the address of the area in</span>
+                        <span class="comment">\    screen memory that we now need to update</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We can now fall through into ShowScreenBuffer to copy</span>
+                        <span class="comment">\ the contents of the screen buffer into the area we</span>
+                        <span class="comment">\ need to update, so that the scroll reveals the correct</span>
+                        <span class="comment">\ part of the view</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-geticonrowaddress"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/geticonrowaddress.html">GetIconRowAddress</a> (category: Scanner/energy row)</div><div class="summary">Calculate the address in screen memory of the icon and scanner row at the top of the screen</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sheila"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Configuration variable <a href="/source/all/workspaces.html#sheila">SHEILA</a> = &FE00</div><div class="summary">Memory-mapped space for accessing internal hardware, such as the video ULA, 6845 CRTC and 6522 VIAs (also known as SHEILA)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-iconrowaddr"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#iconrowaddr">iconRowAddr</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The screen address of the icon and scanner row along the top of the screen</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lastpankeypressed"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#lastpankeypressed">lastPanKeyPressed</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The direction of the last pan key that was pressed (which may not still be held down)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-screenaddrhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#screenaddrhi">screenAddrHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of the screen memory address in the ScrollPlayerView routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scro1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/scrollplayerview.html#scro1">scro1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scro2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/scrollplayerview.html#scro2">scro2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scro3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/scrollplayerview.html#scro3">scro3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scrollcounter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#scrollcounter">scrollCounter</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A counter for the number of columns or rows we still need to scroll in the player's scrolling landscape view when the player pans</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scrollscreenhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/scrollscreenhi.html">scrollScreenHi</a> (category: Screen buffer)</div><div class="summary">The amount to change the start of screen memory in order to scroll the player's landscape view through each direction (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scrollscreenlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/scrollscreenlo.html">scrollScreenLo</a> (category: Screen buffer)</div><div class="summary">The amount to change the start of screen memory in order to scroll the player's landscape view through each direction (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-toaddr"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#toaddr">toAddr</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">An address, typically used as a destination address when copying</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-updateoffsethi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/updateoffsethi.html">updateOffsetHi</a> (category: Screen buffer)</div><div class="summary">The offset within screen memory for the player's landscape view of the area to update following a scroll (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-updateoffsetlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/updateoffsetlo.html">updateOffsetLo</a> (category: Screen buffer)</div><div class="summary">The offset within screen memory for the player's landscape view of the area to update following a scroll (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewscreenaddr"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#viewscreenaddr">viewScreenAddr</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The screen address of the player's scrolling landscape view, which is just below the icon and scanner row at the top of the screen</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/irqhandler.html">IRQHandler</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/showscreenbuffer.html">ShowScreenBuffer</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

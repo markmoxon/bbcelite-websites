@@ -1,0 +1,272 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("main_game_loop", "subroutine_irqhandler.html", "The IRQHandler subroutine", "Main game loop: IRQHandler", "Annotated code for the IRQHandler subroutine in The Sentinel", "the_sentinel-code", "source_main_game_loop", "subroutine_irqhandler", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawicon.html">DrawIcon</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/scrollplayerview.html">ScrollPlayerView</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">IRQHandler</span>                                              <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Main game loop</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">The main interrupt handler, which gets run 50 times a second to</span>
+             <span class="headerEntry">update the game state and check for game key presses</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_g.html#header-irqhandler">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/configuremachine.html">ConfigureMachine</a> calls <a href="#irqhandler">IRQHandler</a></span>
+</div>
+<hr class="light">
+ This routine is called exactly 50 times a second, and it does the following:
+
+   * Count down the sound timer
+
+   * If a game is not in progress (i.e. we are in the title screen rather than
+     playing a landscape), return from the handler
+
+   * If the Sentinel has won and bit 7 of drawLandscape is set, then call
+     DrawBlackDots to draw 80 random black dots for the game over screen, and
+     return from the handler
+
+   * If the game is paused, scan for the pause and volume keys and return from
+     the handler
+
+   * If a game is in progress and the Sentinel has not won and the game is not
+     paused, then:
+
+     * If scrollCounter is non-zero then call ScrollPlayerView (which
+       decrements scrollCounter) and ShowIconBuffer
+
+     * If the Sentinel has been activated, call UpdateEnemyTimers and
+       UpdateScanner
+
+     * If bit 7 of focusOnKeyAction is clear then the game is not currently
+       focusing effort on implementing a key action such as a landscape pan, so
+       scan for and process all the game keys
+
+</div></div>
+<span class="label">.irqh1</span><a id="irqh1" class="anchor"></a>
+
+ <span class="mne">JMP</span> <span class="bracket">(</span><a class="popup variable">irq1Address</a><span class="bracket">)</span>      <span class="comment">\ Jump to the original address from IRQ1V to pass</span>
+                        <span class="comment">\ control to the next interrupt handler</span>
+
+<span class="label">.IRQHandler</span><a id="irqhandler" class="anchor"></a>
+
+ <span class="mne">SEI</span>                    <span class="comment">\ Disable interrupts so the following process isn't</span>
+                        <span class="comment">\ interrupted by another interrupt</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">SHEILA</a><span class="operator">+</span><span class="hex">&6D</span>         <span class="comment">\ Set A to the 6522 User VIA interrupt flag register IFR</span>
+                        <span class="comment">\ (SHEILA &6D)</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%01000000</span>         <span class="comment">\ If bit 6 of the IFR is clear then this interrupt has</span>
+ <span class="mne">BEQ</span> <a class="popup destination">irqh1</a>              <span class="comment">\ not been triggered by the 6522 User VIA timer 1</span>
+                        <span class="comment">\ reaching zero, so jump to irqh1 to pass the interrupt</span>
+                        <span class="comment">\ on to the next interrupt handler</span>
+
+                        <span class="comment">\ If we get here then bit 6 of the IFR is set, so this</span>
+                        <span class="comment">\ interrupt has been triggered by the 6522 User VIA</span>
+                        <span class="comment">\ timer 1 reaching zero</span>
+
+ <span class="mne">STA</span> <a class="popup variable">SHEILA</a><span class="operator">+</span><span class="hex">&6D</span>         <span class="comment">\ The AND instruction above leaves A containing bit 6</span>
+                        <span class="comment">\ set and all other bits clear, so we can write this to</span>
+                        <span class="comment">\ the IFR at SHEILA &6D to clear the timer 1 interrupt</span>
+
+ <span class="mne">LDA</span> <span class="hex">&FC</span>                <span class="comment">\ Set A to the interrupt accumulator save register,</span>
+                        <span class="comment">\ which restores A to the value it had on entering the</span>
+                        <span class="comment">\ interrupt</span>
+
+ <span class="mne">PHA</span>                    <span class="comment">\ Store A, X and Y on the stack so we can preserve them</span>
+ <span class="mne">TXA</span>                    <span class="comment">\ across calls to the interrupt handler</span>
+ <span class="mne">PHA</span>
+ <span class="mne">TYA</span>
+ <span class="mne">PHA</span>
+
+ <span class="mne">CLD</span>                    <span class="comment">\ Clear the D flag to switch arithmetic to normal, in</span>
+                        <span class="comment">\ case the interrupt was triggered during any BCD</span>
+                        <span class="comment">\ calculations</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">soundCounter</a>       <span class="comment">\ Decrement the sound counter so we can detect when the</span>
+ <span class="mne">BPL</span> <a class="popup destination">irqh2</a>              <span class="comment">\ current sound effect has finished, making sure it</span>
+ <span class="mne">INC</span> <a class="popup variable">soundCounter</a>       <span class="comment">\ doesn't go below zero</span>
+
+<span class="label">.irqh2</span><a id="irqh2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">gameInProgress</a>     <span class="comment">\ If bit 7 of gameInProgress is set then a game is not</span>
+ <span class="mne">BMI</span> <a class="popup destination">irqh8</a>              <span class="comment">\ currently in progress and we are in the title and</span>
+                        <span class="comment">\ preview screens, so jump to irqh8 to skip the</span>
+                        <span class="comment">\ following and return from the interrupt handler</span>
+                        <span class="comment">\ without updating the game state</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">sentinelHasWon</a>     <span class="comment">\ If bit 7 of sentinelHasWon is set then the Sentinel</span>
+ <span class="mne">BMI</span> <a class="popup destination">irqh7</a>              <span class="comment">\ has won the game, so jump to irqh7 to draw black dots</span>
+                        <span class="comment">\ on the game over screen (when it is showing)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">gamePaused</a>         <span class="comment">\ If bit 7 of gamePaused is set then the game is paused,</span>
+ <span class="mne">BMI</span> <a class="popup destination">irqh5</a>              <span class="comment">\ so jump to irqh5 to scan for the unpause and volume</span>
+                        <span class="comment">\ keys and return from the interrupt handler</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">scrollCounter</a>      <span class="comment">\ If scrollCounter = 0 then we do not need to scroll the</span>
+ <span class="mne">BEQ</span> <a class="popup destination">irqh3</a>              <span class="comment">\ player's landscape view, so jump to irqh3 to skip the</span>
+                        <span class="comment">\ scrolling process</span>
+
+                        <span class="comment">\ If we get here then we still have scrollCounter steps</span>
+                        <span class="comment">\ to complete in the current scrolling process, so we</span>
+                        <span class="comment">\ now do one scrolling step (ScrollPlayerView decrements</span>
+                        <span class="comment">\ the counter in scrollCounter)</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">ScrollPlayerView</a>   <span class="comment">\ Scroll the screen and copy data from the view screen</span>
+                        <span class="comment">\ buffer into screen memory to implement the player's</span>
+                        <span class="comment">\ scrolling landscape view</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">ShowIconBuffer</a>     <span class="comment">\ Display the contents of the icon screen buffer by</span>
+                        <span class="comment">\ copying it into screen memory, as the scrolling</span>
+                        <span class="comment">\ process will have scrolled this part of the screen, so</span>
+                        <span class="comment">\ we need to redraw it to prevent the energy icons and</span>
+                        <span class="comment">\ scanner from moving</span>
+
+<span class="label">.irqh3</span><a id="irqh3" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">activateSentinel</a>   <span class="comment">\ If bit 7 of activateSentinel is set then the Sentinel</span>
+ <span class="mne">BMI</span> <a class="popup destination">irqh4</a>              <span class="comment">\ has not yet been activated at the start of the game,</span>
+                        <span class="comment">\ so jump to irqh4 to skip the following</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">UpdateEnemyTimers</a>  <span class="comment">\ Update the timers that control the enemy tactics</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">UpdateScanner</a>      <span class="comment">\ Update the scanner, if required</span>
+
+<span class="label">.irqh4</span><a id="irqh4" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">focusOnKeyAction</a>   <span class="comment">\ If bit 7 of focusOnKeyAction is set then the game is</span>
+ <span class="mne">BMI</span> <a class="popup destination">irqh8</a>              <span class="comment">\ currently focusing effort on implementing a key action</span>
+                        <span class="comment">\ such as a landscape pan, so jump to irqh8 to skip the</span>
+                        <span class="comment">\ following keyboard scan</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">CheckForKeyPresses</a> <span class="comment">\ Check for various game key presses and update the key</span>
+                        <span class="comment">\ logger and relevant variables</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">irqh8</a>              <span class="comment">\ Jump to irqh8 to return from the interrupt handler</span>
+
+<span class="label">.irqh5</span><a id="irqh5" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the game is paused, so we scan for</span>
+                        <span class="comment">\ key presses and discard them all except for the</span>
+                        <span class="comment">\ unpause and volume keys</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">13</span>                <span class="comment">\ Scan the keyboard for all game keys in the gameKeys</span>
+ <span class="mne">JSR</span> <a class="popup destination">ScanForGameKeys</a>    <span class="comment">\ table except for the last one ("U" for U-turn)</span>
+
+                        <span class="comment">\ We now reset the first three entries in the key</span>
+                        <span class="comment">\ logger (i.e. entries 0 to 2), leaving the last entry</span>
+                        <span class="comment">\ populated (i.e. entry 3, which records the volume,</span>
+                        <span class="comment">\ pause and unpause key presses)</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ Set a loop counter in X for resetting three entries</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%10000000</span>         <span class="comment">\ Set A = %10000000 to reset the three entries, as the</span>
+                        <span class="comment">\ set bit 7 indicates an empty entry in the logger</span>
+
+<span class="label">.irqh6</span><a id="irqh6" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">keyLogger</a>,<span class="register">X</span>        <span class="comment">\ Reset the X-th entry in the key logger</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the loop counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">irqh6</a>              <span class="comment">\ Loop back until we have reset all four entries</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">irqh8</a>              <span class="comment">\ Jump to irqh8 to return from the interrupt handler</span>
+
+<span class="label">.irqh7</span><a id="irqh7" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the Sentinel has won the game, so</span>
+                        <span class="comment">\ we draw black dots on the game over screen (when it is</span>
+                        <span class="comment">\ showing)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">drawLandscape</a>      <span class="comment">\ If bit 7 of drawLandscape is clear, skip the following</span>
+ <span class="mne">BPL</span> <a class="popup destination">irqh8</a>              <span class="comment">\ to return from the interrupt handler</span>
+
+                        <span class="comment">\ If bit 7 of drawLandscape is set then we are showing</span>
+                        <span class="comment">\ the game over screen, which combines dithering of an</span>
+                        <span class="comment">\ object to the screen while at the same time fading the</span>
+                        <span class="comment">\ screen to black, to create the hypnotic effect of the</span>
+                        <span class="comment">\ winning entity fading in and out of the screen as the</span>
+                        <span class="comment">\ game ends</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">DrawBlackDots</a>      <span class="comment">\ Draw 80 randomly positioned dots on the screen in</span>
+                        <span class="comment">\ colour 1 (black) to fade the screen to black in a</span>
+                        <span class="comment">\ slowly decaying manner</span>
+
+<span class="label">.irqh8</span><a id="irqh8" class="anchor"></a>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Restore A, X and Y from the stack</span>
+ <span class="mne">TAY</span>
+ <span class="mne">PLA</span>
+ <span class="mne">TAX</span>
+ <span class="mne">PLA</span>
+
+ <span class="mne">RTI</span>                    <span class="comment">\ Return from the interrupt handler</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-checkforkeypresses"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a> (category: Keyboard)</div><div class="summary">Check for various game key presses and update the key logger and relevant variables (during the interrupt handler)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawblackdots"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawblackdots.html">DrawBlackDots</a> (category: Graphics)</div><div class="summary">Draw 80 randomly positioned dots on the screen in colour 1 (black)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sheila"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Configuration variable <a href="/source/all/workspaces.html#sheila">SHEILA</a> = &FE00</div><div class="summary">Memory-mapped space for accessing internal hardware, such as the video ULA, 6845 CRTC and 6522 VIAs (also known as SHEILA)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scanforgamekeys"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/scanforgamekeys.html">ScanForGameKeys</a> (category: Keyboard)</div><div class="summary">Scan for game key presses and update the key logger</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scrollplayerview"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/scrollplayerview.html">ScrollPlayerView</a> (category: Graphics)</div><div class="summary">Scroll the screen and copy data from the screen buffer into screen memory to implement the player's scrolling landscape view</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-showiconbuffer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/showiconbuffer.html">ShowIconBuffer</a> (category: Screen buffer)</div><div class="summary">Display the redrawn icon and scanner row by copying the contents of the icon screen buffer into screen memory</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-updateenemytimers"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a> (category: Gameplay)</div><div class="summary">Update the timers that control the enemy tactics</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-updatescanner"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/updatescanner.html">UpdateScanner</a> (category: Scanner/energy row)</div><div class="summary">Update the scanner, if required</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-activatesentinel"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#activatesentinel">activateSentinel</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record when the Sentinel is activated at the start of the game (by the player pressing a key that expends or absorbs energy</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawlandscape"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#drawlandscape">drawLandscape</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Configures whether to draw the landscape behind the object in the DrawUpdatedObject routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-focusonkeyaction"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#focusonkeyaction">focusOnKeyAction</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag that determines whether the game should focus effort on implementing a key action, such as a pan of the landscape view</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gameinprogress"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#gameinprogress">gameInProgress</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Flags whether or not a game is in progress (i.e. the player is playing a landscape rather than interacting with the title and preview screens)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gamepaused"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#gamepaused">gamePaused</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record whether the game is paused</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-irq1address"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/irq1address.html">irq1Address</a> (category: Main game loop)</div><div class="summary">Stores the previous value of IRQ1V before we install our custom IRQ handler</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-irqh1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/irqhandler.html#irqh1">irqh1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-irqh2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/irqhandler.html#irqh2">irqh2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-irqh3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/irqhandler.html#irqh3">irqh3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-irqh4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/irqhandler.html#irqh4">irqh4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-irqh5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/irqhandler.html#irqh5">irqh5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-irqh6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/irqhandler.html#irqh6">irqh6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-irqh7"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/irqhandler.html#irqh7">irqh7</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-irqh8"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/irqhandler.html#irqh8">irqh8</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-keylogger"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#keylogger">keyLogger</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The four-byte key logger for logging game key presses</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scrollcounter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#scrollcounter">scrollCounter</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A counter for the number of columns or rows we still need to scroll in the player's scrolling landscape view when the player pans</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sentinelhaswon"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#sentinelhaswon">sentinelHasWon</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record when the player runs out of energy (i.e. the energy level goes negative), at which point the Sentinel wins</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-soundcounter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#soundcounter">soundCounter</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A counter for the sound currently being made, which counts down in the IRQHandler routine at a rate of 50 times a second</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawicon.html">DrawIcon</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/scrollplayerview.html">ScrollPlayerView</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

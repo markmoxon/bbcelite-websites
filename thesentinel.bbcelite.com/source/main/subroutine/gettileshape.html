@@ -1,0 +1,475 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("landscape", "subroutine_gettileshape.html", "The GetTileShape subroutine", "Landscape: GetTileShape", "Annotated code for the GetTileShape subroutine in The Sentinel", "the_sentinel-code", "source_landscape", "subroutine_gettileshape", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/smoothtilecorners_part_4_of_4.html">SmoothTileCorners (Part 4 of 4)</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/trianglepointadd.html">trianglePointAdd</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetTileShape</span>                                            <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Calculate the shape of the tile anchored at (xTile, zTile)</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_f.html#header-gettileshape">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a> calls <a href="#gettileshape">GetTileShape</a></span>
+</div>
+<hr class="light">
+ Given a tile at altitude S, with neighbouring altitudes T, U and V:
+
+      ^           [T]  [U]
+      |
+      |           [S]  [V]
+   z-axis
+    into
+   screen      x-axis from left to right ---&gt;
+
+ The shape is calculated as follows, where:
+
+   * 0 and 1 represent arbitrary altitudes that are in that order, with 1 being
+     higher than 0
+
+   * a, b represent arbitrary altitudes where a &lt;&gt; b &lt;&gt; 1
+
+ These are all the different types of shape (note there is no shape 8, and
+ shapes 4 and 12 can have multiple layouts):
+
+   Shape   S vs V      S vs T      S vs U      U vs V      U vs T      Layout
+   -----   ------      ------      ------      ------      ------      ------
+
+   0       S == V      S == T      S == U                              1 1
+                                                                       1 1
+
+   1       S == V      S &lt;&gt; T                  U &lt;  V      U == T      0 0
+                                                                       1 1
+
+   2       S &lt;&gt; V      S &lt;&gt; T      S &lt;= U      U == V      U == T      1 1
+                                                                       0 1
+
+   3       S == V      S == T      S &gt;  U                              1 0
+                                                                       1 1
+
+   4a      S &lt;&gt; V      S &lt;&gt; T                  U == V      U &lt;&gt; T      a 1
+                                                                       b 1
+
+   4b      S &lt;&gt; V      S == T                  U &lt;&gt; V      U &lt;&gt; T      1 a
+                                                                       1 b
+
+   5       S &lt;&gt; V      S == T                  U == V      U &lt;  T      1 0
+                                                                       1 0
+
+   6       S == V      S &lt;&gt; T                  U == V      U &lt;  T      1 0
+                                                                       0 0
+
+   7       S &lt;&gt; V      S == T                  U &gt;= V      U == T      1 1
+                                                                       1 0
+
+   9       S == V      S &lt;&gt; T                  U &gt;= V      U == T      1 1
+                                                                       0 0
+
+   10      S == V      S == T      S &lt;  U                              0 1
+                                                                       0 0
+
+   11      S &lt;&gt; V      S &lt;&gt; T      S &gt;  U      U == V      U == T      0 0
+                                                                       1 0
+
+   12a     S &lt;&gt; V      S &lt;&gt; T                  U &lt;&gt; V                  1 1
+                                                                       a b
+
+   12b     S == V      S &lt;&gt; T                  U &lt;&gt; V      U &lt;&gt; T      a b
+                                                                       1 1
+
+   13      S &lt;&gt; V      S == T                  U == V      U &gt;= T      0 1
+                                                                       0 1
+
+   14      S &lt;&gt; V      S == T                  U &lt;  V      U == T      0 0
+                                                                       0 1
+
+   15      S == V      S &lt;&gt; T                  U == V      U &gt;= T      0 1
+                                                                       1 1
+
+ Note that for shape 12a, the top-right corner could in theory be a different
+ altitude to a, b and 1, and the comparisons would still fit. However, the way
+ the landscape gets smoothed ensures that every tile has at least one
+ horizontal edge, so this means the top-right corner must be at altitude 1.
+
+ It is worth noting that:
+
+   * Shape 0 has four horizontal edges
+
+   * Shapes 4 and 12 have one horizontal edge and three sloping edges
+
+   * Shape 8 is unused
+
+   * All other shapes (1, 2, 3, 5, 6, 7, 9, 10, 11, 14 and 15) have two
+     horizontal edges and two sloping edges
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">X</span>                    <span class="argumentEntry">The shape of the tile anchored at (xTile, zTile)</span>
+
+</div></div>
+<span class="label">.GetTileShape</span><a id="gettileshape" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileData</a>        <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile)</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00001111</span>         <span class="comment">\ Extract the tile altitude from the low nibble and</span>
+ <span class="mne">STA</span> <a class="popup variable">S</a>                  <span class="comment">\ store it in S</span>
+
+ <span class="mne">INC</span> <a class="popup variable">xTile</a>              <span class="comment">\ Move along the x-axis to fetch the next tile to the</span>
+                        <span class="comment">\ right</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileData</a>        <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile)</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00001111</span>         <span class="comment">\ Extract the tile altitude from the low nibble and</span>
+ <span class="mne">STA</span> <a class="popup variable">V</a>                  <span class="comment">\ store it in V</span>
+
+ <span class="mne">INC</span> <a class="popup variable">zTile</a>              <span class="comment">\ Move along the x-axis to fetch the next tile into the</span>
+                        <span class="comment">\ screen</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileData</a>        <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile)</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00001111</span>         <span class="comment">\ Extract the tile altitude from the low nibble and</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ store it in U</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">xTile</a>              <span class="comment">\ Move back along the x-axis to fetch the next tile to</span>
+                        <span class="comment">\ the left</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileData</a>        <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile)</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00001111</span>         <span class="comment">\ Extract the tile altitude from the low nibble and</span>
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\ store it in T</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">zTile</a>              <span class="comment">\ Move out of the screen, back along the z-axis to take</span>
+                        <span class="comment">\ us back to the tile we are processing</span>
+
+                        <span class="comment">\ So at this point we have the altitudes of four tile</span>
+                        <span class="comment">\ corners, as follows, with the view from above:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\      ^           [T]  [U]</span>
+                        <span class="comment">\      |</span>
+                        <span class="comment">\      |           [S]  [V]</span>
+                        <span class="comment">\   z-axis</span>
+                        <span class="comment">\    into</span>
+                        <span class="comment diff">\   screen      x-axis from left to right ---></span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ S is the altitude of the tile corner that anchors the</span>
+                        <span class="comment">\ tile for which we are calculating the shape, and T, U</span>
+                        <span class="comment">\ and V are the altitudes of the tile's other three</span>
+                        <span class="comment">\ corners, so now we can analyse the shape of the tile</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">S</a>                  <span class="comment">\ If S = V then jump to shap10</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BEQ</span> <a class="popup destination">shap10</a>
+
+ <span class="mne">CMP</span> <a class="popup variable">T</a>                  <span class="comment">\ If S = T then jump to shap4</span>
+ <span class="mne">BEQ</span> <a class="popup destination">shap4</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ If U = V then jump to shap2</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BEQ</span> <a class="popup destination">shap2</a>
+
+<span class="label">.shap1</span><a id="shap1" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we either fell through from above:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S &lt;> V</span>
+                        <span class="comment">\   * S &lt;> T</span>
+                        <span class="comment">\   * U &lt;> V</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ or we jumped here from shap10 and:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S == V</span>
+                        <span class="comment">\   * S &lt;> T</span>
+                        <span class="comment">\   * U &lt;> T</span>
+                        <span class="comment">\   * U &lt;> V</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">12</span>                <span class="comment">\ Return a shape value of 12 in X</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.shap2</span><a id="shap2" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S &lt;> V</span>
+                        <span class="comment">\   * S &lt;> T</span>
+                        <span class="comment">\   * U == V</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and A is set to U</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">T</a>                  <span class="comment">\ If U &lt;> T then jump to shap5</span>
+ <span class="mne">BNE</span> <a class="popup destination">shap5</a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S &lt;> V</span>
+                        <span class="comment">\   * S &lt;> T</span>
+                        <span class="comment">\   * U == V</span>
+                        <span class="comment">\   * U == T</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and A is set to U</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ Set X = 2 to return as the shape if U >= S</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">S</a>                  <span class="comment">\ If U >= S then jump to shap3 to return a shape value</span>
+ <span class="mne">BCS</span> <a class="popup destination">shap3</a>              <span class="comment">\ of 2</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">11</span>                <span class="comment">\ U &lt; S so return a shape value of 11 in X</span>
+
+<span class="label">.shap3</span><a id="shap3" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.shap4</span><a id="shap4" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S &lt;> V</span>
+                        <span class="comment">\   * S == T</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ If U = V then jump to shap8</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BEQ</span> <a class="popup destination">shap8</a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S &lt;> V</span>
+                        <span class="comment">\   * S == T</span>
+                        <span class="comment">\   * U &lt;> V</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and A is set to U</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">T</a>                  <span class="comment">\ If U = T then jump to shap6</span>
+ <span class="mne">BEQ</span> <a class="popup destination">shap6</a>
+
+<span class="label">.shap5</span><a id="shap5" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then either we jumped from shap2:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S &lt;> V</span>
+                        <span class="comment">\   * S &lt;> T</span>
+                        <span class="comment">\   * U == V</span>
+                        <span class="comment">\   * U &lt;> T</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ or we fell through from above:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S &lt;> V</span>
+                        <span class="comment">\   * S == T</span>
+                        <span class="comment">\   * U &lt;> V</span>
+                        <span class="comment">\   * U &lt;> T</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ Return a shape value of 4 in X</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.shap6</span><a id="shap6" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S &lt;> V</span>
+                        <span class="comment">\   * S == T</span>
+                        <span class="comment">\   * U &lt;> V</span>
+                        <span class="comment">\   * U == T</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and A is set to U</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">14</span>                <span class="comment">\ Set X = 14 to return as the shape if U &lt; V</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">V</a>                  <span class="comment">\ If U &lt; V then jump to shap7 to return a shape value</span>
+ <span class="mne">BCC</span> <a class="popup destination">shap7</a>              <span class="comment">\ of 14</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">7</span>                 <span class="comment">\ U >= V so return a shape value of 7 in X</span>
+
+<span class="label">.shap7</span><a id="shap7" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.shap8</span><a id="shap8" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S &lt;> V</span>
+                        <span class="comment">\   * S == T</span>
+                        <span class="comment">\   * U == V</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and A is set to U</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">5</span>                 <span class="comment">\ Set X = 5 to return as the shape if U &lt; T</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">T</a>                  <span class="comment">\ If U &lt; T then jump to shap7 to return a shape value</span>
+ <span class="mne">BCC</span> <a class="popup destination">shap9</a>              <span class="comment">\ of 5</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">13</span>                <span class="comment">\ U >= T so return a shape value of 13 in X</span>
+
+<span class="label">.shap9</span><a id="shap9" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.shap10</span><a id="shap10" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S == V</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and A is set to S</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">T</a>                  <span class="comment">\ If S = T then jump to shap14</span>
+ <span class="mne">BEQ</span> <a class="popup destination">shap14</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ If U = T then jump to shap12</span>
+ <span class="mne">CMP</span> <a class="popup variable">T</a>
+ <span class="mne">BEQ</span> <a class="popup destination">shap12</a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S == V</span>
+                        <span class="comment">\   * S &lt;> T</span>
+                        <span class="comment">\   * U &lt;> T</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and A is set to U</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">V</a>                  <span class="comment">\ If U &lt;> V then jump to shap1</span>
+ <span class="mne">BNE</span> <a class="popup destination">shap1</a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S == V</span>
+                        <span class="comment">\   * S &lt;> T</span>
+                        <span class="comment">\   * U &lt;> T</span>
+                        <span class="comment">\   * U == V</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and A is set to U</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\ Set X = 6 to return as the shape if U &lt; T</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">T</a>                  <span class="comment">\ If U &lt; T then jump to shap11 to return a shape value</span>
+ <span class="mne">BCC</span> <a class="popup destination">shap11</a>             <span class="comment">\ of 6</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">15</span>                <span class="comment">\ U >= T so return a shape value of 15 in X</span>
+
+<span class="label">.shap11</span><a id="shap11" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.shap12</span><a id="shap12" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S == V</span>
+                        <span class="comment">\   * S &lt;> T</span>
+                        <span class="comment">\   * U == T</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and A is set to U</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ Set X = 1 to return as the shape if U &lt; V</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">V</a>                  <span class="comment">\ If U &lt; V then jump to shap11 to return a shape value</span>
+ <span class="mne">BCC</span> <a class="popup destination">shap13</a>             <span class="comment">\ of 1</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">9</span>                 <span class="comment">\ U >= V so return a shape value of 9 in X</span>
+
+<span class="label">.shap13</span><a id="shap13" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.shap14</span><a id="shap14" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S == V</span>
+                        <span class="comment">\   * S == T</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and A is set to S</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">U</a>                  <span class="comment">\ If S = U then jump to shap16</span>
+ <span class="mne">BEQ</span> <a class="popup destination">shap16</a>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">10</span>                <span class="comment">\ Set X = 10 to return as the shape if S &lt; U</span>
+
+ <span class="mne">BCC</span> <a class="popup destination">shap15</a>             <span class="comment">\ If S &lt; U then jump to shap15 to return a shape value</span>
+                        <span class="comment">\ of 10</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ S > U so return a shape value of 93 in X</span>
+
+<span class="label">.shap15</span><a id="shap15" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.shap16</span><a id="shap16" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * S == V</span>
+                        <span class="comment">\   * S == T</span>
+                        <span class="comment">\   * S == U</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Return a shape value of 0 in X</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gettiledata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gettiledata.html">GetTileData</a> (category: Landscape)</div><div class="summary">Get the tile data and tile data address for a specific tile</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-s"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#s">S</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-v"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#v">V</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap1">shap1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap10"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap10">shap10</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap11"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap11">shap11</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap12"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap12">shap12</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap13"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap13">shap13</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap14"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap14">shap14</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap15"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap15">shap15</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap16"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap16">shap16</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap2">shap2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap3">shap3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap4">shap4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap5">shap5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap6">shap6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap7"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap7">shap7</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap8"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap8">shap8</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-shap9"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettileshape.html#shap9">shap9</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xtile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xtile">xTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner x-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ztile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ztile">zTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner z-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/smoothtilecorners_part_4_of_4.html">SmoothTileCorners (Part 4 of 4)</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/trianglepointadd.html">trianglePointAdd</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

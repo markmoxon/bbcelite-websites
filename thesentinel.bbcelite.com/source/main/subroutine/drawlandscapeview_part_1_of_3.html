@@ -1,0 +1,364 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("drawing_the_landscape", "subroutine_drawlandscapeview_part_1_of_3.html", "The DrawLandscapeView (Part 1 of 3) subroutine", "Drawing the landscape: DrawLandscapeView (Part 1 of 3)", "Annotated code for the DrawLandscapeView (Part 1 of 3) subroutine in The Sentinel", "the_sentinel-code", "source_drawing_the_landscape", "subroutine_drawlandscapeview_part_1_of_3", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html">DrawLandscapeView (Part 2 of 3)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">DrawLandscapeView (Part 1 of 3)</span>                         <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing the landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Set up a number of variables for drawing the landscape view</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_e.html#header-drawlandscapeview-part-1-of-3">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/drawtitleview.html">DrawTitleView</a> calls <a href="#drawlandscapeview">DrawLandscapeView</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> calls <a href="#drawlandscapeview">DrawLandscapeView</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/maingameloop.html">MainGameLoop</a> calls <a href="#drawlandscapeview">DrawLandscapeView</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/panlandscapeview.html">PanLandscapeView</a> calls <a href="#drawlandscapeview">DrawLandscapeView</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">viewingObject</span>        <span class="argumentEntry">The number of the object that is viewing the landscape</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">C flag</span>               <span class="argumentEntry">The status of the drawing operation:</span>
+
+                        <span class="argumentEntry">  * Clear = the whole landscape has been drawn</span>
+
+                        <span class="argumentEntry">  * Set = the whole landscape has not been drawn as the</span>
+                        <span class="argumentEntry">          panning key is no longer being held down</span>
+
+</div></div>
+<span class="label">.DrawLandscapeView</span><a id="drawlandscapeview" class="anchor"></a>
+
+ <span class="mne">LDX</span> <a class="popup variable">viewingObject</a>      <span class="comment">\ Set X to the number of the object that is viewing the</span>
+                        <span class="comment">\ landscape</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="operator">LO</span><span class="bracket">(</span><a class="popup variable">polygonPoint</a><span class="bracket">)</span>  <span class="comment">\ Set drawViewAngles(1 0) = polygonPoint</span>
+ <span class="mne">STA</span> <a class="popup variable">drawViewAngles</a>     <span class="comment">\</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="operator">HI</span><span class="bracket">(</span><a class="popup variable">polygonPoint</a><span class="bracket">)</span>  <span class="comment">\ This sets drawViewAngles(1 0) so DrawPolygon will</span>
+ <span class="mne">STA</span> <a class="popup variable">drawViewAngles</a><span class="operator">+</span><span class="decimal">1</span>   <span class="comment">\ implement the default behaviour of drawing using point</span>
+                        <span class="comment">\ data for tile faces rather than object polygons</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>   <span class="comment">\ Set A to the yaw angle of the viewer's object</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set viewingArcRightYaw = yaw angle + 32</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">32</span>                <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">viewingArcRightYaw</a> <span class="comment">\ This gives us the yaw angle of the right edge of the</span>
+                        <span class="comment">\ viewing arc, where the arc is 90 degrees wide (as a</span>
+                        <span class="comment">\ full circle is represented by 256)</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="decimal">63</span>                <span class="comment">\ Set T = (yaw angle + 32) mod 64 - 32</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">32</span>                <span class="comment">\ This gives us the yaw angle of the centre of the</span>
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\ viewing arc (i.e. the direction of gaze), reduced</span>
+                        <span class="comment">\ into the range of a single 90-degree quadrant</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">viewingArcRightYaw</a> <span class="comment">\ Set bits 0-1 of Y to bits 6-7 of viewingArcRightYaw</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\</span>
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ This gives us a value in the range 0 to 3, giving</span>
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ the number of the quadrant that contains the right</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ edge of the viewing arc, numbered clockwise and</span>
+ <span class="mne">TAY</span>                    <span class="comment">\ starting from 12 o'clock to 3pm</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">quadrantOffsets</a>,<span class="register">Y</span>  <span class="comment">\ Set quadrantOffset to 0, 1, 33 or 32 depending on the</span>
+ <span class="mne">STA</span> <a class="popup variable">quadrantOffset</a>     <span class="comment">\ quadrant containing the right edge of the viewing arc</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This is used by the DrawTileAndObjects routine ???</span>
+
+ <span class="mne">TYA</span>                    <span class="comment">\ Set viewingQuadrantx4 = Y * 4</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ So viewingQuadrantx4 contains the quadrant number</span>
+ <span class="mne">STA</span> <a class="popup variable">viewingQuadrantx4</a>  <span class="comment">\ containing the right edge of the viewing arc,</span>
+                        <span class="comment">\ multiplied by 4</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This is used by the DrawSlopingTile routine to work</span>
+                        <span class="comment">\ out the number of faces in a sloping tile</span>
+
+ <span class="mne">TYA</span>                    <span class="comment">\ Set viewingQuadrantOpp = Y - 2</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ So it viewingQuadrantOpp contains the number of the</span>
+ <span class="mne">STA</span> <a class="popup variable">viewingQuadrantOpp</a> <span class="comment">\ quadrant opposite the quadrant containing the right</span>
+                        <span class="comment">\ edge of the viewing arc</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This is used by the DrawTileAndObjects routine ???</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">T</a>                  <span class="comment">\ Set screenLeftYawHi = T - 10</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">10</span>                <span class="comment">\ So screenLeftYawHi contains the yaw angle of the gaze</span>
+ <span class="mne">STA</span> <a class="popup variable">screenLeftYawHi</a>    <span class="comment">\ in the centre of the viewing arc, less 14.0625 degrees</span>
+                        <span class="comment">\ (i.e. 360 * 10 / 256)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The screen is 20 yaw angle units across, so this sets</span>
+                        <span class="comment">\ screenLeftYawHi to the high byte of the yaw angle of</span>
+                        <span class="comment">\ the left edge of the screen, reduced into the range of</span>
+                        <span class="comment">\ a single 90-degree quadrant (so it's relative to the</span>
+                        <span class="comment">\ 90-degree viewing arc)</span>
+
+                        <span class="comment">\ We now set (xTileViewer, zTileViewer) to the tile</span>
+                        <span class="comment">\ coordinate of the viewer (object #X), but with the</span>
+                        <span class="comment">\ axes rotated to match the orientation of the viewer,</span>
+                        <span class="comment">\ so the x- and z-coordinate axes are from the</span>
+                        <span class="comment">\ perspective of the viewer rather than of the 3D world</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ As a reminder, the degree system in the Sentinel looks</span>
+                        <span class="comment">\ like this, with the z-axis pointing into the screen</span>
+                        <span class="comment">\ and the x-axis pointing right:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\            0</span>
+                        <span class="comment">\      -32   |   +32         Overhead view of player</span>
+                        <span class="comment">\         \  |  /</span>
+                        <span class="comment">\          \ | /             0 = looking straight ahead</span>
+                        <span class="comment">\           \|/              +64 = looking sharp right</span>
+                        <span class="comment">\   -64 -----+----- +64      -64 = looking sharp left</span>
+                        <span class="comment">\           /|\</span>
+                        <span class="comment diff">\          / | \             ^           x-axis left --></span>
+                        <span class="comment">\         /  |  \            |             to right</span>
+                        <span class="comment">\      -96   |   +96         z-axis</span>
+                        <span class="comment">\           128              into screen</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ To make this easier to describe, let's label it like a</span>
+                        <span class="comment">\ clock:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\            12</span>
+                        <span class="comment">\    10.30   |    1.30</span>
+                        <span class="comment">\         \  |  /</span>
+                        <span class="comment">\          \ | /</span>
+                        <span class="comment">\           \|/</span>
+                        <span class="comment">\     9 -----+----- 3</span>
+                        <span class="comment">\           /|\</span>
+                        <span class="comment">\          / | \</span>
+                        <span class="comment">\         /  |  \</span>
+                        <span class="comment">\     7.30   |   4.30</span>
+                        <span class="comment">\            6</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now work out which quadrant contains the viewing</span>
+                        <span class="comment">\ arc and set (xTileViewer, zTileViewer) to the tile</span>
+                        <span class="comment">\ coordinates of the viewer, but using the axes from the</span>
+                        <span class="comment">\ viewer's frame of reference/point of view</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Note that in the following, we subtract from 30 rather</span>
+                        <span class="comment">\ than 31 because we are working with tiles rather than</span>
+                        <span class="comment">\ tile corners ???</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">viewingArcRightYaw</a> <span class="comment">\ If bit 7 of the quadrant containing the right edge of</span>
+ <span class="mne">BMI</span> <a class="popup destination">dlan2</a>              <span class="comment">\ the viewing arc is set, jump to dlan2</span>
+
+ <span class="mne">BVS</span> <a class="popup destination">dlan1</a>              <span class="comment">\ If bit 6 of the quadrant containing the right edge of</span>
+                        <span class="comment">\ the viewing arc is set, jump to dlan1</span>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Bit 7 of the right edge's quadrant is clear</span>
+                        <span class="comment">\   * Bit 6 of the right edge's quadrant is clear</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This means that the right edge of the viewing arc is</span>
+                        <span class="comment">\ in the 12 o'clock to 3 o'clock quadrant</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So the viewing direction in the middle of the arc is</span>
+                        <span class="comment">\ between 10.30 and 1.30, or broadly in the direction of</span>
+                        <span class="comment">\ 12 o'clock</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This is the standard orientation of the landscape,</span>
+                        <span class="comment">\ so we can simply set the viewer coordinates to those</span>
+                        <span class="comment">\ of object #X</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xObject</a>,<span class="register">X</span>          <span class="comment">\ Set (xTileViewer, zTileViewer) = (x, z)</span>
+ <span class="mne">STA</span> <a class="popup variable">xTileViewer</a>        <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">zObject</a>,<span class="register">X</span>          <span class="comment">\ where object #X is on tile (x, z)</span>
+ <span class="mne">STA</span> <a class="popup variable">zTileViewer</a>
+
+ <span class="mne">JMP</span> <a class="popup destination">dlan4</a>              <span class="comment">\ Jump to dlan4 to keep going</span>
+
+<span class="label">.dlan1</span><a id="dlan1" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Bit 7 of the right edge's quadrant is clear</span>
+                        <span class="comment">\   * Bit 6 of the right edge's quadrant is set</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This means that the right edge of the viewing arc is</span>
+                        <span class="comment">\ in the 3 o'clock to 6 o'clock quadrant</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So the viewing direction in the middle of the arc is</span>
+                        <span class="comment">\ between 1.30 and 4.30, or broadly in the direction of</span>
+                        <span class="comment">\ 3 o'clock</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If you imagine the standard 3D world, with the z-axis</span>
+                        <span class="comment">\ going into the screen and the x-axis going from left</span>
+                        <span class="comment">\ to right, then turning right means that from our new</span>
+                        <span class="comment">\ perspective:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The axis we now see running from left to right is</span>
+                        <span class="comment">\     the 3D world z-axis, but in the opposite direction</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The axis we now see going away from us is the 3D</span>
+                        <span class="comment">\     world x-axis</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Therefore, from the perspective of the viewer:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The x-axis is the 3D world z-axis in the opposite</span>
+                        <span class="comment">\     direction, which is 30 - z</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The z-axis is the 3D world x-axis, which is x</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So that's what we set now</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set (xTileViewer, zTileViewer) = (30 - z, x)</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">31</span>                <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">zObject</a>,<span class="register">X</span>          <span class="comment">\ where object #X is on tile (x, z)</span>
+ <span class="mne">STA</span> <a class="popup variable">xTileViewer</a>
+ <span class="mne">LDA</span> <a class="popup variable">xObject</a>,<span class="register">X</span>
+ <span class="mne">STA</span> <a class="popup variable">zTileViewer</a>
+
+ <span class="mne">JMP</span> <a class="popup destination">dlan4</a>              <span class="comment">\ Jump to dlan4 to keep going</span>
+
+<span class="label">.dlan2</span><a id="dlan2" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then bit 7 of the quadrant containing</span>
+                        <span class="comment">\ the right edge of the viewing arc is set</span>
+
+ <span class="mne">BVS</span> <a class="popup destination">dlan3</a>              <span class="comment">\ If bit 6 of the quadrant containing the right edge of</span>
+                        <span class="comment">\ the viewing arc is set, jump to dlan3</span>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Bit 7 of the right edge's quadrant is set</span>
+                        <span class="comment">\   * Bit 6 of the right edge's quadrant is clear</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This means that the right edge of the viewing arc is</span>
+                        <span class="comment">\ in the 6 o'clock to 9 o'clock quadrant</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So the viewing direction in the middle of the arc is</span>
+                        <span class="comment">\ between 4.30 and 7.30, or broadly in the direction of</span>
+                        <span class="comment">\ 6 o'clock</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If you imagine the standard 3D world, with the z-axis</span>
+                        <span class="comment">\ going into the screen and the x-axis going from left</span>
+                        <span class="comment">\ to right, then turning around to face out of the</span>
+                        <span class="comment">\ screen means that from our new perspective:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The axis we now see running from left to right is</span>
+                        <span class="comment">\     the 3D world x-axis, but in the opposite direction</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The axis we now see going away from us is the 3D</span>
+                        <span class="comment">\     world z-axis, but in the opposite direction</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Therefore, from the perspective of the viewer:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The x-axis is the 3D world x-axis in the opposite</span>
+                        <span class="comment">\     direction, which is 30 - x</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The z-axis is the 3D world z-axis in the opposite</span>
+                        <span class="comment">\     direction, which is 30 - z</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So that's what we set now</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set (xTileViewer, zTileViewer) = (30 - x, 30 - z)</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">31</span>                <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">xObject</a>,<span class="register">X</span>          <span class="comment">\ where object #X is on tile (x, z)</span>
+ <span class="mne">STA</span> <a class="popup variable">xTileViewer</a>
+ <span class="mne">CLC</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">31</span>
+ <span class="mne">SBC</span> <a class="popup variable">zObject</a>,<span class="register">X</span>
+ <span class="mne">STA</span> <a class="popup variable">zTileViewer</a>
+
+ <span class="mne">JMP</span> <a class="popup destination">dlan4</a>              <span class="comment">\ Jump to dlan4 to keep going</span>
+
+<span class="label">.dlan3</span><a id="dlan3" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Bit 7 of the right edge's quadrant is set</span>
+                        <span class="comment">\   * Bit 6 of the right edge's quadrant is set</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This means that the right edge of the viewing arc is</span>
+                        <span class="comment">\ in the 9 o'clock to 12 o'clock quadrant</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So the viewing direction in the middle of the arc is</span>
+                        <span class="comment">\ between 7.30 and 10.30, or broadly in the direction of</span>
+                        <span class="comment">\ 9 o'clock</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If you imagine the standard 3D world, with the z-axis</span>
+                        <span class="comment">\ going into the screen and the x-axis going from left</span>
+                        <span class="comment">\ to right, then turning left means that from our new</span>
+                        <span class="comment">\ perspective:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The axis we now see running from left to right is</span>
+                        <span class="comment">\     the 3D world z-axis</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The axis we now see going away from us is the 3D</span>
+                        <span class="comment">\     world x-axis, but in the opposite direction</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Therefore, from the perspective of the viewer:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The x-axis is the 3D world z-axis, which is z</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The z-axis is the 3D world x-axis in the opposite</span>
+                        <span class="comment">\     direction, which is 30 - x</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So that's what we set now</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">zObject</a>,<span class="register">X</span>          <span class="comment">\ Set (xTileViewer, zTileViewer) = (z, 30 - x)</span>
+ <span class="mne">STA</span> <a class="popup variable">xTileViewer</a>        <span class="comment">\</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ where object #X is on tile (x, z)</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">31</span>
+ <span class="mne">SBC</span> <a class="popup variable">xObject</a>,<span class="register">X</span>
+ <span class="mne">STA</span> <a class="popup variable">zTileViewer</a>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dlan1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html#dlan1">dlan1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dlan2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html#dlan2">dlan2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dlan3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html#dlan3">dlan3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dlan4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html#dlan4">dlan4</a> in subroutine <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html">DrawLandscapeView (Part 2 of 3)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawviewangles"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#drawviewangles">drawViewAngles</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The address in drawViewAngles(1 0) of the pitch and yaw angles of the tile and polygon points that we are drawing in the landscape view</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectyawangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objectyawangle.html">objectYawAngle</a> (category: 3D objects)</div><div class="summary">The yaw angle for each object (i.e. the horizontal direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-polygonpoint"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#polygonpoint">polygonPoint</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Up to five coordinates for the points of the polygon being drawn</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-quadrantoffset"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#quadrantoffset">quadrantOffset</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The offset into the drawing tables for the quadrant containing the right edge of the viewing arc ???</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-quadrantoffsets"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/quadrantoffsets.html">quadrantOffsets</a> (category: Drawing the landscape)</div><div class="summary">Offsets into the tile view data tables for the four different viewing directions</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-screenleftyawhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#screenleftyawhi">screenLeftYawHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of the yaw angle of the left edge of the screen, reduced into the range of a single 90-degree quadrant (so it's relative to the 90-degree viewing arc)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewingarcrightyaw"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#viewingarcrightyaw">viewingArcRightYaw</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The yaw angle of the right edge of the viewing arc, where the arc is 90 degrees wide</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewingobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#viewingobject">viewingObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the viewing object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewingquadrantopp"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#viewingquadrantopp">viewingQuadrantOpp</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The opposite quadrant number to that containing the right edge of the viewing arc ???</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewingquadrantx4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#viewingquadrantx4">viewingQuadrantx4</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The quadrant number containing the right edge of the viewing arc, multiplied by 4, for use when calculating the number of faces in a tile in DrawSlopingTile</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/xobject.html">xObject</a> (category: 3D objects)</div><div class="summary">The x-coordinates in 3D space for the 3D objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xtileviewer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xtileviewer">xTileViewer</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The tile x-coordinate of the viewer, but with the axes rotated to match the orientation of the viewer, so we can draw the landscape along the line of sight, towards the viewer's tile</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-zobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/zobject.html">zObject</a> (category: 3D objects)</div><div class="summary">The z-coordinates in 3D space for the 3D objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ztileviewer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ztileviewer">zTileViewer</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The tile z-coordinate of the viewer, but with the axes rotated to match the orientation of the viewer, so we can draw the landscape along the line of sight, towards the viewer's tile</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html">DrawLandscapeView (Part 2 of 3)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

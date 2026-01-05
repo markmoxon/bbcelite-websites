@@ -1,0 +1,205 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("gameplay", "subroutine_applytactics_part_7_of_8.html", "The ApplyTactics (Part 7 of 8) subroutine", "Gameplay: ApplyTactics (Part 7 of 8)", "Annotated code for the ApplyTactics (Part 7 of 8) subroutine in The Sentinel", "the_sentinel-code", "source_gameplay", "subroutine_applytactics_part_7_of_8", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/applytactics_part_6_of_8.html">ApplyTactics (Part 6 of 8)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/applytactics_part_8_of_8.html">ApplyTactics (Part 8 of 8)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">ApplyTactics (Part 7 of 8)</span>                              <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Gameplay</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Drain energy from the enemy's target object, or try scanning for</span>
+             <span class="headerEntry">a tree to turn into a meanie if the target's tile is obscured</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_b.html#header-applytactics-part-7-of-8">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">No direct references to this subroutine in this source file</span>
+</div>
+</div></div>
+<span class="label">.tact19</span><a id="tact19" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then there is a suitable target for the</span>
+                        <span class="comment">\ enemy to drain, and the target's object number is in Y</span>
+
+ <span class="mne">TYA</span>                    <span class="comment">\ Store the target number in enemyTarget in the enemy's</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyTarget</a>,<span class="register">X</span>      <span class="comment">\ data, so it is set as the enemy's target going forward</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">targetVisibility</a>   <span class="comment">\ Store the target's visibility in enemyVisibility for</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyVisibility</a>,<span class="register">X</span>  <span class="comment">\ this enemy</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">enemyDrainTimer</a>,<span class="register">X</span>  <span class="comment">\ If enemyDrainTimer for this enemy is non-zero then it</span>
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ is either counting down or has counted down, so jump</span>
+ <span class="mne">BCS</span> <a class="popup destination">tact21</a>             <span class="comment">\ to tact21 to process this</span>
+
+                        <span class="comment">\ If we get here then enemyDrainTimer is zero, so we</span>
+                        <span class="comment">\ restart the timer from 120</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">120</span>               <span class="comment">\ Set enemyDrainTimer for this enemy to 120 so the enemy</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyDrainTimer</a>,<span class="register">X</span>  <span class="comment">\ doesn't drain energy for another 120 timer ticks</span>
+                        <span class="comment">\ (120 * 0.06 = 7.2 seconds)</span>
+
+<span class="label">.tact20</span><a id="tact20" class="anchor"></a>
+
+ <span class="mne">JMP</span> <a class="popup destination">MoveOnToNextEnemy</a>  <span class="comment">\ Jump to MoveOnToNextEnemy to stop applying tactics to</span>
+                        <span class="comment">\ this enemy and set things up so we move on to the next</span>
+                        <span class="comment">\ enemy in the next iteration of the gameplay loop</span>
+
+<span class="label">.tact21</span><a id="tact21" class="anchor"></a>
+
+ <span class="mne">BNE</span> <a class="popup destination">tact20</a>             <span class="comment">\ We jump knowing that the enemyDrainTimer for the enemy</span>
+                        <span class="comment">\ is 1 or greater, so this jumps to tact20 to move on to</span>
+                        <span class="comment">\ the next enemy when enemyDrainTimer is greater than 1</span>
+                        <span class="comment">\ and is still counting down</span>
+
+                        <span class="comment">\ If we get here then enemyDrainTimer for the enemy has</span>
+                        <span class="comment">\ counted down to 1, so we need to process that</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">targetVisibility</a>   <span class="comment">\ If bit 7 of targetVisibility is clear then the enemy</span>
+ <span class="mne">BPL</span> <a class="popup destination">tact22</a>             <span class="comment">\ can't see the tile containing the enemy's target (but</span>
+                        <span class="comment">\ we know it can see the enemy object as otherwise we</span>
+                        <span class="comment">\ wouldn't have reached this point), so jump to tact22</span>
+                        <span class="comment">\ to consider turning a tree into a meanie</span>
+
+                        <span class="comment">\ If we get here then the enemy can see the tile</span>
+                        <span class="comment">\ containing the target, so it can drain its target of</span>
+                        <span class="comment">\ energy</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">DrainObjectEnergy</a>  <span class="comment">\ Drain energy from the target object into the enemy,</span>
+                        <span class="comment">\ transforming it into an object with an energy level</span>
+                        <span class="comment">\ of one unit less (if applicable)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This updates enemyEnergy with the drained energy, so</span>
+                        <span class="comment">\ it can be expended back onto the landscape later on</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ It also sets X to the object number of the target that</span>
+                        <span class="comment">\ has been drained of energy (and which has therefore</span>
+                        <span class="comment">\ been transformed into a different object type)</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">enemyObject</a>        <span class="comment">\ Set enemyTacticTimer for the enemy to 30 so we wait</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">30</span>                <span class="comment">\ for 30 * 0.06 = 1.8 seconds before applying tactics</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyTacticTimer</a>,<span class="register">Y</span> <span class="comment">\ to the enemy again</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">tact27</a>             <span class="comment">\ If DrainObjectEnergy set the C flag then the enemy</span>
+                        <span class="comment">\ just drained the player object, so jump to tact27 to</span>
+                        <span class="comment">\ stop applying tactics to this enemy and set things up</span>
+                        <span class="comment">\ so we move on to the next enemy in the next iteration</span>
+                        <span class="comment">\ of the gameplay loop</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">tact25</a>             <span class="comment">\ Otherwise it wasn't the player object being drained,</span>
+                        <span class="comment">\ so jump to tact25 with X set to the number of the</span>
+                        <span class="comment">\ object that was drained so we update it on-screen with</span>
+                        <span class="comment">\ a dithered effect (as it has now been transformed into</span>
+                        <span class="comment">\ a different type of object) and return from the</span>
+                        <span class="comment">\ subroutine using a tail call</span>
+
+<span class="label">.tact22</span><a id="tact22" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the enemy can't see the tile</span>
+                        <span class="comment">\ containing the enemy's target, but it can see the</span>
+                        <span class="comment">\ target object, so now we consider turning a tree into</span>
+                        <span class="comment">\ a meanie</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">ScanForMeanieTree</a>  <span class="comment">\ Scan through the objects in the landscape to see if</span>
+                        <span class="comment">\ any of them are trees that are suitable for turning</span>
+                        <span class="comment">\ into a meanie to attack the target</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">enemyObject</a>        <span class="comment">\ Set Y to the object number of the enemy to which we</span>
+                        <span class="comment">\ are applying tactics (so this is now object #Y)</span>
+
+ <span class="mne">BCC</span> <a class="popup destination">tact24</a>             <span class="comment">\ If the call to ScanForMeanieTree cleared the C flag</span>
+                        <span class="comment">\ then we have successfully turned a tree into a meanie,</span>
+                        <span class="comment">\ so jump to tact24 to set up the enemy's tactics timer</span>
+                        <span class="comment">\ and redraw the transformed tree on-screen</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">enemyFailCounter</a>,<span class="register">Y</span> <span class="comment">\ If enemyFailCounter for this enemy is two or more then</span>
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ the enemy has failed to find a suitable tree to turn</span>
+ <span class="mne">BCS</span> <a class="popup destination">tact23</a>             <span class="comment">\ into a meanie on more than one occasion, so jump to</span>
+                        <span class="comment">\ tact23 to have a fairly long pause before applying</span>
+                        <span class="comment">\ tactics to this enemy again</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%10000000</span>         <span class="comment">\ Otherwise set bit 7 of enemyDrainScan so the next time</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyDrainScan</a>,<span class="register">Y</span>   <span class="comment">\ we apply tactics to the enemy it will immediately scan</span>
+                        <span class="comment">\ for an object to drain</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">tact27</a>             <span class="comment">\ Jump to tact27 to stop applying tactics to this enemy</span>
+                        <span class="comment">\ and set things up so we move on to the next enemy in</span>
+                        <span class="comment">\ the next iteration of the gameplay loop (this BNE is</span>
+                        <span class="comment">\ effectively a JMP as A is always non-zero)</span>
+
+<span class="label">.tact23</span><a id="tact23" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set enemyDrainTimer = 0 to restart the drain counter</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyDrainTimer</a>,<span class="register">Y</span>  <span class="comment">\ for the enemy in part 5 of ApplyTactics, so it doesn't</span>
+                        <span class="comment">\ drain energy for another 120 timer ticks (120 * 0.06 =</span>
+                        <span class="comment">\ 7.2 seconds)</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">tact27</a>             <span class="comment">\ Jump to tact27 to stop applying tactics to this enemy</span>
+                        <span class="comment">\ and set things up so we move on to the next enemy in</span>
+                        <span class="comment">\ the next iteration of the gameplay loop (this BEQ is</span>
+                        <span class="comment">\ effectively a JMP as A is always zero)</span>
+
+<span class="label">.tact24</span><a id="tact24" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we have just turned a tree into a</span>
+                        <span class="comment">\ meanie and the enemy number is in Y</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">50</span>                <span class="comment">\ Set enemyTacticTimer for the enemy to 50 so we wait</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyTacticTimer</a>,<span class="register">Y</span> <span class="comment">\ for 50 * 0.06 = 3.0 seconds before applying tactics to</span>
+                        <span class="comment">\ the enemy again</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">enemyMeanieTree</a>,<span class="register">Y</span>  <span class="comment">\ Set X to the object number of the tree that we just</span>
+                        <span class="comment">\ turned into a meanie, and fall through into part 8 to</span>
+                        <span class="comment">\ redraw the transformed object on the screen with a</span>
+                        <span class="comment">\ dithered effect</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drainobjectenergy"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a> (category: Gameplay)</div><div class="summary">Drain energy from an object into an enemy, transforming it into an object with an energy level of one unit less (if applicable)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-moveontonextenemy"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/moveontonextenemy.html">MoveOnToNextEnemy</a> (category: Gameplay)</div><div class="summary">Update enemyObject so the next time we consider applying enemy tactics, we apply them to the next enemy, looping from 7 to 0</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scanformeanietree"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/scanformeanietree.html">ScanForMeanieTree</a> (category: Gameplay)</div><div class="summary">Scan through the objects in the landscape to see if any of them are trees that are suitable for turning into a meanie</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemydrainscan"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemydrainscan">enemyDrainScan</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Enemy will perform a scan for a drainable object (one</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemydraintimer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyDrainTimer</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A timer for each enemy that counts down every 0.06</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemyfailcounter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemyfailcounter">enemyFailCounter</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Enemy failed to find meanie: counter (one byte per</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemymeanietree"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyMeanieTree</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Enemy has turned a tree into a meanie (one byte per</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemyobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#enemyobject">enemyObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The object number of the enemy to which we are applying tactics in this iteration around the main loop (0-7)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemytactictimer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemytactictimer">enemyTacticTimer</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A timer for each enemy that counts down every 0.06</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemytarget"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemytarget">enemyTarget</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The object number of the enemy's target (one byte per</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemyvisibility"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemyvisibility">enemyVisibility</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Visibility of the enemy's target (one byte per enemy)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact20"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_7_of_8.html#tact20">tact20</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact21"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_7_of_8.html#tact21">tact21</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact22"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_7_of_8.html#tact22">tact22</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact23"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_7_of_8.html#tact23">tact23</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact24"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_7_of_8.html#tact24">tact24</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact25"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Entry point <a href="/source/main/subroutine/applytactics_part_8_of_8.html#tact25">tact25</a> in subroutine <a href="/source/main/subroutine/applytactics_part_8_of_8.html">ApplyTactics (Part 8 of 8)</a> (category: Gameplay)</div><div class="summary">Dither the updated object #X onto the screen, with bit 7 of drawLandscape determining whether the object is drawn on its own (bit 7 set) or with the surrounding landscape (bit 7 clear)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact27"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_8_of_8.html#tact27">tact27</a> in subroutine <a href="/source/main/subroutine/applytactics_part_8_of_8.html">ApplyTactics (Part 8 of 8)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-targetvisibility"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#targetvisibility">targetVisibility</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Reports whether a target object is visible from an enemy in the CheckEnemyGaze routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/applytactics_part_6_of_8.html">ApplyTactics (Part 6 of 8)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/applytactics_part_8_of_8.html">ApplyTactics (Part 8 of 8)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

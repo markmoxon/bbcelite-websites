@@ -1,0 +1,213 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("main_title_loop", "subroutine_maintitleloop.html", "The MainTitleLoop subroutine", "Main title loop: MainTitleLoop", "Annotated code for the MainTitleLoop subroutine in The Sentinel", "the_sentinel-code", "source_main_title_loop", "subroutine_maintitleloop", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/negate16bit.html">Negate16Bit</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/secretcodeerror.html">SecretCodeError</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">MainTitleLoop</span>                                           <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Main title loop</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">The main title loop: display the title screen, fetch the landscape</span>
+             <span class="headerEntry">number/code, preview the landscape and jump to the main game loop</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_a.html#header-maintitleloop">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/configuremachine.html">ConfigureMachine</a> calls <a href="#maintitleloop">MainTitleLoop</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/maingameloop.html">MainGameLoop</a> calls <a href="#maintitleloop">MainTitleLoop</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/absolute16bit.html">Absolute16Bit</a> calls via <a href="#maintitleloop">MainTitleLoop-1</a></span></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/secretcodeerror.html">SecretCodeError</a> calls via <a href="#main1">main1</a></span></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/maingameloop.html">MainGameLoop</a> calls via <a href="#main4">main4</a></span></span>
+</div>
+<hr class="light">
+<span class="subheader"> Other entry points:</span>
+
+   <span class="argumentLabel">MainTitleLoop-1</span>      <span class="argumentEntry">Contains an RTS</span>
+
+   <span class="argumentLabel">main1</span>                <span class="argumentEntry">The entry point for rejoining the main title loop after</span>
+                        <span class="argumentEntry">the player enters an incorrect secret code</span>
+
+   <span class="argumentLabel">main4</span>                <span class="argumentEntry">The entry point for restarting a landscape after dying,</span>
+                        <span class="argumentEntry">so the player doesn't have to enter the landscape's</span>
+                        <span class="argumentEntry">secret code again</span>
+
+</div></div>
+<span class="label">.MainTitleLoop</span><a id="maintitleloop" class="anchor"></a>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="hex">&FF</span>               <span class="comment">\ Set the stack pointer to &01FF, which is the standard</span>
+ <span class="mne">TXS</span>                    <span class="comment">\ location for the 6502 stack, so this instruction</span>
+                        <span class="comment">\ effectively resets the stack</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This means that the JSR GenerateLandscape instruction</span>
+                        <span class="comment">\ below will put its return address onto the top of the</span>
+                        <span class="comment">\ stack, so we can manipulate the return address by</span>
+                        <span class="comment">\ modifying (&01FE &01FF)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ See the notes on the JSR GenerateLandscape instruction</span>
+                        <span class="comment">\ below for more details</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ Set all four logical colours to physical colour 4</span>
+ <span class="mne">JSR</span> <a class="popup destination">SetColourPalette</a>   <span class="comment">\ (blue), so this blanks the entire screen to blue</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">ResetVariables</a>     <span class="comment">\ Reset all the game's main variables</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Call DrawTitleScreen with A = 0 to draw the title</span>
+ <span class="mne">JSR</span> <a class="popup destination">DrawTitleScreen</a>    <span class="comment">\ screen</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Print text token 0: Background colour blue, print</span>
+ <span class="mne">JSR</span> <a class="popup destination">PrintTextToken</a>     <span class="comment">\ "PRESS ANY KEY" at (64, 100), set text background to</span>
+                        <span class="comment">\ black</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&87</span>               <span class="comment">\ Set the palette to the second set of colours from the</span>
+ <span class="mne">JSR</span> <a class="popup destination">SetColourPalette</a>   <span class="comment">\ colourPalettes table, which contains the fixed palette</span>
+                        <span class="comment">\ for the title screens (blue, black, red, yellow)</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">ReadKeyboard</a>       <span class="comment">\ Enable the keyboard, flush the keyboard buffer and</span>
+                        <span class="comment">\ read a character from it (so this waits for a key</span>
+                        <span class="comment">\ press)</span>
+
+<span class="label">.main1</span><a id="main1" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">ResetVariables</a>     <span class="comment">\ Reset all the game's main variables</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ Print text token 1: Print 13 spaces at (64, 100),</span>
+ <span class="mne">JSR</span> <a class="popup destination">PrintTextToken</a>     <span class="comment">\ print "LANDSCAPE NUMBER?" at (64, 768), switch to text</span>
+                        <span class="comment">\ cursor, move text cursor to (5, 27)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ Read a four-digit number from the keyboard into the</span>
+ <span class="mne">JSR</span> <a class="popup destination">ReadNumber</a>         <span class="comment">\ input buffer, showing the key presses on-screen and</span>
+                        <span class="comment">\ supporting the DELETE and RETURN keys</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">StringToNumber</a>     <span class="comment">\ Convert the string of four ASCII digits in the input</span>
+                        <span class="comment">\ buffer into a BCD number in inputBuffer(1 0)</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">inputBuffer</a><span class="operator">+</span><span class="decimal">1</span>      <span class="comment">\ Set (Y X) = inputBuffer(1 0)</span>
+ <span class="mne">LDX</span> <a class="popup variable">inputBuffer</a>        <span class="comment">\</span>
+                        <span class="comment">\ So (Y X) is the entered landscape number in BCD</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">InitialiseSeeds</a>    <span class="comment">\ Initialise the seed number generator to generate the</span>
+                        <span class="comment">\ sequence of seed numbers for the landscape number in</span>
+                        <span class="comment">\ (Y X) and set maxNumberOfEnemies and the landscapeZero</span>
+                        <span class="comment">\ flag accordingly</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">landscapeZero</a>      <span class="comment">\ If the landscape number is not 0000, jump to main3</span>
+ <span class="mne">BNE</span> <a class="popup destination">main3</a>              <span class="comment">\ to ask for the landscape's secret entry code</span>
+
+                        <span class="comment">\ This is landscape 0000, so we don't ask for a secret</span>
+                        <span class="comment">\ entry code, but instead we copy the landscape's secret</span>
+                        <span class="comment">\ code from secretCode0000 into the input buffer, so</span>
+                        <span class="comment">\ it's as if the player has typed in the code themselves</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ We are copying four bytes of secret code into the</span>
+                        <span class="comment">\ input buffer, so set a byte index in X</span>
+
+<span class="label">.main2</span><a id="main2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">secretCode0000</a>,<span class="register">X</span>   <span class="comment">\ Copy the X-th byte of secretCode0000 to the X-th byte</span>
+ <span class="mne">STA</span> <a class="popup variable">inputBuffer</a>,<span class="register">X</span>      <span class="comment">\ of the input buffer</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the byte index</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">main2</a>              <span class="comment">\ Loop back until we have copied all four bytes</span>
+
+ <span class="mne">BMI</span> <a class="popup destination">main4</a>              <span class="comment">\ Jump to main4 to skip asking the player to enter the</span>
+                        <span class="comment">\ code (this BMI is effectively a JMP as we just passed</span>
+                        <span class="comment">\ through a BPL)</span>
+
+<span class="label">.main3</span><a id="main3" class="anchor"></a>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ Print text token 2: Background colour blue, print</span>
+ <span class="mne">JSR</span> <a class="popup destination">PrintTextToken</a>     <span class="comment">\ "SECRET ENTRY CODE?" at (64, 768), switch to text</span>
+                        <span class="comment">\ cursor, move text cursor to (2, 27)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">8</span>                 <span class="comment">\ Read an eight-digit number from the keyboard into the</span>
+ <span class="mne">JSR</span> <a class="popup destination">ReadNumber</a>         <span class="comment">\ input buffer, showing the key presses on-screen and</span>
+                        <span class="comment">\ supporting the DELETE and RETURN keys</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">StringToNumber</a>     <span class="comment">\ Convert the string of eight ASCII digits in the input</span>
+                        <span class="comment">\ buffer into a BCD number in inputBuffer(3 2 1 0)</span>
+
+<span class="label">.main4</span><a id="main4" class="anchor"></a>
+
+                        <span class="comment">\ The player has now chosen a landscape number and has</span>
+                        <span class="comment">\ entered the secret code (or, in the case of landscape</span>
+                        <span class="comment">\ 0000, we have entered the secret code for them)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We also jump here if we are restarting a landscape</span>
+                        <span class="comment">\ after dying, so the player doesn't have to enter the</span>
+                        <span class="comment">\ landscape's secret code again</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ Set all four logical colours to physical colour 4</span>
+ <span class="mne">JSR</span> <a class="popup destination">SetColourPalette</a>   <span class="comment">\ (blue), so this blanks the entire screen to blue</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GenerateLandscape</a>  <span class="comment">\ Call GenerateLandscape to generate the landscape and</span>
+                        <span class="comment">\ play the game</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Calling this subroutine puts a return address of</span>
+                        <span class="comment">\ SecretCodeError on the stack (as that's the routine</span>
+                        <span class="comment">\ that follows directly after this JSR instruction), so</span>
+                        <span class="comment">\ running a normal RTS instruction at the end of the</span>
+                        <span class="comment">\ GenerateLandscape routine will return to the following</span>
+                        <span class="comment">\ code, which is what happens if the secret code entered</span>
+                        <span class="comment">\ doesn't match the landscape's secret code</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ However, if the secret code does match the landscape,</span>
+                        <span class="comment">\ then the SmoothTileData routine that is called from</span>
+                        <span class="comment">\ GenerateLandscape alters the return address on the</span>
+                        <span class="comment">\ stack, so instead of returning here, the RTS at the</span>
+                        <span class="comment">\ end of the GenerateLandscape routine actually takes us</span>
+                        <span class="comment">\ to the PreviewLandscape routine</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Because we reset the position of the stack pointer</span>
+                        <span class="comment">\ with a TSX instruction at the start of this routine,</span>
+                        <span class="comment">\ we know that the JSR GenerateLandscape instruction</span>
+                        <span class="comment">\ will put its return address onto the top of the stack,</span>
+                        <span class="comment">\ so we can manipulate the return address in the</span>
+                        <span class="comment">\ SmoothTileData routine by modifying (&01FE &01FF)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ See the SmoothTileData routine for more details</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawtitlescreen"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawtitlescreen.html">DrawTitleScreen</a> (category: Title screen)</div><div class="summary">Draw the title screen or the screen showing the secret code</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-generatelandscape"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a> (category: Landscape)</div><div class="summary">Generate tile data for the landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-initialiseseeds"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/initialiseseeds.html">InitialiseSeeds</a> (category: Landscape)</div><div class="summary">Initialise the seed number generator so it generates the sequence of seed numbers for a specific landscape number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-printtexttoken"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/printtexttoken.html">PrintTextToken</a> (category: Text)</div><div class="summary">Print a recursive text token</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-readkeyboard"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/readkeyboard.html">ReadKeyboard</a> (category: Keyboard)</div><div class="summary">Enable the keyboard and read a character from it</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-readnumber"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/readnumber.html">ReadNumber</a> (category: Keyboard)</div><div class="summary">Read a number from the keyboard into the input buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-resetvariables"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> (category: Main title Loop)</div><div class="summary">Reset all the game's main variables</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-setcolourpalette"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> (category: Graphics)</div><div class="summary">Set the logical colours for each of the four physical colours in screen mode 5</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-stringtonumber"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/stringtonumber.html">StringToNumber</a> (category: Text)</div><div class="summary">Convert a string of ASCII digits in the input buffer in-place into a multi-byte BCD number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-inputbuffer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#inputbuffer">inputBuffer</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The eight-byte keyboard input buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-landscapezero"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#landscapezero">landscapeZero</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag that is set depending on whether we are playing landscape 0000</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-main2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maintitleloop.html#main2">main2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-main3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maintitleloop.html#main3">main3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-main4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Entry point <a href="/source/main/subroutine/maintitleloop.html#main4">main4</a> in subroutine <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> (category: Main title loop)</div><div class="summary">The entry point for restarting a landscape after dying, so the player doesn't have to enter the landscape's secret code again</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-secretcode0000"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/secretcode0000.html">secretCode0000</a> (category: Landscape)</div><div class="summary">The secret entry code for landscape 0000 (06045387)</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/negate16bit.html">Negate16Bit</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/secretcodeerror.html">SecretCodeError</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

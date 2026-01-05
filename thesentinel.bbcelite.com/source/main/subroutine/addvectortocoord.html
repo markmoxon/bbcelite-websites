@@ -1,0 +1,134 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("maths_geometry", "subroutine_addvectortocoord.html", "The AddVectorToCoord subroutine", "Maths (Geometry): AddVectorToCoord", "Annotated code for the AddVectorToCoord subroutine in The Sentinel", "the_sentinel-code", "source_maths_geometry", "subroutine_addvectortocoord", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/divideby16.html">DivideBy16</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector (Part 1 of 5)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">AddVectorToCoord</span>                                        <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Maths (Geometry)</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Add a vector to a coordinate</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_c.html#header-addvectortocoord">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector (Part 1 of 5)</a> calls <a href="#addvectortocoord">AddVectorToCoord</a></span>
+</div>
+<hr class="light">
+ This routine adds a vector to a coordinate:
+
+   [ xCoord ]   [ xCoord ]   [ xVector ]
+   [ yCoord ] = [ yCoord ] + [ yVector ]
+   [ zCoord ]   [ zCoord ]   [ zVector ]
+
+ where the coordinate consists of 24-bit signed numbers:
+
+   [ xCoord ]   [ xCoord(Hi Lo Bot) ]
+   [ yCoord ] = [ yCoord(Hi Lo Bot) ]
+   [ zCoord ]   [ zCoord(Hi Lo Bot) ]
+
+ and the vector consists of 16-bit signed numbers:
+
+   [ xVector ]   [ xVector(Lo Bot) ]
+   [ yVector ] = [ yVector(Lo Bot) ]
+   [ zVector ]   [ zVector(Lo Bot) ]
+
+</div></div>
+<span class="label">.AddVectorToCoord</span><a id="addvectortocoord" class="anchor"></a>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ We now work through all three axes in turn, so set an</span>
+                        <span class="comment">\ axis counter in X to iterate through 2, 1 and 0 (for</span>
+                        <span class="comment">\ the z-axis, y-axis and x-axis respectively)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The comments in the following loop will concentrate on</span>
+                        <span class="comment">\ the x-axis to keep things simple</span>
+
+<span class="label">.addv1</span><a id="addv1" class="anchor"></a>
+
+                        <span class="comment">\ We now perform the following addition of a 24-bit</span>
+                        <span class="comment">\ coordinate and a 16-bit vector:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   xCoord = xCoord + xVector</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ where:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * xCoord is xCoord(Hi Lo Bot)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * xVector is xVector(Lo Bot)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We do this for each axis in turn, but let's talk about</span>
+                        <span class="comment">\ the x-axis</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set T = 0</span>
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\</span>
+                        <span class="comment">\ We use T as the high byte of xVector, which we either</span>
+                        <span class="comment">\ set to 0 (if xVector is positive) or &FF (if xVector</span>
+                        <span class="comment">\ is negative)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We set T for positive numbers here, and change it to</span>
+                        <span class="comment">\ &FF during the addition if xVector turns out to be</span>
+                        <span class="comment">\ negative</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The addition therefore supports signed numbers</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xCoordBot</a>,<span class="register">X</span>        <span class="comment">\ Add the bottom bytes of the calculation</span>
+ <span class="mne">CLC</span>
+ <span class="mne">ADC</span> <a class="popup variable">xVectorBot</a>,<span class="register">X</span>
+ <span class="mne">STA</span> <a class="popup variable">xCoordBot</a>,<span class="register">X</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xVectorLo</a>,<span class="register">X</span>        <span class="comment">\ Set A to xVectorLo so we can check its sign</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">addv2</a>              <span class="comment">\ If xVectorLo is negative, set T = &FF so we can use it</span>
+ <span class="mne">DEC</span> <a class="popup variable">T</a>                  <span class="comment">\ as the high byte in the negative 24-bit number, like</span>
+                        <span class="comment">\ this:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (&FF xVectorLo xVectorBot)</span>
+
+<span class="label">.addv2</span><a id="addv2" class="anchor"></a>
+
+ <span class="mne">ADC</span> <a class="popup variable">xCoordLo</a>,<span class="register">X</span>         <span class="comment">\ Now add the low bytes of the calculation</span>
+ <span class="mne">STA</span> <a class="popup variable">xCoordLo</a>,<span class="register">X</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xCoordHi</a>,<span class="register">X</span>         <span class="comment">\ And then add the high bytes, incorporating the high</span>
+ <span class="mne">ADC</span> <a class="popup variable">T</a>                  <span class="comment">\ byte of xVector that we set in T</span>
+ <span class="mne">STA</span> <a class="popup variable">xCoordHi</a>,<span class="register">X</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the axis counter in X to move on to the next</span>
+                        <span class="comment">\ axis</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">addv1</a>              <span class="comment">\ Loop back until we have processed all three axes</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+ <span class="mne">EQUB</span> <span class="hex">&00</span>               <span class="comment">\ This byte appears to be unused</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-addv1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/addvectortocoord.html#addv1">addv1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-addv2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/addvectortocoord.html#addv2">addv2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xcoordbot"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xcoordbot">xCoordBot</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of an object or point (bottom byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xcoordhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of an object or point (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xcoordlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of an object or point (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xvectorbot"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xvectorbot">xVectorBot</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of a vector (bottom byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xvectorlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xvectorlo">xVectorLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of a vector (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/divideby16.html">DivideBy16</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector (Part 1 of 5)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

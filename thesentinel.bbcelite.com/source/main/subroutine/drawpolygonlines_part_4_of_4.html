@@ -1,0 +1,256 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("drawing_polygons", "subroutine_drawpolygonlines_part_4_of_4.html", "The DrawPolygonLines (Part 4 of 4) subroutine", "Drawing polygons: DrawPolygonLines (Part 4 of 4)", "Annotated code for the DrawPolygonLines (Part 4 of 4) subroutine in The Sentinel", "the_sentinel-code", "source_drawing_polygons", "subroutine_drawpolygonlines_part_4_of_4", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawpolygonlines_part_3_of_4.html">DrawPolygonLines (Part 3 of 4)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">DrawPolygonLines (Part 4 of 4)</span>                          <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing polygons</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw a horizontal pixel line of a specific length in character</span>
+             <span class="headerEntry">columns</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_d.html#header-drawpolygonlines-part-4-of-4">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">No direct references to this subroutine in this source file</span>
+</div>
+</div></div>
+                        <span class="comment">\ We now draw the horizontal line between the left and</span>
+                        <span class="comment">\ right edges to complete the drawing of this polygon</span>
+                        <span class="comment">\ line, before looping back to draw the rest of the</span>
+                        <span class="comment">\ polygon</span>
+
+ <span class="mne">TYA</span>                    <span class="comment">\ Set (Q P) = (S R) + Y</span>
+ <span class="mne">CLC</span>                    <span class="comment">\</span>
+ <span class="mne">ADC</span> <a class="popup variable">R</a>                  <span class="comment">\ So (Q P) contains the screen address of the pixel byte</span>
+ <span class="mne">STA</span> <a class="popup variable">P</a>                  <span class="comment">\ containing the left edge of the polygon line</span>
+ <span class="mne">LDA</span> <a class="popup variable">S</a>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">0</span>
+ <span class="mne">STA</span> <a class="popup variable">Q</a>
+
+ <span class="mne">TYA</span>                    <span class="comment">\ Set A = Y</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So A contains the pixel byte offset within the screen</span>
+                        <span class="comment">\ character row of the left edge of the polygon line</span>
+
+<span class="label">.dpol17</span><a id="dpol17" class="anchor"></a>
+
+                        <span class="comment">\ We now draw a horizontal line that starts in the left</span>
+                        <span class="comment">\ with the character column to the right of (Q P), as</span>
+                        <span class="comment">\ (Q P) contains the left edge</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ And we want the line to end in the character column</span>
+                        <span class="comment">\ before the right edge, which we drew at pixel byte</span>
+                        <span class="comment">\ offset xPolygonRightEdge</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ At this point, A contains the pixel byte offset of the</span>
+                        <span class="comment">\ left edge</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we want to draw a line between pixel byte offset A</span>
+                        <span class="comment">\ and pixel byte offset xPolygonRightEdge</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Each character block contains eight bytes, so in terms</span>
+                        <span class="comment">\ of character columns, we want to draw a line that's</span>
+                        <span class="comment">\ this number of character columns wide:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (xPolygonRightEdge - A) / 8</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The following unrolled loop implements this, but in a</span>
+                        <span class="comment">\ reverse manner that means we have to negate the above</span>
+                        <span class="comment">\ value to calculate the correct entry point (as well as</span>
+                        <span class="comment">\ incorporating the fact that the jump points are spaced</span>
+                        <span class="comment">\ out by four bytes)</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Set A = (A - xPolygonRightEdge) / 2</span>
+ <span class="mne">SBC</span> <a class="popup variable">xPolygonRightEdge</a>  <span class="comment">\</span>
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ So that's the above character column calculation, but</span>
+                        <span class="comment">\ negated and multiplied by 4</span>
+
+ <span class="mne">STA</span> <a class="popup variable">dpol18</a><span class="operator">+</span><span class="decimal">1</span>           <span class="comment">\ Modify the following instruction below:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   BCC dpol19 -> BCC A</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ so the BCC instruction jumps to the offset given in A,</span>
+                        <span class="comment">\ so the following routine draws a line of the length</span>
+                        <span class="comment">\ given in A, as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When A = 0 * 4, draw from column 31 to column 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When A = 1 * 4, draw from column 30 to column 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When A = 2 * 4, draw from column 29 to column 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\     ...</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When A = 28 * 4, draw from column 3 to column 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When A = 29 * 4, draw from column 2 to column 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When A = 30 * 4, draw from column 1 to column 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This works because there are four bytes in each of the</span>
+                        <span class="comment">\ LDY/STA instruction pairs below, and when the BCC is</span>
+                        <span class="comment">\ executed, the operand of the BCC is added to the</span>
+                        <span class="comment">\ address of the first instruction after the BCC</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ In other words, this routine draws a line of length</span>
+                        <span class="comment">\ 31 - (A / 4) character columns</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">polygonFillPixels</a>  <span class="comment">\ Set A to the contents of polygonFillPixels, which we</span>
+                        <span class="comment">\ set in part 1 to a pixel byte containing four pixels</span>
+                        <span class="comment">\ set to the fill colour for the polygon</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So the pixel byte we should use for drawing the line</span>
+                        <span class="comment">\ is in A</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Clear the C flag so the BCC instruction below jumps to</span>
+                        <span class="comment">\ the correct entry to draw the specified number of</span>
+                        <span class="comment">\ character columns</span>
+
+<span class="label">.dpol18</span><a id="dpol18" class="anchor"></a>
+
+ <span class="mne">BCC</span> <a class="popup destination">dpol19</a>             <span class="comment">\ This instruction is modified in part 3 to jump to the</span>
+                        <span class="comment">\ correct entry in the following list for drawing a</span>
+                        <span class="comment">\ horizontal pixel line of the specified length</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The line length is specified in character columns (1</span>
+                        <span class="comment">\ to 31) and the drawing starts with the pixel byte to</span>
+                        <span class="comment">\ the right of the pixel byte whose screen address is</span>
+                        <span class="comment">\ in (Q P), so (Q P) contains the left cap of the line</span>
+                        <span class="comment">\ and the line fills the polygon to the right for the</span>
+                        <span class="comment">\ specified number of character columns</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The line is drawn from right to left to enable the</span>
+                        <span class="comment">\ routine to be joined at the correct point for the</span>
+                        <span class="comment">\ required line length</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">31</span>            <span class="comment">\ Draw a line from column 31 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">30</span>            <span class="comment">\ Draw a line from column 30 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">29</span>            <span class="comment">\ Draw a line from column 29 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">28</span>            <span class="comment">\ Draw a line from column 28 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">27</span>            <span class="comment">\ Draw a line from column 27 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">26</span>            <span class="comment">\ Draw a line from column 26 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">25</span>            <span class="comment">\ Draw a line from column 25 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">24</span>            <span class="comment">\ Draw a line from column 24 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">23</span>            <span class="comment">\ Draw a line from column 23 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">22</span>            <span class="comment">\ Draw a line from column 22 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">21</span>            <span class="comment">\ Draw a line from column 21 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">20</span>            <span class="comment">\ Draw a line from column 20 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">19</span>            <span class="comment">\ Draw a line from column 19 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">18</span>            <span class="comment">\ Draw a line from column 18 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">17</span>            <span class="comment">\ Draw a line from column 17 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">16</span>            <span class="comment">\ Draw a line from column 16 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">15</span>            <span class="comment">\ Draw a line from column 15 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">14</span>            <span class="comment">\ Draw a line from column 14 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">13</span>            <span class="comment">\ Draw a line from column 13 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">12</span>            <span class="comment">\ Draw a line from column 12 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">11</span>            <span class="comment">\ Draw a line from column 11 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">10</span>            <span class="comment">\ Draw a line from column 10 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">9</span>             <span class="comment">\ Draw a line from column 9 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">8</span>             <span class="comment">\ Draw a line from column 8 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">7</span>             <span class="comment">\ Draw a line from column 7 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">6</span>             <span class="comment">\ Draw a line from column 6 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">5</span>             <span class="comment">\ Draw a line from column 5 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">4</span>             <span class="comment">\ Draw a line from column 4 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">3</span>             <span class="comment">\ Draw a line from column 3 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">2</span>             <span class="comment">\ Draw a line from column 2 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span> <span class="operator">*</span> <span class="decimal">1</span>             <span class="comment">\ Draw a line from column 1 to column 1</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+<span class="label">.dpol19</span><a id="dpol19" class="anchor"></a>
+
+ <span class="mne">JMP</span> <a class="popup destination">dpol3</a>              <span class="comment">\ Loop back to part 2 to move on to the next pixel line</span>
+                        <span class="comment">\ in the polygon</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-p"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#p">P</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-q"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#q">Q</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-r"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#r">R</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-s"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#s">S</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dpol18"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygonlines_part_4_of_4.html#dpol18">dpol18</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dpol19"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygonlines_part_4_of_4.html#dpol19">dpol19</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dpol3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygonlines_part_2_of_4.html#dpol3">dpol3</a> in subroutine <a href="/source/main/subroutine/drawpolygonlines_part_2_of_4.html">DrawPolygonLines (Part 2 of 4)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-polygonfillpixels"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#polygonfillpixels">polygonFillPixels</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">A pixel byte containing four pixels set to the fill colour for the polygon we are drawing</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xpolygonrightedge"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xpolygonrightedge">xPolygonRightEdge</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The screen x-coordinate of the right edge of the polygon being drawn</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawpolygonlines_part_3_of_4.html">DrawPolygonLines (Part 3 of 4)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

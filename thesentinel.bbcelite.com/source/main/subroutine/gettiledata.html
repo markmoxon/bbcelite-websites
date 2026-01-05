@@ -1,0 +1,180 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("landscape", "subroutine_gettiledata.html", "The GetTileData subroutine", "Landscape: GetTileData", "Annotated code for the GetTileData subroutine in The Sentinel", "the_sentinel-code", "source_landscape", "subroutine_gettiledata", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/smoothtiledata.html">SmoothTileData</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/smoothtilecorners_part_1_of_4.html">SmoothTileCorners (Part 1 of 4)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetTileData</span>                                             <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Get the tile data and tile data address for a specific tile</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_e.html#header-gettiledata">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/deleteobject.html">DeleteObject</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/findobjecttodrain.html">FindObjectToDrain</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/followgazevector_part_2_of_5.html">FollowGazeVector (Part 2 of 5)</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/gethighesttiles.html">GetHighestTiles</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/gettilealtitude.html">GetTileAltitude</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/gettileshape.html">GetTileShape</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/placeobjectbelow.html">PlaceObjectBelow</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/placeobjectontile.html">PlaceObjectOnTile</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys (Part 1 of 2)</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/processtiledata.html">ProcessTileData</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/smoothtilecorners_part_1_of_4.html">SmoothTileCorners (Part 1 of 4)</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/smoothtilecorners_part_4_of_4.html">SmoothTileCorners (Part 4 of 4)</a> calls <a href="#gettiledata">GetTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/spawncharacter3d_part_2_of_2.html">SpawnCharacter3D (Part 2 of 2)</a> calls <a href="#gettiledata">GetTileData</a></span>
+</div>
+<hr class="light">
+ The tile data table at tileData is made up of sequences of 32 columns of tile
+ corners going into the screen, where each column goes from z = 0 to 31 along
+ the same x-coordinate, with the columns interleaved in steps of 4 like this:
+
+   &0400-&041F = 32-corner column going into the screen at x =  0
+   &0420-&043F = 32-corner column going into the screen at x =  4
+   &0440-&045F = 32-corner column going into the screen at x =  8
+   &0460-&047F = 32-corner column going into the screen at x = 12
+   &0480-&049F = 32-corner column going into the screen at x = 16
+   &04A0-&04BF = 32-corner column going into the screen at x = 20
+   &04C0-&04DF = 32-corner column going into the screen at x = 24
+   &04E0-&04FF = 32-corner column going into the screen at x = 28
+
+   &0500-&051F = 32-corner column going into the screen at x =  1
+   &0520-&053F = 32-corner column going into the screen at x =  5
+   &0540-&055F = 32-corner column going into the screen at x =  9
+   &0560-&057F = 32-corner column going into the screen at x = 13
+   &0580-&059F = 32-corner column going into the screen at x = 17
+   &05A0-&05BF = 32-corner column going into the screen at x = 21
+   &05C0-&05DF = 32-corner column going into the screen at x = 25
+   &05E0-&05FF = 32-corner column going into the screen at x = 29
+
+   &0600-&061F = 32-corner column going into the screen at x =  2
+   &0620-&063F = 32-corner column going into the screen at x =  6
+   &0640-&065F = 32-corner column going into the screen at x = 10
+   &0660-&067F = 32-corner column going into the screen at x = 14
+   &0680-&069F = 32-corner column going into the screen at x = 18
+   &06A0-&06BF = 32-corner column going into the screen at x = 22
+   &06C0-&06DF = 32-corner column going into the screen at x = 26
+   &06E0-&06FF = 32-corner column going into the screen at x = 30
+
+   &0700-&071F = 32-corner column going into the screen at x =  3
+   &0720-&073F = 32-corner column going into the screen at x =  7
+   &0740-&075F = 32-corner column going into the screen at x = 11
+   &0760-&077F = 32-corner column going into the screen at x = 15
+   &0780-&079F = 32-corner column going into the screen at x = 19
+   &07A0-&07BF = 32-corner column going into the screen at x = 23
+   &07C0-&07DF = 32-corner column going into the screen at x = 27
+   &07E0-&07FF = 32-corner column going into the screen at x = 31
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">xTile</span>                <span class="argumentEntry">A tile corner x-coordinate (0 to 31)</span>
+
+   <span class="argumentLabel">zTile</span>                <span class="argumentEntry">A tile corner z-coordinate (0 to 31)</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">The tile data for the tile anchored at (xTile, zTile):</span>
+
+                        <span class="argumentEntry">  * If the tile does not contain an object, then:</span>
+
+                        <span class="argumentEntry">    * The tile shape is in the low nibble (0 to 15)</span>
+
+                        <span class="argumentEntry">    * The tile altitude is in the high nibble (1 to 11)</span>
+
+                        <span class="argumentEntry">  * If the tile contains an object, then:</span>
+
+                        <span class="argumentEntry">    * Bits 0 to 5 contain the object number of the</span>
+                        <span class="argumentEntry">      object on the tile (0 to 63)</span>
+
+                        <span class="argumentEntry">    * Bits 6 and 7 are both set</span>
+
+   <span class="argumentLabel">tileDataPage(1 0)</span>    <span class="argumentEntry">The address of the page containing the tile data</span>
+
+   <span class="argumentLabel">Y</span>                    <span class="argumentEntry">The offset from tileDataPage(1 0) of the tile data</span>
+
+   <span class="argumentLabel">C flag</span>               <span class="argumentEntry">Determines whether the tile contains an object:</span>
+
+                        <span class="argumentEntry">  * Set if this tile contains an object</span>
+
+                        <span class="argumentEntry">  * Clear if this tile does not contain an object</span>
+
+</div></div>
+<span class="label">.GetTileData</span><a id="gettiledata" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">xTile</a>              <span class="comment">\ Set Y = (xTile &lt;&lt; 3 and %11100000) + zTile</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\       = (xTile >> 2 and %00000111) &lt;&lt; 5 + zTile</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\       = (xTile div 4) * &20 + zTile</span>
+ <span class="mne">ASL</span> <span class="register">A</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%11100000</span>
+ <span class="mne">ORA</span> <a class="popup variable">zTile</a>
+ <span class="mne">TAY</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xTile</a>              <span class="comment">\ Set A = bits 0-1 of xTile</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00000011</span>         <span class="comment">\       = xTile mod 4</span>
+
+                        <span class="comment">\ The low byte of tileDataPage(1 0) gets set to zero in</span>
+                        <span class="comment">\ ResetVariables and is never changed</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The low byte of tileData is also zero, as we know that</span>
+                        <span class="comment">\ tileData is &0400</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So in the following, we are just adding the high bytes</span>
+                        <span class="comment">\ to get a result that is on a page boundary</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set the following:</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="operator">HI</span><span class="bracket">(</span><a class="popup variable">tileData</a><span class="bracket">)</span>      <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">tileDataPage</a><span class="operator">+</span><span class="decimal">1</span>     <span class="comment">\   tileDataPage(1 0) = tileData + (A 0)</span>
+                        <span class="comment">\                     = tileData + (xTile mod 4) * &100</span>
+
+                        <span class="comment">\ So we now have the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   tileDataPage(1 0) = tileData + (xTile mod 4) * &100</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   Y = (xTile div 4) * &20 + zTile</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The address in tileDataPage(1 0) is the page within</span>
+                        <span class="comment">\ tileData for the tile anchored at (xTile, zTile), and</span>
+                        <span class="comment">\ is always one of &0400, &0500, &0600 or &0700 because</span>
+                        <span class="comment">\ (xTile mod 4) is one of 0, 1, 2 or 3</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The value of Y is the offset within that page of the</span>
+                        <span class="comment">\ tile data for the tile anchored at (xTile, zTile)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We can therefore fetch the tile data for the specified</span>
+                        <span class="comment">\ tile using Y as an index offset from tileDataPage(1 0)</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><a class="popup variable">tileDataPage</a><span class="bracket">)</span>,<span class="register">Y</span>   <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile)</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="binary">%11000000</span>         <span class="comment">\ Set the C flag if A >= %11000000, which will be the</span>
+                        <span class="comment">\ case if both bit 6 and bit 7 of A are set</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tiledata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/tiledata.html">tileData</a> (category: Landscape)</div><div class="summary">Altitude and shape data for landscape tiles</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tiledatapage"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#tiledatapage">tileDataPage</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The address of the tileData page containing the current tile's data</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xtile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xtile">xTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner x-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ztile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ztile">zTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner z-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/smoothtiledata.html">SmoothTileData</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/smoothtilecorners_part_1_of_4.html">SmoothTileCorners (Part 1 of 4)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,158 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("maths_geometry", "subroutine_getsightsvector.html", "The GetSightsVector subroutine", "Maths (Geometry): GetSightsVector", "Annotated code for the GetSightsVector subroutine in The Sentinel", "the_sentinel-code", "source_maths_geometry", "subroutine_getsightsvector", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/processactionkeys_part_2_of_2.html">ProcessActionKeys (Part 2 of 2)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/getvectorforangles.html">GetVectorForAngles</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetSightsVector</span>                                         <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Maths (Geometry)</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Calculate the angles of the vector from the player's eyes to the</span>
+             <span class="headerEntry">sights</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_c.html#header-getsightsvector">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys (Part 1 of 2)</a> calls <a href="#getsightsvector">GetSightsVector</a></span>
+</div>
+<hr class="light">
+ The vector from the player's eyes to the sights is calculated as follows:
+
+   vectorYawAngle = (xSights * 32) + (objectYawAngle,X 0) - (10 0)
+
+   vectorPitchAngle = (ySights - 5) * 16 + (objectPitchAngle,X 0) + (3 32)
+
+ The (10 0) element in the yaw angle calculation represents half a screen
+ width, as the screen is 20 yaw angles wide, so subtracting (10 0) from the
+ object's yaw angle makes it to the left edge of the screen, and then we add
+ the x-coordinate of the sights on-screen to get the vector's yaw angle.
+
+ The -5 in the pitch angle calculation caters for the distance between the top
+ of the sights and the centre of the sights, and the (3 32) element represents
+ ???.
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">X</span>                    <span class="argumentEntry">This is always set to the object number of the player</span>
+                        <span class="argumentEntry">(it is set in ProcessActionKeys before it calls this</span>
+                        <span class="argumentEntry">routine)</span>
+
+</div></div>
+<span class="label">.GetSightsVector</span><a id="getsightsvector" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">xSights</a>            <span class="comment">\ Set (U A) = xSights</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>
+
+ <span class="mne">LSR</span> <a class="popup variable">U</a>                  <span class="comment">\ Set (U A) = (U A) / 8</span>
+ <span class="mne">ROR</span> <span class="register">A</span>                  <span class="comment">\           = xSights / 8</span>
+ <span class="mne">LSR</span> <a class="popup variable">U</a>
+ <span class="mne">ROR</span> <span class="register">A</span>
+ <span class="mne">LSR</span> <a class="popup variable">U</a>
+ <span class="mne">ROR</span> <span class="register">A</span>
+                        <span class="comment">\ We now calculate the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (U A) + (objectYawAngle,X 0) - (10 0)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and store it in vectorYawAngle(Hi Lo)</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Clear the C flag for the following</span>
+
+ <span class="mne">STA</span> <a class="popup variable">vectorYawAngleLo</a>   <span class="comment">\ Store the low byte of the calculation (which we know</span>
+                        <span class="comment">\ will be A) in vectorYawAngleLo</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ Calculate the high byte of the calculation as</span>
+ <span class="mne">ADC</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>   <span class="comment">\ follows:</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">10</span>                <span class="comment">\   U + objectYawAngle,X - 10</span>
+ <span class="mne">STA</span> <a class="popup variable">vectorYawAngleHi</a>   <span class="comment">\</span>
+                        <span class="comment">\ and store it in vectorYawAngleHi</span>
+
+                        <span class="comment">\ So vectorYawAngle(Hi Lo) is now equal to the</span>
+                        <span class="comment">\ following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (xSights / 8) + (objectYawAngle,X 0) - (10 0)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">ySights</a>            <span class="comment">\ Set (U A) = ySights - 5</span>
+ <span class="mne">SEC</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">5</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>
+
+ <span class="mne">LSR</span> <a class="popup variable">U</a>                  <span class="comment">\ Set (U A) = (U A) / 16</span>
+ <span class="mne">ROR</span> <span class="register">A</span>                  <span class="comment">\           = (ySights - 5) / 16</span>
+ <span class="mne">LSR</span> <a class="popup variable">U</a>
+ <span class="mne">ROR</span> <span class="register">A</span>
+ <span class="mne">LSR</span> <a class="popup variable">U</a>
+ <span class="mne">ROR</span> <span class="register">A</span>
+ <span class="mne">LSR</span> <a class="popup variable">U</a>
+ <span class="mne">ROR</span> <span class="register">A</span>
+
+                        <span class="comment">\ We now calculate the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (U A) + (objectPitchAngle,X 0) + (3 32)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and store it in both (A T) and in</span>
+                        <span class="comment">\ vectorPitchAngle(Hi Lo)</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Calculate the low byte and store it in both T and</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">32</span>                <span class="comment">\ vectorPitchAngleLo</span>
+ <span class="mne">STA</span> <a class="popup variable">vectorPitchAngleLo</a>
+ <span class="mne">STA</span> <a class="popup variable">T</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ Calculate the high byte, keep it in A and store it in</span>
+ <span class="mne">ADC</span> <a class="popup variable">objectPitchAngle</a>,<span class="register">X</span> <span class="comment">\ vectorPitchAngleHi</span>
+ <span class="mne">CLC</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">3</span>
+ <span class="mne">STA</span> <a class="popup variable">vectorPitchAngleHi</a>
+
+                        <span class="comment">\ So by this point we have the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   vectorYawAngle(Hi Lo)</span>
+                        <span class="comment">\   = (xSights / 8) + (objectYawAngle,X 0) - (10 0)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   vectorPitchAngle(Hi Lo)</span>
+                        <span class="comment">\   = (ySights-5) / 16 + (objectPitchAngle,X 0) + (3 32)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now fall through into GetVectorForAngles to convert</span>
+                        <span class="comment">\ these two angles into a cartesian vector:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   [ xVector(Lo Bot) ]</span>
+                        <span class="comment">\   [ yVector(Lo Bot) ]</span>
+                        <span class="comment">\   [ zVector(Lo Bot) ]</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectpitchangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#objectpitchangle">objectPitchAngle</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">The pitch angle for each object (i.e. the vertical direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectyawangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objectyawangle.html">objectYawAngle</a> (category: 3D objects)</div><div class="summary">The yaw angle for each object (i.e. the horizontal direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-vectorpitchanglehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#vectorpitchanglehi">vectorPitchAngleHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The pitch angle of a vector (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-vectorpitchanglelo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#vectorpitchanglelo">vectorPitchAngleLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The pitch angle of a vector (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-vectoryawanglehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#vectoryawanglehi">vectorYawAngleHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The yaw angle of a vector (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-vectoryawanglelo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#vectoryawanglelo">vectorYawAngleLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The yaw angle of a vector (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xsights"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#xsights">xSights</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The pixel x-coordinate of the sights on-screen</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ysights"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#ysights">ySights</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The pixel y-coordinate of the sights on-screen</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/processactionkeys_part_2_of_2.html">ProcessActionKeys (Part 2 of 2)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/getvectorforangles.html">GetVectorForAngles</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,172 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("screen_buffer", "subroutine_screenbufferrow0.html", "The screenBufferRow0 subroutine", "Screen buffer: screenBufferRow0", "Annotated code for the screenBufferRow0 subroutine in The Sentinel", "the_sentinel-code", "source_screen_buffer", "subroutine_screenbufferrow0", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/secretcodestash.html">secretCodeStash</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/screenbufferrow16.html">screenBufferRow16</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">screenBufferRow0</span>                                        <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Screen buffer</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">The screen buffer for character row 0</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_h.html#header-screenbufferrow0">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/variable/bufferrowaddrhi.html">bufferRowAddrHi</a> calls <a href="#screenbufferrow0">screenBufferRow0</a></span>
+             <span class="headerEntry">* <a href="/source/main/variable/bufferrowaddrlo.html">bufferRowAddrLo</a> calls <a href="#screenbufferrow0">screenBufferRow0</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a> calls <a href="#screenbufferrow0">screenBufferRow0</a></span>
+             <span class="headerEntry">* <a href="/source/main/variable/screenbufferhi.html">screenBufferHi</a> calls <a href="#screenbufferrow0">screenBufferRow0</a></span>
+             <span class="headerEntry">* <a href="/source/main/variable/screenbufferlo.html">screenBufferLo</a> calls <a href="#screenbufferrow0">screenBufferRow0</a></span>
+</div>
+<hr class="light">
+ The screen buffer is split up into 24 parts, one for each of the character
+ rows in the player's scrolling landscape view. The lookup tables contain an
+ additional address for a 25th character row, but this clashes with the object
+ data and is unused.
+
+ The buffer rows wrap around in memory after the 16th row, so they can fit into
+ the program space without overlapping with screen memory or game code. The
+ addresses are as follows:
+
+   &3F00 (screenBufferRow0)
+   &4040 (screenBufferRow1)
+   &4180 (screenBufferRow2)
+   &42C0 (screenBufferRow3)
+   &4400 (screenBufferRow4)
+   &4540 (screenBufferRow5)
+   &4680 (screenBufferRow6)
+   &47C0 (screenBufferRow7)
+   &4900 (screenBufferRow8)
+   &4A40 (screenBufferRow9)
+   &4B80 (screenBufferRow10)
+   &4CC0 (screenBufferRow11)
+   &4E00 (screenBufferRow12)
+   &4F40 (screenBufferRow13)
+   &5080 (screenBufferRow14)
+   &51C0 (screenBufferRow15)
+
+ and then they wrap around to the following locations for rows 16 to 24:
+
+   &3FA0 (screenBufferRow16)
+   &40E0 (screenBufferRow17)
+   &4220 (screenBufferRow18)
+   &4360 (screenBufferRow19)
+   &44A0 (screenBufferRow20)
+   &45E0 (screenBufferRow21)
+   &4720 (screenBufferRow22)
+   &4860 (screenBufferRow23)
+
+ The first batch of locations need to be able to store an entire screen row of
+ 320 bytes, so they can be used to store the screen buffer when scrolling in
+ any direction (and specifically for the up and down scrolling, when we need to
+ be able to store eight full character rows in the buffer).
+
+ We only need to use the second batch of locations when we are drawing the left
+ or right buffers when scrolling sideways, or when updating an object on-screen
+ via the screen buffer, as we then need to fit all 24 character rows into the
+ buffer. We can fit the first 16 rows into the first batch of buffer rows, but
+ we need more.
+
+ Luckily, when scrolling sideways, each row is only eight character blocks
+ wide, so each buffer row only needs to be 64 bytes long rather than the 320
+ bytes needed when scrolling up or down. This means that we are only using the
+ first 64 bytes of each buffer, so we can stick a second batch of buffers in
+ the latter part of each of the first batch.
+
+ However, when using the screen buffer to update an on-screen object, we can't
+ necessarily fit the entire object into the screen buffer in one go, as it
+ could be as wide as the screen. In this case we use the full 160 bytes of each
+ row in the screen buffer, which can contain half a screen (as half a screen is
+ 20 character rows that takes up 160 bytes). We therefore do the object update
+ in two stages.
+
+ In other words, when the player pans up or down, we need to draw eight
+ full-width character rows of new screen content into the screen buffers, each
+ of which is 320 bytes. So we use the screen buffer space as follows:
+
+   &3F00 to &403F for character row 0 (all 320 bytes of screenBufferRow0)
+   &4040 to &417F for character row 1 (all 320 bytes of screenBufferRow1)
+   &4180 to &42BF for character row 2 (all 320 bytes of screenBufferRow2)
+   &42C0 to &43FF for character row 3 (all 320 bytes of screenBufferRow3)
+   &4400 to &453F for character row 4 (all 320 bytes of screenBufferRow4)
+   &4540 to &467F for character row 5 (all 320 bytes of screenBufferRow5)
+   &4680 to &47BF for character row 6 (all 320 bytes of screenBufferRow6)
+   &47C0 to &48FF for character row 7 (all 320 bytes of screenBufferRow7)
+
+ And when the player pans left or right, the new screen content that we need to
+ draw into the screen buffers is a strip down the side of the screen that's 24
+ character rows tall and eight character columns wide, so each row is 64 bytes
+ long. So we use the screen buffer space as follows:
+
+   &3F00 to &3F3F for character row 0  (first 64 bytes of screenBufferRow0)
+   &4040 to &407F for character row 1  (first 64 bytes of screenBufferRow1)
+   &4180 to &41BF for character row 2  (first 64 bytes of screenBufferRow2)
+   &42C0 to &42FF for character row 3  (first 64 bytes of screenBufferRow3)
+   &4400 to &443F for character row 4  (first 64 bytes of screenBufferRow4)
+   &4540 to &457F for character row 5  (first 64 bytes of screenBufferRow5)
+   &4680 to &46BF for character row 6  (first 64 bytes of screenBufferRow6)
+   &47C0 to &47FF for character row 7  (first 64 bytes of screenBufferRow7)
+   &4900 to &493F for character row 8  (first 64 bytes of screenBufferRow8)
+   &4A40 to &4A7F for character row 9  (first 64 bytes of screenBufferRow9)
+   &4B80 to &4BBF for character row 10 (first 64 bytes of screenBufferRow10)
+   &4CC0 to &4CFF for character row 11 (first 64 bytes of screenBufferRow11)
+   &4E00 to &4E3F for character row 12 (first 64 bytes of screenBufferRow12)
+   &4F40 to &4F7F for character row 13 (first 64 bytes of screenBufferRow13)
+   &5080 to &50BF for character row 14 (first 64 bytes of screenBufferRow14)
+   &51C0 to &51FF for character row 15 (first 64 bytes of screenBufferRow15)
+   &3FA0 to &3FDF for character row 16 (first 64 bytes of screenBufferRow16)
+   &40E0 to &411F for character row 17 (first 64 bytes of screenBufferRow17)
+   &4220 to &425F for character row 18 (first 64 bytes of screenBufferRow18)
+   &4360 to &439F for character row 19 (first 64 bytes of screenBufferRow19)
+   &44A0 to &43DF for character row 20 (first 64 bytes of screenBufferRow20)
+   &45E0 to &461F for character row 21 (first 64 bytes of screenBufferRow21)
+   &4720 to &475F for character row 22 (first 64 bytes of screenBufferRow22)
+   &4860 to &489F for character row 23 (first 64 bytes of screenBufferRow23)
+
+ And when we update an object on-screen that is wider than half a screen, we
+ use 160 bytes in all 24 row buffers to draw the first 20 character columns of
+ the object, and then we repeat the process to finish off drawing the remainder
+ of the object.
+
+ This structure ensures that the screen buffer always fits into the collection
+ of screenBufferRow blocks, irrespective of the scrolling direction or the size
+ of the object we're drawing.
+
+</div></div>
+<span class="label">.screenBufferRow0</span><a id="screenbufferrow0" class="anchor"></a>
+
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+ <span class="mne">EQUB</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span><span class="comma">,</span> <span class="hex">&00</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/secretcodestash.html">secretCodeStash</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/screenbufferrow16.html">screenBufferRow16</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

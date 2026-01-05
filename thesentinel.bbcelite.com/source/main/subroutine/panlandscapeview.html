@@ -1,0 +1,318 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("drawing_the_landscape", "subroutine_panlandscapeview.html", "The PanLandscapeView subroutine", "Drawing the landscape: PanLandscapeView", "Annotated code for the PanLandscapeView subroutine in The Sentinel", "the_sentinel-code", "source_drawing_the_landscape", "subroutine_panlandscapeview", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/clearscreen.html">ClearScreen</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/highestpitchangle.html">highestPitchAngle</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">PanLandscapeView</span>                                        <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing the landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Pan the landscape and update the landscape view</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_b.html#header-panlandscapeview">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/maingameloop.html">MainGameLoop</a> calls <a href="#panlandscapeview">PanLandscapeView</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">viewingObject</span>        <span class="argumentEntry">The number of the object that is viewing the landscape</span>
+                        <span class="argumentEntry">(this is always the player object for this routine)</span>
+
+</div></div>
+<span class="label">.PanLandscapeView</span><a id="panlandscapeview" class="anchor"></a>
+
+ <span class="mne">LDY</span> <a class="popup variable">lastPanKeyPressed</a>  <span class="comment">\ Set Y to the direction of the last pan key that was</span>
+                        <span class="comment">\ pressed (which may not still be held down)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this contains the direction of any scrolling that</span>
+                        <span class="comment">\ we need to apply to the landscape, as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 0 = pan right</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 1 = pan left</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 2 = pan up</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 3 = pan down</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We use this as an index into various tables, to look</span>
+                        <span class="comment">\ up the correct values for the direction in which we</span>
+                        <span class="comment">\ want to scroll</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">viewingObject</a>      <span class="comment">\ Set X to the object number of the viewer, which we set</span>
+                        <span class="comment">\ to the player object in MainGameLoop</span>
+
+ <span class="mne">CPY</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ If the panning direction in Y is up or down, jump to</span>
+ <span class="mne">BCS</span> <a class="popup destination">lpan3</a>              <span class="comment">\ lpan3 to pan vertically</span>
+
+                        <span class="comment">\ If we get here then Y is 0 or 1 and the panning</span>
+                        <span class="comment">\ direction is right or left</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>   <span class="comment">\ Rotate the player's gaze so that when we draw the</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ updated view, the new part of the landscape that we</span>
+ <span class="mne">ADC</span> <a class="popup variable">panAngleToUpdate</a>,<span class="register">Y</span> <span class="comment">\ need to scroll in from the side goes into the screen</span>
+ <span class="mne">STA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>   <span class="comment">\ buffer (as the screen buffer is mapped to the left</span>
+                        <span class="comment">\ portion of the view that we are drawing)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">25</span>                <span class="comment">\ Set A = 25 to pass to FillScreen, so we fill the</span>
+                        <span class="comment">\ screen buffer (as opposed to screen memory)</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">24</span>                <span class="comment">\ Set Y = 24 to pass to FillScreen, so we fill 24</span>
+                        <span class="comment">\ character rows of the screen buffer</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">16</span>                <span class="comment">\ Set X = 16 to pass to FillScreen, so we fill 16</span>
+                        <span class="comment">\ character columns in the screen buffer</span>
+
+ <span class="mne">STX</span> <a class="popup variable">bufferColumns</a>      <span class="comment">\ Set bufferColumns to 16 so we can refer to the buffer</span>
+                        <span class="comment">\ width during the drawing process</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">FillScreen</a>         <span class="comment">\ Call FillScreen to fill the screen buffer with the</span>
+                        <span class="comment">\ background specified in screenBackground</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ screenBackground variable is zeroed in DrawTitleView</span>
+                        <span class="comment">\ before the gameplay starts, so all calls to the</span>
+                        <span class="comment">\ FillScreen routine during gameplay fill the buffer</span>
+                        <span class="comment">\ with alternating colour 0/1 (blue/black) pixel rows,</span>
+                        <span class="comment">\ for the sky</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">UseColumnBuffer</a>    <span class="comment">\ Configure the column buffer for use so we draw the</span>
+                        <span class="comment">\ updated part of the landscape view into the correct</span>
+                        <span class="comment">\ buffer type for a left or right pan</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">DrawLandscapeView</a>  <span class="comment">\ Draw the landscape view into the screen buffer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If the player held down the panning key throughout the</span>
+                        <span class="comment">\ drawing process and the whole landscape was drawn,</span>
+                        <span class="comment">\ then the C flag will be clear, otherwise the C flag</span>
+                        <span class="comment">\ will be set</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">viewingObject</a>      <span class="comment">\ Set X to the object number of the viewer, which we set</span>
+                        <span class="comment">\ to the player object in MainGameLoop</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">lastPanKeyPressed</a>  <span class="comment">\ Set Y to the direction of the last pan key that was</span>
+                        <span class="comment">\ pressed (which may not still be held down)</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">lpan2</a>              <span class="comment">\ If the call to DrawLandscapeView set the C flag then</span>
+                        <span class="comment">\ the landscape drawing process was aborted, so jump to</span>
+                        <span class="comment">\ lpan2 to revert the change to the player's yaw angle</span>
+                        <span class="comment">\ and return from the subroutine without updating the</span>
+                        <span class="comment">\ on-screen landscape view</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">lpan1</a>              <span class="comment">\ If Y &lt;> 0 then Y must be 1, in which case the pan</span>
+                        <span class="comment">\ angle we fetched from the panAngleToUpdate table</span>
+                        <span class="comment">\ doesn't need correcting, so jump to lpan1 to skip the</span>
+                        <span class="comment">\ following</span>
+
+                        <span class="comment">\ If we get here then Y = 0, so we added 20 to the</span>
+                        <span class="comment">\ player's yaw angle so it would draw the new part of</span>
+                        <span class="comment">\ the view into the screen buffer, so we now need to</span>
+                        <span class="comment">\ subtract 12 from the player's yaw angle so they end up</span>
+                        <span class="comment">\ looking in the correct direction, i.e. a net rotation</span>
+                        <span class="comment">\ of +8 rather than +20 yaw angles</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>   <span class="comment">\ Subtract 12 from the player's yaw angle</span>
+ <span class="mne">SEC</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">12</span>
+ <span class="mne">STA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>
+
+<span class="label">.lpan1</span><a id="lpan1" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">16</span>                <span class="comment">\ We now need to scroll the contents of the screen</span>
+ <span class="mne">JSR</span> <a class="popup destination">StartScrollingView</a> <span class="comment">\ buffer into the side of the on-screen landscape view,</span>
+                        <span class="comment">\ so call StartScrollingView to configure a background</span>
+                        <span class="comment">\ task to scroll 16 character columns from the screen</span>
+                        <span class="comment">\ buffer onto the screen, using the interrupt handler</span>
+                        <span class="comment">\ to do it in the background</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.lpan2</span><a id="lpan2" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the panning process was aborted</span>
+                        <span class="comment">\ before the landscape was drawn</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>   <span class="comment">\ Reverse the rotation that we applied to the player's</span>
+ <span class="mne">SEC</span>                    <span class="comment">\ yaw angle for the pan, so this puts it back to the</span>
+ <span class="mne">SBC</span> <a class="popup variable">panAngleToUpdate</a>,<span class="register">Y</span> <span class="comment">\ value it had before we started the panning process</span>
+ <span class="mne">STA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.lpan3</span><a id="lpan3" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then Y is 2 or 3 and the panning</span>
+                        <span class="comment">\ direction is up or down</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectPitchAngle</a>,<span class="register">X</span>     <span class="comment">\ If the player's pitch angle is equal to either</span>
+ <span class="mne">CMP</span> <a class="popup variable">highestPitchAngle</a><span class="operator">-</span><span class="decimal">2</span>,<span class="register">Y</span>  <span class="comment">\ highestPitchAngle (if we are panning up) or</span>
+ <span class="mne">BEQ</span> <a class="popup destination">lpan6</a>                  <span class="comment">\ lowestPitchAngle (if we are panning down) then the</span>
+                            <span class="comment">\ player is already pitched as far back or down as</span>
+                            <span class="comment">\ possible, so jump to lpan6 to return from the</span>
+                            <span class="comment">\ subroutine without panning the landscape view, as</span>
+                            <span class="comment">\ we can't pan any further</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Rotate the player's gaze so that when we draw the</span>
+ <span class="mne">ADC</span> <a class="popup variable">panAngleToUpdate</a>,<span class="register">Y</span> <span class="comment">\ updated view, the new part of the landscape that we</span>
+ <span class="mne">STA</span> <a class="popup variable">objectPitchAngle</a>,<span class="register">X</span> <span class="comment">\ need to scroll in from above or below goes into the</span>
+                        <span class="comment">\ screen buffer (as the screen buffer is mapped to the</span>
+                        <span class="comment">\ top portion of the view that we are drawing)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">25</span>                <span class="comment">\ Set A = 25 to pass to FillScreen, so we fill the</span>
+                        <span class="comment">\ screen buffer (as opposed to screen memory)</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span>                 <span class="comment">\ Set Y = 8 to pass to FillScreen, so we fill 8</span>
+                        <span class="comment">\ character rows of the screen buffer</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">40</span>                <span class="comment">\ Set X = 40 to pass to FillScreen, so we fill 40</span>
+                        <span class="comment">\ character columns in the screen buffer</span>
+
+ <span class="mne">STX</span> <a class="popup variable">bufferColumns</a>      <span class="comment">\ Set bufferColumns to 40 so we can refer to the buffer</span>
+                        <span class="comment">\ width during the drawing process</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">FillScreen</a>         <span class="comment">\ Call FillScreen to fill the screen buffer with the</span>
+                        <span class="comment">\ background specified in screenBackground</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ screenBackground variable is zeroed in DrawTitleView</span>
+                        <span class="comment">\ before the gameplay starts, so all calls to the</span>
+                        <span class="comment">\ FillScreen routine during gameplay fill the buffer</span>
+                        <span class="comment">\ with alternating colour 0/1 (blue/black) pixel rows,</span>
+                        <span class="comment">\ for the sky</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">UseRowBuffer</a>       <span class="comment">\ Configure the row buffer for use so we draw the</span>
+                        <span class="comment">\ updated part of the landscape view into the correct</span>
+                        <span class="comment">\ buffer type for an up or down pan</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">DrawLandscapeView</a>  <span class="comment">\ Draw the landscape view into the screen buffer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If the player held down the panning key throughout the</span>
+                        <span class="comment">\ drawing process and the whole landscape was drawn,</span>
+                        <span class="comment">\ then the C flag will be clear, otherwise the C flag</span>
+                        <span class="comment">\ will be set</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">playerObject</a>       <span class="comment">\ Set X to the object number of the player</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This should really be an LDX viewingObject instruction</span>
+                        <span class="comment">\ to be consistent with the rest of the routine, but it</span>
+                        <span class="comment">\ doesn't make any difference as they are the same at</span>
+                        <span class="comment">\ this point</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Perhaps at some point this routine allowed panning of</span>
+                        <span class="comment">\ the view from viewing objects other than the player,</span>
+                        <span class="comment">\ which would have been interesting...</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">lastPanKeyPressed</a>  <span class="comment">\ Set Y to the direction of the last pan key that was</span>
+                        <span class="comment">\ pressed (which may not still be held down)</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">lpan7</a>              <span class="comment">\ If the call to DrawLandscapeView set the C flag then</span>
+                        <span class="comment">\ the landscape drawing process was aborted, so jump to</span>
+                        <span class="comment">\ lpan7 to revert the change to the player's pitch angle</span>
+                        <span class="comment">\ and return from the subroutine without updating the</span>
+                        <span class="comment">\ on-screen landscape view</span>
+
+ <span class="mne">CPY</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ If Y &lt;> 3 then Y must be 2, in which case the pan</span>
+ <span class="mne">BNE</span> <a class="popup destination">lpan4</a>              <span class="comment">\ angle we fetched from the panAngleToUpdate table</span>
+                        <span class="comment">\ doesn't need correcting, so jump to lpan4 to skip the</span>
+                        <span class="comment">\ following</span>
+
+                        <span class="comment">\ If we get here then Y = 3, so we subtracted 12 from</span>
+                        <span class="comment">\ the player's pitch angle so it would draw the new part</span>
+                        <span class="comment">\ of the view into the screen buffer, so we now need to</span>
+                        <span class="comment">\ add 8 to the player's pitch angle so they end up</span>
+                        <span class="comment">\ looking in the correct direction, i.e. a net rotation</span>
+                        <span class="comment">\ of -4 rather than -12 pitch angles</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectPitchAngle</a>,<span class="register">X</span> <span class="comment">\ Add 8 to the player's pitch angle</span>
+ <span class="mne">CLC</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">8</span>
+ <span class="mne">STA</span> <a class="popup variable">objectPitchAngle</a>,<span class="register">X</span>
+
+<span class="label">.lpan4</span><a id="lpan4" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">8</span>                 <span class="comment">\ We now need to scroll the contents of the screen</span>
+ <span class="mne">JSR</span> <a class="popup destination">StartScrollingView</a> <span class="comment">\ buffer into the top or bottom of the on-screen</span>
+                        <span class="comment">\ landscape view, so call StartScrollingView to</span>
+                        <span class="comment">\ configure a background task to scroll 8 character rows</span>
+                        <span class="comment">\ from the screen buffer onto the screen, using the</span>
+                        <span class="comment">\ interrupt handler to do it in the background</span>
+
+<span class="label">.lpan5</span><a id="lpan5" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">SetColumnBufferMax</a> <span class="comment">\ Call SetColumnBufferMax to set the maximum and minimum</span>
+                        <span class="comment">\ pitch angles for the column buffer</span>
+
+<span class="label">.lpan6</span><a id="lpan6" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.lpan7</span><a id="lpan7" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the panning process was aborted</span>
+                        <span class="comment">\ before the landscape was drawn</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectPitchAngle</a>,<span class="register">X</span> <span class="comment">\ Reverse the rotation that we applied to the player's</span>
+ <span class="mne">SEC</span>                    <span class="comment">\ pitch angle for the pan, so this puts it back to the</span>
+ <span class="mne">SBC</span> <a class="popup variable">panAngleToUpdate</a>,<span class="register">Y</span> <span class="comment">\ value it had before we started the panning process</span>
+ <span class="mne">STA</span> <a class="popup variable">objectPitchAngle</a>,<span class="register">X</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">lpan5</a>              <span class="comment">\ Jump to SetColumnBufferMax via lpan5 to set the</span>
+                        <span class="comment">\ maximum and minimum pitch angles for the column buffer</span>
+                        <span class="comment">\ and return from the subroutine via a tail call</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawlandscapeview"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView (Part 1 of 3)</a> (category: Drawing the landscape)</div><div class="summary">Set up a number of variables for drawing the landscape view</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-fillscreen"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/fillscreen.html">FillScreen</a> (category: Graphics)</div><div class="summary">Fill a rectangular in screen memory or the screen buffer with the specified background</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-setcolumnbuffermax"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/setcolumnbuffermax.html">SetColumnBufferMax</a> (category: Screen buffer)</div><div class="summary">Set the maximum and minimum pitch angles for the column buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-startscrollingview"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/startscrollingview.html">StartScrollingView</a> (category: Screen buffer)</div><div class="summary">Start a scroll process in the background by setting the number of scroll steps and the address to start copying new content from</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-usecolumnbuffer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/usecolumnbuffer.html">UseColumnBuffer</a> (category: Screen buffer)</div><div class="summary">Configure the column buffer for use</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-userowbuffer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/userowbuffer.html">UseRowBuffer</a> (category: Screen buffer)</div><div class="summary">Configure the row buffer for use</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-buffercolumns"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#buffercolumns">bufferColumns</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The number of character columns in the current screen buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-highestpitchangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/highestpitchangle.html">highestPitchAngle</a> (category: Sights)</div><div class="summary">The pitch angle of the highest point that the player can look at with the sights</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lastpankeypressed"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#lastpankeypressed">lastPanKeyPressed</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The direction of the last pan key that was pressed (which may not still be held down)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lpan1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/panlandscapeview.html#lpan1">lpan1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lpan2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/panlandscapeview.html#lpan2">lpan2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lpan3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/panlandscapeview.html#lpan3">lpan3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lpan4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/panlandscapeview.html#lpan4">lpan4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lpan5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/panlandscapeview.html#lpan5">lpan5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lpan6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/panlandscapeview.html#lpan6">lpan6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lpan7"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/panlandscapeview.html#lpan7">lpan7</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectpitchangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#objectpitchangle">objectPitchAngle</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">The pitch angle for each object (i.e. the vertical direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectyawangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objectyawangle.html">objectYawAngle</a> (category: 3D objects)</div><div class="summary">The yaw angle for each object (i.e. the horizontal direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-panangletoupdate"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/panangletoupdate.html">panAngleToUpdate</a> (category: Drawing the landscape)</div><div class="summary">Pitch and yaw angles for panning the landscape view, so the output of DrawLandscapeView will be the bit we add when updating the view</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playerobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#playerobject">playerObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the player object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewingobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#viewingobject">viewingObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the viewing object</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/clearscreen.html">ClearScreen</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/highestpitchangle.html">highestPitchAngle</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

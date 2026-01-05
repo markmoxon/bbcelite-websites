@@ -1,0 +1,296 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("maths_geometry", "subroutine_followgazevector_part_5_of_5.html", "The FollowGazeVector (Part 5 of 5) subroutine", "Maths (Geometry): FollowGazeVector (Part 5 of 5)", "Annotated code for the FollowGazeVector (Part 5 of 5) subroutine in The Sentinel", "the_sentinel-code", "source_maths_geometry", "subroutine_followgazevector_part_5_of_5", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/followgazevector_part_4_of_5.html">FollowGazeVector (Part 4 of 5)</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/tileedges.html">tileEdges</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">FollowGazeVector (Part 5 of 5)</span>                          <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Maths (Geometry)</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">For non-flat tiles with two horizontal edges, work out whether the</span>
+             <span class="headerEntry">tile edge obstructs the gaze vector</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_c.html#header-followgazevector-part-5-of-5">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">No direct references to this subroutine in this source file</span>
+</div>
+</div></div>
+<span class="label">.gaze13</span><a id="gaze13" class="anchor"></a>
+
+                        <span class="comment">\ We jump here with A set to the number of the tile edge</span>
+                        <span class="comment">\ that we can test against the gaze vector (where the</span>
+                        <span class="comment">\ edge goes from corner A to corner A + 1)</span>
+
+ <span class="mne">TAX</span>                    <span class="comment">\ Copy A into X so we can use it as an index into the</span>
+                        <span class="comment">\ corner height variables we set up above</span>
+
+                        <span class="comment">\ By this point the value of X (and, currently, of A)</span>
+                        <span class="comment">\ is in the range 0 to 3, and it represents the first</span>
+                        <span class="comment">\ corner of the edge within the tile we are analysing</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Here are the tile's corner heights that we set in the</span>
+                        <span class="comment">\ S, T, U and V variables above:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\      ^           [T]  [U]</span>
+                        <span class="comment">\      |</span>
+                        <span class="comment">\      |           [S]  [V]</span>
+                        <span class="comment">\   z-axis</span>
+                        <span class="comment">\    into</span>
+                        <span class="comment diff">\   screen      x-axis from left to right ---></span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The variables S, T, U and V are consecutive in memory,</span>
+                        <span class="comment">\ so LDA S,X can be used to select corner altitudes for</span>
+                        <span class="comment">\ values of X, like this:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\      [T]  [U]          [1]  [2]</span>
+                        <span class="comment">\                   =</span>
+                        <span class="comment">\      [S]  [V]          [0]  [3]</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Similarly, LDA T,X will select the altitude for tile</span>
+                        <span class="comment">\ corner X + 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Note that back in part 2, we set W to the same value</span>
+                        <span class="comment">\ as S, so this approach will still work if X = 3, as</span>
+                        <span class="comment">\ LDA T,X will fetch the value of W, which is the tile</span>
+                        <span class="comment">\ altitude of corner 0, just like S</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So X (and A) represent the starting corner, and we now</span>
+                        <span class="comment">\ calculate the coordinates and gradient of the tile</span>
+                        <span class="comment">\ edge from corner X to corner X + 1, so we can work out</span>
+                        <span class="comment">\ whether the gaze passes above or below the edge</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We start by calculating the distance along the tile</span>
+                        <span class="comment">\ edge that corresponds to the current position of the</span>
+                        <span class="comment">\ gaze vector</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ To see how this works, consider the axes of the tile</span>
+                        <span class="comment">\ corners:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\      ^           [1]  [2]</span>
+                        <span class="comment">\      |</span>
+                        <span class="comment">\      |           [0]  [3]</span>
+                        <span class="comment">\   z-axis</span>
+                        <span class="comment">\    into</span>
+                        <span class="comment diff">\   screen      x-axis from left to right ---></span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The low bytes of the current gaze vector in xCoordLo</span>
+                        <span class="comment">\ and zCoordLo give us the fractional part of the</span>
+                        <span class="comment">\ coordinate of the current position along the gaze, and</span>
+                        <span class="comment">\ the fractional part gives us the position of the</span>
+                        <span class="comment">\ coordinate within the tile (as the tile corners are on</span>
+                        <span class="comment">\ the integer coordinates)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Zooming in on the tile, we have the following, where</span>
+                        <span class="comment">\ [x] is the current position along the gaze vector when</span>
+                        <span class="comment">\ looking at the tile from above:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   [1]                 [2]</span>
+                        <span class="comment">\     xCoordLo</span>
+                        <span class="comment diff">\   <----------> [x]</span>
+                        <span class="comment">\                 ^</span>
+                        <span class="comment">\                 |</span>
+                        <span class="comment">\                 |  zCoordLo</span>
+                        <span class="comment">\                 |</span>
+                        <span class="comment">\   [0]           v     [3]</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now set edgeGazeDistance to the corner-relative</span>
+                        <span class="comment">\ coordinate of the gaze vector along the edge that we</span>
+                        <span class="comment">\ are considering (so if we are examining the edge from</span>
+                        <span class="comment">\ corner X to corner X + 1, we're looking for the</span>
+                        <span class="comment">\ distance between corner X and the [x] of the gaze</span>
+                        <span class="comment">\ vector)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ For example, if we are considering the left edge from</span>
+                        <span class="comment">\ 0 to 1, the distance of the [x] relative to corner 0</span>
+                        <span class="comment">\ and along the edge is zCoordLo, while on the top edge</span>
+                        <span class="comment">\ from 1 to 2, the distance of the [x] relative to</span>
+                        <span class="comment">\ corner 1 and along the edge is xCoordLo</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The other two edges are similar but the distances are</span>
+                        <span class="comment">\ in the opposite direction to the axes</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So if we are considering the bottom edge from 3 to 0,</span>
+                        <span class="comment">\ the distance is ~xCoordLo, because:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   xCoordLo + ~xCoordLo = 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So adding xCoordLo and ~xCoordLo together gives us the</span>
+                        <span class="comment">\ distance between the tile corners (which is 1), so it</span>
+                        <span class="comment">\ follows that ~xCoordLo is the distance from corner 3</span>
+                        <span class="comment">\ to the gaze point, as xCoordLo is the distance from</span>
+                        <span class="comment">\ corner 0 to the gaze point</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now set edgeGazeDistance to the correct value</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ Set Y as follows:</span>
+ <span class="mne">LDY</span> <a class="popup variable">xCoordLo</a>           <span class="comment">\</span>
+ <span class="mne">BCS</span> <a class="popup destination">gaze14</a>             <span class="comment">\   * xCoordLo if A = 1 or 3 (i.e. bit 0 of A is 1)</span>
+ <span class="mne">LDY</span> <a class="popup variable">zCoordLo</a>           <span class="comment">\</span>
+                        <span class="comment">\   * zCoordLo if A = 0 or 2 (i.e. bit 0 of A is 1)</span>
+
+<span class="label">.gaze14</span><a id="gaze14" class="anchor"></a>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ Set A as follows:</span>
+ <span class="mne">TYA</span>                    <span class="comment">\</span>
+ <span class="mne">BCC</span> <a class="popup destination">gaze15</a>             <span class="comment">\   * A = Y if A = 0 or 1 (i.e. bit 1 of A is 0)</span>
+ <span class="mne">EOR</span> <span class="hash">#</span><span class="binary">%11111111</span>         <span class="comment">\</span>
+                        <span class="comment">\   * A = ~Y if A = 2 or 3 (i.e. bit 1 of A is 1)</span>
+
+<span class="label">.gaze15</span><a id="gaze15" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">edgeGazeDistance</a>   <span class="comment">\ Set edgeGazeDistance to the result in A, so we set it</span>
+                        <span class="comment">\ as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * edgeGazeDistance = zCoordLo if A = 0</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * edgeGazeDistance = xCoordLo if A = 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * edgeGazeDistance = ~zCoordLo if A = 2</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * edgeGazeDistance = ~xCoordLo if A = 3</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We use edgeGazeDistance below to calculate where the</span>
+                        <span class="comment">\ gaze vector crosses the edge</span>
+
+                        <span class="comment">\ We now calculate the gradient of the tile edge</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">S</a>,<span class="register">X</span>                <span class="comment">\ Set G to the altitude of corner X, which we use in the</span>
+ <span class="mne">STA</span> <a class="popup variable">G</a>                  <span class="comment">\ calculation at the end of the routine</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">T</a>,<span class="register">X</span>                <span class="comment">\ Set A to the altitude of corner X + 1 minus the</span>
+ <span class="mne">SEC</span>                    <span class="comment">\ altitude of corner X</span>
+ <span class="mne">SBC</span> <a class="popup variable">S</a>,<span class="register">X</span>                <span class="comment">\</span>
+                        <span class="comment">\ So this is the gradient of the edge between corner</span>
+                        <span class="comment">\ X and corner X + 1</span>
+
+ <span class="mne">PHP</span>                    <span class="comment">\ Store the flags of the result on the stack, so we can</span>
+                        <span class="comment">\ retrieve the sign below</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">gaze16</a>             <span class="comment">\ If the result is negative then negate it to make it</span>
+ <span class="mne">EOR</span> <span class="hash">#</span><span class="binary">%11111111</span>         <span class="comment">\ positive, so A now contains the absolute value of the</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ edge gradient</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">1</span>
+
+<span class="label">.gaze16</span><a id="gaze16" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ Set U to the absolute gradient of the edge</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">edgeGazeDistance</a>   <span class="comment">\ Set A to the fractional distance along the edge that</span>
+                        <span class="comment">\ corresponds to the current position along the gaze</span>
+                        <span class="comment">\ vector</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">Multiply8x8</a>        <span class="comment">\ Set (A T) = A * U</span>
+                        <span class="comment">\           = fractional distance * |gradient|</span>
+
+ <span class="mne">PLP</span>                    <span class="comment">\ Restore the sign of the gradient which we stored on</span>
+                        <span class="comment">\ the stack above, so the N flag reflects the sign of</span>
+                        <span class="comment">\ the gradient</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">Absolute16Bit</a>      <span class="comment">\ Set the sign of (A T) to match the gradient, so A is</span>
+                        <span class="comment">\ now the correct sign for the calculation and we have</span>
+                        <span class="comment">\ the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (A T) = fractional distance * gradient</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The fractional distance is a fractional value that</span>
+                        <span class="comment">\ represents how far along the edge we would need to go</span>
+                        <span class="comment">\ in order to be at the corresponding coordinate as the</span>
+                        <span class="comment">\ current position along the gaze vector</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The gradient is the change in altitude as we move from</span>
+                        <span class="comment">\ one end of the edge to the other</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Multiplying these two therefore gives us the height of</span>
+                        <span class="comment">\ the point along the edge that corresponds to the</span>
+                        <span class="comment">\ current position along the gaze vector</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This height is relative to the tile corner at the</span>
+                        <span class="comment">\ start of the edge (i.e. corner X), so to get the</span>
+                        <span class="comment">\ altitude of the point in the 3D world, we need to add</span>
+                        <span class="comment">\ the result in (A T) to the altitude of corner X</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We set G above to the altitude of corner X, which came</span>
+                        <span class="comment">\ from the call to GetTileAltitude, so G contains the</span>
+                        <span class="comment">\ high byte of the altitude and is therefore an integer</span>
+                        <span class="comment">\ value, so we add a low byte of 0 in the addition</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set (U T) = (G 0) + (A T)</span>
+ <span class="mne">ADC</span> <a class="popup variable">G</a>                  <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ So (U T) contains the altitude of the point on the</span>
+                        <span class="comment">\ edge that corresponds to the current position of the</span>
+                        <span class="comment">\ gaze vector</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yCoordLo</a>           <span class="comment">\ Set (A *) = yCoord(Hi Lo) - (U T)</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">T</a>                  <span class="comment">\ So A contains the high byte of the difference in</span>
+ <span class="mne">LDA</span> <a class="popup variable">yCoordHi</a>           <span class="comment">\ altitude between the current position along the gaze</span>
+ <span class="mne">SBC</span> <a class="popup variable">U</a>                  <span class="comment">\ vector and the point on the edge that corresponds to</span>
+                        <span class="comment">\ the vector</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">gaze17</a>             <span class="comment">\ If the current position along the gaze vector is</span>
+                        <span class="comment">\ higher than the corresponding point on the edge, then</span>
+                        <span class="comment">\ the viewer's gaze is not being obstructed by the edge,</span>
+                        <span class="comment">\ so jump to gaze1 via gaze17 to move along the gaze</span>
+                        <span class="comment">\ vector and restart the checks</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">gaze4</a>              <span class="comment">\ Otherwise the current position along the gaze vector</span>
+                        <span class="comment">\ is below the corresponding point on the edge, and the</span>
+                        <span class="comment">\ viewer's gaze is being obstructed by the edge, so jump</span>
+                        <span class="comment">\ to gaze4 to return from the subroutine with the C flag</span>
+                        <span class="comment">\ set to indicate that the viewer is not looking at a</span>
+                        <span class="comment">\ tile</span>
+
+<span class="label">.gaze17</span><a id="gaze17" class="anchor"></a>
+
+ <span class="mne">JMP</span> <a class="popup destination">gaze1</a>              <span class="comment">\ Jump to gaze1 to move along the gaze vector and</span>
+                        <span class="comment">\ restart the checks (this jump point is for use by</span>
+                        <span class="comment">\ branching instructions)</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-absolute16bit"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/absolute16bit.html">Absolute16Bit</a> (category: Maths (Arithmetic))</div><div class="summary">Calculate the absolute value (modulus) of a 16-bit number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-g"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#g">G</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-multiply8x8"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/multiply8x8.html">Multiply8x8</a> (category: Maths (Arithmetic))</div><div class="summary">Calculate (A T) = T * U</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-s"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#s">S</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-edgegazedistance"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#edgegazedistance">edgeGazeDistance</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The fractional distance along a tile edge that matches the current position along the gaze vector</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gaze1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/followgazevector_part_1_of_5.html#gaze1">gaze1</a> in subroutine <a href="/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector (Part 1 of 5)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gaze14"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/followgazevector_part_5_of_5.html#gaze14">gaze14</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gaze15"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/followgazevector_part_5_of_5.html#gaze15">gaze15</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gaze16"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/followgazevector_part_5_of_5.html#gaze16">gaze16</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gaze17"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/followgazevector_part_5_of_5.html#gaze17">gaze17</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gaze4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/followgazevector_part_1_of_5.html#gaze4">gaze4</a> in subroutine <a href="/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector (Part 1 of 5)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xcoordlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of an object or point (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ycoordhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ycoordhi">yCoordHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of an object or point (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ycoordlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ycoordlo">yCoordLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of an object or point (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-zcoordlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#zcoordlo">zCoordLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The z-coordinate of an object or point (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/followgazevector_part_4_of_5.html">FollowGazeVector (Part 4 of 5)</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/tileedges.html">tileEdges</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

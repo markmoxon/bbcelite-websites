@@ -1,0 +1,372 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("drawing_polygons", "subroutine_getpolygonlines_part_6_of_6.html", "The GetPolygonLines (Part 6 of 6) subroutine", "Drawing polygons: GetPolygonLines (Part 6 of 6)", "Annotated code for the GetPolygonLines (Part 6 of 6) subroutine in The Sentinel", "the_sentinel-code", "source_drawing_polygons", "subroutine_getpolygonlines_part_6_of_6", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/tracepolygonedge_part_5_of_8.html">TracePolygonEdge (Part 5 of 8)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/tracepolygonedge_part_6_of_8.html">TracePolygonEdge (Part 6 of 8)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetPolygonLines (Part 6 of 6)</span>                           <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing polygons</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Split polygon edges whose coordinates are stored in two-byte</span>
+             <span class="headerEntry">numbers into smaller sections for processing</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_f.html#header-getpolygonlines-part-6-of-6">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">No direct references to this subroutine in this source file</span>
+</div>
+</div></div>
+<span class="label">.gpol22</span><a id="gpol22" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The x-coordinates for points #X and #Y are both</span>
+                        <span class="comment">\     two-byte numbers</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The y-axis delta in yEdgeDelta(Hi Lo) is non-zero</span>
+                        <span class="comment">\     and a two-byte number, and it is also positive</span>
+
+ <span class="mne">STX</span> <a class="popup variable">pointX</a>             <span class="comment">\ Store the number of point #X in pointX so we can</span>
+                        <span class="comment">\ retrieve it below</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set scaleFactor = 0 so we can use it to record the</span>
+ <span class="mne">STA</span> <a class="popup variable">scaleFactor</a>        <span class="comment">\ scale factor we apply to the x-axis and y-axis deltas</span>
+                        <span class="comment">\ below when fitting them into single-byte numbers</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xPolygonPointLo</a>,<span class="register">Y</span>  <span class="comment">\ Set (A T) to the following:</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">xPolygonPointLo</a>,<span class="register">X</span>  <span class="comment">\   xPolygonPoint(Hi Lo) for point #Y</span>
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\                 - xPolygonPoint(Hi Lo) for point #X</span>
+ <span class="mne">LDA</span> <a class="popup variable">xPolygonPointHi</a>,<span class="register">Y</span>  <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">xPolygonPointHi</a>,<span class="register">X</span>  <span class="comment">\ So (A T) contains the difference in the x-axis between</span>
+                        <span class="comment">\ the two polygon points</span>
+
+ <span class="mne">STA</span> <a class="popup variable">xPointDeltaHi</a>      <span class="comment">\ Store the high byte in xPointDeltaHi so we can test</span>
+                        <span class="comment">\ the sign below</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">Absolute16Bit</a>      <span class="comment">\ Set (U T) = |A T|</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\</span>
+                        <span class="comment">\ So by this point we have:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The absolute x-axis delta in (U T)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The positive y-axis delta in yEdgeDelta(Hi Lo)</span>
+
+ <span class="mne">ORA</span> <a class="popup variable">yEdgeDeltaHi</a>       <span class="comment">\ Set A = U OR yEdgeDeltaHi</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So the highest set bit in A matches the position of</span>
+                        <span class="comment">\ the highest set bit across the two high bytes of the</span>
+                        <span class="comment">\ two deltas</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">gpol24</a>             <span class="comment">\ If both U and yEdgeDeltaHi are zero then both deltas</span>
+                        <span class="comment">\ fit into one byte (the low byte), so jump to gpol24</span>
+
+                        <span class="comment">\ If we get here then at least one of the deltas does</span>
+                        <span class="comment">\ not fit into a single byte, so we now scale both of</span>
+                        <span class="comment">\ the deltas down</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We do this by shifting both deltas to the right, and</span>
+                        <span class="comment">\ at the same time we shift A to the right, repeating</span>
+                        <span class="comment">\ the process until there are no more set bits in A, by</span>
+                        <span class="comment">\ which time we will have shifted the deltas by the</span>
+                        <span class="comment">\ minimum number of shifts required to zero both high</span>
+                        <span class="comment">\ bytes</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We also record the number of shifts in scaleFactor in</span>
+                        <span class="comment">\ the form of one set bit for each shift</span>
+
+<span class="label">.gpol23</span><a id="gpol23" class="anchor"></a>
+
+ <span class="mne">LSR</span> <a class="popup variable">yEdgeDeltaHi</a>       <span class="comment">\ Shift the y-axis delta in yEdgeDelta(Hi Lo) to the</span>
+ <span class="mne">ROR</span> <a class="popup variable">yEdgeDeltaLo</a>       <span class="comment">\ right by one place to scale it down by half</span>
+
+ <span class="mne">LSR</span> <a class="popup variable">U</a>                  <span class="comment">\ Shift the x-axis delta in (U T) to the right by one</span>
+ <span class="mne">ROR</span> <a class="popup variable">T</a>                  <span class="comment">\ place to scale it down by half</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Rotate a set bit into bit 0 of scaleFactor, so we</span>
+ <span class="mne">ROL</span> <a class="popup variable">scaleFactor</a>        <span class="comment">\ build up a sequence of set bits in the bottom part</span>
+                        <span class="comment">\ of scaleFactor that matches the number of shifts,</span>
+                        <span class="comment">\ effectively giving us the total cumulative scale</span>
+                        <span class="comment">\ factor of the shifts (in fact scaleFactor will end</span>
+                        <span class="comment">\ up being the cumulative scale factor minus 1, but</span>
+                        <span class="comment">\ that's good enough for our needs)</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ Shift A to the right to move the highest set bit</span>
+                        <span class="comment">\ towards bit 0</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">gpol23</a>             <span class="comment">\ If there is still a set bit in A then at least one of</span>
+                        <span class="comment">\ the high bytes in the deltas is non-zero, so loop back</span>
+                        <span class="comment">\ to perform another shift until both high bytes are</span>
+                        <span class="comment">\ zero</span>
+
+<span class="label">.gpol24</span><a id="gpol24" class="anchor"></a>
+
+                        <span class="comment">\ By this point we have:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The scaled absolute x-axis delta in T</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The scaled positive y-axis delta in yEdgeDeltaLo</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The scale factor in scaleFactor</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now ensure that bit 7 is clear in both low bytes,</span>
+                        <span class="comment">\ to make sure the single-byte values are both positive</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">yEdgeDeltaLo</a>       <span class="comment">\ If yEdgeDeltaLo = 255 then jump back to gpol23 to</span>
+ <span class="mne">CPX</span> <span class="hash">#</span><span class="decimal">255</span>               <span class="comment">\ scale both deltas down by one more shift</span>
+ <span class="mne">BEQ</span> <a class="popup destination">gpol23</a>
+
+ <span class="mne">LDX</span> <a class="popup variable">T</a>                  <span class="comment">\ If T = 255 then jump back to gpol23 to scale both</span>
+ <span class="mne">CPX</span> <span class="hash">#</span><span class="decimal">255</span>               <span class="comment">\ deltas down by one more shift</span>
+ <span class="mne">BEQ</span> <a class="popup destination">gpol23</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ Set (A T) = (U T)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This effectively sets (A T) to the two-byte value of</span>
+                        <span class="comment">\ the x-axis delta, though by this point U will always</span>
+                        <span class="comment">\ be zero</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">xPointDeltaHi</a>      <span class="comment">\ We set xPointDeltaHi to the high byte of the original</span>
+                        <span class="comment">\ x-axis delta subtraction, so this sets the N flag</span>
+                        <span class="comment">\ according to the sign of that calculation</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">Absolute16Bit</a>      <span class="comment">\ Set the sign of (A T) to that of the N flag argument,</span>
+                        <span class="comment">\ so (A T) now has the correct sign of the x-axis delta</span>
+
+ <span class="mne">STA</span> <a class="popup variable">xEdgeDeltaHi</a>       <span class="comment">\ Set xEdgeDelta(Hi Lo) = (A T)</span>
+ <span class="mne">LDA</span> <a class="popup variable">T</a>                  <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeDeltaLo</a>       <span class="comment">\ So xEdgeDelta(Hi Lo) contains the signed x-axis delta</span>
+
+                        <span class="comment">\ By this point we have:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The scaled signed x-axis delta across the polygon</span>
+                        <span class="comment">\     edge in xEdgeDelta(Hi Lo)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The scaled signed y-axis delta across the polygon</span>
+                        <span class="comment">\     edge in (0 yEdgeDeltaLo), which also happens to be</span>
+                        <span class="comment">\     positive</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The scale factor in scaleFactor</span>
+
+                        <span class="comment">\ We now trace the polygon edge from the starting point</span>
+                        <span class="comment">\ in point #Y to the end point in point #X</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ To kick this process off, we set the coordinates in</span>
+                        <span class="comment">\ xEdgeEnd and yEdgeEnd to those of point #Y, as these</span>
+                        <span class="comment">\ variables are used to store the "end of the previous</span>
+                        <span class="comment">\ part of the edge" and are therefore used as the "start</span>
+                        <span class="comment">\ of the next part of the edge" in the tracing process</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xPolygonPointLo</a>,<span class="register">Y</span>  <span class="comment">\ Set xEdgeEnd(Hi Lo) to the x-coordinate of point #Y,</span>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeEndLo</a>         <span class="comment">\ from the x-coordinate tables we populated in parts 3</span>
+ <span class="mne">LDA</span> <a class="popup variable">xPolygonPointHi</a>,<span class="register">Y</span>  <span class="comment">\ and 4</span>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeEndHi</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">drawViewPitchHi</a>,<span class="register">Y</span>  <span class="comment">\ Set yEdgeEnd(Hi Lo) to the y-coordinate of point #Y,</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeEndHi</a>         <span class="comment">\ taken from the pitch angles of the points in the</span>
+ <span class="mne">LDA</span> <a class="popup variable">drawViewPitchLo</a>,<span class="register">Y</span>  <span class="comment">\ drawing tables</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeEndLo</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">scaleFactor</a>        <span class="comment">\ If scaleFactor is zero then we didn't need to do any</span>
+ <span class="mne">BEQ</span> <a class="popup destination">gpol26</a>             <span class="comment">\ scaling on the deltas, so jump to gpol26 to skip the</span>
+                        <span class="comment">\ following and process the polygon edge in one step</span>
+
+                        <span class="comment">\ If we get here then we have scaled the deltas down by</span>
+                        <span class="comment">\ a factor of scaleFactor</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Because of the way we fed a set bit into scaleFactor</span>
+                        <span class="comment">\ for each shift, the scale factor is scaleFactor+1, so</span>
+                        <span class="comment">\ this is the same as splitting the polygon edge into</span>
+                        <span class="comment">\ scaleFactor+1 parts, each of which is a step along the</span>
+                        <span class="comment">\ the edge of the size given in the scaled-down deltas</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we now process each of these small steps in a loop</span>
+                        <span class="comment">\ that we perform scaleFactor times in the first part</span>
+                        <span class="comment">\ and one more time at gpol26</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ For each step we move the start point to the end point</span>
+                        <span class="comment">\ from the previous step, and we move the end point</span>
+                        <span class="comment">\ along the edge by the delta</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We set up the "end point from the previous step" to</span>
+                        <span class="comment">\ point #Y above, so this process starts from point #Y</span>
+                        <span class="comment">\ and steps toward point #X</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Note that we set up the start and end points so the</span>
+                        <span class="comment">\ edge is either horizontal or slopes downwards when</span>
+                        <span class="comment">\ moving from the start to the end, as that's what the</span>
+                        <span class="comment">\ TracePolygonEdge routine expects</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We know that point #Y is higher than point #X as we</span>
+                        <span class="comment">\ set that up in part 5, so we trace along the line from</span>
+                        <span class="comment">\ the start at point #Y to the end at point #X</span>
+
+<span class="label">.gpol25</span><a id="gpol25" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">yEdgeEndLo</a>         <span class="comment">\ Set the following, in sequence:</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeStartLo</a>       <span class="comment">\</span>
+ <span class="mne">SEC</span>                    <span class="comment">\   yEdgeStart(Hi Lo) = yEdgeEnd(Hi Lo)</span>
+ <span class="mne">SBC</span> <a class="popup variable">yEdgeDeltaLo</a>       <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeEndLo</a>         <span class="comment">\   yEdgeEnd(Hi Lo) -= yEdgeDelta(Hi Lo)</span>
+ <span class="mne">LDA</span> <a class="popup variable">yEdgeEndHi</a>         <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeStartHi</a>       <span class="comment">\ So we step along the y-axis by one more delta</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">0</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeEndHi</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">xEdgeEndLo</a>         <span class="comment">\ Set the following, in sequence:</span>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeStartLo</a>       <span class="comment">\</span>
+ <span class="mne">SEC</span>                    <span class="comment">\   xEdgeStart(Hi Lo) = xEdgeEnd(Hi Lo)</span>
+ <span class="mne">SBC</span> <a class="popup variable">xEdgeDeltaLo</a>       <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeEndLo</a>         <span class="comment">\   xEdgeEnd(Hi Lo) -= xEdgeDelta(Hi Lo)</span>
+ <span class="mne">LDA</span> <a class="popup variable">xEdgeEndHi</a>         <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeStartHi</a>       <span class="comment">\ So we step along the x-axis by one more delta</span>
+ <span class="mne">SBC</span> <a class="popup variable">xEdgeDeltaHi</a>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeEndHi</a>
+
+ <span class="mne">JSR</span> <a class="popup destination">TracePolygonEdge</a>   <span class="comment">\ Trace the small step of polygon edge that we just made</span>
+                        <span class="comment">\ along the edge, populating the xPolygonRight or</span>
+                        <span class="comment">\ xPolygonLeft table with the x-coordinate of the edge</span>
+                        <span class="comment">\ for each y-coordinate</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">scaleFactor</a>        <span class="comment">\ Decrement the scale factor in scaleFactor</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">gpol25</a>             <span class="comment">\ Loop back to repeat the tracing process scaleFactor</span>
+                        <span class="comment">\ times</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ As there are actually scaleFactor+1 steps, we now fall</span>
+                        <span class="comment">\ into the following to do one more step</span>
+
+<span class="label">.gpol26</span><a id="gpol26" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we are either tracing the entire</span>
+                        <span class="comment">\ edge in one step, or we are performing the last step</span>
+                        <span class="comment">\ in a set of scaled steps</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If we are tracing the entire edge in one step, then we</span>
+                        <span class="comment">\ already set up the coordinates of the "end point from</span>
+                        <span class="comment">\ the previous step" in xEdgeEnd and yEdgeEnd to that of</span>
+                        <span class="comment">\ point #Y, so this process starts from point #Y and</span>
+                        <span class="comment">\ traces the edge to point #X</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If we are performing the last step in a set of scaled</span>
+                        <span class="comment">\ steps, then xEdgeEnd and yEdgeEnd are set to the end</span>
+                        <span class="comment">\ of the last step to be traced, so this process traces</span>
+                        <span class="comment">\ the last step towards point #X</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ In either case, we start by setting the starting point</span>
+                        <span class="comment">\ for this tracing process to the values in xEdgeEnd and</span>
+                        <span class="comment">\ yEdgeEnd</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Note that we set up the start and end points so the</span>
+                        <span class="comment">\ edge is either horizontal or slopes downwards when</span>
+                        <span class="comment">\ moving from the start to the end, as that's what the</span>
+                        <span class="comment">\ TracePolygonEdge routine expects</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We know that point #Y is higher than point #X as we</span>
+                        <span class="comment">\ set that up in part 5, so we trace along the line from</span>
+                        <span class="comment">\ the start at point #Y to the end at point #X</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yEdgeEndLo</a>         <span class="comment">\ Set yEdgeStart(Hi Lo) = yEdgeEnd(Hi Lo)</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeStartLo</a>       <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">yEdgeEndHi</a>         <span class="comment">\ So this is either the y-coordinate of point #Y or the</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeStartHi</a>       <span class="comment">\ end of the last step in a multi-step trace</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xEdgeEndLo</a>         <span class="comment">\ Set xEdgeStart(Hi Lo) = xEdgeEnd(Hi Lo)</span>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeStartLo</a>       <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">xEdgeEndHi</a>         <span class="comment">\ So this is either the x-coordinate of point #Y or the</span>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeStartHi</a>       <span class="comment">\ end of the last step in a multi-step trace</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">pointX</a>             <span class="comment">\ Set X to the number of point #X, which we stored at</span>
+                        <span class="comment">\ the start of this part</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">drawViewPitchLo</a>,<span class="register">X</span>  <span class="comment">\ Set yEdgeEnd(Hi Lo) to the y-coordinate of point #X,</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeEndLo</a>         <span class="comment">\ from the x-coordinate tables we populated in parts 3</span>
+ <span class="mne">LDA</span> <a class="popup variable">drawViewPitchHi</a>,<span class="register">X</span>  <span class="comment">\ and 4</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeEndHi</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">xPolygonPointLo</a>,<span class="register">X</span>  <span class="comment">\ Set xEdgeEnd(Hi Lo) to the x-coordinate of point #X</span>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeEndLo</a>         <span class="comment">\ from the x-coordinate tables we populated in parts 3</span>
+ <span class="mne">LDA</span> <a class="popup variable">xPolygonPointHi</a>,<span class="register">X</span>  <span class="comment">\ and 4</span>
+ <span class="mne">STA</span> <a class="popup variable">xEdgeEndHi</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">yEdgeStartLo</a>       <span class="comment">\ Set yEdgeDeltaLo = yEdgeStartLo - yEdgeEndLo</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">yEdgeEndLo</a>         <span class="comment">\ This calculates the y-axis delta along the edge, which</span>
+ <span class="mne">STA</span> <a class="popup variable">yEdgeDeltaLo</a>       <span class="comment">\ we know we can do in one byte by this point</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">TracePolygonEdge</a>   <span class="comment">\ Trace the polygon edge, populating the xPolygonRight</span>
+                        <span class="comment">\ or xPolygonLeft table with the x-coordinate of the</span>
+                        <span class="comment">\ edge for each y-coordinate</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">gpol15</a>             <span class="comment">\ Jump back to part 5 to move on to the next polygon</span>
+                        <span class="comment">\ edge</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-absolute16bit"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/absolute16bit.html">Absolute16Bit</a> (category: Maths (Arithmetic))</div><div class="summary">Calculate the absolute value (modulus) of a 16-bit number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tracepolygonedge"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html">TracePolygonEdge (Part 1 of 8)</a> (category: Drawing polygons)</div><div class="summary">Trace a polygon edge, populating xPolygonRight or xPolygonLeft with the x-coordinate of the edge for each y-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawviewpitchhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/drawviewpitchhi.html">drawViewPitchHi</a> (category: Drawing the landscape)</div><div class="summary">Storage for the pitch angles of tiles and object points for drawing the current landscape view (high bytes)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawviewpitchlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/drawviewpitchlo.html">drawViewPitchLo</a> (category: Drawing the landscape)</div><div class="summary">Storage for the pitch angles of tiles and object points for drawing the current landscape view (low bytes)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gpol15"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getpolygonlines_part_5_of_6.html#gpol15">gpol15</a> in subroutine <a href="/source/main/subroutine/getpolygonlines_part_5_of_6.html">GetPolygonLines (Part 5 of 6)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gpol23"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getpolygonlines_part_6_of_6.html#gpol23">gpol23</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gpol24"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getpolygonlines_part_6_of_6.html#gpol24">gpol24</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gpol25"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getpolygonlines_part_6_of_6.html#gpol25">gpol25</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gpol26"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getpolygonlines_part_6_of_6.html#gpol26">gpol26</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pointx"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#pointx">pointX</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage for the number of point #X while processing polygon lines</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scalefactor"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#scalefactor">scaleFactor</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The scale factor for the x-axis and y-axis deltas when fitting them into single-byte numbers during the tracing of polygon edges</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgedeltahi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgedeltahi">xEdgeDeltaHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of the scaled and signed x-axis delta between two polygon points when tracing the polygon edges</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgedeltalo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgedeltalo">xEdgeDeltaLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of the scaled and signed x-axis delta between two polygon points when tracing the polygon edges</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgeendhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgeendhi">xEdgeEndHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of the end point in the polygon edge being processed (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgeendlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgeendlo">xEdgeEndLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of the end point in the polygon edge being processed (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgestarthi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgestarthi">xEdgeStartHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of the start point in the polygon edge being processed (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgestartlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgestartlo">xEdgeStartLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of the start point in the polygon edge being processed (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xpointdeltahi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xpointdeltahi">xPointDeltaHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage for the high byte of the x-axis delta between two polygon points</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xpolygonpointhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/xpolygonpointhi.html">xPolygonPointHi</a> (category: Drawing polygons)</div><div class="summary">Pixel x-coordinates for all the points in the polygon that we are currently drawing (high bytes)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xpolygonpointlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/xpolygonpointlo.html">xPolygonPointLo</a> (category: Drawing polygons)</div><div class="summary">Pixel x-coordinates for all the points in the polygon that we are currently drawing (low bytes)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgedeltahi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgedeltahi">yEdgeDeltaHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference in pitch angle between two polygon points, i.e. the delta along the y-axis (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgedeltalo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgedeltalo">yEdgeDeltaLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference in pitch angle between two polygon points, i.e. the delta along the y-axis (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgeendhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgeendhi">yEdgeEndHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the end point in the polygon edge being processed (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgeendlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgeendlo">yEdgeEndLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the end point in the polygon edge being processed (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgestarthi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgestarthi">yEdgeStartHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the start point in the polygon edge being processed (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgestartlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgestartlo">yEdgeStartLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the start point in the polygon edge being processed (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/tracepolygonedge_part_5_of_8.html">TracePolygonEdge (Part 5 of 8)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/tracepolygonedge_part_6_of_8.html">TracePolygonEdge (Part 6 of 8)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

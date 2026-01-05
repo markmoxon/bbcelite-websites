@@ -1,0 +1,446 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("landscape", "subroutine_gettilealtitude.html", "The GetTileAltitude subroutine", "Landscape: GetTileAltitude", "Annotated code for the GetTileAltitude subroutine in The Sentinel", "the_sentinel-code", "source_landscape", "subroutine_gettilealtitude", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/tileedges.html">tileEdges</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/checkfortilecentre.html">CheckForTileCentre</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetTileAltitude</span>                                         <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Calculate the altitude of a tile, optionally including platform</span>
+             <span class="headerEntry">objects and trees in the calculation</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_c.html#header-gettilealtitude">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector (Part 1 of 5)</a> calls <a href="#gettilealtitude">GetTileAltitude</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/followgazevector_part_2_of_5.html">FollowGazeVector (Part 2 of 5)</a> calls <a href="#gettilealtitude">GetTileAltitude</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> calls <a href="#gettilealtitude">GetTileAltitude</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">(xTile, zTile)</span>       <span class="argumentEntry">The coordinates of the tile to analyse</span>
+
+   <span class="argumentLabel">considerObjects</span>      <span class="argumentEntry">The data to extract:</span>
+
+                        <span class="argumentEntry">  * Bit 7 clear = extract the tile's altitude and</span>
+                        <span class="argumentEntry">                  flatness, ignoring any objects on the</span>
+                        <span class="argumentEntry">                  tile</span>
+
+                        <span class="argumentEntry">  * Bit 7 set = if the tile contains a platform object</span>
+                        <span class="argumentEntry">                (i.e. boulder or tower) or a tree, then</span>
+                        <span class="argumentEntry">                extract data for the object instead of</span>
+                        <span class="argumentEntry">                the tile when applicable (this option</span>
+                        <span class="argumentEntry">                is only set when calling this routine</span>
+                        <span class="argumentEntry">                from FollowGazeVector)</span>
+
+   <span class="argumentLabel">xCoordLo</span>             <span class="argumentEntry">The low byte (i.e. fractional part) of the x-coordinate</span>
+                        <span class="argumentEntry">of the current position along the gaze vector (when</span>
+                        <span class="argumentEntry">the routine is called from FollowGazeVector)</span>
+
+   <span class="argumentLabel">zCoordLo</span>             <span class="argumentEntry">The low byte (i.e. fractional part) of the z-coordinate</span>
+                        <span class="argumentEntry">of the current position along the gaze vector (when</span>
+                        <span class="argumentEntry">the routine is called from FollowGazeVector)</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">The high byte of the tile's altitude (though if bit 7 of</span>
+                        <span class="argumentEntry">considerObjects is set, see yPlatformLo below)</span>
+
+   <span class="argumentLabel">C flag</span>               <span class="argumentEntry">The tile's shape:</span>
+
+                        <span class="argumentEntry">  * Clear if the tile is flat</span>
+
+                        <span class="argumentEntry">  * Set if the tile is not flat</span>
+
+   <span class="argumentLabel">yPlatformLo</span>          <span class="argumentEntry">If bit 7 of considerObjects is set and the tile contains</span>
+                        <span class="argumentEntry">the Sentinel's tower or a boulder, the altitude of the</span>
+                        <span class="argumentEntry">platform on the top of the tower or boulder is returned</span>
+                        <span class="argumentEntry">in (A yPlatformLo)</span>
+
+   <span class="argumentLabel">boulderOnTile</span>        <span class="argumentEntry">If bit 7 of considerObjects is set, this records whether</span>
+                        <span class="argumentEntry">the tile contains a boulder:</span>
+
+                        <span class="argumentEntry">  * Bit 7 clear = tile does not contain a boulder</span>
+
+                        <span class="argumentEntry">  * Bit 7 set = tile contains a boulder</span>
+
+   <span class="argumentLabel">targetOnTile</span>         <span class="argumentEntry">If bit 7 of considerObjects is set, this records whether</span>
+                        <span class="argumentEntry">the tile contains the target object whose number is in</span>
+                        <span class="argumentEntry">targetOnTile:</span>
+
+                        <span class="argumentEntry">  * Bit 7 clear = tile does not contain the target</span>
+                        <span class="argumentEntry">                  object</span>
+
+                        <span class="argumentEntry">  * Bit 7 set = tile does contain the target object</span>
+
+   <span class="argumentLabel">gazeCanSeeTree</span>       <span class="argumentEntry">If bit 7 of considerObjects is set and bit 7 of</span>
+                        <span class="argumentEntry">targetOnTile is clear, this records whether the tile</span>
+                        <span class="argumentEntry">contains a tree that can be seen by the gaze vector:</span>
+
+                        <span class="argumentEntry">  * Bit 7 clear = tile does not contain a tree that can</span>
+                        <span class="argumentEntry">                  be seen by the gaze vector</span>
+
+                        <span class="argumentEntry">  * Bit 7 set = tile contains a tree that can be seen by</span>
+                        <span class="argumentEntry">                the gaze vector</span>
+
+   <span class="argumentLabel">considerObjects</span>      <span class="argumentEntry">If bit 7 of considerObjects is set then bit 6 will also</span>
+                        <span class="argumentEntry">be set by the routine if the tile contains a platform</span>
+                        <span class="argumentEntry">object (i.e. boulder or Sentinel's tower) and the</span>
+                        <span class="argumentEntry">current position along the gaze vector is not within the</span>
+                        <span class="argumentEntry">platform object (so the gaze vector is passing close by</span>
+                        <span class="argumentEntry">the platform object but is not hitting it)</span>
+
+   <span class="argumentLabel">yAccuracyLo</span>          <span class="argumentEntry">Set to 16 if the tile contains the Sentinel's tower and</span>
+                        <span class="argumentEntry">the gaze vector is pointing at the sides of the tower</span>
+
+</div></div>
+<span class="label">.GetTileAltitude</span><a id="gettilealtitude" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileData</a>        <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile), setting the C flag if the tile</span>
+                        <span class="comment">\ contains an object</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">tile3</a>              <span class="comment">\ If the tile contains an object then jump to tile3</span>
+
+ <span class="mne">PHA</span>                    <span class="comment">\ Store the tile data on the stack</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00001111</span>         <span class="comment">\ The tile shape is in the low nibble of the tile data,</span>
+ <span class="mne">TAY</span>                    <span class="comment">\ so extract the tile shape into Y</span>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Retrieve the tile data from the stack</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ Set A to the tile altitude, which is in the top nibble</span>
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ of the tile data</span>
+ <span class="mne">LSR</span> <span class="register">A</span>
+ <span class="mne">LSR</span> <span class="register">A</span>
+
+ <span class="mne">CPY</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ Clear the C flag if Y &lt; 1, which will only happen when</span>
+                        <span class="comment">\ Y = 0, so this clears the C flag if the tile shape is</span>
+                        <span class="comment">\ flat, or sets the C flag if the tile shape is not flat</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.tile1</span><a id="tile1" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the tile contains object #Y and</span>
+                        <span class="comment">\ bit 7 of considerObjects is set, so we need to process</span>
+                        <span class="comment">\ the objects on the stack</span>
+
+ <span class="mne">CPY</span> <a class="popup variable">targetObject</a>       <span class="comment">\ If Y = targetObject then the target object is on the</span>
+ <span class="mne">BNE</span> <a class="popup destination">tile2</a>              <span class="comment">\ tile, so set bit 7 of targetOnTile to indicate this</span>
+ <span class="mne">ROR</span> <a class="popup variable">targetOnTile</a>
+
+<span class="label">.tile2</span><a id="tile2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectTypes</a>,<span class="register">Y</span>      <span class="comment">\ Set A to the type of object that's already on the tile</span>
+                        <span class="comment">\ (i.e. the type of object #Y)</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ If the tile contains a boulder (an object of type 3),</span>
+ <span class="mne">BEQ</span> <a class="popup destination">tile4</a>              <span class="comment">\ jump to tile4 to extract details about the boulder</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ If the tile contains a tree (an object of type 2),</span>
+ <span class="mne">BEQ</span> <a class="popup destination">tile4</a>              <span class="comment">\ jump to tile4 to extract details about the tree</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\ If the tile doesn't contain the Sentinel's tower (type</span>
+ <span class="mne">BNE</span> <a class="popup destination">tile7</a>              <span class="comment">\ 6) then it must contain a robot, sentry, meanie or the</span>
+                        <span class="comment">\ Sentinel, so jump to tile7 to return the altitude of</span>
+                        <span class="comment">\ the tile rather than the object</span>
+
+                        <span class="comment">\ If we get here then the tile contains the Sentinel's</span>
+                        <span class="comment">\ tower in object #Y</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">CheckForTileCentre</a> <span class="comment">\ Set T = max(|xCoordLo - 128|, |zCoordLo - 128|)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and return the same value in A</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This calculates how close the current position along</span>
+                        <span class="comment">\ the gaze vector is to the centre of the tile, in terms</span>
+                        <span class="comment">\ of the x-coordinate and z-coordinate</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">100</span>               <span class="comment">\ If A >= 100 then the gaze vector is a long way from</span>
+ <span class="mne">BCS</span> <a class="popup destination">tile6</a>              <span class="comment">\ the centre of the tile (i.e. more than 100/128 = 78%</span>
+                        <span class="comment">\ of the distance from the centre to the tile edge,</span>
+                        <span class="comment">\ which is outside the body of the tower), so jump to</span>
+                        <span class="comment">\ tile6 to set bit 6 of considerObjects and return the</span>
+                        <span class="comment">\ altitude of the tile</span>
+
+                        <span class="comment">\ If we get here then the gaze vector is pointing at the</span>
+                        <span class="comment">\ sides of the tower, so we return the altitude of the</span>
+                        <span class="comment">\ platform on top of the tower</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">16</span>                <span class="comment">\ Set yAccuracyLo = 16, so the gaze vector has to be</span>
+ <span class="mne">STA</span> <a class="popup variable">yAccuracyLo</a>        <span class="comment">\ no more than 0.025 of a tile's height above the tile</span>
+                        <span class="comment">\ for us to consider it as potentially hitting the tile</span>
+                        <span class="comment">\ when we return to the FollowGazeVector routine (this</span>
+                        <span class="comment">\ makes the player have to be much more accurate when</span>
+                        <span class="comment">\ trying to view the Sentinel's tile)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yObjectLo</a>,<span class="register">Y</span>        <span class="comment">\ Set the following:</span>
+ <span class="mne">CLC</span>                    <span class="comment">\</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="hex">&20</span>               <span class="comment">\   (A yPlatformLo) = yObject(Hi Lo) + 32</span>
+ <span class="mne">STA</span> <a class="popup variable">yPlatformLo</a>        <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">yObjectHi</a>,<span class="register">Y</span>        <span class="comment">\ where yObject is the altitude of the Sentinel's tower</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="hex">&00</span>               <span class="comment">\</span>
+                        <span class="comment">\ So we return the altitude of the top of the tower by</span>
+                        <span class="comment">\ effectively adding the tower's height to the tower</span>
+                        <span class="comment">\ object's altitude, bearing in mind that objects are</span>
+                        <span class="comment">\ spawned at a height of 224 above their tiles, so this</span>
+                        <span class="comment">\ returns the altitude of the top of the tower, with</span>
+                        <span class="comment">\ the tower being 224 + 32 = 256 fractional parts above</span>
+                        <span class="comment">\ the tile (so the tower is the height of one entire</span>
+                        <span class="comment">\ integer y-coordinate)</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Clear the C flag to indicate that the tile is flat</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.tile3</span><a id="tile3" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the tile contains an object</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00111111</span>         <span class="comment">\ Because the tile has an object on it, the tile data</span>
+ <span class="mne">TAY</span>                    <span class="comment">\ contains the number of the top object on the tile in</span>
+                        <span class="comment">\ bits 0 to 5, so extract the object number into Y (so</span>
+                        <span class="comment">\ the tile effectively contains object #Y)</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">considerObjects</a>    <span class="comment">\ If bit 7 of considerObjects is clear, jump to tile7 to</span>
+ <span class="mne">BPL</span> <a class="popup destination">tile7</a>              <span class="comment">\ return the altitude of the bottom object on the tile,</span>
+                        <span class="comment">\ iterating down through the stack of objects if there</span>
+                        <span class="comment">\ is more than one object</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The altitude of the bottom object is the same as the</span>
+                        <span class="comment">\ altitude of the tile itself, so this ensures that we</span>
+                        <span class="comment">\ return the tile's altitude from the subroutine, as per</span>
+                        <span class="comment">\ bit 7 of considerObjects</span>
+
+ <span class="mne">BMI</span> <a class="popup destination">tile1</a>              <span class="comment">\ Otherwise bit 7 of considerObjects is set and we need</span>
+                        <span class="comment">\ to take any objects on the tile into consideration, so</span>
+                        <span class="comment">\ jump to tile1 to process the objects on the stack</span>
+                        <span class="comment">\ (this BMI is effectively a JMP as we just passed</span>
+                        <span class="comment">\ through a BPL)</span>
+
+<span class="label">.tile4</span><a id="tile4" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the tile contains a tree or a</span>
+                        <span class="comment">\ boulder in object #Y</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">CheckForTileCentre</a> <span class="comment">\ Set T = max(|xCoordLo - 128|, |zCoordLo - 128|)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and return the same value in A</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This calculates how close the current position along</span>
+                        <span class="comment">\ the gaze vector is to the centre of the tile, in terms</span>
+                        <span class="comment">\ of the x-coordinate and z-coordinate</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">64</span>                <span class="comment">\ If A >= 64 then the gaze vector is more than half way</span>
+ <span class="mne">BCS</span> <a class="popup destination">tile6</a>              <span class="comment">\ from the centre of the tile (i.e. more than 64/128 =</span>
+                        <span class="comment">\ 50% of the distance from the centre to the tile edge,</span>
+                        <span class="comment">\ which is outside the body of the tree or boulder), so</span>
+                        <span class="comment">\ jump to tile6 to set bit 6 of considerObjects (if this</span>
+                        <span class="comment">\ is a boulder) and return the altitude of the tile</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectTypes</a>,<span class="register">Y</span>      <span class="comment">\ If object #Y is a tree (an object of type 2), jump to</span>
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ tile5</span>
+ <span class="mne">BEQ</span> <a class="popup destination">tile5</a>
+
+                        <span class="comment">\ If we get here then the tile contains a boulder in</span>
+                        <span class="comment">\ object #Y</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Set bit 7 of boulderOnTile to indicate that the tile</span>
+ <span class="mne">ROR</span> <a class="popup variable">boulderOnTile</a>      <span class="comment">\ contains a boulder</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yObjectLo</a>,<span class="register">Y</span>        <span class="comment">\ Set the following:</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="hex">&60</span>               <span class="comment">\   (A yPlatformLo) = yObject(Hi Lo) - 96</span>
+ <span class="mne">STA</span> <a class="popup variable">yPlatformLo</a>        <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">yObjectHi</a>,<span class="register">Y</span>        <span class="comment">\ where yObject is the altitude of the boulder</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="hex">&00</span>
+                        <span class="comment">\ So we return the altitude of the top of the boulder by</span>
+                        <span class="comment">\ effectively adding the boulder's height to the boulder</span>
+                        <span class="comment">\ object's altitude, bearing in mind that objects are</span>
+                        <span class="comment">\ spawned at a height of 224 above their tiles, so this</span>
+                        <span class="comment">\ returns the altitude of the top of the boulder, with</span>
+                        <span class="comment">\ the boulder being 224 - 96 = 128 fractional parts</span>
+                        <span class="comment">\ above the tile (so the boulder is the height of one</span>
+                        <span class="comment">\ half of a y-coordinate)</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Clear the C flag to indicate that the tile is flat</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.tile5</span><a id="tile5" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the tile contains a tree in</span>
+                        <span class="comment">\ object #Y</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yObjectLo</a>,<span class="register">Y</span>        <span class="comment">\ Set the following:</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">yCoordLo</a>           <span class="comment">\   (A U) =  yObject(Hi Lo) - yCoord(Hi Lo)</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">yObjectHi</a>,<span class="register">Y</span>        <span class="comment">\ where yObject is the altitude of the tree</span>
+ <span class="mne">SBC</span> <a class="popup variable">yCoordHi</a>           <span class="comment">\</span>
+                        <span class="comment">\ So (A U) contains the relative altitude of the current</span>
+                        <span class="comment">\ position along the gaze vector compared to the tree,</span>
+                        <span class="comment">\ with a positive value indicating that the gaze is</span>
+                        <span class="comment">\ is below the tree, and a negative value indicating</span>
+                        <span class="comment">\ that the gaze is above the tree</span>
+
+ <span class="mne">PHA</span>                    <span class="comment">\ Set (A U) = (A U) + 224</span>
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ This adds the height of the tree to (A U), as trees</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="hex">&E0</span>               <span class="comment">\ have a height of 224 fractional y-coordinates, so the</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ value in (A U) is now relative to the top of the tree,</span>
+ <span class="mne">PLA</span>                    <span class="comment">\ so it is effectively the height difference between the</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="hex">&00</span>               <span class="comment">\ gaze and the tree top</span>
+
+ <span class="mne">BMI</span> <a class="popup destination">tile6</a>              <span class="comment">\ If A is negative then the current position along the</span>
+                        <span class="comment">\ gaze vector is above the top of the tree, so jump to</span>
+                        <span class="comment">\ tile6 to return the altitude of the tile</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ Set (A U) = (A U) / 2</span>
+ <span class="mne">ROR</span> <a class="popup variable">U</a>                  <span class="comment">\</span>
+                        <span class="comment">\ So (A U) is now half the height difference between the</span>
+                        <span class="comment">\ gaze and tree top</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ If any of bits 1 to 7 of A are set then A >> 1 will be</span>
+ <span class="mne">BNE</span> <a class="popup destination">tile6</a>              <span class="comment">\ non-zero and the original value of (A U) must have</span>
+                        <span class="comment">\ been at least %100, so that's a positive value with a</span>
+                        <span class="comment">\ high byte of at least 4</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This means the gaze vector is too far below the tree</span>
+                        <span class="comment">\ for it to be visible, so jump to tile6 to return the</span>
+                        <span class="comment">\ altitude of the tile</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ If we get here then we know A >> 1 = 0, so we can</span>
+ <span class="mne">ROR</span> <span class="register">A</span>                  <span class="comment">\ halve (U A) again and discard the top byte, as it will</span>
+                        <span class="comment">\ be zero, so this sets:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   A = (U A) / 2</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this is the original height difference between the</span>
+                        <span class="comment">\ gaze and tree top, divided by 4</span>
+
+                        <span class="comment">\ We set T above to the maximum distance between the</span>
+                        <span class="comment">\ gaze vector and the centre of the tile in terms of the</span>
+                        <span class="comment">\ horizontal axes</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">T</a>                  <span class="comment">\ If A &lt; T then the gaze is further from the centre of</span>
+ <span class="mne">BCC</span> <a class="popup destination">tile6</a>              <span class="comment">\ the tile than the height difference to the tree top</span>
+                        <span class="comment">\ divided by 4, so jump to tile6 to return the altitude</span>
+                        <span class="comment">\ of the tile</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The centre point of the tile is the tree trunk, so</span>
+                        <span class="comment">\ this test means that gazes at the lower parts of the</span>
+                        <span class="comment">\ tree can be further from the centre point than gazes</span>
+                        <span class="comment">\ at the upper parts of the tree, while still being</span>
+                        <span class="comment">\ considered gazes that fall upon the tree</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This fits in with the tree's shape and makes the tree</span>
+                        <span class="comment">\ detection code more accurate</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">targetOnTile</a>       <span class="comment">\ If bit 7 of targetOnTile is set then the tree is</span>
+ <span class="mne">BMI</span> <a class="popup destination">tile6</a>              <span class="comment">\ the targeted object, so skip the following so that we</span>
+                        <span class="comment">\ only set bit 7 of gazeCanSeeTree if the tree is not</span>
+                        <span class="comment">\ the target (i.e. if bit 7 of targetOnTile is clear)</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Set bit 7 of gazeCanSeeTree to indicate that the tree</span>
+ <span class="mne">ROR</span> <a class="popup variable">gazeCanSeeTree</a>     <span class="comment">\ can be seen by the gaze vector</span>
+
+<span class="label">.tile6</span><a id="tile6" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectTypes</a>,<span class="register">Y</span>      <span class="comment">\ Set A to the type of object #Y</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ If the tile contains a tree (an object of type 2),</span>
+ <span class="mne">BEQ</span> <a class="popup destination">tile7</a>              <span class="comment">\ jump to tile7 to skip the following instruction</span>
+
+                        <span class="comment">\ If we get here then the tile contains a boulder or the</span>
+                        <span class="comment">\ Sentinel's tower, and in either case the gaze vector</span>
+                        <span class="comment">\ is not close enough to the platform object to hit it</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%11000000</span>         <span class="comment">\ Set bit 6 of considerObjects to denote that the gaze</span>
+ <span class="mne">STA</span> <a class="popup variable">considerObjects</a>    <span class="comment">\ vector is passing close by the platform object but is</span>
+                        <span class="comment">\ not hitting it, and set bit 7 so that it is unchanged</span>
+
+<span class="label">.tile7</span><a id="tile7" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectFlags</a>,<span class="register">Y</span>      <span class="comment">\ Set A to the object flags for object #Y</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="binary">%01000000</span>         <span class="comment">\ If bit 6 of the object flags for object #Y is set</span>
+ <span class="mne">BCS</span> <a class="popup destination">tile3</a>              <span class="comment">\ then object #Y is stacked on top of another object,</span>
+                        <span class="comment">\ so jump to tile3 with the object number in bits 0 to</span>
+                        <span class="comment">\ 5 of the object flags in A, so we can process that</span>
+                        <span class="comment">\ object instead</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yObjectHi</a>,<span class="register">Y</span>        <span class="comment">\ At this point we have reached the object on the tile</span>
+                        <span class="comment">\ itself, so set A to the y-coordinate of that object,</span>
+                        <span class="comment">\ which will be the tile altitude, and return from the</span>
+                        <span class="comment">\ subroutine with the C flag clear to denote a flat</span>
+                        <span class="comment">\ tile, as objects are only ever placed on flat tiles</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-checkfortilecentre"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/checkfortilecentre.html">CheckForTileCentre</a> (category: Maths (Geometry))</div><div class="summary">Calculate max(|xCoordLo - 128|, |zCoordLo - 128|)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gettiledata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gettiledata.html">GetTileData</a> (category: Landscape)</div><div class="summary">Get the tile data and tile data address for a specific tile</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-boulderontile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#boulderontile">boulderOnTile</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record whether the tile being analysed in the GetTileAltitude routine contains a boulder</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-considerobjects"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#considerobjects">considerObjects</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Controls whether the GetTileAltitude routine takes platform objects into consideration when calculating tile altitudes (bit 7) and returns details about the gaze vector (bit 6)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gazecanseetree"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#gazecanseetree">gazeCanSeeTree</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record whether the gaze vector can see a tree</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectflags"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">Object flags for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttypes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objecttypes.html">objectTypes</a> (category: 3D objects)</div><div class="summary">The object types table for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-targetobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#targetobject">targetObject</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The number of the object that is being targeted in the DrainObjectEnergy routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-targetontile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#targetontile">targetOnTile</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record whether the tile being analysed in the GetTileAltitude routine contains the target object whose number is in targetObject</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tile1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilealtitude.html#tile1">tile1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tile2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilealtitude.html#tile2">tile2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tile3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilealtitude.html#tile3">tile3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tile4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilealtitude.html#tile4">tile4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tile5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilealtitude.html#tile5">tile5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tile6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilealtitude.html#tile6">tile6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tile7"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilealtitude.html#tile7">tile7</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yaccuracylo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yaccuracylo">yAccuracyLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The vertical accuracy for considering a tile as being seen by the viewer, as a fractional part</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ycoordhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ycoordhi">yCoordHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of an object or point (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ycoordlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ycoordlo">yCoordLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of an object or point (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yobjecthi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/yobjecthi.html">yObjectHi</a> (category: 3D objects)</div><div class="summary">The y-coordinates in 3D space for the 3D objects (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yobjectlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/yobjectlo.html">yObjectLo</a> (category: 3D objects)</div><div class="summary">The y-coordinates in 3D space for the 3D objects (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yplatformlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yplatformlo">yPlatformLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of the altitude of the Sentinel's tower or boulder when returning tile data from the GetTileAltitude routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/tileedges.html">tileEdges</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/checkfortilecentre.html">CheckForTileCentre</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

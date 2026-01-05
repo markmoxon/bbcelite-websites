@@ -1,0 +1,120 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("landscape", "subroutine_spawntrees.html", "The SpawnTrees subroutine", "Landscape: SpawnTrees", "Annotated code for the SpawnTrees subroutine in The Sentinel", "the_sentinel-code", "source_landscape", "subroutine_spawntrees", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/spawnplayer.html">SpawnPlayer</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/checksecretcode_part_1_of_2.html">CheckSecretCode (Part 1 of 2)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">SpawnTrees</span>                                              <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Add trees to the landscape, ideally placing them below all the</span>
+             <span class="headerEntry">enemies in the landscape</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_b.html#header-spawntrees">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/spawnplayer.html">SpawnPlayer</a> calls <a href="#spawntrees">SpawnTrees</a></span>
+</div>
+</div></div>
+<span class="label">.SpawnTrees</span><a id="spawntrees" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">48</span>                <span class="comment">\ Set U = 48 - 3 * numberOfEnemies</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">numberOfEnemies</a>    <span class="comment">\ We use this to cap the number of trees we add to the</span>
+ <span class="mne">SBC</span> <a class="popup variable">numberOfEnemies</a>    <span class="comment">\ landscape (though it only affects higher levels)</span>
+ <span class="mne">SBC</span> <a class="popup variable">numberOfEnemies</a>
+ <span class="mne">STA</span> <a class="popup variable">U</a>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetNextSeed0To22</a>   <span class="comment">\ Set A to the next number from the landscape's sequence</span>
+                        <span class="comment">\ of seed numbers, converted to the range 0 to 22</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set A to this number, converted to the range 10 to 32</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">10</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">U</a>                  <span class="comment">\ If A >= U then set A = U</span>
+ <span class="mne">BCC</span> <a class="popup destination">tree1</a>              <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ So A = min(U, A)</span>
+
+<span class="label">.tree1</span><a id="tree1" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">treeCounter</a>        <span class="comment">\ By this point A contains a value in the range 10 to 32</span>
+                        <span class="comment">\ that's no greater than 48 - 3 * numberOfEnemies</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So when numberOfEnemies is six or more, this reduces</span>
+                        <span class="comment">\ the value of A as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * When numberOfEnemies = 6, range is 10 to 30</span>
+                        <span class="comment">\   * When numberOfEnemies = 7, range is 10 to 27</span>
+                        <span class="comment">\   * When numberOfEnemies = 8, range is 10 to 24</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ As the number of trees determines the total amount of</span>
+                        <span class="comment">\ energy in the landscape, this makes the levels get</span>
+                        <span class="comment">\ even more difficult when there are higher enemy counts</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now try to add this number of trees to the</span>
+                        <span class="comment">\ landscape, so store the result in treeCounter to use</span>
+                        <span class="comment">\ as a counter in the following loop</span>
+
+<span class="label">.tree2</span><a id="tree2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ Spawn a tree (an object of type 2), returning the</span>
+ <span class="mne">JSR</span> <a class="popup destination">SpawnObject</a>        <span class="comment">\ object number of the new object in X and currentObject</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">minEnemyAltitude</a>   <span class="comment">\ Set A to the altitude of the lowest enemy on the</span>
+                        <span class="comment">\ landscape, so we try to spawn all the trees at a lower</span>
+                        <span class="comment">\ altitude to the enemies</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">PlaceObjectBelow</a>   <span class="comment">\ Attempt to place the player object on a tile that is</span>
+                        <span class="comment">\ below the maximum altitude specified in A (though we</span>
+                        <span class="comment">\ may end up placing the object higher than this)</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">tree3</a>              <span class="comment">\ If the call to PlaceObjectBelow sets the C flag then</span>
+                        <span class="comment">\ the object has not been successfully placed, so jump</span>
+                        <span class="comment">\ to tree3 to stop adding trees to the landscape</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">treeCounter</a>        <span class="comment">\ Decrement the tree counter</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">tree2</a>              <span class="comment">\ Loop back until we have spawned the number of trees</span>
+                        <span class="comment">\ in treeCounter</span>
+
+<span class="label">.tree3</span><a id="tree3" class="anchor"></a>
+
+                        <span class="comment">\ We have now placed all the objects on the landscape,</span>
+                        <span class="comment">\ so now we fall through into CheckSecretCode to check</span>
+                        <span class="comment">\ that the player entered the correct secret code for</span>
+                        <span class="comment">\ this landscape</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getnextseed0to22"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getnextseed0to22.html">GetNextSeed0To22</a> (category: Maths (Arithmetic))</div><div class="summary">Set A to the next number from the landscape's sequence of seed numbers, converted to the range 0 to 22</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-placeobjectbelow"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/placeobjectbelow.html">PlaceObjectBelow</a> (category: 3D objects)</div><div class="summary">Attempt to place an object on a tile that is below the maximum altitude specified in A</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-spawnobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/spawnobject.html">SpawnObject</a> (category: 3D objects)</div><div class="summary">Add a new object of the specified type to the objectTypes table</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-minenemyaltitude"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#minenemyaltitude">minEnemyAltitude</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The altitude of the lowest enemy on the landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-numberofenemies"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#numberofenemies">numberOfEnemies</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The number of enemies in the current landscape, including the Sentinel (in the range 1 to 8)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tree1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/spawntrees.html#tree1">tree1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tree2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/spawntrees.html#tree2">tree2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tree3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/spawntrees.html#tree3">tree3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-treecounter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#treecounter">treeCounter</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">A counter for the number of trees that are added to the landscape in the SpawnTrees routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/spawnplayer.html">SpawnPlayer</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/checksecretcode_part_1_of_2.html">CheckSecretCode (Part 1 of 2)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

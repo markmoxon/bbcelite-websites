@@ -1,0 +1,336 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("gameplay", "subroutine_getobjvisibility.html", "The GetObjVisibility subroutine", "Gameplay: GetObjVisibility", "Annotated code for the GetObjVisibility subroutine in The Sentinel", "the_sentinel-code", "source_gameplay", "subroutine_getobjvisibility", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/yawadjustmenthi.html">yawAdjustmentHi</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/objecthalfwidth.html">objectHalfWidth</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetObjVisibility</span>                                        <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Gameplay</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Calculate whether any part of an object is visible on-screen, and</span>
+             <span class="headerEntry">if so, which character columns it spans on the screen</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_d.html#header-getobjvisibility">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/checkobjvisibility.html">CheckObjVisibility</a> calls <a href="#getobjvisibility">GetObjVisibility</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> calls <a href="#getobjvisibility">GetObjVisibility</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">currentObject</span>        <span class="argumentEntry">The number of the object to check</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">C flag</span>               <span class="argumentEntry">The object's visibility:</span>
+
+                        <span class="argumentEntry">  * Clear = at least some of the object is visible</span>
+                        <span class="argumentEntry">            on-screen</span>
+
+                        <span class="argumentEntry">  * Set = the object is not visible on-screen</span>
+
+   <span class="argumentLabel">bufferColumns</span>        <span class="argumentEntry">If the object is visible, this is set to the number of</span>
+                        <span class="argumentEntry">character columns in the screen buffer that the object</span>
+                        <span class="argumentEntry">spans</span>
+
+   <span class="argumentLabel">objYawOffset</span>         <span class="argumentEntry">If the object is visible, this is set to the yaw offset</span>
+                        <span class="argumentEntry">of the left edge of the object from the left edge of the</span>
+                        <span class="argumentEntry">screen, in character columns</span>
+
+</div></div>
+<span class="label">.GetObjVisibility</span><a id="getobjvisibility" class="anchor"></a>
+
+ <span class="mne">LDY</span> <a class="popup variable">currentObject</a>      <span class="comment">\ Set Y to the number of the object to check (so we are</span>
+                        <span class="comment">\ checking object #Y)</span>
+
+ <span class="mne">CPY</span> <a class="popup variable">playerObject</a>       <span class="comment">\ If this is the player object, jump to objv6 to return</span>
+ <span class="mne">BEQ</span> <a class="popup destination">objv6</a>              <span class="comment">\ from the subroutine with the C flag set to indicate</span>
+                        <span class="comment">\ that the object is not visible on-screen, as the</span>
+                        <span class="comment">\ player can never see themselves</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetObjectAngles</a>    <span class="comment">\ Calculate the angles and distances of the vector from</span>
+                        <span class="comment">\ the viewer to object #Y and put them into the</span>
+                        <span class="comment">\ following variables:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Set objectViewYaw(Hi Lo) to the yaw angle of the</span>
+                        <span class="comment">\     viewer's gaze towards the object, relative to the</span>
+                        <span class="comment">\     screen</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Set hypotenuse(Hi Lo) to the length of the 3D</span>
+                        <span class="comment">\     vector from the viewer to the object when</span>
+                        <span class="comment">\     projected down onto the ground plane</span>
+
+                        <span class="comment">\ We now work out the width of the object that we are</span>
+                        <span class="comment">\ looking at so we can work out whether any of it is</span>
+                        <span class="comment">\ on-screen</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">currentObject</a>      <span class="comment">\ Set X to the type of the object that we are checking</span>
+ <span class="mne">LDX</span> <a class="popup variable">objectTypes</a>,<span class="register">Y</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectHalfWidth</a>,<span class="register">X</span>  <span class="comment">\ Set A to half the object width for this object type,</span>
+                        <span class="comment">\ as a fraction of a tile</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">minObjWidth</a>        <span class="comment">\ If A &lt; minObjWidth then set A = minObjWidth, so:</span>
+ <span class="mne">BCS</span> <a class="popup destination">objv1</a>              <span class="comment">\</span>
+ <span class="mne">LDA</span> <a class="popup variable">minObjWidth</a>        <span class="comment">\   A = max(minObjWidth, objectHalfWidth)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So if minObjWidth is non-zero, we consider the object</span>
+                        <span class="comment">\ to be at least as wide as minObjWidth for the purposes</span>
+                        <span class="comment">\ of calculating whether it is visible on-screen</span>
+
+<span class="label">.objv1</span><a id="objv1" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">xDeltaLo</a>           <span class="comment">\ Set (A xDeltaLo) = (0 A)</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\                  = max(minObjWidth, objectHalfWidth)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So xDeltaLo is the width of the object</span>
+
+ <span class="mne">STA</span> <a class="popup variable">minObjWidth</a>        <span class="comment">\ Set minObjWidth = 0 as we have used this figure in the</span>
+                        <span class="comment">\ visibility calculation for the object, so we need to</span>
+                        <span class="comment">\ reset it for the next time we check an object (so the</span>
+                        <span class="comment">\ default value for minObjWidth is zero and it is only</span>
+                        <span class="comment">\ overridden when a large object is replaced by a</span>
+                        <span class="comment">\ smaller object)</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetPitchAngleDelta</a> <span class="comment">\ At this point we construct a right-angled triangle</span>
+                        <span class="comment">\ with adjacent side hypotenuse(Hi Lo) and opposite</span>
+                        <span class="comment">\ side xDeltaLo, like this:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\                                   object</span>
+                        <span class="comment">\                                  _.-+</span>
+                        <span class="comment">\                              _.-´   |</span>
+                        <span class="comment">\                          _.-´       |</span>
+                        <span class="comment">\                      _.-´           |</span>
+                        <span class="comment">\                  _.-´               |  xDeltaLo</span>
+                        <span class="comment">\              _.-´                   |</span>
+                        <span class="comment">\           .-´ angle(Hi Lo)          |</span>
+                        <span class="comment">\   viewer +--------------------------+</span>
+                        <span class="comment">\               hypotenuse(Hi Lo)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This triangle is flat on the ground with the viewer at</span>
+                        <span class="comment">\ the corner</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The adjacent side of length hypotenuse(Hi Lo) along</span>
+                        <span class="comment">\ the bottom of the triangle represents the projection</span>
+                        <span class="comment">\ onto the ground of the vector from the viewer to the</span>
+                        <span class="comment">\ object, as if there were a light shining down from</span>
+                        <span class="comment">\ above, so this is the projection of the gaze vector</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We want to calculate angle(Hi Lo), as that's the yaw</span>
+                        <span class="comment">\ angle delta between the projected gaze vector and the</span>
+                        <span class="comment">\ edge of the object, as the object has a yaw angle of</span>
+                        <span class="comment">\ xDeltaLo from the object centre to the side (as it's</span>
+                        <span class="comment">\ the half-width of the object)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We can then use this yaw angle delta to work out</span>
+                        <span class="comment">\ whether the left and right edges of the object are</span>
+                        <span class="comment">\ within the left-right viewing arc of the screen, and</span>
+                        <span class="comment">\ therefore whether any part of the object is within the</span>
+                        <span class="comment">\ screen bounds</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ To do this we call GetPitchAngleDelta, not because we</span>
+                        <span class="comment">\ are calculating a pitch angle, but because this</span>
+                        <span class="comment">\ routine calculates the angle of the above triangle as</span>
+                        <span class="comment">\ part of the process of calculating a pitch angle delta</span>
+                        <span class="comment">\ (so we just ignore the pitch angle result here)</span>
+
+                        <span class="comment">\ We now check whether the object is on screen in terms</span>
+                        <span class="comment">\ of yaw angles, so that's checking the object's edges</span>
+                        <span class="comment">\ against the left and right edges of the screen</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We start by checking the object against the left edge</span>
+                        <span class="comment">\ of the screen</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectViewYawLo</a>    <span class="comment">\ Set (A T) = objectViewYaw(Hi Lo) - angle(Hi Lo)</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">angleLo</a>            <span class="comment">\ So (A T) contains the yaw angle of the left edge of</span>
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\ the object, relative to the screen</span>
+ <span class="mne">LDA</span> <a class="popup variable">objectViewYawHi</a>
+ <span class="mne">SBC</span> <a class="popup variable">angleHi</a>
+
+ <span class="mne">BPL</span> <a class="popup destination">objv2</a>              <span class="comment">\ If the result in (A T) is positive then the left edge</span>
+                        <span class="comment">\ of the object is to the right of the left screen edge,</span>
+                        <span class="comment">\ so jump to objv2 to see how far it is to the right</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ (A T) is negative, so the left edge of the object is</span>
+                        <span class="comment">\ to the left of the left screen edge, so set A = 0 to</span>
+                        <span class="comment">\ use as the yaw offset of the left edge of the object</span>
+                        <span class="comment">\ in objYawOffset</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">objv3</a>              <span class="comment">\ Jump to objv3 to set objYawOffset to zero and move on</span>
+                        <span class="comment">\ to the checks for the right edge of the object</span>
+
+<span class="label">.objv2</span><a id="objv2" class="anchor"></a>
+
+ <span class="mne">ASL</span> <a class="popup variable">T</a>                  <span class="comment">\ Double the yaw angle in (A T)</span>
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\</span>
+                        <span class="comment">\ This converts the yaw angle into character columns in</span>
+                        <span class="comment">\ screen memory</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The custom screen mode 5 used by the game is 40</span>
+                        <span class="comment">\ character columns wide, and the screen is 20 yaw</span>
+                        <span class="comment">\ angles wide in terms of the game's coordinate system</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we can simply double the yaw angle in (A T) to</span>
+                        <span class="comment">\ convert it into on-screen character columns</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">40</span>                <span class="comment">\ If A >= 40 then the left edge is past the right edge</span>
+ <span class="mne">BCS</span> <a class="popup destination">objv6</a>              <span class="comment">\ of the screen (as the screen is 40 columns wide),</span>
+                        <span class="comment">\ which means the object is not visible, so jump to</span>
+                        <span class="comment">\ objv6 to return from the subroutine with the C flag</span>
+                        <span class="comment">\ set to indicate that the object is not visible</span>
+                        <span class="comment">\ on-screen</span>
+
+<span class="label">.objv3</span><a id="objv3" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">objYawOffset</a>       <span class="comment">\ Set objYawOffset to A, so it contains the yaw offset</span>
+                        <span class="comment">\ of the left edge of the object from the left edge of</span>
+                        <span class="comment">\ the screen, in character columns</span>
+
+                        <span class="comment">\ We now check the object against the right edge of the</span>
+                        <span class="comment">\ screen</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectViewYawLo</a>    <span class="comment">\ Set (A T) = objectViewYaw(Hi Lo) + angle(Hi Lo)</span>
+ <span class="mne">CLC</span>                    <span class="comment">\</span>
+ <span class="mne">ADC</span> <a class="popup variable">angleLo</a>            <span class="comment">\ So (A T) contains the yaw angle of the right edge of</span>
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\ the object, relative to the screen</span>
+ <span class="mne">LDA</span> <a class="popup variable">objectViewYawHi</a>
+ <span class="mne">ADC</span> <a class="popup variable">angleHi</a>
+
+ <span class="mne">BMI</span> <a class="popup destination">objv6</a>              <span class="comment">\ If the result in (A T) is negative then the right edge</span>
+                        <span class="comment">\ of the object is to the left of the left screen edge,</span>
+                        <span class="comment">\ so jump to objv6 to return from the subroutine with</span>
+                        <span class="comment">\ the C flag set to indicate that the object is not</span>
+                        <span class="comment">\ visible on-screen</span>
+
+                        <span class="comment">\ If we get here then the right edge of the object is to</span>
+                        <span class="comment">\ the right of the left screen edge, and we know from</span>
+                        <span class="comment">\ the first test that the left edge of the object is to</span>
+                        <span class="comment">\ the left of the right screen edge, so some of the</span>
+                        <span class="comment">\ object must be on-screen</span>
+
+ <span class="mne">ASL</span> <a class="popup variable">T</a>                  <span class="comment">\ Double the yaw angle in (A T)</span>
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\</span>
+                        <span class="comment">\ This converts the yaw angle into character columns in</span>
+                        <span class="comment">\ screen memory</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The custom screen mode 5 used by the game is 40</span>
+                        <span class="comment">\ character columns wide, and the screen is 20 yaw</span>
+                        <span class="comment">\ angles wide in terms of the game's coordinate system</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we can simply double the yaw angle in (A T) to</span>
+                        <span class="comment">\ convert it into on-screen character columns</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">40</span>                <span class="comment">\ If A >= 40 then set A = 39, so A = max(39, A)</span>
+ <span class="mne">BCC</span> <a class="popup destination">objv4</a>              <span class="comment">\</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">39</span>                <span class="comment">\ This sets A to the yaw angle offset of the right edge</span>
+                        <span class="comment">\ of the object, in on-screen character columns, clipped</span>
+                        <span class="comment">\ to fit within the screen width of 40 columns</span>
+
+<span class="label">.objv4</span><a id="objv4" class="anchor"></a>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set objYawWidth = A + 1 - objYawOffset</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\</span>
+ <span class="mne">SEC</span>                    <span class="comment">\ This sets objYawWidth to the difference between the</span>
+ <span class="mne">SBC</span> <a class="popup variable">objYawOffset</a>       <span class="comment">\ yaw offsets for the right and left edges, so that's</span>
+ <span class="mne">STA</span> <a class="popup variable">objYawWidth</a>        <span class="comment">\ the width of the object in on-screen character columns</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We add 1 to ensure we take the fractional part of the</span>
+                        <span class="comment">\ yaw offsets into account, as we have ignored the low</span>
+                        <span class="comment">\ byte in T for this calculation</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">objv6</a>              <span class="comment">\ If objYawWidth = 0 then the object has no on-screen</span>
+                        <span class="comment">\ width, so jump to objv6 to return from the subroutine</span>
+                        <span class="comment">\ with the C flag set to indicate that the object is not</span>
+                        <span class="comment">\ visible on-screen</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">21</span>                <span class="comment">\ If A >= 21 then set A = 20, so A = max(20, A)</span>
+ <span class="mne">BCC</span> <a class="popup destination">objv5</a>              <span class="comment">\</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">20</span>                <span class="comment">\ This clips A to the maximum of 20 character columns as</span>
+                        <span class="comment">\ this is the maximum width of the screen buffer when</span>
+                        <span class="comment">\ configured as a column buffer</span>
+
+<span class="label">.objv5</span><a id="objv5" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">bufferColumns</a>      <span class="comment">\ Configure the screen buffer to use A character columns</span>
+                        <span class="comment">\ for drawing the object</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Note that this has a maximum value of 20, which is why</span>
+                        <span class="comment">\ close-up objects that take up a large amount of space</span>
+                        <span class="comment">\ on-screen are absorbed in two stages, left then right,</span>
+                        <span class="comment">\ as the object it too wide to fit into the column</span>
+                        <span class="comment">\ buffer's maximum width of 20 character columns, or</span>
+                        <span class="comment">\ half a screen</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Clear the C flag to indicate that the object is</span>
+                        <span class="comment">\ visible on-screen</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.objv6</span><a id="objv6" class="anchor"></a>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Set the C flag to indicate that the object is not</span>
+                        <span class="comment">\ visible on-screen</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getobjectangles"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a> (category: 3D objects)</div><div class="summary">Calculate the angles and distances of the vector from the viewer to a specific object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getpitchangledelta"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getpitchangledelta.html">GetPitchAngleDelta</a> (category: Maths (Geometry))</div><div class="summary">Calculate the pitch angle of a vector relative to an object's pitch angle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-anglehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#anglehi">angleHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of an angle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-anglelo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#anglelo">angleLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of an angle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-buffercolumns"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#buffercolumns">bufferColumns</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The number of character columns in the current screen buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-currentobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#currentobject">currentObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the object we are currently processing</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-minobjwidth"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#minobjwidth">minObjWidth</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The on-screen width to use when updating objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objyawoffset"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objyawoffset">objYawOffset</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The yaw offset of the left edge of the object being analysed in GetObjVisibility, relative to the left edge of the screen, in on-screen character columns</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objyawwidth"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objyawwidth">objYawWidth</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The width of the visible portion of the object being analysed in GetObjVisibility, in on-screen character columns</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecthalfwidth"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objecthalfwidth.html">objectHalfWidth</a> (category: Gameplay)</div><div class="summary">Each object's width in terms of tile widths, for half the object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttypes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objecttypes.html">objectTypes</a> (category: 3D objects)</div><div class="summary">The object types table for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectviewyawhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objectviewyawhi">objectViewYawHi</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The yaw angle of the object being analysed, relative to the current viewer (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectviewyawlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objectviewyawlo">objectViewYawLo</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The yaw angle of the object being analysed, relative to the current viewer (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objv1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getobjvisibility.html#objv1">objv1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objv2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getobjvisibility.html#objv2">objv2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objv3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getobjvisibility.html#objv3">objv3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objv4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getobjvisibility.html#objv4">objv4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objv5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getobjvisibility.html#objv5">objv5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objv6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getobjvisibility.html#objv6">objv6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playerobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#playerobject">playerObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the player object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xdeltalo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xdeltalo">xDeltaLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference between two x-coordinates (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/yawadjustmenthi.html">yawAdjustmentHi</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/objecthalfwidth.html">objectHalfWidth</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

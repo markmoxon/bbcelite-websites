@@ -1,0 +1,227 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("gameplay", "subroutine_drainobjectenergy.html", "The DrainObjectEnergy subroutine", "Gameplay: DrainObjectEnergy", "Annotated code for the DrainObjectEnergy subroutine in The Sentinel", "the_sentinel-code", "source_gameplay", "subroutine_drainobjectenergy", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/scanformeanietree.html">ScanForMeanieTree</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/expendenemyenergy.html">ExpendEnemyEnergy</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">DrainObjectEnergy</span>                                       <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Gameplay</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Drain energy from an object into an enemy, transforming it into an</span>
+             <span class="headerEntry">object with an energy level of one unit less (if applicable)</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_c.html#header-drainobjectenergy">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/applytactics_part_5_of_8.html">ApplyTactics (Part 5 of 8)</a> calls <a href="#drainobjectenergy">DrainObjectEnergy</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/applytactics_part_7_of_8.html">ApplyTactics (Part 7 of 8)</a> calls <a href="#drainobjectenergy">DrainObjectEnergy</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">targetObject</span>         <span class="argumentEntry">The number of the object being drained of energy</span>
+
+   <span class="argumentLabel">enemyObject</span>          <span class="argumentEntry">The number of the object doing the draining</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">C flag</span>               <span class="argumentEntry">Result flag:</span>
+
+                        <span class="argumentEntry">  * Set if the player object is being drained and they</span>
+                        <span class="argumentEntry">    still have a positive energy level after the</span>
+                        <span class="argumentEntry">    draining</span>
+
+                        <span class="argumentEntry">  * Clear if one of the following is true:</span>
+
+                        <span class="argumentEntry">    * The player object is being drained and they now</span>
+                        <span class="argumentEntry">      have a negative energy level, so the Sentinel has</span>
+                        <span class="argumentEntry">      won</span>
+
+                        <span class="argumentEntry">    * The player object is not being drained</span>
+
+   <span class="argumentLabel">X</span>                    <span class="argumentEntry">The object number of the target that has been drained of</span>
+                        <span class="argumentEntry">energy (and which has therefore been transformed into a</span>
+                        <span class="argumentEntry">different object type)</span>
+
+</div></div>
+<span class="label">.dobj1</span><a id="dobj1" class="anchor"></a>
+
+                        <span class="comment">\ If we jump here from below here then the player has</span>
+                        <span class="comment">\ run out of energy</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%10000000</span>         <span class="comment">\ Set bit 7 of sentinelHasWon to indicate that the</span>
+ <span class="mne">STA</span> <a class="popup variable">sentinelHasWon</a>     <span class="comment">\ player has run out of energy and the Sentinel has won</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">FinishEnemyTactics</a> <span class="comment">\ Jump to FinishEnemyTactics to stop applying tactics to</span>
+                        <span class="comment">\ the current enemy and return to the ProcessGameplay</span>
+                        <span class="comment">\ routine to continue with the gameplay loop</span>
+
+<span class="label">.DrainObjectEnergy</span><a id="drainobjectenergy" class="anchor"></a>
+
+ <span class="mne">LDX</span> <a class="popup variable">targetObject</a>       <span class="comment">\ Set X to the object number that is being drained of</span>
+                        <span class="comment">\ energy</span>
+
+ <span class="mne">CPX</span> <a class="popup variable">playerObject</a>       <span class="comment">\ If this is not the player object, jump to dobj2 to</span>
+ <span class="mne">BNE</span> <a class="popup destination">dobj2</a>              <span class="comment">\ drain energy from object #X rather than the player</span>
+
+                        <span class="comment">\ If we get here then this is the player object, so we</span>
+                        <span class="comment">\ now drain energy from the player</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">playerEnergy</a>       <span class="comment">\ If the player has no energy then draining more energy</span>
+ <span class="mne">BEQ</span> <a class="popup destination">dobj1</a>              <span class="comment">\ will kill them, so jump to dobj1 to process this</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Subtract 1 from the player's energy</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">1</span>
+ <span class="mne">STA</span> <a class="popup variable">playerEnergy</a>
+
+ <span class="mne">JSR</span> <a class="popup destination">UpdateIconsScanner</a> <span class="comment">\ Update the icons in the top-left corner of the screen</span>
+                        <span class="comment">\ to show the player's current energy level and redraw</span>
+                        <span class="comment">\ the scanner box</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">5</span>                 <span class="comment">\ Make sound #5 (ping)</span>
+ <span class="mne">JSR</span> <a class="popup destination">MakeSound</a>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Set the C flag to indicate that the player still has a</span>
+                        <span class="comment">\ non-zero energy level</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">dobj7</a>              <span class="comment">\ Jump to dobj7 to finish up and return from the</span>
+                        <span class="comment">\ subroutine</span>
+
+<span class="label">.dobj2</span><a id="dobj2" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we need to drain energy from</span>
+                        <span class="comment">\ object #X</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Check to see whether it is safe to redraw object #X</span>
+ <span class="mne">JSR</span> <a class="popup destination">AbortWhenVisible</a>   <span class="comment">\ without risk of corrupting a screen pan (if there is</span>
+                        <span class="comment">\ a risk and it can't be updated, then the call to</span>
+                        <span class="comment">\ AbortWhenVisible will not return here and will instead</span>
+                        <span class="comment">\ abort tactics for this iteration of the gameplay loop)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectTypes</a>,<span class="register">X</span>      <span class="comment">\ Set A to the type of object #X</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">dobj3</a>              <span class="comment">\ If object #X is not a robot (i.e. not an object of</span>
+                        <span class="comment">\ type 0), jump to dobj3</span>
+
+                        <span class="comment">\ If we get here then we are draining energy from a</span>
+                        <span class="comment">\ robot in object #X</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">enemyObject</a>        <span class="comment">\ Set enemyDrainTimer = 0 to restart the drain counter</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ for the enemy in part 5 of ApplyTactics, so it doesn't</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyDrainTimer</a>,<span class="register">Y</span>  <span class="comment">\ drain energy for another 120 timer ticks (120 * 0.06 =</span>
+                        <span class="comment">\ 7.2 seconds)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ Set A = 3 so the robot loses one energy unit and</span>
+                        <span class="comment">\ changes into a boulder (i.e. an object of type 3)</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">dobj5</a>              <span class="comment">\ Jump to dobj5 to set the new object type of object #X</span>
+                        <span class="comment">\ to the value in A, so the robot turns into a boulder</span>
+
+<span class="label">.dobj3</span><a id="dobj3" class="anchor"></a>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ If object #X is not a tree (i.e. not an object of</span>
+ <span class="mne">BNE</span> <a class="popup destination">dobj4</a>              <span class="comment">\ type 2), jump to dobj4</span>
+
+                        <span class="comment">\ If we get here then we are draining energy from a</span>
+                        <span class="comment">\ tree in object #X</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">DeleteObject</a>       <span class="comment">\ Delete object #X and remove it from the landscape,</span>
+                        <span class="comment">\ as trees only have one energy unit, so draining one</span>
+                        <span class="comment">\ unit from a tree removes it altogether</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">dobj6</a>              <span class="comment">\ Jump to dobj6 to skip updating the energy for object</span>
+                        <span class="comment">\ #X, as we just deleted it</span>
+
+<span class="label">.dobj4</span><a id="dobj4" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we must be draining energy from a</span>
+                        <span class="comment">\ boulder in object #X, so now we change it into a tree</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">116</span>               <span class="comment">\ Set minObjWidth = 116 so we use the width of the wider</span>
+ <span class="mne">STA</span> <a class="popup variable">minObjWidth</a>        <span class="comment">\ object, the boulder, when we calculate the object's</span>
+                        <span class="comment">\ visibility when updating the object on-screen ???</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ Set A = 2 so the boulder loses one energy unit and</span>
+                        <span class="comment">\ changes into a tree (i.e. an object of type 2)</span>
+
+<span class="label">.dobj5</span><a id="dobj5" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">objectTypes</a>,<span class="register">X</span>      <span class="comment">\ Set the object type of object #X to the new type in A</span>
+
+<span class="label">.dobj6</span><a id="dobj6" class="anchor"></a>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Clear the C flag to return from the subroutine</span>
+
+<span class="label">.dobj7</span><a id="dobj7" class="anchor"></a>
+
+ <span class="mne">PHP</span>                    <span class="comment">\ Store the C flag on the stack so we can retrieve it</span>
+                        <span class="comment">\ below to return from the subroutine</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">enemyObject</a>        <span class="comment">\ Increment the energy level for the enemy object by one</span>
+ <span class="mne">LDA</span> <a class="popup variable">enemyEnergy</a>,<span class="register">Y</span>      <span class="comment">\ unit, as the enemy just absorbed one unit from the</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ target object</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">1</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyEnergy</a>,<span class="register">Y</span>
+
+ <span class="mne">PLP</span>                    <span class="comment">\ Retrieve the C flag from the stack to return from the</span>
+                        <span class="comment">\ subroutine</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-abortwhenvisible"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/abortwhenvisible.html">AbortWhenVisible</a> (category: Gameplay)</div><div class="summary">Abort applying the tactics for this gameplay loop if updating the object on-screen will corrupt a screen pan</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-deleteobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/deleteobject.html">DeleteObject</a> (category: 3D objects)</div><div class="summary">Delete an object, removing it from the landscape and vacating its object number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-finishenemytactics"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/finishenemytactics.html">FinishEnemyTactics</a> (category: Gameplay)</div><div class="summary">Stop applying tactics to the current enemy and return to the ProcessGameplay routine to continue with the gameplay loop</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-makesound"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/makesound.html">MakeSound</a> (category: Sound)</div><div class="summary">Make a sound</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-updateiconsscanner"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a> (category: Scanner/energy row)</div><div class="summary">Update the icons in the top-left corner of the screen to show the player's current energy level and redraw the scanner box</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dobj1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drainobjectenergy.html#dobj1">dobj1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dobj2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drainobjectenergy.html#dobj2">dobj2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dobj3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drainobjectenergy.html#dobj3">dobj3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dobj4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drainobjectenergy.html#dobj4">dobj4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dobj5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drainobjectenergy.html#dobj5">dobj5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dobj6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drainobjectenergy.html#dobj6">dobj6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dobj7"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drainobjectenergy.html#dobj7">dobj7</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemydraintimer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyDrainTimer</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A timer for each enemy that counts down every 0.06</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemyenergy"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemyenergy">enemyEnergy</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Enemy energy levels (one byte per enemy)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemyobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#enemyobject">enemyObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The object number of the enemy to which we are applying tactics in this iteration around the main loop (0-7)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-minobjwidth"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#minobjwidth">minObjWidth</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The on-screen width to use when updating objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttypes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objecttypes.html">objectTypes</a> (category: 3D objects)</div><div class="summary">The object types table for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playerenergy"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#playerenergy">playerEnergy</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The player's energy level (in the range 0 to 63)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playerobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#playerobject">playerObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the player object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sentinelhaswon"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#sentinelhaswon">sentinelHasWon</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record when the player runs out of energy (i.e. the energy level goes negative), at which point the Sentinel wins</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-targetobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#targetobject">targetObject</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The number of the object that is being targeted in the DrainObjectEnergy routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/scanformeanietree.html">ScanForMeanieTree</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/expendenemyenergy.html">ExpendEnemyEnergy</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

@@ -1,0 +1,115 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("sights", "subroutine_setsightsaddress.html", "The SetSightsAddress subroutine", "Sights: SetSightsAddress", "Annotated code for the SetSightsAddress subroutine in The Sentinel", "the_sentinel-code", "source_sights", "subroutine_setsightsaddress", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/movesightsupdown.html">MoveSightsUpDown</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/drawsights.html">DrawSights</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">SetSightsAddress</span>                                        <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Sights</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Update the address variables for the sights when they move into a</span>
+             <span class="headerEntry">new character block or row</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_h.html#header-setsightsaddress">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/movesightssideways.html">MoveSightsSideways</a> calls <a href="#setsightsaddress">SetSightsAddress</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/movesightsupdown.html">MoveSightsUpDown</a> calls <a href="#setsightsaddress">SetSightsAddress</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/movesightsupdown.html">MoveSightsUpDown</a> calls via <a href="#sadr3">sadr3</a></span></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">X</span>                    <span class="argumentEntry">Describes how the sights have moved when they move into</span>
+                        <span class="argumentEntry">a new character block or row in screen memory:</span>
+
+                        <span class="argumentEntry">  * 0 if the sights moved right into the next character</span>
+                        <span class="argumentEntry">    block</span>
+
+                        <span class="argumentEntry">  * 1 if the sights moved left into the previous</span>
+                        <span class="argumentEntry">    character block</span>
+
+                        <span class="argumentEntry">  * 2 if the sights moved up within the same row</span>
+
+                        <span class="argumentEntry">  * 3 if the sights moved down within the same row</span>
+
+                        <span class="argumentEntry">  * 4 if the sights moved up into the row above</span>
+
+                        <span class="argumentEntry">  * 5 if the sights moved down into the row below</span>
+
+<hr class="light">
+<span class="subheader"> Other entry points:</span>
+
+   <span class="argumentLabel">sadr3</span>                <span class="argumentEntry">Contains an RTS</span>
+
+</div></div>
+<span class="label">.SetSightsAddress</span><a id="setsightsaddress" class="anchor"></a>
+
+                        <span class="comment">\ We calculate the new screen address for the sights</span>
+                        <span class="comment">\ after the movement type described in X, by adding the</span>
+                        <span class="comment">\ relevant address change from entry X in the tables at</span>
+                        <span class="comment">\ sightsMoveAddr(Hi Lo)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">sightsScreenAddr</a>   <span class="comment">\ Add the address change for the movement type in X to</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ the sights screen address in sightsScreenAddr(1 0)</span>
+ <span class="mne">ADC</span> <a class="popup variable">sightsMoveAddrLo</a>,<span class="register">X</span> <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">sightsScreenAddr</a>   <span class="comment">\ We start by calculating this:</span>
+ <span class="mne">LDA</span> <a class="popup variable">sightsScreenAddr</a><span class="operator">+</span><span class="decimal">1</span> <span class="comment">\</span>
+ <span class="mne">ADC</span> <a class="popup variable">sightsMoveAddrHi</a>,<span class="register">X</span> <span class="comment">\   (A sightsScreenAddr) = viewScreenAddr(1 0)</span>
+                        <span class="comment">\              + (sightsMoveAddrHi+X sightsMoveAddrLo+X)</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="hex">&80</span>               <span class="comment">\ If the high byte in A >= &80 then the new address is</span>
+ <span class="mne">BCC</span> <a class="popup destination">sadr1</a>              <span class="comment">\ past the end of screen memory, so subtract &20 from</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="hex">&20</span>               <span class="comment">\ the high byte so the address wraps around within the</span>
+                        <span class="comment">\ range of screen memory between &6000 and &8000</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If the high byte is in range, jump to sadr1 to check</span>
+                        <span class="comment">\ the high byte against the start of screen memory</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">sadr2</a>              <span class="comment">\ Jump to sadr2 to skip the next check, as we know it</span>
+                        <span class="comment">\ doesn't apply</span>
+
+<span class="label">.sadr1</span><a id="sadr1" class="anchor"></a>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="hex">&60</span>               <span class="comment">\ If the high byte in A &lt; &60 then the new address is</span>
+ <span class="mne">BCS</span> <a class="popup destination">sadr2</a>              <span class="comment">\ before the start of screen memory, so add &20 to the</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="hex">&20</span>               <span class="comment">\ high byte so the address wraps around within the range</span>
+                        <span class="comment">\ of screen memory between &6000 and &8000</span>
+
+<span class="label">.sadr2</span><a id="sadr2" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">sightsScreenAddr</a><span class="operator">+</span><span class="decimal">1</span> <span class="comment">\ Store the high byte of the result, so we now have:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   sightsScreenAddr(1 0) = viewScreenAddr(1 0)</span>
+                        <span class="comment">\              + (sightsMoveAddrHi+X sightsMoveAddrLo+X)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ with the address wrapped around as required</span>
+
+<span class="label">.sadr3</span><a id="sadr3" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sadr1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/setsightsaddress.html#sadr1">sadr1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sadr2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/setsightsaddress.html#sadr2">sadr2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sightsmoveaddrhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/sightsmoveaddrhi.html">sightsMoveAddrHi</a> (category: Sights)</div><div class="summary">The change to apply to the screen address of the sights when they move into a new character block or row (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sightsmoveaddrlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/sightsmoveaddrlo.html">sightsMoveAddrLo</a> (category: Sights)</div><div class="summary">The change to apply to the screen address of the sights when they move into a new character block or row (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sightsscreenaddr"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#sightsscreenaddr">sightsScreenAddr</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The screen address of the sights</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/movesightsupdown.html">MoveSightsUpDown</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/drawsights.html">DrawSights</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

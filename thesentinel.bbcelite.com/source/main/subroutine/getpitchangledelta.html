@@ -1,0 +1,201 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("maths_geometry", "subroutine_getpitchangledelta.html", "The GetPitchAngleDelta subroutine", "Maths (Geometry): GetPitchAngleDelta", "Annotated code for the GetPitchAngleDelta subroutine in The Sentinel", "the_sentinel-code", "source_maths_geometry", "subroutine_getpitchangledelta", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/gethypotenuseangle.html">GetHypotenuseAngle</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/gethypotenuse.html">GetHypotenuse</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetPitchAngleDelta</span>                                      <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Maths (Geometry)</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Calculate the pitch angle of a vector relative to an object's</span>
+             <span class="headerEntry">pitch angle</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_i.html#header-getpitchangledelta">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/checkenemygaze_part_2_of_2.html">CheckEnemyGaze (Part 2 of 2)</a> calls <a href="#getpitchangledelta">GetPitchAngleDelta</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/getobjpointangles.html">GetObjPointAngles</a> calls <a href="#getpitchangledelta">GetPitchAngleDelta</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> calls <a href="#getpitchangledelta">GetPitchAngleDelta</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/gettileviewangles_part_3_of_4.html">GetTileViewAngles (Part 3 of 4)</a> calls <a href="#getpitchangledelta">GetPitchAngleDelta</a></span>
+</div>
+<hr class="light">
+ This routine calculates the following pitch angle delta:
+
+   pitchDelta(Hi Lo) = angle(Hi Lo) - (objectPitchAngle 32)
+
+ where angle(Hi Lo) is the angle of this triangle:
+
+                                   object
+                                  _.-+             ^
+                              _.-´   |             |
+                 vector   _.-´       |         y-axis (up)
+                      _.-´           |
+                  _.-´               |  (A xDeltaLo)
+              _.-´                   |
+           .-´ angle(Hi Lo)          |
+   viewer +--------------------------+
+                hypotenuse(Hi Lo)
+
+ This triangle is typically a viewing vector from the player's eyes to a
+ coordinate in the 3D world. The length in hypotenuse(Hi Lo) is the projection
+ of the vector down onto the ground (i.e. y = 0), and it has already been
+ calculated by this point from the x- and z-axis elements of the vector. In
+ this calculation this hypotenuse length is actually the adjacent side for the
+ pitch angle above, but I've kept the same variable name from the first part of
+ the calculation to make it easier to follow through.
+
+ So this routine takes the hypotenuse length and the y-axis element of the
+ vector in (A xDeltaLo) and calculates the vector's pitch angle in
+ angle(Hi Lo), and then it calculates the difference between the vector's pitch
+ angle and the pitch angle for object #X (i.e. the viewer).
+
+ In other words, this calculates the pitch angle of the viewer's gaze towards
+ a coordinate (typically a tile), relative to the pitch angle of the viewer, so
+ that's relative to the current viewing direction. This is used to calculate
+ player-relative pitch angles for tiles in the current tile view, for example.
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">(A xDeltaLo)</span>         <span class="argumentEntry">A vertical delta (i.e. a y-axis element)</span>
+
+   <span class="argumentLabel">hypotenuse(Hi Lo)</span>    <span class="argumentEntry">The length of the hypotenuse (i.e. adjacent side)</span>
+
+   <span class="argumentLabel">X</span>                    <span class="argumentEntry">The object number</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">pitchDelta(Hi Lo)</span>    <span class="argumentEntry">The pitch angle delta (divided by 16)</span>
+
+   <span class="argumentLabel">angle(Hi Lo)</span>         <span class="argumentEntry">The angle of the right-angled triangle with adjacent</span>
+                        <span class="argumentEntry">side hypotenuse(Hi Lo) and opposite side (A xDeltaLo)</span>
+
+</div></div>
+<span class="label">.GetPitchAngleDelta</span><a id="getpitchangledelta" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">xDeltaHi</a>           <span class="comment">\ Set xDelta(Hi Lo) to the vertical delta passed to the</span>
+                        <span class="comment">\ routine</span>
+
+ <span class="mne">TAY</span>                    <span class="comment">\ If the high byte is positive, jump to pdel1 to skip</span>
+ <span class="mne">BPL</span> <a class="popup destination">pdel1</a>              <span class="comment">\ the following</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Negate the result to make it positive, so we now have:</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">xDeltaLo</a>           <span class="comment">\   (A xDeltaLo) = |xDeltaHi xDeltaLo|</span>
+ <span class="mne">STA</span> <a class="popup variable">xDeltaLo</a>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>
+ <span class="mne">SBC</span> <a class="popup variable">xDeltaHi</a>
+
+<span class="label">.pdel1</span><a id="pdel1" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">xDeltaAbsoluteHi</a>   <span class="comment">\ Set xDeltaAbsoluteHi = |xDeltaHi|</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we now have the absolute delta in:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (xDeltaAbsoluteHi xDeltaLo)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and the original high byte of the signed delta is</span>
+                        <span class="comment">\ still in xDeltaHi</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">hypotenuseLo</a>       <span class="comment">\ Set (zDeltaAbsoluteHi zDeltaLo) to the length of the</span>
+ <span class="mne">STA</span> <a class="popup variable">zDeltaLo</a>           <span class="comment">\ hypotenuse hypotenuse(Hi Lo)</span>
+ <span class="mne">LDA</span> <a class="popup variable">hypotenuseHi</a>
+ <span class="mne">STA</span> <a class="popup variable">zDeltaAbsoluteHi</a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set zDeltaHi to make the sign of zDelta positive in</span>
+ <span class="mne">STA</span> <a class="popup variable">zDeltaHi</a>           <span class="comment">\ the call to GetHypotenuseAngle</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetHypotenuseAngle</a> <span class="comment">\ Calculate the angle of the hypotenuse in the triangle</span>
+                        <span class="comment">\ with the following non-hypotenuse sides:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * xDelta(Hi Lo)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * zDelta(Hi Lo)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ which are set as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * (A xDeltaLo)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * hypotenuse(Hi Lo)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ and return the angle in angle(Hi Lo), the tangent in</span>
+                        <span class="comment">\ angleTangent, the length of the longer side in</span>
+                        <span class="comment">\ a(Hi Lo) and the length of the shorter side in</span>
+                        <span class="comment">\ b(Hi Lo)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">angleLo</a>            <span class="comment">\ Set (A pitchDeltaLo) = angle(Hi Lo)</span>
+ <span class="mne">SEC</span>                    <span class="comment">\                        - (objectPitchAngle 32)</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">32</span>                <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">pitchDeltaLo</a>       <span class="comment">\ starting with the low bytes</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">angleHi</a>            <span class="comment">\ And then the high bytes</span>
+ <span class="mne">SBC</span> <a class="popup variable">objectPitchAngle</a>,<span class="register">X</span>
+
+ <span class="mne">PHP</span>                    <span class="comment">\ Store the status flags from the calculation</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ Set (A pitchDeltaLo) = (A pitchDeltaLo) / 16</span>
+ <span class="mne">ROR</span> <a class="popup variable">pitchDeltaLo</a>
+ <span class="mne">LSR</span> <span class="register">A</span>
+ <span class="mne">ROR</span> <a class="popup variable">pitchDeltaLo</a>
+ <span class="mne">LSR</span> <span class="register">A</span>
+ <span class="mne">ROR</span> <a class="popup variable">pitchDeltaLo</a>
+ <span class="mne">LSR</span> <span class="register">A</span>
+ <span class="mne">ROR</span> <a class="popup variable">pitchDeltaLo</a>
+
+ <span class="mne">PLP</span>                    <span class="comment">\ If result is negative, set top four bits of A</span>
+ <span class="mne">BPL</span> <a class="popup destination">pdel2</a>
+ <span class="mne">ORA</span> <span class="hash">#</span><span class="binary">%11110000</span>
+
+<span class="label">.pdel2</span><a id="pdel2" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">pitchDeltaHi</a>       <span class="comment">\ Store result in pitchDelta(Hi Lo)</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gethypotenuseangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gethypotenuseangle.html">GetHypotenuseAngle</a> (category: Maths (Geometry))</div><div class="summary">Calculate the angle of the hypotenuse in a right-angle triangle given the two non-hypotenuse sides (i.e. two orthogonal axes)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-anglehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#anglehi">angleHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of an angle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-anglelo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#anglelo">angleLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of an angle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-hypotenusehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#hypotenusehi">hypotenuseHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of the hypotenuse of a triangle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-hypotenuselo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#hypotenuselo">hypotenuseLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of the hypotenuse of a triangle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectpitchangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#objectpitchangle">objectPitchAngle</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">The pitch angle for each object (i.e. the vertical direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pdel1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getpitchangledelta.html#pdel1">pdel1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pdel2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getpitchangledelta.html#pdel2">pdel2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pitchdeltahi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#pitchdeltahi">pitchDeltaHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The delta between two pitch angles (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pitchdeltalo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#pitchdeltalo">pitchDeltaLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The delta between two pitch angles (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xdeltaabsolutehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xdeltaabsolutehi">xDeltaAbsoluteHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The absolute difference between two x-coordinates (high byte), i.e. |xDeltaHi|</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xdeltahi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xdeltahi">xDeltaHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference between two x-coordinates (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xdeltalo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xdeltalo">xDeltaLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference between two x-coordinates (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-zdeltaabsolutehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#zdeltaabsolutehi">zDeltaAbsoluteHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The absolute difference between two z-coordinates (high byte), i.e. |zDeltaHi|</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-zdeltahi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#zdeltahi">zDeltaHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference between two z-coordinates (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-zdeltalo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#zdeltalo">zDeltaLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference between two z-coordinates (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/gethypotenuseangle.html">GetHypotenuseAngle</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/gethypotenuse.html">GetHypotenuse</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

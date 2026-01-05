@@ -1,0 +1,394 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("3d_objects", "subroutine_placeobjectontile.html", "The PlaceObjectOnTile subroutine", "3D objects: PlaceObjectOnTile", "Annotated code for the PlaceObjectOnTile subroutine in The Sentinel", "the_sentinel-code", "source_3d_objects", "subroutine_placeobjectontile", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/deleteobject.html">DeleteObject</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/tilenumber.html">tileNumber</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">PlaceObjectOnTile</span>                                       <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">3D objects</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Place an object on a tile, putting it on top of any existing</span>
+             <span class="headerEntry">boulders or towers</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_d.html#header-placeobjectontile">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/addenemiestotiles.html">AddEnemiesToTiles</a> calls <a href="#placeobjectontile">PlaceObjectOnTile</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/placeobjectbelow.html">PlaceObjectBelow</a> calls <a href="#placeobjectontile">PlaceObjectOnTile</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/processactionkeys_part_2_of_2.html">ProcessActionKeys (Part 2 of 2)</a> calls <a href="#placeobjectontile">PlaceObjectOnTile</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/spawnplayer.html">SpawnPlayer</a> calls <a href="#placeobjectontile">PlaceObjectOnTile</a></span>
+</div>
+<hr class="light">
+ This routine sets the following (if successful):
+
+   * X-th entry in (xObject, yObject, zObject) is set to the 3D coordinate of
+     the newly added object, where the y-coordinate is yObject(Hi Lo)
+
+   * X-th entry in objectFlags, bit 7 is clear to indicate that object #X has
+     been allocated to an object
+
+   * X-th entry in objectFlags, bit 6 is set if we add the object on top of a
+     boulder or tower (and the object number of the boulder/tower is in bits
+     0-5)
+
+   * X-th entry in yObjectLo = 224, so objects are spawned at a height of 224
+     above the tile itself, or 0.875 tile widths (this is used for the gaze
+     vector calculations, so this is effectively the height of the object's
+     eyes above the tile)
+
+   * X-th entry in objectPitchAngle = -11, so objects look slightly downwards
+     at a pitch angle of 15.5 degrees
+
+   * X-th entry in objectYawAngle is set to a multiple of 11.25 degrees, as
+     determined by the next seed
+
+   * tileData for the tile is set to the object number in X in bits 0 to 5, and
+     bits 6 and 7 are set to indicate that the tile contains an object
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">X</span>                    <span class="argumentEntry">The number of the object to add to the tile</span>
+
+   <span class="argumentLabel">(xTile, zTile)</span>       <span class="argumentEntry">The tile coordinate where we place the object</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">C flag</span>               <span class="argumentEntry">Status flag:</span>
+
+                        <span class="argumentEntry">  * Clear if we successfully added the object to the</span>
+                        <span class="argumentEntry">    tile</span>
+
+                        <span class="argumentEntry">  * Set if we failed to add the object to the tile (if</span>
+                        <span class="argumentEntry">    the tile is occupied by an object that is not a</span>
+                        <span class="argumentEntry">    a boulder or tower, for example)</span>
+
+</div></div>
+<span class="label">.PlaceObjectOnTile</span><a id="placeobjectontile" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">xTile</a>              <span class="comment">\ Set the 3D coordinate for object #X to (xTile, zTile)</span>
+ <span class="mne">STA</span> <a class="popup variable">xObject</a>,<span class="register">X</span>          <span class="comment">\ by updating the X-th entries in the xObject and</span>
+ <span class="mne">LDA</span> <a class="popup variable">zTile</a>              <span class="comment">\ zObject tables</span>
+ <span class="mne">STA</span> <a class="popup variable">zObject</a>,<span class="register">X</span>          <span class="comment">\</span>
+                        <span class="comment">\ So this sets the x- and z-coordinates of the 3D</span>
+                        <span class="comment">\ coordinate for our object; we set the y-coordinate</span>
+                        <span class="comment">\ later</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileData</a>        <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile), setting the C flag if the tile</span>
+                        <span class="comment">\ contains an object</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This also sets the tile page in tileDataPage and the</span>
+                        <span class="comment">\ tile number in Y, so tileDataPage+Y now points to the</span>
+                        <span class="comment">\ tile data entry in the tileData table</span>
+
+ <span class="mne">BCC</span> <a class="popup destination">objt4</a>              <span class="comment">\ If the C flag is clear then this tile does not already</span>
+                        <span class="comment">\ have an object placed on it, so jump to objt4 to place</span>
+                        <span class="comment">\ object #X on the tile</span>
+
+ <span class="mne">STY</span> <a class="popup variable">tileNumber</a>         <span class="comment">\ Store the tile number in tileNumber so we can refer to</span>
+                        <span class="comment">\ it later</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00111111</span>         <span class="comment">\ Because the tile has an object on it, the tile data</span>
+ <span class="mne">TAY</span>                    <span class="comment">\ contains the number of the top object on the tile in</span>
+                        <span class="comment">\ bits 0 to 5, so extract the object number into Y (so</span>
+                        <span class="comment">\ the tile effectively contains object #Y)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectTypes</a>,<span class="register">Y</span>      <span class="comment">\ Set A to the type of object that's already on the tile</span>
+                        <span class="comment">\ (i.e. the type of object #Y)</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ If the tile contains a boulder (an object of type 3),</span>
+ <span class="mne">BEQ</span> <a class="popup destination">objt1</a>              <span class="comment">\ jump to objt1 to put the new object on top of the</span>
+                        <span class="comment">\ boulder</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\ If the tile doesn't contain the Sentinel's tower (type</span>
+ <span class="mne">BNE</span> <a class="popup destination">objt6</a>              <span class="comment">\ 6) then it must contain an object on which we can't</span>
+                        <span class="comment">\ place our new object, so jump to objt6 to return from</span>
+                        <span class="comment">\ the subroutine without adding the object to the tile</span>
+
+<span class="label">.objt1</span><a id="objt1" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the object already on the tile is</span>
+                        <span class="comment">\ either a boulder (type 3) or the Sentinel's tower</span>
+                        <span class="comment">\ (type 6)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ In either case, we want to place our object on top of</span>
+                        <span class="comment">\ the object that is already there, which we can do by</span>
+                        <span class="comment">\ setting bit 6 of the object flags for the new object</span>
+                        <span class="comment">\ and putting the number of the existing object into</span>
+                        <span class="comment">\ bits 0 to 5</span>
+
+ <span class="mne">TYA</span>                    <span class="comment">\ Set the object flags for the object that we are adding</span>
+ <span class="mne">ORA</span> <span class="hash">#</span><span class="binary">%01000000</span>         <span class="comment">\ (i.e. object #X) so that bit 6 is set, and bits 0 to 5</span>
+ <span class="mne">STA</span> <a class="popup variable">objectFlags</a>,<span class="register">X</span>      <span class="comment">\ contain the number of the object that is already on</span>
+                        <span class="comment">\ the tile</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This denotes that our new object, object #X, is on top</span>
+                        <span class="comment">\ of object #Y</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectTypes</a>,<span class="register">Y</span>      <span class="comment">\ If the object that's already on the tile is not the</span>
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\ Sentinel's tower (type 6), jump to objt2</span>
+ <span class="mne">BNE</span> <a class="popup destination">objt2</a>
+
+                        <span class="comment">\ If we get here then we are placing object #X on top of</span>
+                        <span class="comment">\ the Sentinel's tower (type 6) in object #Y</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The next task is to calculate the altitude of the</span>
+                        <span class="comment">\ object when it is placed on top of the tower (i.e. the</span>
+                        <span class="comment">\ y-coordinate of the object, as the y-axis goes up and</span>
+                        <span class="comment">\ down in our 3D world)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The tower is defined with a height of one coordinate</span>
+                        <span class="comment">\ (where a tile-sized cube is one coordinate across)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Object y-coordinates are stored as 16-bit numbers in</span>
+                        <span class="comment">\ the form yObject(Hi Lo), with the low byte effectively</span>
+                        <span class="comment">\ acting like a fractional part, so to work out the</span>
+                        <span class="comment">\ y-coordinate for the object we are placing on top of</span>
+                        <span class="comment">\ the boulder, we need to add (1 0) to the tower's</span>
+                        <span class="comment">\ current y-coordinate, like this:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   yObject,X = yObject,Y + (1 0)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We need to do this calculation for both bytes,</span>
+                        <span class="comment">\ starting with the low byte</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yObjectLo</a>,<span class="register">Y</span>        <span class="comment">\ First we add the low bytes, by adding 0 to the Y-th</span>
+ <span class="mne">STA</span> <a class="popup variable">yObjectLo</a>,<span class="register">X</span>        <span class="comment">\ entry in yObjectLo and storing this in the low byte of</span>
+                        <span class="comment">\ the X-th entry in yObjectLo (which we can do by simply</span>
+                        <span class="comment">\ copying the Y-th entry into the X-th entry)</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Clear the C flag and set A = 1 so the addition at</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ objt3 will do the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   A = yObjectHi,Y + 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This will add the high bytes of the calculation to</span>
+                        <span class="comment">\ give the result we want:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (A yObjectLo,X) = (yObjectHi,Y yObjectLo,Y) + (1 0)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\                   = ((yObjectHi,Y + 1) yObjectLo,Y)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ with the subsequent jump to objt5 storing A in</span>
+                        <span class="comment">\ yObjectHi,X as required</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">objt3</a>              <span class="comment">\ Jump to objt3 to do the calculation (this BNE is</span>
+                        <span class="comment">\ effectively a JMP as A is never zero)</span>
+
+<span class="label">.objt2</span><a id="objt2" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we are placing our new object #X</span>
+                        <span class="comment">\ on top of the boulder (type 3) in object #Y</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The next task is to calculate the altitude of the</span>
+                        <span class="comment">\ object when it is placed on top of the boulder (i.e.</span>
+                        <span class="comment">\ the y-coordinate of the object, as the y-axis goes up</span>
+                        <span class="comment">\ and down in our 3D world)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Boulders are defined with a height of 0.5 coordinates</span>
+                        <span class="comment">\ (where a tile-sized cube is one coordinate across)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Object y-coordinates are stored as 16-bit numbers in</span>
+                        <span class="comment">\ the form yObject(Hi Lo), with the low byte effectively</span>
+                        <span class="comment">\ acting like a fractional part, so to work out the</span>
+                        <span class="comment">\ y-coordinate for the object we are placing on top of</span>
+                        <span class="comment">\ the boulder, we need to add (0 128) to the boulder's</span>
+                        <span class="comment">\ current y-coordinate, like this:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   yObject,X = yObject,Y + (0 128)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We need to do this calculation for both bytes,</span>
+                        <span class="comment">\ starting with the low byte</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yObjectLo</a>,<span class="register">Y</span>        <span class="comment">\ First we add the low bytes, by adding 128 to the Y-th</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ entry in yObjectLo and storing this in the low byte of</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">128</span>               <span class="comment">\ the result in the X-th entry in yObjectLo</span>
+ <span class="mne">STA</span> <a class="popup variable">yObjectLo</a>,<span class="register">X</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set A = 0 so the following addition will add the high</span>
+                        <span class="comment">\ bytes to give the result we want:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (A yObjectLo,X) = (yObjectHi,Y yObjectLo,Y)</span>
+                        <span class="comment">\                     + (0 128)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\                   = (yObjectHi,Y (yObjectLo,Y + 128))</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ with the subsequent jump to objt5 storing A in</span>
+                        <span class="comment">\ yObjectHi,X as required</span>
+
+<span class="label">.objt3</span><a id="objt3" class="anchor"></a>
+
+ <span class="mne">ADC</span> <a class="popup variable">yObjectHi</a>,<span class="register">Y</span>        <span class="comment">\ Add A to the high byte of the y-coordinate of the</span>
+                        <span class="comment">\ object beneath the one we are adding and store the</span>
+                        <span class="comment">\ result in A</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So (A yObjectLo,X) now contains the y-coordinate of</span>
+                        <span class="comment">\ the new object that we are placing on top of the</span>
+                        <span class="comment">\ boulder or tower</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">tileNumber</a>         <span class="comment">\ Set Y to the tile number where we are adding the</span>
+                        <span class="comment">\ object, which we stored above</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">objt5</a>              <span class="comment">\ Jump to objt5 to store A as the y-coordinate of the</span>
+                        <span class="comment">\ new object on the tile, and update the various other</span>
+                        <span class="comment">\ object and tile tables for the new object</span>
+
+<span class="label">.objt4</span><a id="objt4" class="anchor"></a>
+
+ <span class="mne">PHA</span>                    <span class="comment">\ Store the tile data for the tile on the stack so we</span>
+                        <span class="comment">\ can retrieve it below</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Clear bit 7 of the object's flags to indicate that</span>
+ <span class="mne">STA</span> <a class="popup variable">objectFlags</a>,<span class="register">X</span>      <span class="comment">\ object #X is allocated to an object</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">224</span>               <span class="comment">\ Set the object's entry in yObjectLo to 224</span>
+ <span class="mne">STA</span> <a class="popup variable">yObjectLo</a>,<span class="register">X</span>        <span class="comment">\</span>
+                        <span class="comment">\ This places objects well above the tile, at a height</span>
+                        <span class="comment">\ of 224 / 256 = 0.875 coordinates above the tile itself</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This is used for the gaze vector calculations, so this</span>
+                        <span class="comment">\ is effectively the height of the object's eyes above</span>
+                        <span class="comment">\ the tile</span>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Set A to the tile data for the tile, which we stored</span>
+                        <span class="comment">\ on the stack above</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ The top nibble of the tile data contains the tile</span>
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ altitude, so this sets A to the tile altitude</span>
+ <span class="mne">LSR</span> <span class="register">A</span>
+ <span class="mne">LSR</span> <span class="register">A</span>
+
+                        <span class="comment">\ We now fall through into objt5 to set the tile</span>
+                        <span class="comment">\ y-coordinate for object #X to the tile altitude in A</span>
+
+<span class="label">.objt5</span><a id="objt5" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">yObjectHi</a>,<span class="register">X</span>        <span class="comment">\ Set the high byte of the 3D y-coordinate for object #X</span>
+                        <span class="comment">\ to the value of A by updating the X-th entry in the</span>
+                        <span class="comment">\ yObjectHi table</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now have a full 3D coordinate for the object in</span>
+                        <span class="comment">\ (xObject, yObject, zObject), where yObject is stored</span>
+                        <span class="comment">\ as a 16-bit number in yObject(Hi Lo)</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Set the tile data for this tile to object number X,</span>
+ <span class="mne">ORA</span> <span class="hash">#</span><span class="binary">%11000000</span>         <span class="comment">\ with bits 6 and 7 set to indicate that the tile now</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">tileDataPage</a><span class="bracket">)</span>,<span class="register">Y</span>   <span class="comment">\ contains an object</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&F5</span>               <span class="comment">\ Set the object's pitch angle to -11, so the object</span>
+ <span class="mne">STA</span> <a class="popup variable">objectPitchAngle</a>,<span class="register">X</span> <span class="comment">\ looks down slightly at a pitch angle of 15.5 degrees</span>
+                        <span class="comment">\ (as 360 * 11 / 256 = 15.5)</span>
+
+                        <span class="comment">\ We now calculate the object's yaw angle, which</span>
+                        <span class="comment">\ determines the direction in which it is facing</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The degree system in the Sentinel looks like this:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\            0</span>
+                        <span class="comment">\      -32   |   +32         Overhead view of object</span>
+                        <span class="comment">\         \  |  /</span>
+                        <span class="comment">\          \ | /             0 = looking straight ahead</span>
+                        <span class="comment">\           \|/              +64 = looking sharp right</span>
+                        <span class="comment">\   -64 -----+----- +64      -64 = looking sharp left</span>
+                        <span class="comment">\           /|\</span>
+                        <span class="comment">\          / | \</span>
+                        <span class="comment">\         /  |  \</span>
+                        <span class="comment">\      -96   |   +96</span>
+                        <span class="comment">\           128</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ In this context, looking straight ahead means the</span>
+                        <span class="comment">\ object is looking into the screen, towards the back of</span>
+                        <span class="comment">\ the landscape</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetNextSeedNumber</a>  <span class="comment">\ Set A to the next number from the landscape's sequence</span>
+                        <span class="comment">\ of seed numbers</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%11111000</span>         <span class="comment">\ Convert A to be a multiple of 8 and in the range 0 to</span>
+                        <span class="comment">\ 248 (i.e. 0 to 31 * 8)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This rotates the object so it is looking along one of</span>
+                        <span class="comment">\ 32 fixed rotations, each of which is a multiple of</span>
+                        <span class="comment">\ 11.25 degrees</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set A = A + 96</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">96</span>                <span class="comment">\</span>
+                        <span class="comment">\ This doesn't change the fact that A is a multiple of</span>
+                        <span class="comment">\ 11.25 degrees, so it's presumably intended to make the</span>
+                        <span class="comment">\ player's rotation work well on the starting level</span>
+
+ <span class="mne">STA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>   <span class="comment">\ Set the object's objectYawAngle to the angle we just</span>
+                        <span class="comment">\ calculated in A</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Clear the C flag to indicate that we have successfully</span>
+                        <span class="comment">\ added the object to the tile</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.objt6</span><a id="objt6" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the tile already contains an</span>
+                        <span class="comment">\ object and that object is not a boulder (type 3) or</span>
+                        <span class="comment">\ tower (type 6), so we can't add the new object to the</span>
+                        <span class="comment">\ tile</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Set the C flag to indicate that we have failed to add</span>
+                        <span class="comment">\ the object to the tile</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getnextseednumber"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getnextseednumber.html">GetNextSeedNumber</a> (category: Maths (Arithmetic))</div><div class="summary">Set A to a seed number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gettiledata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gettiledata.html">GetTileData</a> (category: Landscape)</div><div class="summary">Get the tile data and tile data address for a specific tile</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectflags"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">Object flags for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectpitchangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#objectpitchangle">objectPitchAngle</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">The pitch angle for each object (i.e. the vertical direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttypes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objecttypes.html">objectTypes</a> (category: 3D objects)</div><div class="summary">The object types table for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectyawangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objectyawangle.html">objectYawAngle</a> (category: 3D objects)</div><div class="summary">The yaw angle for each object (i.e. the horizontal direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objt1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/placeobjectontile.html#objt1">objt1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objt2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/placeobjectontile.html#objt2">objt2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objt3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/placeobjectontile.html#objt3">objt3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objt4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/placeobjectontile.html#objt4">objt4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objt5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/placeobjectontile.html#objt5">objt5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objt6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/placeobjectontile.html#objt6">objt6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tiledatapage"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#tiledatapage">tileDataPage</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The address of the tileData page containing the current tile's data</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tilenumber"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/tilenumber.html">tileNumber</a> (category: 3D objects)</div><div class="summary">The tile number to which we are adding an object in the PlaceObjectOnTile routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/xobject.html">xObject</a> (category: 3D objects)</div><div class="summary">The x-coordinates in 3D space for the 3D objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xtile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xtile">xTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner x-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yobjecthi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/yobjecthi.html">yObjectHi</a> (category: 3D objects)</div><div class="summary">The y-coordinates in 3D space for the 3D objects (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yobjectlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/yobjectlo.html">yObjectLo</a> (category: 3D objects)</div><div class="summary">The y-coordinates in 3D space for the 3D objects (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-zobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/zobject.html">zObject</a> (category: 3D objects)</div><div class="summary">The z-coordinates in 3D space for the 3D objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ztile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ztile">zTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner z-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/deleteobject.html">DeleteObject</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/tilenumber.html">tileNumber</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

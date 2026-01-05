@@ -1,0 +1,135 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("drawing_objects", "subroutine_checkobjvisibility.html", "The CheckObjVisibility subroutine", "Drawing objects: CheckObjVisibility", "Annotated code for the CheckObjVisibility subroutine in The Sentinel", "the_sentinel-code", "source_drawing_objects", "subroutine_checkobjvisibility", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/finishenemytactics.html">FinishEnemyTactics</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys (Part 1 of 2)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">CheckObjVisibility</span>                                      <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing objects</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Check whether an object is visible on-screen and should therefore</span>
+             <span class="headerEntry">not be changed if a pan operation is about to happen</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_c.html#header-checkobjvisibility">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/abortwhenvisible.html">AbortWhenVisible</a> calls <a href="#checkobjvisibility">CheckObjVisibility</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/expendenemyenergy.html">ExpendEnemyEnergy</a> calls <a href="#checkobjvisibility">CheckObjVisibility</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/scanformeanietree.html">ScanForMeanieTree</a> calls <a href="#checkobjvisibility">CheckObjVisibility</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/abortwhenvisible.html">AbortWhenVisible</a> calls via <a href="#cvis1">cvis1</a></span></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">The number of the object to check</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">C flag</span>               <span class="argumentEntry">The object's visibility:</span>
+
+                        <span class="argumentEntry">  * Clear = we are about to repeat a pan and at least</span>
+                        <span class="argumentEntry">            some of the object is visible on-screen (so</span>
+                        <span class="argumentEntry">            the object must not be updated or it could</span>
+                        <span class="argumentEntry">            corrupt the landscape view)</span>
+
+                        <span class="argumentEntry">  * Set = we are about to repeat a pan and the object is</span>
+                        <span class="argumentEntry">          not visible on-screen, or we are not about to</span>
+                        <span class="argumentEntry">          repeat a pan (so the object can be updated)</span>
+
+   <span class="argumentLabel">bufferColumns</span>        <span class="argumentEntry">If the object is visible, this is set to the number of</span>
+                        <span class="argumentEntry">character columns in the screen buffer that the object</span>
+                        <span class="argumentEntry">spans</span>
+
+   <span class="argumentLabel">objYawOffset</span>         <span class="argumentEntry">If the object is visible, this is set to the yaw offset</span>
+                        <span class="argumentEntry">of the left edge of the object from the left edge of the</span>
+                        <span class="argumentEntry">screen, in character columns</span>
+
+   <span class="argumentLabel">currentObject</span>        <span class="argumentEntry">If we are about to repeat a pan, this is set to the</span>
+                        <span class="argumentEntry">object number in A</span>
+
+   <span class="argumentLabel">X</span>                    <span class="argumentEntry">X is preserved</span>
+
+   <span class="argumentLabel">Y</span>                    <span class="argumentEntry">Y is preserved</span>
+
+<hr class="light">
+<span class="subheader"> Other entry points:</span>
+
+   <span class="argumentLabel">cvis1</span>                <span class="argumentEntry">Contains an RTS</span>
+
+</div></div>
+<span class="label">.CheckObjVisibility</span><a id="checkobjvisibility" class="anchor"></a>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ If bit 6 of samePanKeyPress is clear then the player</span>
+ <span class="mne">BIT</span> <a class="popup variable">samePanKeyPress</a>    <span class="comment">\ if not holding down the same pan key following the</span>
+ <span class="mne">BPL</span> <a class="popup destination">cvis1</a>              <span class="comment">\ completion of a landscape pan, so jump to cvis1 to</span>
+                        <span class="comment">\ return from the subroutine with the C flag set</span>
+
+                        <span class="comment">\ If we get here then we have just completed a pan of</span>
+                        <span class="comment">\ the landscape view and the player is still holding</span>
+                        <span class="comment">\ down the same pan key</span>
+
+ <span class="mne">STA</span> <a class="popup variable">currentObject</a>      <span class="comment">\ Set currentObject to the object in A to pass to the</span>
+                        <span class="comment">\ GetObjVisibility routine so we check whether the</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">playerObject</a>       <span class="comment">\ Set viewingObject to the object number of the player,</span>
+ <span class="mne">STA</span> <a class="popup variable">viewingObject</a>      <span class="comment">\ so any future view calculations are done from the</span>
+                        <span class="comment">\ aspect of the player rather than the enemy object</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Store X and Y on the stack so they can be preserved</span>
+ <span class="mne">PHA</span>                    <span class="comment">\ across the call to GetObjVisibility</span>
+ <span class="mne">TYA</span>
+ <span class="mne">PHA</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetObjVisibility</a>   <span class="comment">\ Calculate whether any part of an object is visible</span>
+                        <span class="comment">\ on-screen and set the C flag as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Clear = at least some of the object is visible</span>
+                        <span class="comment">\             on-screen</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Set = the object is not visible on-screen</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If the object is visible, also set the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * bufferColumns = the number of character columns</span>
+                        <span class="comment">\     in the screen buffer that the object spans</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * objYawOffset = the yaw offset of the left edge of</span>
+                        <span class="comment">\     the object from the left edge of the screen, in</span>
+                        <span class="comment">\     character columns</span>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Retrieve X and Y from the stack so they can be</span>
+ <span class="mne">TAY</span>                    <span class="comment">\ preserved</span>
+ <span class="mne">PLA</span>
+ <span class="mne">TAX</span>
+
+<span class="label">.cvis1</span><a id="cvis1" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getobjvisibility"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> (category: Gameplay)</div><div class="summary">Calculate whether any part of an object is visible on-screen, and if so, which character columns it spans on the screen</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-currentobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#currentobject">currentObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the object we are currently processing</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-cvis1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Entry point <a href="/source/main/subroutine/checkobjvisibility.html#cvis1">cvis1</a> in subroutine <a href="/source/main/subroutine/checkobjvisibility.html">CheckObjVisibility</a> (category: Drawing objects)</div><div class="summary">Contains an RTS</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playerobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#playerobject">playerObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the player object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-samepankeypress"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#samepankeypress">samePanKeyPress</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Records whether the same pan key is being held down after we have just finished panning the landscape view</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewingobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#viewingobject">viewingObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the viewing object</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/finishenemytactics.html">FinishEnemyTactics</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys (Part 1 of 2)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

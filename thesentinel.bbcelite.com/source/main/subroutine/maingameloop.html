@@ -1,0 +1,484 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("main_game_loop", "subroutine_maingameloop.html", "The MainGameLoop subroutine", "Main game loop: MainGameLoop", "Annotated code for the MainGameLoop subroutine in The Sentinel", "the_sentinel-code", "source_main_game_loop", "subroutine_maingameloop", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/playgame.html">PlayGame</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/cleariconsscanner.html">ClearIconsScanner</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">MainGameLoop</span>                                            <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Main game loop</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">The main game loop for playing a landscape</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_g.html#header-maingameloop">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> calls via <a href="#game10">game10</a></span></span>
+</div>
+<hr class="light">
+<span class="subheader"> Other entry points:</span>
+
+   <span class="argumentLabel">game10</span>               <span class="argumentEntry">Jump to MainTitleLoop to restart the game</span>
+
+</div></div>
+<span class="label">.MainGameLoop</span><a id="maingameloop" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we have either started a brand new</span>
+                        <span class="comment">\ game or we jumped here from game11 below when one of</span>
+                        <span class="comment">\ the following occurred:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The Sentinel has won</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The player has moved to a new tile</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The player has pressed the quit game key</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">FlushSoundBuffers</a>  <span class="comment">\ Flush all four sound channel buffers</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">quitGame</a>           <span class="comment">\ If bit 7 of quitGame is clear then the player has not</span>
+ <span class="mne">BPL</span> <a class="popup destination">game1</a>              <span class="comment">\ pressed function key f1 to quit the game, so jump to</span>
+                        <span class="comment">\ game 1 to keep playing the game</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">MainTitleLoop</a>      <span class="comment">\ The player has pressed function key f1 to quit the</span>
+                        <span class="comment">\ game, so jump to MainTitleLoop to restart the game</span>
+
+<span class="label">.game1</span><a id="game1" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we have either started a brand new</span>
+                        <span class="comment">\ landscape or we jumped to MainGameLoop from game11</span>
+                        <span class="comment">\ below when one of the following occurred:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The Sentinel has won</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The player has moved to a new tile</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">sentinelHasWon</a>     <span class="comment">\ If bit 7 of sentinelHasWon is set then the player has</span>
+ <span class="mne">BMI</span> <a class="popup destination">game6</a>              <span class="comment">\ run out of energy either by trying to hyperspace or by</span>
+                        <span class="comment">\ being absorbed, so jump to game6 to restart the</span>
+                        <span class="comment">\ landscape</span>
+
+                        <span class="comment">\ If we get here then we have either started a brand new</span>
+                        <span class="comment">\ landscape or we jumped to MainGameLoop from game11</span>
+                        <span class="comment">\ below when the player moved to a new tile</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ In both cases we need to generate a brand new</span>
+                        <span class="comment">\ landscape view</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ Set all four logical colours to physical colour 4</span>
+ <span class="mne">JSR</span> <a class="popup destination">SetColourPalette</a>   <span class="comment">\ (blue), so this blanks the entire screen to blue</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set screenOrBuffer = 0 to configure the drawing</span>
+ <span class="mne">STA</span> <a class="popup variable">screenOrBuffer</a>     <span class="comment">\ routines to draw directly onto the screen (as opposed</span>
+                        <span class="comment">\ to drawing into the screen buffer)</span>
+
+ <span class="mne">STA</span> <a class="popup variable">lastPanKeyPressed</a>  <span class="comment">\ Zero lastPanKeyPressed so that when we draw the whole</span>
+                        <span class="comment">\ landscape view onto the screen below, we draw it in</span>
+                        <span class="comment">\ character columns, working from left to right, in the</span>
+                        <span class="comment">\ same order as we would for a pan to the right (which</span>
+                        <span class="comment">\ is what a zero value of lastPanKeyPressed usually</span>
+                        <span class="comment">\ represents)</span>
+
+ <span class="mne">STA</span> <a class="popup variable">sightsByteCount</a>    <span class="comment">\ Set sightsByteCount to zero to reset the sights pixel</span>
+                        <span class="comment">\ byte stash</span>
+
+ <span class="mne">STA</span> <a class="popup variable">sightsAreVisible</a>   <span class="comment">\ Clear bit 7 of sightsAreVisible to indicate that the</span>
+                        <span class="comment">\ sights are not visible</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">SetScannerAndPause</a> <span class="comment">\ Set scannerUpdate to zero to prevent scanner updates</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This routine also performs a delay of 40 empty loops</span>
+                        <span class="comment">\ of 256 iterations each (i.e. 10,240 loops)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">playerObject</a>       <span class="comment">\ Set viewingObject to the object number of the player,</span>
+ <span class="mne">STA</span> <a class="popup variable">viewingObject</a>      <span class="comment">\ so the landscape view gets drawn from the perspective</span>
+                        <span class="comment">\ of the player</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">hyperspaceEndsGame</a> <span class="comment">\ If bit 7 of hyperspaceEndsGame is clear then the game</span>
+ <span class="mne">BPL</span> <a class="popup destination">game2</a>              <span class="comment">\ has not ended because of a hyperspace, so jump to</span>
+                        <span class="comment">\ game2 to draw the landscape</span>
+
+                        <span class="comment">\ If we get here then the game has ended because the</span>
+                        <span class="comment">\ player performed a hyperspace</span>
+
+ <span class="mne">BVS</span> <a class="popup destination">game7</a>              <span class="comment">\ If bit 6 of hyperspaceEndsGame is set then the game</span>
+                        <span class="comment">\ has ended because the player has hyperspaced from the</span>
+                        <span class="comment">\ Sentinel's tower, thus winning the game, so jump to</span>
+                        <span class="comment">\ game7 to process winning the landscape</span>
+
+                        <span class="comment">\ If we get here then bit 6 of hyperspaceEndsGame is</span>
+                        <span class="comment">\ clear and the player has run out of energy by trying</span>
+                        <span class="comment">\ to hyperspace without being able to create a robot</span>
+                        <span class="comment">\ into which they can hyperspace</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">ClearScreen</a>        <span class="comment">\ Clear the screen</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">game4</a>              <span class="comment">\ Jump to game4 to skip drawing the landscape view, as</span>
+                        <span class="comment">\ the game has ended</span>
+
+<span class="label">.game2</span><a id="game2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">uTurnStatus</a>        <span class="comment">\ If bit 7 of uTurnStatus is set then we just performed</span>
+ <span class="mne">BMI</span> <a class="popup destination">game3</a>              <span class="comment">\ a U-turn in the ProcessActionKeys routine, so jump to</span>
+                        <span class="comment">\ game3 to skip the following instruction, as we don't</span>
+                        <span class="comment">\ need to recalculate tile visibility if we are turning</span>
+                        <span class="comment">\ around (as the player hasn't moved)</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileVisibility</a>  <span class="comment">\ For each tile in the landscape, calculate whether the</span>
+                        <span class="comment">\ player can see that tile, to speed up the process of</span>
+                        <span class="comment">\ drawing the landscape</span>
+
+<span class="label">.game3</span><a id="game3" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">ClearScreen</a>        <span class="comment">\ Clear the screen</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">DrawLandscapeView</a>  <span class="comment">\ Draw the landscape view</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">UpdateIconsScanner</a> <span class="comment">\ Update the icons in the top-left corner of the screen</span>
+                        <span class="comment">\ to show the player's current energy level and redraw</span>
+                        <span class="comment">\ the scanner box</span>
+
+<span class="label">.game4</span><a id="game4" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">25</span>                <span class="comment">\ Set screenOrBuffer = 25 to configure the drawing</span>
+ <span class="mne">STA</span> <a class="popup variable">screenOrBuffer</a>     <span class="comment">\ routines to draw into the screen buffer (as opposed</span>
+                        <span class="comment">\ to drawing directly onto the screen)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ Call ConfigureBuffer with A = 2 to set up the screen</span>
+ <span class="mne">JSR</span> <a class="popup destination">ConfigureBuffer</a>    <span class="comment">\ buffer for use as a column buffer</span>
+
+<span class="label">.game5</span><a id="game5" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">ProcessSound</a>       <span class="comment">\ Process any sounds or music that are being made in the</span>
+                        <span class="comment">\ background</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">musicCounter</a>       <span class="comment">\ Loop back to keep calling ProcessSound until bit 7 of</span>
+ <span class="mne">BPL</span> <a class="popup destination">game5</a>              <span class="comment">\ musicCounter is clear, so if any music is being</span>
+                        <span class="comment">\ played, we wait until it has finished</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&83</span>               <span class="comment">\ Set the palette to the first set of colours from the</span>
+ <span class="mne">JSR</span> <a class="popup destination">SetColourPalette</a>   <span class="comment">\ colourPalettes table, which the SpawnEnemies routine</span>
+                        <span class="comment">\ set to the correct palette for playing the game (so</span>
+                        <span class="comment">\ for landscape 0000 that would be blue, black, white</span>
+                        <span class="comment">\ and green, for example)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">hyperspaceEndsGame</a> <span class="comment">\ Set A to the hyperspace status flag</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">game11</a>             <span class="comment">\ If bit 7 of hyperspaceEndsGame is clear then the game</span>
+                        <span class="comment">\ has not ended because of a hyperspace, so jump to</span>
+                        <span class="comment">\ game11 to keep going</span>
+
+                        <span class="comment">\ If we get here then the game has ended because of a</span>
+                        <span class="comment">\ hyperspace, and it must be because the player ran out</span>
+                        <span class="comment">\ of energy, as otherwise we would have taken the branch</span>
+                        <span class="comment">\ to game7 above</span>
+
+ <span class="mne">STA</span> <a class="popup variable">sentinelHasWon</a>     <span class="comment">\ Set bit 7 of sentinelHasWon to indicate that the</span>
+                        <span class="comment">\ player has run out of energy and the Sentinel has won</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\ Set soundEffect = 6 so the sound is processed as the</span>
+ <span class="mne">STA</span> <a class="popup variable">soundEffect</a>        <span class="comment">\ game over sound</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">5</span>                 <span class="comment">\ The Sentinel has won, so display the game over screen</span>
+ <span class="mne">JSR</span> <a class="popup destination">ShowGameOverScreen</a> <span class="comment">\ with A = 5, so we decay the screen to black with a</span>
+                        <span class="comment">\ mass of 5 * 2400 = 12,000 randomly placed black dots</span>
+
+<span class="label">.game6</span><a id="game6" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we restart the landscape by</span>
+                        <span class="comment">\ resetting all the game variables, initialising the</span>
+                        <span class="comment">\ the seed number generator and jumping into the main</span>
+                        <span class="comment">\ title loop to preview the landscape and play the game</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">ResetVariables</a>     <span class="comment">\ Reset all the game's main variables</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">landscapeNumberHi</a>  <span class="comment">\ Set (Y X) = landscapeNumber(Hi Lo)</span>
+ <span class="mne">LDX</span> <a class="popup variable">landscapeNumberLo</a>
+
+ <span class="mne">JSR</span> <a class="popup destination">InitialiseSeeds</a>    <span class="comment">\ Initialise the seed number generator to generate the</span>
+                        <span class="comment">\ sequence of seed numbers for the landscape number in</span>
+                        <span class="comment">\ (Y X) and set maxNumberOfEnemies and the landscapeZero</span>
+                        <span class="comment">\ flag accordingly</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">main4</a>              <span class="comment">\ Jump to main4 in the main title loop to restart the</span>
+                        <span class="comment">\ landscape without having to enter the landscape's</span>
+                        <span class="comment">\ secret code again</span>
+
+<span class="label">.game7</span><a id="game7" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we have successfully completed</span>
+                        <span class="comment">\ the landscape, so we display the secret code for the</span>
+                        <span class="comment">\ next landscape and go back to the title screen</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ Set all four logical colours to physical colour 4</span>
+ <span class="mne">JSR</span> <a class="popup destination">SetColourPalette</a>   <span class="comment">\ (blue), so this blanks the entire screen to blue</span>
+
+                        <span class="comment">\ In order to display the secret code for the next</span>
+                        <span class="comment">\ landscape we need to generate it, so we now reset the</span>
+                        <span class="comment">\ landscape seed generator, the tile visibility table</span>
+                        <span class="comment">\ and the object flags, to get ready for the generation</span>
+                        <span class="comment">\ process in the FinishLandscape routine</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ We now zero bits 8 to 40 of the five-byte linear</span>
+                        <span class="comment">\ feedback shift landscape register, so set a byte</span>
+                        <span class="comment">\ counter in X to count four bytes</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set A = 0 so we can zero the four bytes</span>
+
+ <span class="mne">STA</span> <a class="popup variable">soundEffect</a>        <span class="comment">\ Set soundEffect = 0 to disable sound effect processing</span>
+                        <span class="comment">\ in the ProcessSound routine</span>
+
+<span class="label">.game8</span><a id="game8" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">seedNumberLFSR</a><span class="operator">+</span><span class="decimal">1</span>,<span class="register">X</span> <span class="comment">\ Zero byte X+1 of seedNumberLFSR(4 3 2 1 0)</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the byte counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">game8</a>              <span class="comment">\ Loop back until we have reset all four bytes</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">ResetTilesObjects</a>  <span class="comment">\ Reset the tile visibility table and deallocate all</span>
+                        <span class="comment">\ object numbers</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">FinishLandscape</a>    <span class="comment">\ Add the player's energy to the landscape number to get</span>
+                        <span class="comment">\ the number of the next landscape and display that</span>
+                        <span class="comment">\ landscape's secret code as a title screen</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&87</span>               <span class="comment">\ Set the palette to the second set of colours from the</span>
+ <span class="mne">JSR</span> <a class="popup destination">SetColourPalette</a>   <span class="comment">\ colourPalettes table, which contains the fixed palette</span>
+                        <span class="comment">\ for the title screens (blue, black, red, yellow)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">10</span>                <span class="comment">\ Set soundCounter = 10 to count down while the next</span>
+ <span class="mne">STA</span> <a class="popup variable">soundCounter</a>       <span class="comment">\ sound is made</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">66</span>                <span class="comment">\ Call the PlayMusic routine with A = 66 to play the</span>
+ <span class="mne">JSR</span> <a class="popup destination">PlayMusic</a>          <span class="comment">\ music for when the player finishes a landscape</span>
+
+<span class="label">.game9</span><a id="game9" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">ProcessSound</a>       <span class="comment">\ Process any sounds or music that are being made in the</span>
+                        <span class="comment">\ background</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">musicCounter</a>       <span class="comment">\ Loop back to keep calling ProcessSound until bit 7 of</span>
+ <span class="mne">BPL</span> <a class="popup destination">game9</a>              <span class="comment">\ musicCounter is clear, so if any music is being</span>
+                        <span class="comment">\ played, we wait until it has finished</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\ Print text token 6: Print "PRESS ANY KEY" at (64, 100)</span>
+ <span class="mne">JSR</span> <a class="popup destination">PrintTextToken</a>
+
+ <span class="mne">JSR</span> <a class="popup destination">ReadKeyboard</a>       <span class="comment">\ Enable the keyboard, flush the keyboard buffer and</span>
+                        <span class="comment">\ read a character from it (so this waits for a key</span>
+                        <span class="comment">\ press)</span>
+
+<span class="label">.game10</span><a id="game10" class="anchor"></a>
+
+ <span class="mne">JMP</span> <a class="popup destination">MainTitleLoop</a>      <span class="comment">\ Jump to MainTitleLoop to restart the game from the</span>
+                        <span class="comment">\ title screen</span>
+
+<span class="label">.game11</span><a id="game11" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the game is still in progress, so</span>
+                        <span class="comment">\ we progress the gameplay</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">ProcessGameplay</a>    <span class="comment">\ Run the gameplay loop that processes all game key</span>
+                        <span class="comment">\ presses, returning here when the player moves, quits,</span>
+                        <span class="comment">\ loses or pans</span>
+
+ <span class="mne">BCC</span> <a class="popup destination">game12</a>             <span class="comment">\ The ProcessGameplay routine will return with the C</span>
+                        <span class="comment">\ flag clear if we just finished a landscape pan and the</span>
+                        <span class="comment">\ player is still holding down a pan key, in which case</span>
+                        <span class="comment">\ jump to game12 to process the pan</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">MainGameLoop</a>       <span class="comment">\ Otherwise the ProcessGameplay routine returned because</span>
+                        <span class="comment">\ one of the following is true:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The Sentinel has won</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The player has moved to a new tile</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * The player has pressed the quit game key</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ so jump to MainGameLoop to process these actions</span>
+
+<span class="label">.game12</span><a id="game12" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the player is holding down a pan</span>
+                        <span class="comment">\ key and wants to pan the screen, so we need to process</span>
+                        <span class="comment">\ the pan</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">panKeyBeingPressed</a> <span class="comment">\ Update lastPanKeyPressed with the details of the pan</span>
+ <span class="mne">STA</span> <a class="popup variable">lastPanKeyPressed</a>  <span class="comment">\ key being pressed, so we can check later on whether it</span>
+                        <span class="comment">\ is still being held down</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set numberOfScrolls = 0 to reset the scroll counter</span>
+ <span class="mne">STA</span> <a class="popup variable">numberOfScrolls</a>    <span class="comment">\ so the interrupt handler will not scroll the screen</span>
+                        <span class="comment">\ while we set up the new pan</span>
+
+ <span class="mne">STA</span> <a class="popup variable">doNotDitherObject</a>  <span class="comment">\ Clear bit 7 of doNotDitherObject to enable objects to</span>
+                        <span class="comment">\ be updated on the screen with a dithered effect</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">sightsAreVisible</a>   <span class="comment">\ If bit 7 of sightsAreVisible is set then the sights</span>
+ <span class="mne">BMI</span> <a class="popup destination">game13</a>             <span class="comment">\ are being shown, so jump to game13 to skip the</span>
+                        <span class="comment">\ following two instructions</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This ensures that when we pan the screen as a result</span>
+                        <span class="comment">\ of the sights moving off the edge of the screen, the</span>
+                        <span class="comment">\ panning process completes and doesn't get aborted if</span>
+                        <span class="comment">\ the player releases the pan key</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ The sights are not visible so we are panning the</span>
+ <span class="mne">ROR</span> <a class="popup variable">keepCheckingPanKey</a> <span class="comment">\ screen because the player has pressed a pan key, so</span>
+                        <span class="comment">\ set bit 7 of keepCheckingPanKey so DrawLandscapeView</span>
+                        <span class="comment">\ will abort the drawing process if the player releases</span>
+                        <span class="comment">\ the pan key before the drawing process has finished</span>
+
+<span class="label">.game13</span><a id="game13" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">PanLandscapeView</a>   <span class="comment">\ Pan the landscape and update the landscape view</span>
+
+ <span class="mne">LSR</span> <a class="popup variable">keepCheckingPanKey</a> <span class="comment">\ Clear bit 7 of keepCheckingPanKey so DrawLandscapeView</span>
+                        <span class="comment">\ will keep drawing the landscape irrespective of the</span>
+                        <span class="comment">\ pan keys being held down (so this takes the routine</span>
+                        <span class="comment">\ back to its default behaviour)</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">UpdateIconsScanner</a> <span class="comment">\ Update the icons in the top-left corner of the screen</span>
+                        <span class="comment">\ to show the player's current energy level and redraw</span>
+                        <span class="comment">\ the scanner box</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">numberOfScrolls</a>    <span class="comment">\ Set scrollCounter to the number of scrolls required,</span>
+ <span class="mne">STA</span> <a class="popup variable">scrollCounter</a>      <span class="comment">\ so the interrupt handler will scroll the screen by</span>
+                        <span class="comment">\ this many steps in the background</span>
+
+<span class="label">.game14</span><a id="game14" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">scrollCounter</a>      <span class="comment">\ Loop around until scrollCounter is zero, so this waits</span>
+ <span class="mne">BNE</span> <a class="popup destination">game14</a>             <span class="comment">\ until the interrupt handler has finished scrolling the</span>
+                        <span class="comment">\ landscape view, thus implementing the pan on-screen</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">game11</a>             <span class="comment">\ Jump to game11 to continue progressing the gameplay</span>
+                        <span class="comment">\ (this BEQ is effectively a JMP as we just passed</span>
+                        <span class="comment">\ through a BNE)</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-clearscreen"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/clearscreen.html">ClearScreen</a> (category: Graphics)</div><div class="summary">Clear the screen to a specified background</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-configurebuffer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/configurebuffer.html">ConfigureBuffer</a> (category: Screen buffer)</div><div class="summary">Set up the variables required to configure the screen buffer to a specific buffer type</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawlandscapeview"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView (Part 1 of 3)</a> (category: Drawing the landscape)</div><div class="summary">Set up a number of variables for drawing the landscape view</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-finishlandscape"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/finishlandscape.html">FinishLandscape</a> (category: Main game loop)</div><div class="summary">Add the player's energy to the landscape number to get the number of the next landscape and display that landscape's secret code</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-flushsoundbuffers"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/flushsoundbuffers.html">FlushSoundBuffers</a> (category: Sound)</div><div class="summary">Flush all four sound channel buffers</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gettilevisibility"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a> (category: Drawing the landscape)</div><div class="summary">For each tile in the landscape, calculate whether the player can see that tile, to speed up the process of drawing the landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-initialiseseeds"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/initialiseseeds.html">InitialiseSeeds</a> (category: Landscape)</div><div class="summary">Initialise the seed number generator so it generates the sequence of seed numbers for a specific landscape number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-maingameloop"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/maingameloop.html">MainGameLoop</a> (category: Main game loop)</div><div class="summary">The main game loop for playing a landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-maintitleloop"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> (category: Main title loop)</div><div class="summary">The main title loop: display the title screen, fetch the landscape number/code, preview the landscape and jump to the main game loop</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-panlandscapeview"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/panlandscapeview.html">PanLandscapeView</a> (category: Drawing the landscape)</div><div class="summary">Pan the landscape and update the landscape view</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playmusic"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/playmusic.html">PlayMusic</a> (category: Sound)</div><div class="summary">Play a piece of music</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-printtexttoken"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/printtexttoken.html">PrintTextToken</a> (category: Text)</div><div class="summary">Print a recursive text token</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-processgameplay"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a> (category: Gameplay)</div><div class="summary">A gameplay loop that processes all game key presses, returning to the main game loop when the player moves, quits, loses or pans</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-processsound"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/processsound.html">ProcessSound</a> (category: Sound)</div><div class="summary">Process any sound effects that have been configured so they play in the background (this is called regularly throughout gameplay)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-readkeyboard"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/readkeyboard.html">ReadKeyboard</a> (category: Keyboard)</div><div class="summary">Enable the keyboard and read a character from it</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-resettilesobjects"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/resettilesobjects.html">ResetTilesObjects</a> (category: Main title Loop)</div><div class="summary">Reset the tile visibility table and deallocate all object numbers</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-resetvariables"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> (category: Main title Loop)</div><div class="summary">Reset all the game's main variables</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-setcolourpalette"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> (category: Graphics)</div><div class="summary">Set the logical colours for each of the four physical colours in screen mode 5</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-setscannerandpause"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/setscannerandpause.html">SetScannerAndPause</a> (category: Main game loop)</div><div class="summary">Set the scanner update status and delay for 40 empty loops of 256 iterations each (i.e. 10,240 loops)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-showgameoverscreen"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/showgameoverscreen.html">ShowGameOverScreen</a> (category: Title screen)</div><div class="summary">Display the game over screen</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-updateiconsscanner"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a> (category: Scanner/energy row)</div><div class="summary">Update the icons in the top-left corner of the screen to show the player's current energy level and redraw the scanner box</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-donotditherobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#donotditherobject">doNotDitherObject</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Controls whether the DitherScreenBuffer routine can update an object on the screen using a dithered effect</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game1">game1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game11"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game11">game11</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game12"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game12">game12</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game13"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game13">game13</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game14"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game14">game14</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game2">game2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game3">game3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game4">game4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game5">game5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game6">game6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game7"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game7">game7</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game8"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game8">game8</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-game9"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/maingameloop.html#game9">game9</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-hyperspaceendsgame"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#hyperspaceendsgame">hyperspaceEndsGame</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Records whether the player performing a hyperspace has just ended the game</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-keepcheckingpankey"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#keepcheckingpankey">keepCheckingPanKey</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Controls whether the DrawLandscapeView routine aborts drawing if the pan key is released before it has finished</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-landscapenumberhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#landscapenumberhi">landscapeNumberHi</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The high byte of the four-digit binary coded decimal landscape number (0000 to 9999)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-landscapenumberlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#landscapenumberlo">landscapeNumberLo</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The low byte of the four-digit binary coded decimal landscape number (0000 to 9999)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lastpankeypressed"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#lastpankeypressed">lastPanKeyPressed</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The direction of the last pan key that was pressed (which may not still be held down)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-main4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Entry point <a href="/source/main/subroutine/maintitleloop.html#main4">main4</a> in subroutine <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> (category: Main title loop)</div><div class="summary">The entry point for restarting a landscape after dying, so the player doesn't have to enter the landscape's secret code again</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-musiccounter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#musiccounter">musicCounter</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A counter for the music currently being made, which counts up in the ProcessMusic routine while the music is being played</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-numberofscrolls"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#numberofscrolls">numberOfScrolls</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The total number of scrolls that we need to perform for the current panning operation</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pankeybeingpressed"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#pankeybeingpressed">panKeyBeingPressed</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The direction in which the player is currently panning</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playerobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#playerobject">playerObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the player object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-quitgame"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#quitgame">quitGame</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record whether the player has pressed function key f1 to quit the game</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-screenorbuffer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#screenorbuffer">screenOrBuffer</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Controls whether the graphics routines draw directly onto the screen, or into the screen buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-scrollcounter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#scrollcounter">scrollCounter</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A counter for the number of columns or rows we still need to scroll in the player's scrolling landscape view when the player pans</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-seednumberlfsr"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#seednumberlfsr">seedNumberLFSR</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A five-byte linear feedback shift register for</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sentinelhaswon"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#sentinelhaswon">sentinelHasWon</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record when the player runs out of energy (i.e. the energy level goes negative), at which point the Sentinel wins</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sightsarevisible"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#sightsarevisible">sightsAreVisible</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Controls whether the sights are being shown</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sightsbytecount"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#sightsbytecount">sightsByteCount</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The number of screen bytes in the sights pixel byte stash that contain the contents of the screen behind the sights (so they can be restored to remove the sights)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-soundcounter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#soundcounter">soundCounter</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A counter for the sound currently being made, which counts down in the IRQHandler routine at a rate of 50 times a second</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-soundeffect"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#soundeffect">soundEffect</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Determines how the current sound is processed by the ProcessSound routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-uturnstatus"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#uturnstatus">uTurnStatus</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record whether we are performing or have just performed a U-turn</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewingobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#viewingobject">viewingObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the viewing object</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/playgame.html">PlayGame</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/cleariconsscanner.html">ClearIconsScanner</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

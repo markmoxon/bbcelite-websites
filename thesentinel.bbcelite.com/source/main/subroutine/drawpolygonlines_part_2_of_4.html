@@ -1,0 +1,325 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("drawing_polygons", "subroutine_drawpolygonlines_part_2_of_4.html", "The DrawPolygonLines (Part 2 of 4) subroutine", "Drawing polygons: DrawPolygonLines (Part 2 of 4)", "Annotated code for the DrawPolygonLines (Part 2 of 4) subroutine in The Sentinel", "the_sentinel-code", "source_drawing_polygons", "subroutine_drawpolygonlines_part_2_of_4", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawpolygonlines_part_1_of_4.html">DrawPolygonLines (Part 1 of 4)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/drawpolygonlines_part_3_of_4.html">DrawPolygonLines (Part 3 of 4)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">DrawPolygonLines (Part 2 of 4)</span>                          <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing polygons</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Process the line overflowing the sides of the buffer, or fitting</span>
+             <span class="headerEntry">into one pixel byte, and loop on to the next polygon pixel line</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_d.html#header-drawpolygonlines-part-2-of-4">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">No direct references to this subroutine in this source file</span>
+</div>
+</div></div>
+<span class="label">.dpol3</span><a id="dpol3" class="anchor"></a>
+
+                        <span class="comment">\ We jump back here to move on to the next pixel line in</span>
+                        <span class="comment">\ the polygon</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">yPolygonLine</a>       <span class="comment">\ Set Y to the number of the polygon pixel line we are</span>
+                        <span class="comment">\ drawing (which decrements as we draw the polygon from</span>
+                        <span class="comment">\ top to bottom)</span>
+
+ <span class="mne">CPY</span> <a class="popup variable">yPolygonBottom</a>     <span class="comment">\ If Y = yPolygonBottom then we have reached the bottom</span>
+ <span class="mne">BEQ</span> <a class="popup destination">dpol2</a>              <span class="comment">\ of the polygon, so jump to dpol2 to return from the</span>
+                        <span class="comment">\ subroutine as the whole polygon has now been drawn</span>
+
+ <span class="mne">TYA</span>                    <span class="comment">\ Set A = Y mod 8</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00000111</span>         <span class="comment">\</span>
+                        <span class="comment">\ So A is the number of the polygon pixel line within</span>
+                        <span class="comment">\ the current character row</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">dpol11</a>             <span class="comment">\ If A is non-zero then the next polygon line (which</span>
+                        <span class="comment">\ will be on polygon pixel row A - 1) will still be in</span>
+                        <span class="comment">\ the same character row, so jump to dpol11 to move down</span>
+                        <span class="comment">\ one pixel line</span>
+
+                        <span class="comment">\ If we get here then A = 0, so the next polygon pixel</span>
+                        <span class="comment">\ line is in a different character row, so we need to</span>
+                        <span class="comment">\ move on to the next character row in the screen or the</span>
+                        <span class="comment">\ screen buffer</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">R</a>                  <span class="comment">\ Set (A R) = (S R) + &139</span>
+ <span class="mne">CLC</span>                    <span class="comment">\           = (S R) + 320 - 7</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="hex">&39</span>               <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">R</a>                  <span class="comment">\ We add 320 to move on to the next row down on the</span>
+ <span class="mne">LDA</span> <a class="popup variable">S</a>                  <span class="comment">\ screen, but we want to be in the top pixel row within</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="hex">&01</span>               <span class="comment">\ that character row, so we subtract 7 to move up to the</span>
+                        <span class="comment">\ top of the character block (as each row is eight pixel</span>
+                        <span class="comment">\ bytes high)</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="hex">&53</span>               <span class="comment">\ If the result of the addition is less than &5300, then</span>
+ <span class="mne">BNE</span> <a class="popup destination">dpol4</a>              <span class="comment">\ we have not reached the end of row 15 in the screen</span>
+                        <span class="comment">\ buffer, so jump to dpol4 to skip the following</span>
+
+                        <span class="comment">\ If we get here then we need to wrap the screen buffer</span>
+                        <span class="comment">\ address around so we move from screenBufferRow15 to</span>
+                        <span class="comment">\ screenBufferRow16</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">bufferRowAddrLo</a><span class="operator">+</span><span class="decimal">16</span> <span class="comment">\ Set (A R) to the address of screenBufferRow16 from the</span>
+ <span class="mne">STA</span> <a class="popup variable">R</a>                  <span class="comment">\ bufferRowAddr(Hi Lo)</span>
+ <span class="mne">LDA</span> <a class="popup variable">bufferRowAddrHi</a><span class="operator">+</span><span class="decimal">16</span>
+
+<span class="label">.dpol4</span><a id="dpol4" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">S</a>                  <span class="comment">\ Store the high byte of the result, so we now have:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (S R) = (S R) + 320 - 7</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ with the address wrapped around as required</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">dpol12</a>             <span class="comment">\ Jump to dpol12 to draw the next polygon pixel line</span>
+                        <span class="comment">\ (this BNE is effectively a JMP as the high byte of the</span>
+                        <span class="comment">\ address in A is never zero)</span>
+
+<span class="label">.dpol5</span><a id="dpol5" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the right edge of the polygon line</span>
+                        <span class="comment">\ we are drawing extends past the left edge of the</span>
+                        <span class="comment">\ screen buffer</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set polygonGoesLeft = 0 to denote that the polygon</span>
+ <span class="mne">STA</span> <a class="popup variable">polygonGoesLeft</a>    <span class="comment">\ extends past the left edge of the buffer, so if we</span>
+                        <span class="comment">\ are drawing in the right row buffer, this makes us</span>
+                        <span class="comment">\ draw the rest of the polygon in the left row buffer</span>
+                        <span class="comment">\ in the DrawPolygon routine</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">dpol3</a>              <span class="comment">\ Jump to dpol3 to move on to the next pixel line in the</span>
+                        <span class="comment">\ polygon (this BEQ is effectively a JMP as A is always</span>
+                        <span class="comment">\ zero)</span>
+
+<span class="label">.dpol6</span><a id="dpol6" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the left edge of the polygon line</span>
+                        <span class="comment">\ we are drawing extends past the right edge of the</span>
+                        <span class="comment">\ screen buffer</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set polygonGoesRight = 0 to denote that the polygon</span>
+ <span class="mne">STA</span> <a class="popup variable">polygonGoesRight</a>   <span class="comment">\ extends past the right edge of the buffer, so if we</span>
+                        <span class="comment">\ are drawing in the left row buffer, this makes us draw</span>
+                        <span class="comment">\ the rest of the polygon in the right row buffer in the</span>
+                        <span class="comment">\ DrawPolygon routine</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">dpol3</a>              <span class="comment">\ Jump to dpol3 to move on to the next pixel line in the</span>
+                        <span class="comment">\ polygon (this BEQ is effectively a JMP as A is always</span>
+                        <span class="comment">\ zero)</span>
+
+<span class="label">.dpol7</span><a id="dpol7" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the right edge of the polygon line</span>
+                        <span class="comment">\ we are drawing extends past the right edge of the</span>
+                        <span class="comment">\ screen buffer</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xBufferWidth</a>       <span class="comment">\ Set xPolygonRightEdge = xBufferWidth * 2</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">xPolygonRightEdge</a>  <span class="comment">\ This sets the screen x-coordinate of the right end of</span>
+                        <span class="comment">\ the polygon line we are drawing to the right edge of</span>
+                        <span class="comment">\ the screen buffer (we double the value in xBufferWidth</span>
+                        <span class="comment">\ to get the x-coordinate because ???)</span>
+
+ <span class="mne">STA</span> <a class="popup variable">polygonGoesRight</a>   <span class="comment">\ Set polygonGoesRight to the value of A, which is at</span>
+                        <span class="comment">\ least 2 because xBufferWidth is non-zero and we just</span>
+                        <span class="comment">\ doubled it, so this has the same effect in the</span>
+                        <span class="comment">\ DrawPolygon routine as setting polygonGoesRight to 0</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ In other words, this denotes that the polygon extends</span>
+                        <span class="comment">\ past the right edge of the buffer, so if we are</span>
+                        <span class="comment">\ drawing in the left row buffer, this makes us draw the</span>
+                        <span class="comment">\ rest of the polygon in the right row buffer in the</span>
+                        <span class="comment">\ DrawPolygon routine</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">dpol15</a>             <span class="comment">\ Jump to dpol15 to draw the left edge and fill line for</span>
+                        <span class="comment">\ this polygon line (this BNE is effectively a JMP as A</span>
+                        <span class="comment">\ is never zero)</span>
+
+<span class="label">.dpol8</span><a id="dpol8" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the left edge of the polygon line</span>
+                        <span class="comment">\ we are drawing extends past the left edge of the</span>
+                        <span class="comment">\ screen buffer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We therefore need to draw the left end of the line in</span>
+                        <span class="comment">\ the screen buffer without the edge byte, and with the</span>
+                        <span class="comment">\ fill portion starting at the buffer's left edge</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">R</a>                  <span class="comment">\ Set (Q P) = (S R) - 8</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">8</span>                 <span class="comment">\ This sets (Q P) to the very first byte in the screen</span>
+ <span class="mne">STA</span> <a class="popup variable">P</a>                  <span class="comment">\ row, so we don't reserve the first byte for the left</span>
+ <span class="mne">LDA</span> <a class="popup variable">S</a>                  <span class="comment">\ edge in part 4 and instead draw the fill portion of</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ the polygon line from the left edge of the screen row</span>
+ <span class="mne">STA</span> <a class="popup variable">Q</a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set polygonGoesLeft = 0 to denote that the polygon</span>
+ <span class="mne">STA</span> <a class="popup variable">polygonGoesLeft</a>    <span class="comment">\ extends past the left edge of the buffer, so if we</span>
+                        <span class="comment">\ are drawing in the right row buffer, this makes us</span>
+                        <span class="comment">\ draw the rest of the polygon in the left row buffer</span>
+                        <span class="comment">\ in the DrawPolygon routine</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&F8</span>               <span class="comment">\ Set A = -8 to set the left edge of the line to the</span>
+                        <span class="comment">\ left edge of the screen (this is the same as setting</span>
+                        <span class="comment">\ the left edge to 0 and then subtracting 8 for the same</span>
+                        <span class="comment">\ reason we subtracted 8 from (Q P) above)</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">dpol17</a>             <span class="comment">\ Jump to dpol17 to draw the polygon line in part 4</span>
+                        <span class="comment">\ (this BNE is effectively a JMP as A is never zero)</span>
+
+<span class="label">.dpol9</span><a id="dpol9" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the pixel byte offset for the left</span>
+                        <span class="comment">\ edge is the same as the pixel byte offset for the</span>
+                        <span class="comment">\ right edge, so we need to draw both the left and right</span>
+                        <span class="comment">\ edges within the same pixel byte</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Set X to the pixel number within the character block</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00000011</span>         <span class="comment">\ of the left edge of the polygon (as each character</span>
+ <span class="mne">TAX</span>                    <span class="comment">\ block contains four pixels)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">currentPixelByte</a>   <span class="comment">\ Set A to the current screen contents for the pixel</span>
+                        <span class="comment">\ byte containing the right edge (which is the same as</span>
+                        <span class="comment">\ the pixel byte containing the left edge)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We set this to the result of a LDA (R),Y instruction</span>
+                        <span class="comment">\ in part 3, so this is the same as fetching the current</span>
+                        <span class="comment">\ screen contents with LDA (R),Y</span>
+
+ <span class="mne">AND</span> <a class="popup variable">pixelsToLeft</a>,<span class="register">X</span>     <span class="comment">\ Clear the pixels to the right of the left edge by</span>
+                        <span class="comment">\ AND'ing the current screen contents with a pixel byte</span>
+                        <span class="comment">\ with all the pixels to the left of position X set</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So A contains the existing screen contents for the</span>
+                        <span class="comment">\ pixels outside the polygon line, and with the polygon</span>
+                        <span class="comment">\ line pixels cleared, so now we can OR the polygon line</span>
+                        <span class="comment">\ pixels into the space we just cleared</span>
+
+<span class="label">.dpol10</span><a id="dpol10" class="anchor"></a>
+
+ <span class="mne">ORA</span> <a class="popup variable">edgePixelsLeft</a><span class="operator">+</span><span class="hex">&3C</span>,<span class="register">X</span>   <span class="comment">\ This instruction is modified in part 1 to point to</span>
+                            <span class="comment">\ the correct entry for the specified polygon</span>
+                            <span class="comment">\ colour:</span>
+                            <span class="comment">\</span>
+                            <span class="comment">\   ORA edgePixelsLeft + polygonColours,X</span>
+                            <span class="comment">\</span>
+                            <span class="comment">\ So this inserts the left edge of the polygon into</span>
+                            <span class="comment">\ the right part of the pixel byte in the correct</span>
+                            <span class="comment">\ colours for the currently configured fill and edge</span>
+                            <span class="comment">\ colours, with the edge pixels starting at pixel</span>
+                            <span class="comment">\ number X within the byte and ending at the right</span>
+                            <span class="comment">\ end of the pixel byte</span>
+                            <span class="comment">\</span>
+                            <span class="comment">\ The original value of edgePixelsLeft+&3C is just</span>
+                            <span class="comment">\ workspace noise and has no meaning, it just sets</span>
+                            <span class="comment">\ the high byte to HI(edgePixelsLeft)</span>
+
+ <span class="mne">AND</span> <a class="popup variable">leftPixels</a>,<span class="register">X</span>       <span class="comment">\ Clear all the pixels to the right of the right edge</span>
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\ and store the result in T, so this contains the pixel</span>
+                        <span class="comment">\ byte with the left edge in-place and the pixels for</span>
+                        <span class="comment">\ the right edge cleared</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The leftPixels bit mask is the complementary pixel</span>
+                        <span class="comment">\ byte to pixelsToRight, which we are about to use to</span>
+                        <span class="comment">\ fill in the right edge</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><a class="popup variable">R</a><span class="bracket">)</span>,<span class="register">Y</span>              <span class="comment">\ Set A to the current screen contents of the byte we</span>
+                        <span class="comment">\ are drawing both edges into</span>
+
+ <span class="mne">AND</span> <a class="popup variable">pixelsToRight</a>,<span class="register">X</span>    <span class="comment">\ Clear the pixels to the left of the right edge by</span>
+                        <span class="comment">\ AND'ing the current screen contents with a pixel byte</span>
+                        <span class="comment">\ with all the pixels to the right of position X set</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So A contains the existing screen contents for the</span>
+                        <span class="comment">\ pixels outside the polygon line, and with the polygon</span>
+                        <span class="comment">\ line pixels cleared, so now we can OR the polygon line</span>
+                        <span class="comment">\ pixels into the space we just cleared</span>
+
+ <span class="mne">ORA</span> <a class="popup variable">T</a>                  <span class="comment">\ Insert the right edge of the polygon into the pixel</span>
+                        <span class="comment">\ byte, with the edge pixels starting at the left end</span>
+                        <span class="comment">\ of the pixel byte and ending at pixel number X within</span>
+                        <span class="comment">\ the byte</span>
+
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">R</a><span class="bracket">)</span>,<span class="register">Y</span>              <span class="comment">\ Poke the pixel byte containing the left and right</span>
+                        <span class="comment">\ edges into screen memory</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">dpol3</a>              <span class="comment">\ Jump to dpol3 to move on to the next pixel line in the</span>
+                        <span class="comment">\ polygon</span>
+
+<span class="label">.dpol11</span><a id="dpol11" class="anchor"></a>
+
+ <span class="mne">INC</span> <a class="popup variable">R</a>                  <span class="comment">\ Increment the screen address in (S R) to move down one</span>
+                        <span class="comment">\ pixel row within the character row, ready for drawing</span>
+                        <span class="comment">\ the next polygon pixel line</span>
+
+<span class="label">.dpol12</span><a id="dpol12" class="anchor"></a>
+
+ <span class="mne">DEY</span>                    <span class="comment">\ Decrement the polygon line number in yPolygonLine to</span>
+ <span class="mne">STY</span> <a class="popup variable">yPolygonLine</a>       <span class="comment">\ move down one line in the polygon, from the top to the</span>
+                        <span class="comment">\ bottom</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-p"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#p">P</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-q"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#q">Q</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-r"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#r">R</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-s"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#s">S</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-bufferrowaddrhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/bufferrowaddrhi.html">bufferRowAddrHi</a> (category: Screen buffer)</div><div class="summary">Address lookup table for character rows in the screen buffer (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-bufferrowaddrlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/bufferrowaddrlo.html">bufferRowAddrLo</a> (category: Screen buffer)</div><div class="summary">Address lookup table for character rows in the screen buffer (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-currentpixelbyte"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#currentpixelbyte">currentPixelByte</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The original contents of the screen behind the right edge of the polygon being drawn</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dpol11"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygonlines_part_2_of_4.html#dpol11">dpol11</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dpol12"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygonlines_part_2_of_4.html#dpol12">dpol12</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dpol15"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygonlines_part_3_of_4.html#dpol15">dpol15</a> in subroutine <a href="/source/main/subroutine/drawpolygonlines_part_3_of_4.html">DrawPolygonLines (Part 3 of 4)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dpol17"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygonlines_part_4_of_4.html#dpol17">dpol17</a> in subroutine <a href="/source/main/subroutine/drawpolygonlines_part_4_of_4.html">DrawPolygonLines (Part 4 of 4)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dpol2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygonlines_part_1_of_4.html#dpol2">dpol2</a> in subroutine <a href="/source/main/subroutine/drawpolygonlines_part_1_of_4.html">DrawPolygonLines (Part 1 of 4)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dpol3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygonlines_part_2_of_4.html#dpol3">dpol3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-dpol4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygonlines_part_2_of_4.html#dpol4">dpol4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-edgepixelsleft"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/edgepixelsleft.html">edgePixelsLeft</a> (category: Drawing polygons)</div><div class="summary">Table to convert a polygon colours byte and a pixel offset (0-3) into a pixel byte for the left edge of the polygon pixel line</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-leftpixels"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/leftpixels.html">leftPixels</a> (category: Graphics)</div><div class="summary">Pixel byte with all the pixels to the right of position X + 1 set, to give the complementary pixel byte to pixelsToRight</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pixelstoleft"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/pixelstoleft.html">pixelsToLeft</a> (category: Graphics)</div><div class="summary">Pixel byte with all the pixels to the left of position X set</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pixelstoright"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/pixelstoright.html">pixelsToRight</a> (category: Graphics)</div><div class="summary">Pixel byte with all the pixels to the right of position X set</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-polygongoesleft"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#polygongoesleft">polygonGoesLeft</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">A flag to record whether the polygon we are drawing extends to the left of the screen buffer we are drawing in</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-polygongoesright"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#polygongoesright">polygonGoesRight</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">A flag to record whether the polygon we are drawing extends to the right of the screen buffer we are drawing in</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xbufferwidth"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xbufferwidth">xBufferWidth</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The width in pixels of the screen buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xpolygonrightedge"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xpolygonrightedge">xPolygonRightEdge</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The screen x-coordinate of the right edge of the polygon being drawn</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ypolygonbottom"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ypolygonbottom">yPolygonBottom</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the bottom of the polygon being drawn (where higher y-coordinates are up the screen)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ypolygonline"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ypolygonline">yPolygonLine</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The polygon y-coordinate of the pixel line being drawn in the DrawPolygonLines routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawpolygonlines_part_1_of_4.html">DrawPolygonLines (Part 1 of 4)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/drawpolygonlines_part_3_of_4.html">DrawPolygonLines (Part 3 of 4)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

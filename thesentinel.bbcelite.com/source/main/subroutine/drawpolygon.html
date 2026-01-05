@@ -1,0 +1,171 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("drawing_polygons", "subroutine_drawpolygon.html", "The DrawPolygon subroutine", "Drawing polygons: DrawPolygon", "Annotated code for the DrawPolygon subroutine in The Sentinel", "the_sentinel-code", "source_drawing_polygons", "subroutine_drawpolygon", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawtwofacetile.html">DrawTwoFaceTile</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">DrawPolygon</span>                                             <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing polygons</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw a polygon</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_e.html#header-drawpolygon">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/drawobject.html">DrawObject</a> calls <a href="#drawpolygon">DrawPolygon</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/drawonefacetile.html">DrawOneFaceTile</a> calls <a href="#drawpolygon">DrawPolygon</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/drawtwofacetile.html">DrawTwoFaceTile</a> calls <a href="#drawpolygon">DrawPolygon</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">polygonType</span>          <span class="argumentEntry">Bits 6 and 7 determine the type of polygon to draw (the</span>
+                        <span class="argumentEntry">calling subroutine is in brackets):</span>
+
+                        <span class="argumentEntry">  * %00xxxxxx = quadrilateral (DrawOneFaceTile)</span>
+
+                        <span class="argumentEntry">  * %01xxxxxx = object polygon (DrawObject)</span>
+
+                        <span class="argumentEntry">  * %10xxxxxx = first triangle (DrawTwoFaceTile)</span>
+
+                        <span class="argumentEntry">  * %11xxxxxx = second triangle (DrawTwoFaceTile)</span>
+
+   <span class="argumentLabel">screenBufferType</span>     <span class="argumentEntry">The type of buffer to use:</span>
+
+                        <span class="argumentEntry">  * 0 = left row buffer (for up/down pan)</span>
+                        <span class="argumentEntry">        for the first 256 bytes of the 320-byte row</span>
+
+                        <span class="argumentEntry">  * 1 = right row buffer (for up/down pan)</span>
+                        <span class="argumentEntry">        for the last 64 bytes of the 320-byte row</span>
+
+                        <span class="argumentEntry">  * 2 = column buffer (for left/right pan)</span>
+
+   <span class="argumentLabel">drawViewAngles</span>       <span class="argumentEntry">The point data:</span>
+
+                        <span class="argumentEntry">  * When drawing tile faces, this points to polygonPoint</span>
+
+                        <span class="argumentEntry">  * When drawing object polygons, this points to a list</span>
+                        <span class="argumentEntry">    of object-relative numbers of polygon points</span>
+
+
+   <span class="argumentLabel">triangleStartPoint</span>   <span class="argumentEntry">When drawing a two-face tile as a pair of triangles,</span>
+                        <span class="argumentEntry">this is the number of the starting point to use (0 or 1)</span>
+
+</div></div>
+<span class="label">.DrawPolygon</span><a id="drawpolygon" class="anchor"></a>
+
+ <span class="mne">LDY</span> <a class="popup variable">screenBufferType</a>   <span class="comment">\ If screenBufferType >= 2 then we are drawing into the</span>
+ <span class="mne">CPY</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ column buffer, so jump to poly2 as the column is</span>
+ <span class="mne">BCS</span> <a class="popup destination">poly2</a>              <span class="comment">\ always drawn in one stage</span>
+
+                        <span class="comment">\ If we get here then screenBufferType must be 0 or 1</span>
+                        <span class="comment">\ and we are drawing into the left or right row buffer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The left row buffer covers the leftmost 256 bytes of</span>
+                        <span class="comment">\ each screen row, while the right row buffer covers the</span>
+                        <span class="comment">\ remaining 64 bytes</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ It would be possible to draw the polygon into both</span>
+                        <span class="comment">\ buffers at once, but drawing it separately is more</span>
+                        <span class="comment">\ efficient as we don't need to manage the x-coordinate</span>
+                        <span class="comment">\ as a 16-bit value</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetPolygonLines</a>    <span class="comment">\ Calculate the horizontal lines that make up the filled</span>
+                        <span class="comment">\ polygon and prepare them for drawing into the screen</span>
+                        <span class="comment">\ buffer</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">poly1</a>              <span class="comment">\ If the call to GetPolygonLines set the C flag then the</span>
+                        <span class="comment">\ polygon is not visible in the screen buffer and should</span>
+                        <span class="comment">\ not be drawn, so jump to poly1 to skip the following</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">DrawPolygonLines</a>   <span class="comment">\ Draw the polygon into the screen buffer, drawing the</span>
+                        <span class="comment">\ shape from top to bottom, horizontal and line by line</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">screenBufferType</a>   <span class="comment">\ Set A to the following:</span>
+ <span class="mne">LDA</span> <a class="popup variable">polygonGoesRight</a>,<span class="register">Y</span> <span class="comment">\</span>
+                        <span class="comment">\   * polygonGoesRight when screenBufferType = 0 (we</span>
+                        <span class="comment">\     have just drawn into the left row buffer)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * polygonIsToLeft when screenBufferType = 1 (we</span>
+                        <span class="comment">\     have just drawn into the right row buffer)</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ If A = 1 then we do not need to draw in the other row</span>
+ <span class="mne">BEQ</span> <a class="popup destination">poly3</a>              <span class="comment">\ buffer, because the polygon we just drew does not</span>
+                        <span class="comment">\ extend beyond the relevant edge of the buffer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ More specifically:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * If we have just drawn into the left row buffer and</span>
+                        <span class="comment">\     polygonGoesRight = 1, then the polygon does not</span>
+                        <span class="comment">\     extend right out of the left row buffer, so we</span>
+                        <span class="comment">\     don't need to draw anything into the right row</span>
+                        <span class="comment">\     buffer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * If we have just drawn into the right row buffer</span>
+                        <span class="comment">\     and polygonGoesLeft = 1, then the polygon does not</span>
+                        <span class="comment">\     extend left out of the right row buffer, so we</span>
+                        <span class="comment">\     don't need to draw anything into the left row</span>
+                        <span class="comment">\     buffer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ In either case, jump to poly3 to return from the</span>
+                        <span class="comment">\ subroutine without drawing the polygon into the other</span>
+                        <span class="comment">\ row buffer</span>
+
+<span class="label">.poly1</span><a id="poly1" class="anchor"></a>
+
+                        <span class="comment">\ We have drawn the relevant parts of the polygon into</span>
+                        <span class="comment">\ either the left row buffer or right row buffer and the</span>
+                        <span class="comment">\ polygon extends into the other row buffer, so now we</span>
+                        <span class="comment">\ draw the polygon into the other row buffer</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">FlipBufferType</a>     <span class="comment">\ Flip the buffer type between 0 and 1 to swap between</span>
+                        <span class="comment">\ the left row buffer and right row buffer, and</span>
+                        <span class="comment">\ configure the new buffer accordingly</span>
+
+<span class="label">.poly2</span><a id="poly2" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetPolygonLines</a>    <span class="comment">\ Calculate the horizontal lines that make up the filled</span>
+                        <span class="comment">\ polygon and prepare them for drawing into the screen</span>
+                        <span class="comment">\ buffer</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">poly3</a>              <span class="comment">\ If the call to GetPolygonLines set the C flag then the</span>
+                        <span class="comment">\ polygon is not visible in the screen buffer and should</span>
+                        <span class="comment">\ not be drawn, so jump to poly3 to skip the following</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">DrawPolygonLines</a>   <span class="comment">\ Draw the polygon into the screen buffer, drawing the</span>
+                        <span class="comment">\ shape from top to bottom, horizontal and line by line</span>
+
+<span class="label">.poly3</span><a id="poly3" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawpolygonlines"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawpolygonlines_part_1_of_4.html">DrawPolygonLines (Part 1 of 4)</a> (category: Drawing polygons)</div><div class="summary">Draw an analysed polygon into the screen buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-flipbuffertype"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/flipbuffertype.html">FlipBufferType</a> (category: Screen buffer)</div><div class="summary">Flip the buffer type between buffer type 0 (left row buffer) and buffer type 1 (right row buffer)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getpolygonlines"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getpolygonlines_part_2_of_6.html">GetPolygonLines (Part 2 of 6)</a> (category: Drawing polygons)</div><div class="summary">The main entry point for the routine to calculate the horizontal lines in filled polygon and prepare them for drawing on-screen</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-poly1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygon.html#poly1">poly1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-poly2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygon.html#poly2">poly2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-poly3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawpolygon.html#poly3">poly3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-polygongoesright"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#polygongoesright">polygonGoesRight</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">A flag to record whether the polygon we are drawing extends to the right of the screen buffer we are drawing in</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-screenbuffertype"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#screenbuffertype">screenBufferType</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The type of screen buffer that is currently being used</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawtwofacetile.html">DrawTwoFaceTile</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

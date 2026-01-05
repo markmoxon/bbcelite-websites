@@ -1,0 +1,137 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("landscape", "subroutine_smoothtilecorners_part_1_of_4.html", "The SmoothTileCorners (Part 1 of 4) subroutine", "Landscape: SmoothTileCorners (Part 1 of 4)", "Annotated code for the SmoothTileCorners (Part 1 of 4) subroutine in The Sentinel", "the_sentinel-code", "source_landscape", "subroutine_smoothtilecorners_part_1_of_4", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/gettiledata.html">GetTileData</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/smoothtilecorners_part_2_of_4.html">SmoothTileCorners (Part 2 of 4)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">SmoothTileCorners (Part 1 of 4)</span>                         <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Smooth a row or column of tile corners (a "strip of tiles")</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_f.html#header-smoothtilecorners-part-1-of-4">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/smoothtiledata.html">SmoothTileData</a> calls <a href="#smoothtilecorners">SmoothTileCorners</a></span>
+</div>
+<hr class="light">
+ This part copies the row or column of tile corners to a temporary workspace.
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">Controls which tile corners we smooth in the tile data:</span>
+
+                        <span class="argumentEntry">  * Bit 7 clear = smooth the row of tile corners at</span>
+                        <span class="argumentEntry">                  z-coordinate zTile</span>
+
+                        <span class="argumentEntry">  * Bit 7 set = smooth the column of tile corners at</span>
+                        <span class="argumentEntry">                x-coordinate xTile</span>
+
+</div></div>
+<span class="label">.SmoothTileCorners</span><a id="smoothtilecorners" class="anchor"></a>
+
+ <span class="mne">ORA</span> <a class="popup variable">smoothingAction</a>    <span class="comment">\ We configured the smoothing action in bit 6 of</span>
+ <span class="mne">STA</span> <a class="popup variable">processAction</a>      <span class="comment">\ smoothingAction in the SmoothTileData routine before</span>
+                        <span class="comment">\ calling this routine, and bit 7 of A tells us whether</span>
+                        <span class="comment">\ to smooth a row or a column of tile corners, so this</span>
+                        <span class="comment">\ combines both configurations from bit 6 and bit 7 into</span>
+                        <span class="comment">\ one byte that we store in processAction</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">34</span>                <span class="comment">\ We start by copying the tile data for the row/column</span>
+                        <span class="comment">\ that we want to smooth into the stripData workspace,</span>
+                        <span class="comment">\ so we can process it before copying it back into the</span>
+                        <span class="comment">\ tileData table</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ In the following commentary I will refer to this</span>
+                        <span class="comment">\ copied row or column of tile corners as a "strip of</span>
+                        <span class="comment">\ tiles", as saying "row or column of tile corners"</span>
+                        <span class="comment">\ every time is a bit of a mouthful</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We actually create a strip of tile data containing 35</span>
+                        <span class="comment">\ tile corners, with offsets 0 to 31 being the tile data</span>
+                        <span class="comment">\ for the strip we are smoothing and offsets 32 to 34</span>
+                        <span class="comment">\ being repeats of the data for tile corners 0 to 2</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we effectively duplicate the first three tile</span>
+                        <span class="comment">\ corners onto the end of the strip so we can wrap the</span>
+                        <span class="comment">\ smoothing calculations around past the end of the</span>
+                        <span class="comment">\ strip</span>
+
+<span class="label">.stri1</span><a id="stri1" class="anchor"></a>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Set A = X mod 32</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="decimal">31</span>                <span class="comment">\</span>
+                        <span class="comment">\ This ensures that for X = 32 to 34, we copy the tile</span>
+                        <span class="comment">\ data for tiles 0 to 2 (as A = 0 to 2 for X = 32 to 34)</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">processAction</a>      <span class="comment">\ If bit 7 of processAction is clear then we are</span>
+ <span class="mne">BPL</span> <a class="popup destination">stri2</a>              <span class="comment">\ smoothing a row of tiles at z-coordinate zTile, so</span>
+                        <span class="comment">\ jump to stri2 to iterate across xTile</span>
+
+ <span class="mne">STA</span> <a class="popup variable">zTile</a>              <span class="comment">\ If we get here then we are smoothing a column of tiles</span>
+                        <span class="comment">\ so set zTile to the counter in X so we iterate along</span>
+                        <span class="comment">\ the z-coordinate (i.e. coming out of the screen)</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">stri3</a>              <span class="comment">\ Jump to stri3 to skip the following</span>
+
+<span class="label">.stri2</span><a id="stri2" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">xTile</a>              <span class="comment">\ If we get here then we are smoothing a row of tiles</span>
+                        <span class="comment">\ so set xTile to the counter in X so we iterate along</span>
+                        <span class="comment">\ the x-coordinate (i.e. from right to left)</span>
+
+<span class="label">.stri3</span><a id="stri3" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileData</a>        <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile)</span>
+
+ <span class="mne">STA</span> <a class="popup variable">stripData</a>,<span class="register">X</span>        <span class="comment">\ Store the tile data for (xTile, zTile) into the X-th</span>
+                        <span class="comment">\ byte in our temporary workspace</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the tile counter in X</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">stri1</a>              <span class="comment">\ Loop back until we have copied tile data for all 32</span>
+                        <span class="comment">\ tiles in the strip, plus three more tiles on the end</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">processAction</a>      <span class="comment">\ If bit 6 of processAction is clear then we need to</span>
+ <span class="mne">BVC</span> <a class="popup destination">stri11</a>             <span class="comment">\ smooth the strip by averaging tile altitudes, so jump</span>
+                        <span class="comment">\ to part 3 to implement this</span>
+
+                        <span class="comment">\ Otherwise fall through into part 2 to smooth the strip</span>
+                        <span class="comment">\ by moving outlier tiles</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gettiledata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gettiledata.html">GetTileData</a> (category: Landscape)</div><div class="summary">Get the tile data and tile data address for a specific tile</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-processaction"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#processaction">processAction</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Defines the following</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-smoothingaction"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#smoothingaction">smoothingAction</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The action that's applied to tile data by the SmoothTileData routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-stri1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/smoothtilecorners_part_1_of_4.html#stri1">stri1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-stri11"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/smoothtilecorners_part_3_of_4.html#stri11">stri11</a> in subroutine <a href="/source/main/subroutine/smoothtilecorners_part_3_of_4.html">SmoothTileCorners (Part 3 of 4)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-stri2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/smoothtilecorners_part_1_of_4.html#stri2">stri2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-stri3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/smoothtilecorners_part_1_of_4.html#stri3">stri3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-stripdata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/stripdata.html">stripData</a> (category: Landscape)</div><div class="summary">Storage for tile data when smoothing strips of tiles during the landscape generation process</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xtile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xtile">xTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner x-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ztile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ztile">zTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner z-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/gettiledata.html">GetTileData</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/smoothtilecorners_part_2_of_4.html">SmoothTileCorners (Part 2 of 4)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

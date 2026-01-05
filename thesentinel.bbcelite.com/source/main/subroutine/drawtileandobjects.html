@@ -1,0 +1,205 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("drawing_the_landscape", "subroutine_drawtileandobjects.html", "The DrawTileAndObjects subroutine", "Drawing the landscape: DrawTileAndObjects", "Annotated code for the DrawTileAndObjects subroutine in The Sentinel", "the_sentinel-code", "source_drawing_the_landscape", "subroutine_drawtileandobjects", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/configureobjbuffer.html">ConfigureObjBuffer</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">DrawTileAndObjects</span>                                      <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing the landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Draw a tile and any objects stacked on it</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_e.html#header-drawtileandobjects">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a> calls <a href="#drawtileandobjects">DrawTileAndObjects</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">xTileToDraw</span>          <span class="argumentEntry">The tile x-coordinate (i.e. the tile column)</span>
+
+   <span class="argumentLabel">zTile</span>                <span class="argumentEntry">The tile z-coordinate (i.e. the tile row)</span>
+
+</div></div>
+<span class="label">.tobj1</span><a id="tobj1" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we need to draw a block in the</span>
+                        <span class="comment">\ title screen's 3D text</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We use object #63 for this purpose, and we set it to</span>
+                        <span class="comment">\ the object number for the 3D text block pair that the</span>
+                        <span class="comment">\ SpawnCharacter3D put into bits 0 to 3 of the tile data</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">tileViewData</a>,<span class="register">X</span>     <span class="comment">\ Set the object type for object #63 to the bottom</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00001111</span>         <span class="comment">\ nibble of the tile data, which contains the object</span>
+ <span class="mne">STA</span> <a class="popup variable">objectTypes</a><span class="operator">+</span><span class="decimal">63</span>     <span class="comment">\ number for the 3D text block pair for this part of the</span>
+                        <span class="comment">\ text:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 0 for no blocks in the pair</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 7 for no block (left), block (right)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 8 for block (left), no block (right)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * 9 for block (left), no block (right)</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">buff1</a>              <span class="comment">\ If the object type is zero then jump to buff1 to</span>
+                        <span class="comment">\ return from the subroutine without drawing anything</span>
+
+                        <span class="comment">\ Otherwise we have set the type of object #63 to the</span>
+                        <span class="comment">\ correct 3D text block object, so now we set the tile</span>
+                        <span class="comment">\ coordinate and draw the object</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xTileToDraw</a>        <span class="comment">\ Set the x-coordinate for the block in object #63 to</span>
+ <span class="mne">STA</span> <a class="popup variable">xObject</a><span class="operator">+</span><span class="decimal">63</span>         <span class="comment">\ the tile column in xTileToDraw</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">zTile</a>              <span class="comment">\ Set the z-coordinate for the block in object #63 to</span>
+ <span class="mne">STA</span> <a class="popup variable">zObject</a><span class="operator">+</span><span class="decimal">63</span>         <span class="comment">\ the tile row in zTile</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">63</span>                <span class="comment">\ Set Y = 63 to pass to the DrawObject routine so we</span>
+                        <span class="comment">\ draw object #63</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">DrawObject</a>         <span class="comment">\ Jump to DrawObject to draw the 3D text block we've set</span>
+                        <span class="comment">\ up in object #63, returning from the subroutine using</span>
+                        <span class="comment">\ a tail call</span>
+
+<span class="label">.DrawTileAndObjects</span><a id="drawtileandobjects" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">ProcessSound</a>       <span class="comment">\ Process any sounds or music that are being made in the</span>
+                        <span class="comment">\ background</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xTileToDraw</a>        <span class="comment">\ Set X to the index of the tile data that we set up for</span>
+ <span class="mne">ORA</span> <a class="popup variable">drawingTableOffset</a> <span class="comment">\ this tile in part 2 of the GetTileViewAngles routine</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ ???</span>
+ <span class="mne">ADC</span> <a class="popup variable">quadrantOffset</a>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00111111</span>
+ <span class="mne">TAX</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">drawingTitleScreen</a> <span class="comment">\ If bit 7 of drawingTitleScreen is set then we are</span>
+ <span class="mne">BMI</span> <a class="popup destination">tobj1</a>              <span class="comment">\ drawing a title screen, so jump up to tobj1 to draw</span>
+                        <span class="comment">\ this tile as a block in the title screen's 3D text</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">tileViewData</a>,<span class="register">X</span>     <span class="comment">\ Set A to the tile data for the current view, which we</span>
+                        <span class="comment">\ set in the GetTileViewAngles routine to the tile data</span>
+                        <span class="comment">\ for this tile, but zeroed if the tile is not visible</span>
+                        <span class="comment">\ (which will happen if the tile does not contain an</span>
+                        <span class="comment">\ object and is marked as not being visible from the</span>
+                        <span class="comment">\ player's point of view in the tileVisibility table)</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">buff1</a>              <span class="comment">\ If A is zero then we marked this tile as being hidden</span>
+                        <span class="comment">\ in part 3 of the GetTileViewAngles routine, so jump to</span>
+                        <span class="comment">\ buff1 to return from the subroutine without drawing</span>
+                        <span class="comment">\ anything</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="binary">%11000000</span>         <span class="comment">\ If both bits 6 and 7 are set in the tile data then the</span>
+ <span class="mne">BCC</span> <a class="popup destination">tobj2</a>              <span class="comment">\ tile we are analysing contains an object, in which</span>
+                        <span class="comment">\ case keep going, otherwise there is no object on the</span>
+                        <span class="comment">\ tile so jump to tobj2</span>
+
+                        <span class="comment">\ If we get here then the tile we are drawing contains</span>
+                        <span class="comment">\ an object</span>
+
+ <span class="mne">PHA</span>                    <span class="comment">\ Store the tile data on the stack</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">DrawFlatTile</a>       <span class="comment">\ Draw the flat tile that's beneath the object</span>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Retrieve the tile data from the stack</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">DrawObjectStack</a>    <span class="comment">\ Draw the stack of objects on top of the tile, and</span>
+                        <span class="comment">\ return from the subroutine using a tail call</span>
+
+<span class="label">.tobj2</span><a id="tobj2" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the tile we are drawing does not</span>
+                        <span class="comment">\ contain an object</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00001111</span>         <span class="comment">\ Set A to the tile shape for the tile, which is in the</span>
+                        <span class="comment">\ bottom nibble of the tile data</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">DrawFlatTile</a>       <span class="comment">\ If the tile shape is zero then the tile is flat, so</span>
+                        <span class="comment">\ jump to DrawFlatTile to draw the flat tile, returning</span>
+                        <span class="comment">\ from the subroutine using a tail call</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">12</span>                <span class="comment">\ If the tile shape is 12 then we know the tile consists</span>
+ <span class="mne">BEQ</span> <a class="popup destination">tobj3</a>              <span class="comment">\ of two faces, so jump to tobj3</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ If the tile shape is 4 then we know the tile consists</span>
+ <span class="mne">BNE</span> <a class="popup destination">DrawSlopingTile</a>    <span class="comment">\ of two faces, so keep going, otherwise we don't know</span>
+                        <span class="comment">\ how many faces it contains, so jump to DrawSlopingTile</span>
+                        <span class="comment">\ to work this out</span>
+
+<span class="label">.tobj3</span><a id="tobj3" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the tile shape is 4 or 12, both of</span>
+                        <span class="comment">\ which we know consist of two triangular faces</span>
+
+ <span class="mne">PHA</span>                    <span class="comment">\ Store the tile shape on the stack</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">viewingQuadrantOpp</a> <span class="comment">\ Set triangleStartPoint to bit 0 of viewingQuadrantOpp</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ to pass to the DrawTwoFaceTile routine ???</span>
+ <span class="mne">STA</span> <a class="popup variable">triangleStartPoint</a>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Retrieve the tile shape from the stack</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">DrawTwoFaceTile</a>    <span class="comment">\ Jump to DrawTwoFaceTile to draw the tile, returning</span>
+                        <span class="comment">\ from the subroutine using a tail call (this BNE is</span>
+                        <span class="comment">\ effectively a JMP as we know the tile shape is</span>
+                        <span class="comment">\ non-zero)</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawflattile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a> (category: Drawing the landscape)</div><div class="summary">Draw a flat tile in the correct colour for the chess board effect that we use to draw the landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawobject.html">DrawObject</a> (category: Drawing objects)</div><div class="summary">Draw a 3D object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawobjectstack"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a> (category: Drawing objects)</div><div class="summary">Draw an entire stack of objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawslopingtile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawslopingtile.html">DrawSlopingTile</a> (category: Drawing the landscape)</div><div class="summary">Draw a sloping tile that is not shape 4 or 12</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawtwofacetile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/drawtwofacetile.html">DrawTwoFaceTile</a> (category: Drawing the landscape)</div><div class="summary">Draw a tile with two triangular (three-sided) faces</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-processsound"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/processsound.html">ProcessSound</a> (category: Sound)</div><div class="summary">Process any sound effects that have been configured so they play in the background (this is called regularly throughout gameplay)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-buff1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Entry point <a href="/source/main/subroutine/configureobjbuffer.html#buff1">buff1</a> in subroutine <a href="/source/main/subroutine/configureobjbuffer.html">ConfigureObjBuffer</a> (category: Screen buffer)</div><div class="summary">Contains an RTS</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawingtableoffset"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#drawingtableoffset">drawingTableOffset</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The offset to use within the various drawing data tables for the tile we are analysing</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawingtitlescreen"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#drawingtitlescreen">drawingTitleScreen</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to indicate whether we are currently drawing a title screen in the DrawTitleScreen routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttypes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objecttypes.html">objectTypes</a> (category: 3D objects)</div><div class="summary">The object types table for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-quadrantoffset"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#quadrantoffset">quadrantOffset</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The offset into the drawing tables for the quadrant containing the right edge of the viewing arc ???</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tileviewdata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#tileviewdata">tileViewData</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">The tile data for tiles in the current landscape view</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tobj1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawtileandobjects.html#tobj1">tobj1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tobj2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawtileandobjects.html#tobj2">tobj2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tobj3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/drawtileandobjects.html#tobj3">tobj3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-trianglestartpoint"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#trianglestartpoint">triangleStartPoint</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the starting point for the tile shape being drawn</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewingquadrantopp"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#viewingquadrantopp">viewingQuadrantOpp</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The opposite quadrant number to that containing the right edge of the viewing arc ???</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/xobject.html">xObject</a> (category: 3D objects)</div><div class="summary">The x-coordinates in 3D space for the 3D objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xtiletodraw"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xtiletodraw">xTileToDraw</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The column number of the tile we are currently drawing</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-zobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/zobject.html">zObject</a> (category: 3D objects)</div><div class="summary">The z-coordinates in 3D space for the 3D objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ztile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ztile">zTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner z-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/configureobjbuffer.html">ConfigureObjBuffer</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

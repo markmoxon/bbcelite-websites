@@ -1,0 +1,184 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("sound", "subroutine_processvolumekeys.html", "The ProcessVolumeKeys subroutine", "Sound: ProcessVolumeKeys", "Annotated code for the ProcessVolumeKeys subroutine in The Sentinel", "the_sentinel-code", "source_sound", "subroutine_processvolumekeys", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/soundnumberdata.html">soundNumberData</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/volumelevel.html">volumeLevel</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">ProcessVolumeKeys</span>                                       <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Sound</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Adjust the volume of the sound envelopes when the volume keys are</span>
+             <span class="headerEntry">pressed</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_g.html#header-processvolumekeys">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a> calls <a href="#processvolumekeys">ProcessVolumeKeys</a></span>
+</div>
+</div></div>
+<span class="label">.ProcessVolumeKeys</span><a id="processvolumekeys" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">focusOnKeyAction</a>   <span class="comment">\ If bit 7 of focusOnKeyAction is set then the game is</span>
+ <span class="mne">BMI</span> <a class="popup destination">volk6</a>              <span class="comment">\ focusing effort on a key action such as a landscape</span>
+                        <span class="comment">\ pan, so jump to volk6 to return from the subroutine</span>
+                        <span class="comment">\ without checking for volume-related key presses</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">volumeLevel</a>        <span class="comment">\ Set A to the current volume level</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">keyLogger</a><span class="operator">+</span><span class="decimal">3</span>        <span class="comment">\ Set X to the key logger entry for "7", "8", COPY and</span>
+                        <span class="comment">\ DELETE (volume down, volume up, pause, unpause)</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">volk1</a>              <span class="comment">\ If X = 0 then "7" (volume down) has been pressed, so</span>
+                        <span class="comment">\ jump to volk1 to process it</span>
+
+                        <span class="comment">\ If we get here then X must be 1, 2 or 3 (for "8",</span>
+                        <span class="comment">\ COPY and DELETE)</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ If X - 1 &lt;> 0 then the original key logger entry must</span>
+ <span class="mne">BNE</span> <a class="popup destination">volk6</a>              <span class="comment">\ be 2 or 3 (COPY or DELETE), so jump to volk6 to</span>
+                        <span class="comment">\ return from the subroutine</span>
+
+                        <span class="comment">\ If we get here then the key logger entry must be 1,</span>
+                        <span class="comment">\ so "8" (volume up) has been pressed</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">120</span>               <span class="comment">\ If A >= 120 then the volume level is already at the</span>
+ <span class="mne">BCS</span> <a class="popup destination">volk2</a>              <span class="comment">\ maximum level of 120, so jump to volk2 without</span>
+                        <span class="comment">\ changing it</span>
+
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">8</span>                 <span class="comment">\ Otherwise we can turn the volume up, so add 8 to the</span>
+                        <span class="comment">\ volume level in A (the addition works because we know</span>
+                        <span class="comment">\ we just passed through a BCS, so we know the C flag is</span>
+                        <span class="comment">\ clear)</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">volk2</a>              <span class="comment">\ Jump to volk1 to update the volume level</span>
+
+<span class="label">.volk1</span><a id="volk1" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then "7" (volume down) has been pressed</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ If A = 0 then the volume level is already at the</span>
+ <span class="mne">BEQ</span> <a class="popup destination">volk2</a>              <span class="comment">\ minimum level of 0, so jump to volk2 without changing</span>
+                        <span class="comment">\ it</span>
+
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">8</span>                 <span class="comment">\ Otherwise we can turn the volume down, so subtract 8</span>
+                        <span class="comment">\ from the volume level in A (the subtraction works</span>
+                        <span class="comment">\ because we know that A > 0, so the CMP above will have</span>
+                        <span class="comment">\ set the C)</span>
+
+<span class="label">.volk2</span><a id="volk2" class="anchor"></a>
+
+ <span class="mne">LDX</span> <a class="popup variable">soundCounter</a>       <span class="comment">\ If soundCounter >= 2 then a sound is currently being</span>
+ <span class="mne">CPX</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ made (such as the confirmation ping we make when</span>
+ <span class="mne">BCS</span> <a class="popup destination">ProcessVolumeKeys</a>  <span class="comment">\ changing the volume level) and it hasn't finished yet,</span>
+                        <span class="comment">\ so loop back to the start of the routine to keep</span>
+                        <span class="comment">\ checking for key presses and without changing the</span>
+                        <span class="comment">\ volume, as we only want to change the volume when we</span>
+                        <span class="comment">\ can make a pinging sound so the player can hear the</span>
+                        <span class="comment">\ effect of the volume change</span>
+
+ <span class="mne">STA</span> <a class="popup variable">volumeLevel</a>        <span class="comment">\ Update the volume level in volumeLevel to the new</span>
+                        <span class="comment">\ value</span>
+
+ <span class="mne">TAY</span>                    <span class="comment">\ Set Y to 0 (if the volume has been turned right down)</span>
+ <span class="mne">BEQ</span> <a class="popup destination">volk3</a>              <span class="comment">\ or to 8 (if the volume level is non-zero)</span>
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">8</span>
+
+<span class="label">.volk3</span><a id="volk3" class="anchor"></a>
+
+ <span class="mne">STY</span> <a class="popup variable">envelopeData</a><span class="operator">+</span><span class="decimal">42</span><span class="operator">+</span><span class="decimal">13</span> <span class="comment">\ Set parameter #13 of envelope 3 to Y, to set the ALD</span>
+                        <span class="comment">\ for the sound (the amplitude target level at the end</span>
+                        <span class="comment">\ of the decay phase)</span>
+
+ <span class="mne">STY</span> <a class="popup variable">envelopeData</a><span class="operator">+</span><span class="decimal">28</span><span class="operator">+</span><span class="decimal">13</span> <span class="comment">\ Set parameter #13 of envelope 2 to Y, to set the ALD</span>
+                        <span class="comment">\ for the sound (the amplitude target level at the end</span>
+                        <span class="comment">\ of the decay phase)</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">11</span>                <span class="comment">\ We now work through the envelopeVolumes table, which</span>
+                        <span class="comment">\ contains offsets into the envelopeData table of the</span>
+                        <span class="comment">\ bytes that control the volume of each envelope</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We update each of the bytes to reflect the new volume</span>
+                        <span class="comment">\ level, so set a counter in Y to work through all 12</span>
+                        <span class="comment">\ bytes of envelope data</span>
+
+<span class="label">.volk4</span><a id="volk4" class="anchor"></a>
+
+ <span class="mne">LDX</span> <a class="popup variable">envelopeVolumes</a>,<span class="register">Y</span>  <span class="comment">\ Fetch the Y-th entry of the envelopeVolumes table into</span>
+                        <span class="comment">\ X, so it contains the offset within the envelopeData</span>
+                        <span class="comment">\ table that we need to update</span>
+
+ <span class="mne">CPX</span> <span class="hash">#</span><span class="decimal">79</span>                <span class="comment">\ If this is not the entry at the beginning of the table</span>
+ <span class="mne">BNE</span> <a class="popup destination">volk5</a>              <span class="comment">\ (which will be the last to be processed), jump to</span>
+                        <span class="comment">\ volk5 to set the envelope byte to the new volume level</span>
+
+ <span class="mne">EOR</span> <span class="hash">#</span><span class="binary">%11111111</span>         <span class="comment">\ If this is the entry at the beginning of the table,</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ negate the volume level in A, as this entry is for the</span>
+                        <span class="comment">\ AD parameter (the change of amplitude per step during</span>
+                        <span class="comment">\ the decay phase), and we want this aspect to drop more</span>
+                        <span class="comment">\ quickly at higher volume levels</span>
+
+<span class="label">.volk5</span><a id="volk5" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">envelopeData</a>,<span class="register">X</span>     <span class="comment">\ Set the X-th byte of the envelope data to the volume</span>
+                        <span class="comment">\ level in A</span>
+
+ <span class="mne">DEY</span>                    <span class="comment">\ Decrement the envelope byte counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">volk4</a>              <span class="comment">\ Loop back until we have updated all 12 bytes with the</span>
+                        <span class="comment">\ new volume level</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">12</span>                <span class="comment">\ Set soundCounter = 12 to count down while the ping</span>
+ <span class="mne">STA</span> <a class="popup variable">soundCounter</a>       <span class="comment">\ sound is made</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">5</span>                 <span class="comment">\ Make sound #5 (ping) so the player can hear the new</span>
+ <span class="mne">JSR</span> <a class="popup destination">MakeSound</a>          <span class="comment">\ volume level</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">ProcessVolumeKeys</a>  <span class="comment">\ Loop back to the start of the routine to keep checking</span>
+                        <span class="comment">\ for key presses</span>
+
+<span class="label">.volk6</span><a id="volk6" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-makesound"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/makesound.html">MakeSound</a> (category: Sound)</div><div class="summary">Make a sound</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-processvolumekeys"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/processvolumekeys.html">ProcessVolumeKeys</a> (category: Sound)</div><div class="summary">Adjust the volume of the sound envelopes when the volume keys are pressed</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-envelopedata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/envelopedata.html">envelopeData</a> (category: Sound)</div><div class="summary">Data for the six sound envelopes</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-envelopevolumes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/envelopevolumes.html">envelopeVolumes</a> (category: Sound)</div><div class="summary">A table of offsets into the envelope data for bytes that control the volume of each envelope, so we can change their volume levels</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-focusonkeyaction"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#focusonkeyaction">focusOnKeyAction</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag that determines whether the game should focus effort on implementing a key action, such as a pan of the landscape view</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-keylogger"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#keylogger">keyLogger</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The four-byte key logger for logging game key presses</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-soundcounter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#soundcounter">soundCounter</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A counter for the sound currently being made, which counts down in the IRQHandler routine at a rate of 50 times a second</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-volk1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processvolumekeys.html#volk1">volk1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-volk2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processvolumekeys.html#volk2">volk2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-volk3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processvolumekeys.html#volk3">volk3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-volk4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processvolumekeys.html#volk4">volk4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-volk5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processvolumekeys.html#volk5">volk5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-volk6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processvolumekeys.html#volk6">volk6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-volumelevel"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/volumelevel.html">volumeLevel</a> (category: Sound)</div><div class="summary">The volume level, which can be changed by pressing "7" and "8"</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/soundnumberdata.html">soundNumberData</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/volumelevel.html">volumeLevel</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

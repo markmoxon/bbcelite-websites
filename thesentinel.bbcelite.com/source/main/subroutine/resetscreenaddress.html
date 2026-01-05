@@ -1,0 +1,93 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("graphics", "subroutine_resetscreenaddress.html", "The ResetScreenAddress subroutine", "Graphics: ResetScreenAddress", "Annotated code for the ResetScreenAddress subroutine in The Sentinel", "the_sentinel-code", "source_graphics", "subroutine_resetscreenaddress", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/initialisesights.html">InitialiseSights</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">ResetScreenAddress</span>                                      <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Graphics</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Reset the address of the start of screen memory</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_b.html#header-resetscreenaddress">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/clearscreen.html">ClearScreen</a> calls <a href="#resetscreenaddress">ResetScreenAddress</a></span>
+</div>
+<hr class="light">
+ This routine sets the screen addresses as follows:
+
+   * Address of the start of screen memory in the 6845 CRTC registers = &7F80
+
+   * Address of the icon and scanner row at the top of the screen in
+     iconRowAddr(1 0) = &7F80
+
+   * Address of the player's scrolling landscape view in viewScreenAddr(1 0) =
+     &60C0
+
+ Note that &7F80 + 320 = &60C0, when the wrapping of screen memory is taken
+ into consideration, so the player's scrolling landscape view in memory is one
+ character line after the icon and scanner row at the top of the screen.
+
+</div></div>
+<span class="label">.ResetScreenAddress</span><a id="resetscreenaddress" class="anchor"></a>
+
+ <span class="mne">SEI</span>                    <span class="comment">\ Disable interrupts so we can update the 6845 registers</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&C0</span>               <span class="comment">\ Set viewScreenAddr(1 0) = &60C0</span>
+ <span class="mne">STA</span> <a class="popup variable">viewScreenAddr</a>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&60</span>
+ <span class="mne">STA</span> <a class="popup variable">viewScreenAddr</a><span class="operator">+</span><span class="decimal">1</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetIconRowAddress</a>  <span class="comment">\ Set iconRowAddr(1 0) to the address in screen memory</span>
+                        <span class="comment">\ of the icon and scanner row at the top of the screen</span>
+
+                        <span class="comment">\ We now set the address of screen memory to &7F80</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&0F</span>               <span class="comment">\ Store &0F on the stack to use as the value of R12 in</span>
+ <span class="mne">PHA</span>                    <span class="comment">\ the following</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&F0</span>               <span class="comment">\ Set 6845 register R13 = &F0, for the low byte</span>
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">13</span>                <span class="comment">\</span>
+ <span class="mne">STX</span> <a class="popup variable">SHEILA</a><span class="operator">+</span><span class="hex">&00</span>         <span class="comment">\ We do this by writing the register number (13) to</span>
+ <span class="mne">STA</span> <a class="popup variable">SHEILA</a><span class="operator">+</span><span class="hex">&01</span>         <span class="comment">\ SHEILA &00, and then the value (&F0) to SHEILA &01</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Set 6845 register R12 = &0F, for the high byte</span>
+ <span class="mne">STX</span> <a class="popup variable">SHEILA</a><span class="operator">+</span><span class="hex">&00</span>         <span class="comment">\</span>
+ <span class="mne">PLA</span>                    <span class="comment">\ We do this by writing the register number (12) to</span>
+ <span class="mne">STA</span> <a class="popup variable">SHEILA</a><span class="operator">+</span><span class="hex">&01</span>         <span class="comment">\ SHEILA &00, and then the value (&0F) to SHEILA &01</span>
+
+                        <span class="comment">\ This sets 6845 registers (R12 R13) = &0FF0 to point</span>
+                        <span class="comment">\ to the start of screen memory in terms of character</span>
+                        <span class="comment">\ rows. There are 8 pixel lines in each character row,</span>
+                        <span class="comment">\ so to get the actual address of the start of screen</span>
+                        <span class="comment">\ memory, we multiply by 8:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   &0FF0 * 8 = &7F80</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this sets the start of screen memory to &7F80</span>
+
+ <span class="mne">CLI</span>                    <span class="comment">\ Re-enable interrupts</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-geticonrowaddress"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/geticonrowaddress.html">GetIconRowAddress</a> (category: Scanner/energy row)</div><div class="summary">Calculate the address in screen memory of the icon and scanner row at the top of the screen</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sheila"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Configuration variable <a href="/source/all/workspaces.html#sheila">SHEILA</a> = &FE00</div><div class="summary">Memory-mapped space for accessing internal hardware, such as the video ULA, 6845 CRTC and 6522 VIAs (also known as SHEILA)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewscreenaddr"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#viewscreenaddr">viewScreenAddr</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The screen address of the player's scrolling landscape view, which is just below the icon and scanner row at the top of the screen</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/initialisesights.html">InitialiseSights</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

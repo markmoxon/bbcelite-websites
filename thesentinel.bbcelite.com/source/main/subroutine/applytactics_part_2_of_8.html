@@ -1,0 +1,243 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("gameplay", "subroutine_applytactics_part_2_of_8.html", "The ApplyTactics (Part 2 of 8) subroutine", "Gameplay: ApplyTactics (Part 2 of 8)", "Annotated code for the ApplyTactics (Part 2 of 8) subroutine in The Sentinel", "the_sentinel-code", "source_gameplay", "subroutine_applytactics_part_2_of_8", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/applytactics_part_1_of_8.html">ApplyTactics (Part 1 of 8)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/applytactics_part_3_of_8.html">ApplyTactics (Part 3 of 8)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">ApplyTactics (Part 2 of 8)</span>                              <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Gameplay</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Process the tactics for a meanie</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_b.html#header-applytactics-part-2-of-8">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">No direct references to this subroutine in this source file</span>
+</div>
+</div></div>
+<span class="label">.tact1</span><a id="tact1" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">viewingObject</a>      <span class="comment">\ If we get here then the enemy has turned a tree into a</span>
+                        <span class="comment">\ meanie and A contains the meanie's object number</span>
+                        <span class="comment">\ (which we fetched from enemyMeanieTree in part 1), so</span>
+                        <span class="comment">\ this sets the viewing object to the meanie so the gaze</span>
+                        <span class="comment">\ checks below are performed from the point of view of</span>
+                        <span class="comment">\ the meanie</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">enemyTarget</a>,<span class="register">X</span>      <span class="comment">\ Set Y to the object number in enemyTarget, so when we</span>
+                        <span class="comment">\ refer to object #Y, it's the meanie's target object</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectFlags</a>,<span class="register">Y</span>      <span class="comment">\ If bit 7 of the object flags for the meanie's target</span>
+ <span class="mne">BMI</span> <a class="popup destination">tact4</a>              <span class="comment">\ is set then the target doesn't have an associated</span>
+                        <span class="comment">\ object, so the player must have transferred and</span>
+                        <span class="comment">\ reabsorbed the original robot that the meanie was</span>
+                        <span class="comment">\ targeting, so jump to tact4 to restart the enemy's</span>
+                        <span class="comment">\ drain counter and turn the meanie back into a tree</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set A = 0 to pass to CheckEnemyGaze as the object type</span>
+                        <span class="comment">\ of the target (object type 0 being a robot), so we</span>
+                        <span class="comment">\ only run the gaze calculations when object #Y is a</span>
+                        <span class="comment">\ robot</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">CheckEnemyGaze</a>     <span class="comment">\ Call CheckEnemyGaze to check the gaze of the meanie</span>
+                        <span class="comment">\ towards the robot, returning the following if the</span>
+                        <span class="comment">\ the object is a robot (an object of type 0):</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * objectViewYaw(Hi Lo) = the yaw angle of the robot</span>
+                        <span class="comment">\     relative to the view (i.e. relative to the</span>
+                        <span class="comment">\     meanie's view of the world)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * targetVisibility = bit 7 set if the robot's tile</span>
+                        <span class="comment">\     is visible, bit 6 set if the robot is visible</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * treeVisibility = bit 7 set if there is a tree in</span>
+                        <span class="comment">\     the way of the robot's tile, bit 6 set if there is</span>
+                        <span class="comment">\     a tree in the way of the robot</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectViewYawHi</a>    <span class="comment">\ If objectViewYawHi >= 20 then the robot is outside of</span>
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">20</span>                <span class="comment">\ the meanie's viewing arc of 20 yaw angles, so jump to</span>
+ <span class="mne">BCS</span> <a class="popup destination">tact2</a>              <span class="comment">\ tact2 to rotate the meanie in the direction of the</span>
+                        <span class="comment">\ robot</span>
+
+ <span class="mne">CPY</span> <a class="popup variable">playerObject</a>       <span class="comment">\ If the robot is not the player object, then the player</span>
+ <span class="mne">BNE</span> <a class="popup destination">tact4</a>              <span class="comment">\ must have transferred to a different robot, so jump to</span>
+                        <span class="comment">\ tact4 to restart the enemy's drain counter and turn</span>
+                        <span class="comment">\ the meanie back into a tree</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">targetVisibility</a>   <span class="comment">\ If the meanie can't see the robot or the robot's tile</span>
+ <span class="mne">BEQ</span> <a class="popup destination">tact5</a>              <span class="comment">\ then targetVisibility will be zero, so jump to tact5</span>
+                        <span class="comment">\ to turn the meanie back into a tree</span>
+
+                        <span class="comment">\ If we get here then the meanie is looking at a robot,</span>
+                        <span class="comment">\ the robot is within the meanie's viewing arc, the</span>
+                        <span class="comment">\ robot is the player object and the meanie can either</span>
+                        <span class="comment">\ see the robot's tile or the robot itself</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This means the meanie can see the player, so it can</span>
+                        <span class="comment">\ force the player into hyperspace</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">PerformHyperspace</a>  <span class="comment">\ Hyperspace the player to a brand new tile</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">4</span>                 <span class="comment">\ Set titleObjectToDraw to the object type for a meanie,</span>
+ <span class="mne">STA</span> <a class="popup variable">titleObjectToDraw</a>  <span class="comment">\ so if the hyperspace fails because the player doesn't</span>
+                        <span class="comment">\ have enough energy, then the game over screen will</span>
+                        <span class="comment">\ show a meanie to indicate that it was responsible for</span>
+                        <span class="comment">\ the player's demise</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">MoveOnToNextEnemy</a>  <span class="comment">\ Jump to MoveOnToNextEnemy to stop applying tactics to</span>
+                        <span class="comment">\ this enemy and set things up so we move on to the next</span>
+                        <span class="comment">\ enemy in the next iteration of the gameplay loop</span>
+
+<span class="label">.tact2</span><a id="tact2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">8</span>                 <span class="comment">\ Set A = 8 to use as the value of meanieYawStep when</span>
+                        <span class="comment">\ the meanie needs to rotate clockwise towards the</span>
+                        <span class="comment">\ player</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">objectViewYawHi</a>    <span class="comment">\ If objectViewYawHi is positive then the player is to</span>
+ <span class="mne">BPL</span> <a class="popup destination">tact3</a>              <span class="comment">\ the right of the meanie's viewing arc, so jump to</span>
+                        <span class="comment">\ tact3 to set the yaw step to +8 so the meanie rotates</span>
+                        <span class="comment">\ right (clockwise( towards the player to the right</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&F8</span>               <span class="comment">\ Otherwise objectViewYawHi is negative and the player</span>
+                        <span class="comment">\ is to the left of the meanie's viewing arc, so set A</span>
+                        <span class="comment">\ to -8 for the yaw step so the meanie rotates left</span>
+                        <span class="comment">\ (anticlockwise) towards the player to the left</span>
+
+<span class="label">.tact3</span><a id="tact3" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">meanieYawStep</a>      <span class="comment">\ Store the value of A in meanieYawStep, so we can add</span>
+                        <span class="comment">\ it to the meanie's yaw angle below to make it rotate</span>
+                        <span class="comment">\ towards the player</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">enemyObject</a>        <span class="comment">\ Set X to the object number of the meanie that we are</span>
+ <span class="mne">LDX</span> <a class="popup variable">enemyMeanieTree</a>,<span class="register">Y</span>  <span class="comment">\ processing</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Check to see whether it is safe to redraw the meanie</span>
+ <span class="mne">JSR</span> <a class="popup destination">AbortWhenVisible</a>   <span class="comment">\ without risk of corrupting a screen pan (if there is</span>
+                        <span class="comment">\ a risk and it can't be updated, then the call to</span>
+                        <span class="comment">\ AbortWhenVisible will not return here and will instead</span>
+                        <span class="comment">\ abort tactics for this iteration of the gameplay loop)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>   <span class="comment">\ Add meanieYawStep to the yaw angle for the meanie so</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ it rotates towards the player</span>
+ <span class="mne">ADC</span> <a class="popup variable">meanieYawStep</a>
+ <span class="mne">STA</span> <a class="popup variable">objectYawAngle</a>,<span class="register">X</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">10</span>                <span class="comment">\ Set enemyTacticTimer for the meanie to 10 so we wait</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyTacticTimer</a>,<span class="register">Y</span> <span class="comment">\ for 10 * 0.06 = 0.6 seconds before applying tactics to</span>
+                        <span class="comment">\ the meanie again</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Store the enemy object number on the stack so we can</span>
+ <span class="mne">PHA</span>                    <span class="comment">\ retrieve it below</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">3</span>                 <span class="comment">\ Set X = 3 to pass to MakeSound-6 as the pitch of the</span>
+                        <span class="comment">\ first part of the rotating meanie sound</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">70</span>                <span class="comment">\ Set Y = 70 to pass to MakeSound-6 as the pitch of the</span>
+                        <span class="comment">\ second part of the rotating meanie sound</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ Make sound #1 (rotating meanie) with the pitches in X</span>
+ <span class="mne">JSR</span> <a class="popup destination">MakeSound-6</a>        <span class="comment">\ and Y</span>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Retrieve the enemy object number from the stack into X</span>
+ <span class="mne">TAX</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">tact26</a>             <span class="comment">\ Jump to tact26 to draw the updated object #X without a</span>
+                        <span class="comment">\ dithered effect, so the meanie rotates instantly if it</span>
+                        <span class="comment">\ is on the screen</span>
+
+<span class="label">.tact4</span><a id="tact4" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set enemyDrainTimer = 0 to restart the drain counter</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyDrainTimer</a>,<span class="register">X</span>  <span class="comment">\ for the enemy in part 5 of ApplyTactics, so it doesn't</span>
+                        <span class="comment">\ drain energy for another 120 timer ticks (120 * 0.06 =</span>
+                        <span class="comment">\ 7.2 seconds)</span>
+
+<span class="label">.tact5</span><a id="tact5" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we need to turn the meanie back</span>
+                        <span class="comment">\ into a tree</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">enemyObject</a>        <span class="comment">\ Set X to the object number of the meanie that we are</span>
+ <span class="mne">LDX</span> <a class="popup variable">enemyMeanieTree</a>,<span class="register">Y</span>  <span class="comment">\ processing</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Check to see whether it is safe to redraw the meanie</span>
+ <span class="mne">JSR</span> <a class="popup destination">AbortWhenVisible</a>   <span class="comment">\ without risk of corrupting a screen pan (if there is</span>
+                        <span class="comment">\ a risk and it can't be updated, then the call to</span>
+                        <span class="comment">\ AbortWhenVisible will not return here and will instead</span>
+                        <span class="comment">\ abort tactics for this iteration of the gameplay loop)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%10000000</span>         <span class="comment">\ Set bit 7 of enemyMeanieTree so the enemy that turned</span>
+ <span class="mne">STA</span> <a class="popup variable">enemyMeanieTree</a>,<span class="register">Y</span>  <span class="comment">\ a tree into the meanie is no longer flagged as such</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ Turn the meanie object back into a tree (an object of</span>
+ <span class="mne">STA</span> <a class="popup variable">objectTypes</a>,<span class="register">X</span>      <span class="comment">\ type 2)</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">tact25</a>             <span class="comment">\ Jump to tact25 with X set to the object number of</span>
+                        <span class="comment">\ the tree to update it on-screen with a dithered effect</span>
+                        <span class="comment">\ and return from the subroutine using a tail call</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-abortwhenvisible"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/abortwhenvisible.html">AbortWhenVisible</a> (category: Gameplay)</div><div class="summary">Abort applying the tactics for this gameplay loop if updating the object on-screen will corrupt a screen pan</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-checkenemygaze"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze (Part 1 of 2)</a> (category: Gameplay)</div><div class="summary">Check to see whether the current enemy can see a specific target object of a specific type</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-makesound-6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Entry point <a href="/source/main/subroutine/makesound.html#makesound">MakeSound-6</a> in subroutine <a href="/source/main/subroutine/makesound.html">MakeSound</a> (category: Sound)</div><div class="summary">Make a two-part sound at the pitches defined in X and Y, where X is the pitch for sound data block #0 and Y is the pitch for sound data block #1</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-moveontonextenemy"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/moveontonextenemy.html">MoveOnToNextEnemy</a> (category: Gameplay)</div><div class="summary">Update enemyObject so the next time we consider applying enemy tactics, we apply them to the next enemy, looping from 7 to 0</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-performhyperspace"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/performhyperspace.html">PerformHyperspace</a> (category: Gameplay)</div><div class="summary">Hyperspace the player to a brand new tile, ideally at the same altitude as the current tile</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemydraintimer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyDrainTimer</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A timer for each enemy that counts down every 0.06</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemymeanietree"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyMeanieTree</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Enemy has turned a tree into a meanie (one byte per</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemyobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#enemyobject">enemyObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The object number of the enemy to which we are applying tactics in this iteration around the main loop (0-7)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemytactictimer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemytactictimer">enemyTacticTimer</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A timer for each enemy that counts down every 0.06</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemytarget"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemytarget">enemyTarget</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The object number of the enemy's target (one byte per</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-meanieyawstep"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#meanieyawstep">meanieYawStep</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The yaw angle through which we rotate a meanie as it searches for the player in the ApplyTactics routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectflags"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">Object flags for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttypes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objecttypes.html">objectTypes</a> (category: 3D objects)</div><div class="summary">The object types table for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectviewyawhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#objectviewyawhi">objectViewYawHi</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The yaw angle of the object being analysed, relative to the current viewer (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectyawangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objectyawangle.html">objectYawAngle</a> (category: 3D objects)</div><div class="summary">The yaw angle for each object (i.e. the horizontal direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playerobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#playerobject">playerObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the player object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_2_of_8.html#tact2">tact2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact25"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Entry point <a href="/source/main/subroutine/applytactics_part_8_of_8.html#tact25">tact25</a> in subroutine <a href="/source/main/subroutine/applytactics_part_8_of_8.html">ApplyTactics (Part 8 of 8)</a> (category: Gameplay)</div><div class="summary">Dither the updated object #X onto the screen, with bit 7 of drawLandscape determining whether the object is drawn on its own (bit 7 set) or with the surrounding landscape (bit 7 clear)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact26"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_8_of_8.html#tact26">tact26</a> in subroutine <a href="/source/main/subroutine/applytactics_part_8_of_8.html">ApplyTactics (Part 8 of 8)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_2_of_8.html#tact3">tact3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_2_of_8.html#tact4">tact4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tact5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/applytactics_part_2_of_8.html#tact5">tact5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-targetvisibility"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#targetvisibility">targetVisibility</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Reports whether a target object is visible from an enemy in the CheckEnemyGaze routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-titleobjecttodraw"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#titleobjecttodraw">titleObjectToDraw</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The object we are drawing in the DrawTitleView routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-viewingobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#viewingobject">viewingObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the viewing object</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/applytactics_part_1_of_8.html">ApplyTactics (Part 1 of 8)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/applytactics_part_3_of_8.html">ApplyTactics (Part 3 of 8)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

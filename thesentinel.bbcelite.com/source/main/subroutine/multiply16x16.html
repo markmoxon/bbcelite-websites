@@ -1,0 +1,228 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("maths_arithmetic", "subroutine_multiply16x16.html", "The Multiply16x16 subroutine", "Maths (Arithmetic): Multiply16x16", "Annotated code for the Multiply16x16 subroutine in The Sentinel", "the_sentinel-code", "source_maths_arithmetic", "subroutine_multiply16x16", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/getsineandcosine.html">GetSineAndCosine</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/absolute16bit.html">Absolute16Bit</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">Multiply16x16</span>                                           <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Maths (Arithmetic)</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Multiply a sign-magnitude 16-bit number and a signed 16-bit number</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_a.html#header-multiply16x16">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/multiplycoords.html">MultiplyCoords</a> calls <a href="#multiply16x16">Multiply16x16</a></span>
+</div>
+<hr class="light">
+ This routine calculates:
+
+   (A T) = (QQ PP) * (SS RR) / 256^2
+
+ It uses the following algorithm:
+
+  (QQ PP) * (SS RR) = (QQ &lt;&lt; 8 + PP) * (SS &lt;&lt; 8 + RR)
+                    = (QQ &lt;&lt; 8 * SS &lt;&lt; 8) + (QQ &lt;&lt; 8 * RR)
+                                          + (PP * SS &lt;&lt; 8)
+                                          + (PP * RR)
+                    = (QQ * SS) &lt;&lt; 16 + (QQ * RR) &lt;&lt; 8
+                                      + (PP * SS) &lt;&lt; 8
+                                      + (PP * RR)
+
+ Finally, it replaces the low byte multiplication in (PP * RR) with 128, as an
+ estimate, as it's a pain to multiply the low bytes of a signed integer with a
+ sign-magnitude number. So the final result that is returned in (A T) is as
+ follows:
+
+   (A T) = (QQ PP) * (SS RR) / 256^2
+         = ((QQ * SS) &lt;&lt; 16 + (QQ * RR) &lt;&lt; 8 + (PP * SS) &lt;&lt; 8 + 128) / 256^2
+
+ which is the algorithm that is implemented in this routine.
+
+ This routine is from Revs, Geoff Crammond's previous game.
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">(QQ PP)</span>              <span class="argumentEntry">16-bit signed integer</span>
+
+   <span class="argumentLabel">(SS RR)</span>              <span class="argumentEntry">16-bit sign-magnitude integer with the sign bit in bit 0</span>
+                        <span class="argumentEntry">of RR</span>
+
+   <span class="argumentLabel">H</span>                    <span class="argumentEntry">The sign to apply to the result (in bit 7)</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">(A</span>  <span class="argumentEntry">T)               (QQ PP) * (SS RR) * abs(H)</span>
+
+</div></div>
+<span class="label">.Multiply16x16</span><a id="multiply16x16" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">QQ</a>                 <span class="comment">\ If (QQ PP) is positive, jump to muls1 to skip the</span>
+ <span class="mne">BPL</span> <a class="popup destination">muls1</a>              <span class="comment">\ following</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ (QQ PP) is negative, so we now negate (QQ PP) so it's</span>
+ <span class="mne">SEC</span>                    <span class="comment">\ positive, starting with the low bytes</span>
+ <span class="mne">SBC</span> <a class="popup variable">PP</a>
+ <span class="mne">STA</span> <a class="popup variable">PP</a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ And then the high bytes</span>
+ <span class="mne">SBC</span> <a class="popup variable">QQ</a>                 <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">QQ</a>                 <span class="comment">\ So we now have (QQ PP) = |QQ PP|</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">H</a>                  <span class="comment">\ Flip bit 7 of H, so when we set the result to the sign</span>
+ <span class="mne">EOR</span> <span class="hash">#</span><span class="binary">%10000000</span>         <span class="comment">\ of H below, this ensures the result is the correct</span>
+ <span class="mne">STA</span> <a class="popup variable">H</a>                  <span class="comment">\ sign</span>
+
+<span class="label">.muls1</span><a id="muls1" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">RR</a>                 <span class="comment">\ If bit 0 of RR is clear, then (SS RR) is positive, so</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ jump to muls2</span>
+ <span class="mne">BEQ</span> <a class="popup destination">muls2</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">H</a>                  <span class="comment">\ Flip bit 7 of H, so when we set the result to the sign</span>
+ <span class="mne">EOR</span> <span class="hash">#</span><span class="binary">%10000000</span>         <span class="comment">\ of H below, this ensures the result is the correct</span>
+ <span class="mne">STA</span> <a class="popup variable">H</a>                  <span class="comment">\ sign</span>
+
+<span class="label">.muls2</span><a id="muls2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">QQ</a>                 <span class="comment">\ Set U = QQ</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">RR</a>                 <span class="comment">\ Set A = RR</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">Multiply8x8</a>        <span class="comment">\ Set (A T) = A * U</span>
+                        <span class="comment">\           = RR * QQ</span>
+
+ <span class="mne">STA</span> <a class="popup variable">W</a>                  <span class="comment">\ Set (W T) = (A T)</span>
+                        <span class="comment">\           = RR * QQ</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">T</a>                  <span class="comment">\ Set (W V) = (A T) + 128</span>
+ <span class="mne">CLC</span>                    <span class="comment">\           = RR * QQ + 128</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">128</span>               <span class="comment">\</span>
+ <span class="mne">STA</span> <a class="popup variable">V</a>                  <span class="comment">\ starting with the low bytes</span>
+
+ <span class="mne">BCC</span> <a class="popup destination">muls3</a>              <span class="comment">\ And then the high byte</span>
+ <span class="mne">INC</span> <a class="popup variable">W</a>
+
+                        <span class="comment">\ So we now have (W V) = RR * QQ + 128</span>
+
+<span class="label">.muls3</span><a id="muls3" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">SS</a>                 <span class="comment">\ Set A = SS</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">Multiply8x8</a>        <span class="comment">\ Set (A T) = A * U</span>
+                        <span class="comment">\           = SS * QQ</span>
+
+ <span class="mne">STA</span> <a class="popup variable">G</a>                  <span class="comment">\ Set (G T) = (A T)</span>
+                        <span class="comment">\           = SS * QQ</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">T</a>                  <span class="comment">\ Set (G W V) = (G T 0) + (W V)</span>
+ <span class="mne">CLC</span>                    <span class="comment">\</span>
+ <span class="mne">ADC</span> <a class="popup variable">W</a>                  <span class="comment">\ starting with the middle bytes (as the low bytes are</span>
+ <span class="mne">STA</span> <a class="popup variable">W</a>                  <span class="comment">\ simply V = 0 + V with no carry)</span>
+
+ <span class="mne">BCC</span> <a class="popup destination">muls4</a>              <span class="comment">\ And then the high byte</span>
+ <span class="mne">INC</span> <a class="popup variable">G</a>
+
+                        <span class="comment">\ So now we have:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (G W V) = (G T 0) + (W V)</span>
+                        <span class="comment">\           = (SS * QQ &lt;&lt; 8) + RR * QQ + 128</span>
+
+<span class="label">.muls4</span><a id="muls4" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">PP</a>                 <span class="comment">\ Set U = PP</span>
+ <span class="mne">STA</span> <a class="popup variable">U</a>
+
+ <span class="mne">LDA</span> <a class="popup variable">SS</a>                 <span class="comment">\ Set A = SS</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">Multiply8x8</a>        <span class="comment">\ Set (A T) = A * U</span>
+                        <span class="comment">\           = SS * PP</span>
+
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ Set (U T) = (A T)</span>
+                        <span class="comment">\           = SS * PP</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">T</a>                  <span class="comment">\ Set (G T ?) = (G W V) + (U T)</span>
+ <span class="mne">CLC</span>                    <span class="comment">\</span>
+ <span class="mne">ADC</span> <a class="popup variable">V</a>                  <span class="comment">\ starting with the low bytes (which we throw away)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">U</a>                  <span class="comment">\ And then the high bytes</span>
+ <span class="mne">ADC</span> <a class="popup variable">W</a>
+ <span class="mne">STA</span> <a class="popup variable">T</a>
+
+ <span class="mne">BCC</span> <a class="popup destination">muls5</a>              <span class="comment">\ And then the high byte</span>
+ <span class="mne">INC</span> <a class="popup variable">G</a>
+
+                        <span class="comment">\ So now we have:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (G T ?) = (G W V) + (U T)</span>
+                        <span class="comment">\           = (SS * QQ &lt;&lt; 8) + RR * QQ + 128 + SS * PP</span>
+                        <span class="comment">\           = (QQ * SS) &lt;&lt; 8 + (QQ * RR) + (PP * SS)</span>
+                        <span class="comment">\              + 128</span>
+                        <span class="comment">\           = (QQ PP) * (SS RR) / 256</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (G T) = (G T ?) / 256</span>
+                        <span class="comment">\         = (QQ PP) * (SS RR) / 256^2</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ which is the result that we want</span>
+
+<span class="label">.muls5</span><a id="muls5" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">G</a>                  <span class="comment">\ Set (A T) = (G T)</span>
+
+ <span class="mne">BIT</span> <a class="popup variable">H</a>                  <span class="comment">\ We are about to fall through into Absolute16Bit, so</span>
+                        <span class="comment">\ this ensures we set the sign of (A T) to the sign in</span>
+                        <span class="comment">\ H, so we get:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (A T) = (A T) * abs(H)</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-g"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#g">G</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-h"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#h">H</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in the maths routines</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-multiply8x8"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/multiply8x8.html">Multiply8x8</a> (category: Maths (Arithmetic))</div><div class="summary">Calculate (A T) = T * U</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pp"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#pp">PP</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in the maths routines</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-qq"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#qq">QQ</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in the maths routines</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-rr"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#rr">RR</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in the maths routines</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ss"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ss">SS</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in the maths routines</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-v"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#v">V</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-w"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#w">W</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-muls1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/multiply16x16.html#muls1">muls1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-muls2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/multiply16x16.html#muls2">muls2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-muls3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/multiply16x16.html#muls3">muls3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-muls4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/multiply16x16.html#muls4">muls4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-muls5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/multiply16x16.html#muls5">muls5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/getsineandcosine.html">GetSineAndCosine</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/absolute16bit.html">Absolute16Bit</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

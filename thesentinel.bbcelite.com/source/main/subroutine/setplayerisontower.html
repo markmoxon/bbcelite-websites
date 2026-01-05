@@ -1,0 +1,102 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("cracker_protection", "subroutine_setplayerisontower.html", "The SetPlayerIsOnTower subroutine", "Cracker protection: SetPlayerIsOnTower", "Annotated code for the SetPlayerIsOnTower subroutine in The Sentinel", "the_sentinel-code", "source_cracker_protection", "subroutine_setplayerisontower", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys (Part 1 of 2)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/processactionkeys_part_2_of_2.html">ProcessActionKeys (Part 2 of 2)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">SetPlayerIsOnTower</span>                                      <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Cracker protection</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Set up the playerIsOnTower value for checking the game is won, as</span>
+             <span class="headerEntry">part of the anti-cracker code</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_c.html#header-setplayerisontower">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">No direct references to this subroutine in this source file</span>
+</div>
+</div></div>
+<span class="label">.SetPlayerIsOnTower</span><a id="setplayerisontower" class="anchor"></a>
+
+                        <span class="comment">\ We now work out whether the player just transferred</span>
+                        <span class="comment">\ into a robot on the Sentinel's tower</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We do this by starting at object #X, which is the</span>
+                        <span class="comment">\ robot that the player just transferred into, and if</span>
+                        <span class="comment">\ it's on top of another object or stack of objects, we</span>
+                        <span class="comment">\ work our way down the stack, checking to see if the</span>
+                        <span class="comment">\ stack contains the Sentinel's tower</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The Sentinel's tower is always the first object to be</span>
+                        <span class="comment">\ spawned, and object numbers are allocated from 63 and</span>
+                        <span class="comment">\ down, so this means the tower is always object #63, or</span>
+                        <span class="comment">\ %111111, so that's what we look for while working</span>
+                        <span class="comment">\ through the object stack</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This forms part of the code to protect the game from</span>
+                        <span class="comment">\ crackers, as all we do with this information is to set</span>
+                        <span class="comment">\ playerIsOnTower to the object type of the tower (which</span>
+                        <span class="comment">\ is 6). This value is then used to generate the secret</span>
+                        <span class="comment">\ code for the completed landscape, so if crackers have</span>
+                        <span class="comment">\ jumped straight to the end of the level without</span>
+                        <span class="comment">\ setting playerIsOnTower to 6, then the wrong code will</span>
+                        <span class="comment">\ be generated in the SpawnSecretCode3D routine</span>
+
+<span class="label">.ptow1</span><a id="ptow1" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectFlags</a>,<span class="register">X</span>      <span class="comment">\ Set A to the object flags for object #X</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="binary">%01000000</span>         <span class="comment">\ If both bits 6 and 7 of the object flags for object #X</span>
+ <span class="mne">BCC</span> <a class="popup destination">ptow2</a>              <span class="comment">\ are clear then object #X is not stacked on top of</span>
+                        <span class="comment">\ another object (so if we have looped back here from</span>
+                        <span class="comment">\ below, we have reached the bottom of the stack), so</span>
+                        <span class="comment">\ jump to ptow2 to stop looping through the object stack</span>
+                        <span class="comment">\ and go back to the ProcessActionKeys routine</span>
+
+                        <span class="comment">\ If we get here then object #X is stacked on top of</span>
+                        <span class="comment">\ another object, and the number of the object below</span>
+                        <span class="comment">\ object #X is in bits 0 to 5 of the object flags for</span>
+                        <span class="comment">\ object #X, which is currently in A</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00111111</span>         <span class="comment">\ Extract bits 0 to 5 of the object flags into A and X,</span>
+ <span class="mne">TAX</span>                    <span class="comment">\ so X now contains the object number of the next object</span>
+                        <span class="comment">\ down in the stack</span>
+
+ <span class="mne">EOR</span> <span class="hash">#</span><span class="binary">%00111111</span>         <span class="comment">\ If the object number in A is not the Sentinel's tower</span>
+ <span class="mne">BNE</span> <a class="popup destination">ptow1</a>              <span class="comment">\ (i.e. it is not 63, or %111111), then loop back to</span>
+                        <span class="comment">\ check the next object down in the stack</span>
+
+                        <span class="comment">\ If we get here then the player has just transferred</span>
+                        <span class="comment">\ into a robot on the Sentinel's tower</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">objectTypes</a>,<span class="register">X</span>      <span class="comment">\ Set playerIsOnTower = 6 (which is the object type of</span>
+ <span class="mne">STA</span> <a class="popup variable">playerIsOnTower</a>    <span class="comment">\ the Sentinel's tower, whose object number is in X)</span>
+
+<span class="label">.ptow2</span><a id="ptow2" class="anchor"></a>
+
+                        <span class="comment">\ Fall through into part 2 of ProcessActionKeys to</span>
+                        <span class="comment">\ continue with the robot transfer</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectflags"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">Object flags for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objecttypes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/objecttypes.html">objectTypes</a> (category: 3D objects)</div><div class="summary">The object types table for up to 64 objects</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playerisontower"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#playerisontower">playerIsOnTower</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag to record whether the player is on top of the the Sentinel's tower</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ptow1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/setplayerisontower.html#ptow1">ptow1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ptow2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/setplayerisontower.html#ptow2">ptow2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys (Part 1 of 2)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/processactionkeys_part_2_of_2.html">ProcessActionKeys (Part 2 of 2)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

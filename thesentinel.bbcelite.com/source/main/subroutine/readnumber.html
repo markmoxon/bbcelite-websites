@@ -1,0 +1,227 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("keyboard", "subroutine_readnumber.html", "The ReadNumber subroutine", "Keyboard: ReadNumber", "Annotated code for the ReadNumber subroutine in The Sentinel", "the_sentinel-code", "source_keyboard", "subroutine_readnumber", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/titletext.html">titleText</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/printinputbuffer.html">PrintInputBuffer</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">ReadNumber</span>                                              <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Keyboard</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Read a number from the keyboard into the input buffer</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_f.html#header-readnumber">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> calls <a href="#readnumber">ReadNumber</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">The maximum number of digits to read</span>
+
+</div></div>
+<span class="label">.ReadNumber</span><a id="readnumber" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\ Set T to the maximum number of digits to read</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">EnableKeyboard</a>     <span class="comment">\ Select the keyboard as the input stream and flush the</span>
+                        <span class="comment">\ keyboard buffer</span>
+
+                        <span class="comment">\ We start by clearing the input buffer by filling it</span>
+                        <span class="comment">\ with spaces</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">7</span>                 <span class="comment">\ The input buffer is eight bytes long, so set a byte</span>
+                        <span class="comment">\ counter in Y</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="character">' '</span>               <span class="comment">\ Set A to the space character for use when clearing the</span>
+                        <span class="comment">\ input buffer</span>
+
+<span class="label">.rkey1</span><a id="rkey1" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">inputBuffer</a>,<span class="register">Y</span>      <span class="comment">\ Reset the Y-th byte of the input buffer to contain a</span>
+                        <span class="comment">\ space character</span>
+
+ <span class="mne">DEY</span>                    <span class="comment">\ Decrement the byte counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">rkey1</a>              <span class="comment">\ Loop back until we have cleared the whole input buffer</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">PrintInputBuffer</a>   <span class="comment">\ Print the contents of the keyboard input buffer, which</span>
+                        <span class="comment">\ will erase any existing text on-screen as we just</span>
+                        <span class="comment">\ filled the input buffer with spaces</span>
+
+<span class="label">.rkey2</span><a id="rkey2" class="anchor"></a>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ We now read the specified number of key presses, so</span>
+                        <span class="comment">\ set Y as a counter for the number of valid characters</span>
+                        <span class="comment">\ in the input buffer, starting from zero (as the buffer</span>
+                        <span class="comment">\ is empty at the start)</span>
+
+<span class="label">.rkey3</span><a id="rkey3" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">ReadCharacter</a>      <span class="comment">\ Read a character from the keyboard into A, so A is set</span>
+                        <span class="comment">\ to the ASCII code of the pressed key</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">13</span>                <span class="comment">\ If RETURN was pressed then jump to rkey9 to return</span>
+ <span class="mne">BEQ</span> <a class="popup destination">rkey9</a>              <span class="comment">\ from the subroutine, as RETURN terminates the input</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="character">'0'</span>               <span class="comment">\ If the key pressed is less than ACSII "0" then it is a</span>
+ <span class="mne">BCC</span> <a class="popup destination">rkey3</a>              <span class="comment">\ control code, so jump back to rkey3 to keep listening</span>
+                        <span class="comment">\ for key presses, as control codes are not valid input</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">127</span>               <span class="comment">\ If the key pressed is less than ASCII 127 then it is</span>
+ <span class="mne">BCC</span> <a class="popup destination">rkey5</a>              <span class="comment">\ a printable ASCII character, so jump to rkey5 to</span>
+                        <span class="comment">\ process it</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">rkey3</a>              <span class="comment">\ If the key pressed is not the DELETE key then jump</span>
+                        <span class="comment">\ back to rkey3 to keep listening for key presses, as</span>
+                        <span class="comment">\ this is not a valid input</span>
+
+                        <span class="comment">\ If we get here then DELETE has been pressed, so we</span>
+                        <span class="comment">\ need to delete the most recently entered character</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Because the input buffer is stored as an ascending</span>
+                        <span class="comment">\ stack, this means we need to delete the character at</span>
+                        <span class="comment">\ inputBuffer, which is the top of the buffer stack,</span>
+                        <span class="comment">\ and shuffle the rest of the stack to the left to</span>
+                        <span class="comment">\ close up the gap (so that's shuffling then down in</span>
+                        <span class="comment">\ memory)</span>
+
+ <span class="mne">DEY</span>                    <span class="comment">\ Decrement Y to reduce the character count by one, as</span>
+                        <span class="comment">\ we are about to delete a character from the buffer</span>
+
+ <span class="mne">BMI</span> <a class="popup destination">rkey2</a>              <span class="comment">\ If we just decremented Y past zero then the buffer is</span>
+                        <span class="comment">\ empty, so jump to rkey2 to reset Y to zero and keep</span>
+                        <span class="comment">\ reading characters, as there is nothing to delete</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Otherwise we want to delete the character from the top</span>
+                        <span class="comment">\ of the buffer stack at inputBuffer and shuffle the</span>
+                        <span class="comment">\ rest of the stack along to the left, so set an index</span>
+                        <span class="comment">\ in X to work through the buffer from left to right</span>
+
+<span class="label">.rkey4</span><a id="rkey4" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">inputBuffer</a><span class="operator">+</span><span class="decimal">1</span>,<span class="register">X</span>    <span class="comment">\ Shuffle the character at index X + 1 to the left and</span>
+ <span class="mne">STA</span> <a class="popup variable">inputBuffer</a>,<span class="register">X</span>      <span class="comment">\ into index X</span>
+
+ <span class="mne">INX</span>                    <span class="comment">\ Increment the buffer index to point to the next</span>
+                        <span class="comment">\ character in the buffer as we work from left to right</span>
+
+ <span class="mne">CPX</span> <span class="hash">#</span><span class="decimal">7</span>                 <span class="comment">\ Loop back until we have shuffled all seven characters</span>
+ <span class="mne">BNE</span> <a class="popup destination">rkey4</a>              <span class="comment">\ to the left</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="character">' '</span>               <span class="comment">\ Set the last character in the input buffer to a space</span>
+ <span class="mne">STA</span> <a class="popup variable">inputBuffer</a><span class="operator">+</span><span class="decimal">7</span>      <span class="comment">\ as the bottom of the stack at inputBuffer+7 is now</span>
+                        <span class="comment">\ empty</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">rkey8</a>              <span class="comment">\ Jump to rkey8 to print the updated contents of the</span>
+                        <span class="comment">\ input buffer, so we can see the character being</span>
+                        <span class="comment">\ deleted, and loop back to listen for more key presses</span>
+                        <span class="comment">\ (this BNE is effectively a JMP as A is never zero)</span>
+
+<span class="label">.rkey5</span><a id="rkey5" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the key press in A is a printable</span>
+                        <span class="comment">\ ASCII character</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="character">':'</span>               <span class="comment">\ If the character in A is ASCII ":" or greater then it</span>
+ <span class="mne">BCS</span> <a class="popup destination">rkey3</a>              <span class="comment">\ is not a number, so jump to rkey3 to keep listening</span>
+                        <span class="comment">\ for key presses, as we are only interested in numbers</span>
+
+ <span class="mne">CPY</span> <a class="popup variable">T</a>                  <span class="comment">\ If Y &lt;> T then the buffer does not yet contain the</span>
+ <span class="mne">BNE</span> <a class="popup destination">rkey6</a>              <span class="comment">\ maximum number of digits allowed, so jump to rkey6 to</span>
+                        <span class="comment">\ process the number key press</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">7</span>                 <span class="comment">\ Otherwise the buffer is already full, so perform a</span>
+ <span class="mne">JSR</span> <a class="popup destination">OSWRCH</a>             <span class="comment">\ VDU 7 command to make a system beep</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">rkey3</a>              <span class="comment">\ Jump back to rkey3 to listen for more key presses</span>
+
+<span class="label">.rkey6</span><a id="rkey6" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the key press in A is a number key</span>
+                        <span class="comment">\ and the input buffer is not full</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment Y to increase the character count by one, as</span>
+                        <span class="comment">\ we are about to add a character to the buffer</span>
+
+ <span class="mne">PHA</span>                    <span class="comment">\ Store the key number in A on the stack, so we can</span>
+                        <span class="comment">\ retrieve it after the following loop</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\ We now want to insert the new character into the top</span>
+                        <span class="comment">\ of the buffer stack at inputBuffer and shuffle the</span>
+                        <span class="comment">\ stack along to the right (so that's shuffling then up</span>
+                        <span class="comment">\ in memory), so set an index in X to work through the</span>
+                        <span class="comment">\ buffer from right to left</span>
+
+<span class="label">.rkey7</span><a id="rkey7" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">inputBuffer</a>,<span class="register">X</span>      <span class="comment">\ Shuffle the character at index X to the right and into</span>
+ <span class="mne">STA</span> <a class="popup variable">inputBuffer</a><span class="operator">+</span><span class="decimal">1</span>,<span class="register">X</span>    <span class="comment">\ index X + 1</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the buffer index to point to the next</span>
+                        <span class="comment">\ character in the buffer as we work from right to left</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">rkey7</a>              <span class="comment">\ Loop back until we have shuffled all seven characters</span>
+                        <span class="comment">\ to the right</span>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Restore the key number that we stored on the stack</span>
+                        <span class="comment">\ above</span>
+
+ <span class="mne">STA</span> <a class="popup variable">inputBuffer</a>        <span class="comment">\ Store the key press at the top of the stack, in</span>
+                        <span class="comment">\ inputBuffer</span>
+
+<span class="label">.rkey8</span><a id="rkey8" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">PrintInputBuffer</a>   <span class="comment">\ Print the contents of the keyboard input buffer so we</span>
+                        <span class="comment">\ we can see the characters being entered or deleted</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">rkey3</a>              <span class="comment">\ Jump back to rkey3 to listen for more key presses</span>
+
+<span class="label">.rkey9</span><a id="rkey9" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enablekeyboard"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/enablekeyboard.html">EnableKeyboard</a> (category: Keyboard)</div><div class="summary">Select the keyboard as the input stream and flush the keyboard buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-oswrch"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Configuration variable <a href="/source/all/workspaces.html#oswrch">OSWRCH</a> = &FFEE</div><div class="summary">The address for the OSWRCH routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-printinputbuffer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/printinputbuffer.html">PrintInputBuffer</a> (category: Text)</div><div class="summary">Print the contents of the keyboard input buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-readcharacter"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/readcharacter.html">ReadCharacter</a> (category: Keyboard)</div><div class="summary">Read a character from the currently selected input stream</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-inputbuffer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#inputbuffer">inputBuffer</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The eight-byte keyboard input buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-rkey1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/readnumber.html#rkey1">rkey1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-rkey2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/readnumber.html#rkey2">rkey2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-rkey3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/readnumber.html#rkey3">rkey3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-rkey4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/readnumber.html#rkey4">rkey4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-rkey5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/readnumber.html#rkey5">rkey5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-rkey6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/readnumber.html#rkey6">rkey6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-rkey7"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/readnumber.html#rkey7">rkey7</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-rkey8"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/readnumber.html#rkey8">rkey8</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-rkey9"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/readnumber.html#rkey9">rkey9</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/variable/titletext.html">titleText</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/printinputbuffer.html">PrintInputBuffer</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

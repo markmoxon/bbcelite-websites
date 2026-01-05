@@ -1,0 +1,371 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("landscape", "subroutine_processtiledata.html", "The ProcessTileData subroutine", "Landscape: ProcessTileData", "Annotated code for the ProcessTileData subroutine in The Sentinel", "the_sentinel-code", "source_landscape", "subroutine_processtiledata", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/smoothtiledata.html">SmoothTileData</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">ProcessTileData</span>                                         <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Process the tile data for all tiles in the landscape</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_e.html#header-processtiledata">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/drawtitlescreen.html">DrawTitleScreen</a> calls <a href="#processtiledata">ProcessTileData</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a> calls <a href="#processtiledata">ProcessTileData</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">Controls what we do to the tile data:</span>
+
+                        <span class="argumentEntry">  * 0 = zero all the tile data</span>
+
+                        <span class="argumentEntry">  * 1 = scale all the tile data by the multiplier in</span>
+                        <span class="argumentEntry">        tileDataMultiplier before capping it to a value</span>
+                        <span class="argumentEntry">        between 1 and 11</span>
+
+                        <span class="argumentEntry">  * 2 = swap the high and low nibbles of all the tile</span>
+                        <span class="argumentEntry">        data</span>
+
+                        <span class="argumentEntry">  * &80 = set the tile data to the next set of numbers</span>
+                        <span class="argumentEntry">          from the landscape's sequence of seed numbers</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">N flag</span>               <span class="argumentEntry">The N flag is set (so a BMI branch will be taken)</span>
+
+</div></div>
+<span class="label">.ProcessTileData</span><a id="processtiledata" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">processAction</a>      <span class="comment">\ Store the action in processAction for later</span>
+
+                        <span class="comment">\ We now loop through all the tiles in the landscape</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The landscape consists of 31x31 square tiles, like a</span>
+                        <span class="comment">\ chess board that's sitting on a table in front of us,</span>
+                        <span class="comment">\ going into the screen</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The landscape is defined by the altitudes of the</span>
+                        <span class="comment">\ corners of each of the tile, so that's a 32x32 grid of</span>
+                        <span class="comment">\ altitudes</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The x-axis is along the front edge, from left to</span>
+                        <span class="comment">\ right, while the z-axis goes into the screen, away</span>
+                        <span class="comment">\ from us</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We iterate through the tile corners with a nested</span>
+                        <span class="comment">\ loop, with zTile going from 31 to 0 (so that's from</span>
+                        <span class="comment">\ back to front)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ For each zTile, xTile also goes from 31 to 0, so</span>
+                        <span class="comment">\ that's from right to left</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we work through the landscape, starting with the</span>
+                        <span class="comment">\ row of tile corners at the back (which we work through</span>
+                        <span class="comment">\ from right to left), and then doing the next row</span>
+                        <span class="comment">\ forward, looping until we reach the front row</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">31</span>                <span class="comment">\ Set zTile = 31 so we start iterating from the back row</span>
+ <span class="mne">STA</span> <a class="popup variable">zTile</a>              <span class="comment">\ (so zTile iterates from 31 to 0 in the outer loop)</span>
+
+<span class="label">.proc1</span><a id="proc1" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">31</span>                <span class="comment">\ Set xTile = 31 so we start iterating from the right</span>
+ <span class="mne">STA</span> <a class="popup variable">xTile</a>              <span class="comment">\ end of the current row (so xTile iterates from 31 to 0</span>
+                        <span class="comment">\ in the inner loop)</span>
+
+<span class="label">.proc2</span><a id="proc2" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileData</a>        <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile), which we ignore, but this also sets</span>
+                        <span class="comment">\ the tile page in tileDataPage and the index in Y, so</span>
+                        <span class="comment">\ tileDataPage+Y now points to the tile data entry in</span>
+                        <span class="comment">\ the tileData table</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">processAction</a>      <span class="comment">\ Set A to the argument that was passed to the routine</span>
+                        <span class="comment">\ and which we stored in processAction,</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This specifies how we process the tile data</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">proc8</a>              <span class="comment">\ If processAction = 0 then jump to proc8 to zero the</span>
+                        <span class="comment">\ tile data for the tile anchored at (xTile, zTile)</span>
+
+ <span class="mne">BMI</span> <a class="popup destination">proc7</a>              <span class="comment">\ If processAction = &80 then jump to proc7 to set the</span>
+                        <span class="comment">\ tile data for the tile anchored at (xTile, zTile) to</span>
+                        <span class="comment">\ the next number from the landscape's sequence of seed</span>
+                        <span class="comment">\ numbers</span>
+
+                        <span class="comment">\ If we get here then processAction must be 1 or 2 (as</span>
+                        <span class="comment">\ the routine is only ever called with A = 0, 1, 2 or</span>
+                        <span class="comment">\ &80)</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ If processAction = 1 then this sets the C flag,</span>
+                        <span class="comment">\ otherwise processAction = 2 and this clears the C flag</span>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><a class="popup variable">tileDataPage</a><span class="bracket">)</span>,<span class="register">Y</span>   <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile)</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">proc3</a>              <span class="comment">\ If the C flag is set then processAction = 1, so jump</span>
+                        <span class="comment">\ to proc3</span>
+
+                        <span class="comment">\ If we get here then processAction = 2, so now we swap</span>
+                        <span class="comment">\ the high and low nibble of the tile data</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ Set bits 0-3 of T to the high nibble (bits 4-7) of the</span>
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ tile data in A</span>
+ <span class="mne">LSR</span> <span class="register">A</span>
+ <span class="mne">LSR</span> <span class="register">A</span>
+ <span class="mne">STA</span> <a class="popup variable">T</a>
+
+ <span class="mne">LDA</span> <span class="bracket">(</span><a class="popup variable">tileDataPage</a><span class="bracket">)</span>,<span class="register">Y</span>   <span class="comment">\ Set A once again to the tile data for the tile</span>
+                        <span class="comment">\ anchored at (xTile, zTile)</span>
+
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ Set bits 4-7 of A to the low nibble (bits 0-3) of the</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ tile data in A</span>
+ <span class="mne">ASL</span> <span class="register">A</span>
+ <span class="mne">ASL</span> <span class="register">A</span>
+
+ <span class="mne">ORA</span> <a class="popup variable">T</a>                  <span class="comment">\ Merge A and T, so A now contains its original high</span>
+                        <span class="comment">\ nibble in bits 0-3 (from T) and its original low</span>
+                        <span class="comment">\ nibble in bits 4-7 (from A)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this swaps the high and low nibbles around in the</span>
+                        <span class="comment">\ tile data in A</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">proc8</a>              <span class="comment">\ Jump to proc8 to store A as the tile data for the tile</span>
+                        <span class="comment">\ we are processing</span>
+
+<span class="label">.proc3</span><a id="proc3" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then processAction = 1, so we now do</span>
+                        <span class="comment">\ various manipulations, including multiplying the</span>
+                        <span class="comment">\ tile data by the multiplier in tileDataMultiplier</span>
+                        <span class="comment">\ and capping the result to a positive number between</span>
+                        <span class="comment">\ 1 and 11</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ At this point the tile data contains a seed number,</span>
+                        <span class="comment">\ so this process converts it into a value that we can</span>
+                        <span class="comment">\ use as the altitude of the tile corner</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Set A = tile data - 128</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">128</span>
+
+ <span class="mne">PHP</span>                    <span class="comment">\ Store the flags from the subtraction, so we can set</span>
+                        <span class="comment">\ the sign of the scaled altitude below</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">proc4</a>              <span class="comment">\ If the result of the subtraction in A is positive,</span>
+                        <span class="comment">\ skip the following as A is already positive</span>
+
+ <span class="mne">EOR</span> <span class="hash">#</span><span class="binary">%11111111</span>         <span class="comment">\ The result in A is negative, so negate it using two's</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ complement, so we have:</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\</span>
+                        <span class="comment">\   A = |tile data - 128|</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This negation reflects negative altitudes from below</span>
+                        <span class="comment">\ sea level to the equivalent altitude above sea level</span>
+
+<span class="label">.proc4</span><a id="proc4" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ Set U = A</span>
+                        <span class="comment">\       = |tile data - 128|</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">tileDataMultiplier</a> <span class="comment">\ Set A to the multiplier that we need to apply to the</span>
+                        <span class="comment">\ tile data, which is in the range 14 to 36</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">Multiply8x8</a>        <span class="comment">\ Set (A T) = A * U</span>
+                        <span class="comment">\           = tileDataMultiplier * |tile data - 128|</span>
+
+ <span class="mne">PLP</span>                    <span class="comment">\ Restore the flags from the subtraction above, so</span>
+                        <span class="comment">\ the N flag contains the sign of (tile data - 128)</span>
+                        <span class="comment">\ (clear if it is positive, set if it is negative)</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">Absolute16Bit</a>      <span class="comment">\ Set the sign of (A T) to match the result of the</span>
+                        <span class="comment">\ subtraction above, so we now have:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (A T) = tileDataMultiplier * (tile data - 128)</span>
+
+                        <span class="comment">\ So if the original tile data represents a landscape</span>
+                        <span class="comment">\ altitude, with "sea level" at altitude 128, then the</span>
+                        <span class="comment">\ high byte of this calculation in A represents a</span>
+                        <span class="comment">\ scaling of the altitude by tileDataMultiplier / 256,</span>
+                        <span class="comment">\ with the scaling centred around sea level</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This means that mountain peaks get higher and marine</span>
+                        <span class="comment">\ trenches get deeper, stretching away from sea level</span>
+                        <span class="comment">\ at altitude 128 in the original data</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ As tileDataMultiplier is in the range 14 to 36, this</span>
+                        <span class="comment">\ transforms the tile data values as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Values start out in the range 0 to 255</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Converting to |tile data - 128| translates them</span>
+                        <span class="comment">\     into values in the range 0 to 127, representing</span>
+                        <span class="comment">\     magnitudes of altitude (0 = sea level, 127 = top</span>
+                        <span class="comment">\     of Everest or bottom of Mariana Trench, stack</span>
+                        <span class="comment">\     contains flags denoting high altitude or murky</span>
+                        <span class="comment">\     depths)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Multiplying by 14/256 (the minimum multiplier)</span>
+                        <span class="comment">\     changes the range into 0 to 6</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Multiplying by 36/256 (the maximum multiplier)</span>
+                        <span class="comment">\     changes the range into 0 to 17</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Reapplying the sign converts the magnitudes back</span>
+                        <span class="comment">\     into depths or heights</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So the above takes the seed numbers in the original</span>
+                        <span class="comment">\ tile data and transforms then into values of A with a</span>
+                        <span class="comment">\ maximum range of -17 to +17 (for higher multipliers)</span>
+                        <span class="comment">\ or -6 to +6 (for lower multipliers)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now take this result and do various additions and</span>
+                        <span class="comment">\ cappings to change the result into a positive number</span>
+                        <span class="comment">\ between 1 and 11</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set A = A + 6</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">6</span>                 <span class="comment">\</span>
+                        <span class="comment">\ So the ranges for A are now:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Minimum multiplier range is -1 to +13</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Maximum multiplier range is -11 to +23</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">proc5</a>              <span class="comment">\ If A is positive then jump to proc5 to skip the</span>
+                        <span class="comment">\ following</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Otherwise A is negative, so set A = 0</span>
+
+<span class="label">.proc5</span><a id="proc5" class="anchor"></a>
+
+                        <span class="comment">\ By this point A is a positive number and the ranges</span>
+                        <span class="comment">\ for A are now:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Minimum multiplier range is 0 to 13</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Maximum multiplier range is 0 to 23</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set A = A + 1</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">1</span>
+
+                        <span class="comment">\ By this point A is a positive number and the ranges</span>
+                        <span class="comment">\ for A are now:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Minimum multiplier range is 1 to 14</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Maximum multiplier range is 1 to 24</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">12</span>                <span class="comment">\ If A &lt; 12 then jump to proc6 to skip the following</span>
+ <span class="mne">BCC</span> <a class="popup destination">proc6</a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">11</span>                <span class="comment">\ Otherwise A >= 12, so set A = 11</span>
+
+<span class="label">.proc6</span><a id="proc6" class="anchor"></a>
+
+                        <span class="comment">\ By this point, A is a positive number between 1 and 11</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ For minimum values of the multiplier we have only lost</span>
+                        <span class="comment">\ the very low and very high values in the range</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ For maximum values of the multiplier we have lost</span>
+                        <span class="comment">\ around one-third at the top end and one-third at the</span>
+                        <span class="comment">\ bottom end</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We can now use this as the altitude of the tile</span>
+                        <span class="comment">\ corner, which we can feed into the smoothing routines</span>
+                        <span class="comment">\ to generate a gently rolling landscape that is</span>
+                        <span class="comment">\ suitable for the game</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">proc8</a>              <span class="comment">\ Jump to proc8 to store A as the tile data for the tile</span>
+                        <span class="comment">\ we are processing</span>
+
+<span class="label">.proc7</span><a id="proc7" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then the argument in A is &80, so we</span>
+                        <span class="comment">\ fill the tile data table with seed numbers</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetNextSeedNumber</a>  <span class="comment">\ Set A to the next number from the landscape's sequence</span>
+                        <span class="comment">\ of seed numbers</span>
+
+<span class="label">.proc8</span><a id="proc8" class="anchor"></a>
+
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">tileDataPage</a><span class="bracket">)</span>,<span class="register">Y</span>   <span class="comment">\ Store A as the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile)</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">xTile</a>              <span class="comment">\ Decrement the tile x-coordinate in the inner loop</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">proc2</a>              <span class="comment">\ Loop back until we have processed all the tiles in the</span>
+                        <span class="comment">\ tile row at z-coordinate zTile, working from right to</span>
+                        <span class="comment">\ left</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">zTile</a>              <span class="comment">\ Decrement the outer loop counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">proc1</a>              <span class="comment">\ Loop back until we have processed all the tile rows in</span>
+                        <span class="comment">\ the landscape, working from the back row of the</span>
+                        <span class="comment">\ landscape all the way to the front row</span>
+
+                        <span class="comment">\ Note that by this point the N flag is set, which means</span>
+                        <span class="comment">\ a BMI branch would be taken (this is important when</span>
+                        <span class="comment">\ analysing the intentionally confusing flow of the main</span>
+                        <span class="comment">\ title loop created by the stack modifications in the</span>
+                        <span class="comment">\ GenerateLandscape, SmoothTileCorners and JumpToPreview</span>
+                        <span class="comment">\ routines)</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-absolute16bit"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/absolute16bit.html">Absolute16Bit</a> (category: Maths (Arithmetic))</div><div class="summary">Calculate the absolute value (modulus) of a 16-bit number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getnextseednumber"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getnextseednumber.html">GetNextSeedNumber</a> (category: Maths (Arithmetic))</div><div class="summary">Set A to a seed number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gettiledata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gettiledata.html">GetTileData</a> (category: Landscape)</div><div class="summary">Get the tile data and tile data address for a specific tile</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-multiply8x8"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/multiply8x8.html">Multiply8x8</a> (category: Maths (Arithmetic))</div><div class="summary">Calculate (A T) = T * U</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-proc1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processtiledata.html#proc1">proc1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-proc2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processtiledata.html#proc2">proc2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-proc3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processtiledata.html#proc3">proc3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-proc4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processtiledata.html#proc4">proc4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-proc5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processtiledata.html#proc5">proc5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-proc6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processtiledata.html#proc6">proc6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-proc7"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processtiledata.html#proc7">proc7</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-proc8"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/processtiledata.html#proc8">proc8</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-processaction"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#processaction">processAction</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Defines the following</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tiledatamultiplier"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#tiledatamultiplier">tileDataMultiplier</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A multiplier that we apply to the altitudes of the tile corners to alter the steepness of the landscape during landscape generation</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tiledatapage"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#tiledatapage">tileDataPage</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The address of the tileData page containing the current tile's data</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xtile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xtile">xTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner x-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ztile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ztile">zTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner z-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/smoothtiledata.html">SmoothTileData</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

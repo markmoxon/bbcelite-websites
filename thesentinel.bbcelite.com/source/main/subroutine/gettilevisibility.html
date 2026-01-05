@@ -1,0 +1,363 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("drawing_the_landscape", "subroutine_gettilevisibility.html", "The GetTileVisibility subroutine", "Drawing the landscape: GetTileVisibility", "Annotated code for the GetTileVisibility subroutine in The Sentinel", "the_sentinel-code", "source_drawing_the_landscape", "subroutine_gettilevisibility", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawpolygonlines_part_4_of_4.html">DrawPolygonLines (Part 4 of 4)</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/visibilebitmask.html">visibileBitMask</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetTileVisibility</span>                                       <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing the landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">For each tile in the landscape, calculate whether the player can</span>
+             <span class="headerEntry">see that tile, to speed up the process of drawing the landscape</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_d.html#header-gettilevisibility">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/maingameloop.html">MainGameLoop</a> calls <a href="#gettilevisibility">GetTileVisibility</a></span>
+</div>
+<hr class="light">
+ This routine sets a single bit in the tileVisibility table that records the
+ visibility of that tile from the player's perspective (where 1 = visible,
+ 0 = hidden).
+
+ The position of the bit within the tileVisibility table is calculated in a
+ rather complicated manner, presumably to make it harder to follow what's going
+ on.
+
+</div></div>
+<span class="label">.GetTileVisibility</span><a id="gettilevisibility" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">hyperspaceEndsGame</a> <span class="comment">\ If bit 7 of hyperspaceEndsGame is set then the game</span>
+ <span class="mne">BMI</span> <a class="popup destination">tvis5</a>              <span class="comment">\ has ended because of a hyperspace, so jump to tvis5</span>
+                        <span class="comment">\ to return from the subroutine</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This check appears to be unnecessary, as we only call</span>
+                        <span class="comment">\ GetTileVisibility from game2 in MainGameLoop, and we</span>
+                        <span class="comment">\ only reach game2 when bit 7 of hyperspaceEndsGame is</span>
+                        <span class="comment">\ clear, so this BMI will never be taken</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set A = 0 to use when we zero the tileVisibility table</span>
+
+ <span class="mne">STA</span> <a class="popup variable">drawingTableOffset</a> <span class="comment">\ Set drawingTableOffset = 0 so the call to first call</span>
+                        <span class="comment">\ to GetRowVisibility (for tile row 31) will populate</span>
+                        <span class="comment">\ the table at oddVisibility with the tile visibilities</span>
+                        <span class="comment">\ of the row being analysed</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">127</span>               <span class="comment">\ We now zero the tileVisibility table, so set a counter</span>
+                        <span class="comment">\ in X for zeroing 128 bytes</span>
+
+<span class="label">.tvis1</span><a id="tvis1" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">tileVisibility</a>,<span class="register">X</span>   <span class="comment">\ Zero the X-th byte of the tileVisibility table to</span>
+                        <span class="comment">\ indicate hidden tiles</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the byte counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">tvis1</a>              <span class="comment">\ Loop back until we have zeroed both variables</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileAltitudes</a>   <span class="comment">\ Calculate tile corner altitudes and maximum tile</span>
+                        <span class="comment">\ corner altitudes for each tile in the landscape</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This also sets the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * (Q P) = &6000</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * (S R) = &6020</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we have P = 0 and R = &20, ready to pass to the</span>
+                        <span class="comment">\ GetRowVisibility routine (which expects these values)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">31</span>                <span class="comment">\ Set zTileRow = 31 so the call to GetRowVisibility</span>
+ <span class="mne">STA</span> <a class="popup variable">zTileRow</a>           <span class="comment">\ analyses the back row of tiles</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetRowVisibility</a>   <span class="comment">\ Calculate whether each tile corner in the rearmost row</span>
+                        <span class="comment">\ is obscured from the player by any intervening</span>
+                        <span class="comment">\ landscape, putting the results into 32 entries in the</span>
+                        <span class="comment">\ table at oddVisibility (as drawingTableOffset = 0) as</span>
+                        <span class="comment">\ follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * %00000000 if the tile corner is not visible from</span>
+                        <span class="comment">\     the player's position</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * %11111111 if the tile corner is visible from the</span>
+                        <span class="comment">\     player's position</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">zTileRow</a>           <span class="comment">\ Decrement zTileRow to move forward by one tile row</span>
+
+<span class="label">.tvis2</span><a id="tvis2" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">drawingTableOffset</a> <span class="comment">\ Flip drawingTableOffset between 0 and 32, so each</span>
+ <span class="mne">EOR</span> <span class="hash">#</span><span class="decimal">32</span>                <span class="comment">\ call to GetRowVisibility alternates between storing</span>
+ <span class="mne">STA</span> <a class="popup variable">drawingTableOffset</a> <span class="comment">\ the tile visibilities in oddVisibility and</span>
+                        <span class="comment">\ evenVisibility</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We EOR with 32 because:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   evenVisibility - oddVisibility = 32</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we can add the result in drawingTableOffset to</span>
+                        <span class="comment">\ oddVisibility to point to the correct table for</span>
+                        <span class="comment">\ storing the results</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetRowVisibility</a>   <span class="comment">\ Calculate whether each tile corner in the row at</span>
+                        <span class="comment">\ zTileRow is obscured from the player by any</span>
+                        <span class="comment">\ intervening landscape, putting the results into 32</span>
+                        <span class="comment">\ entries in the table at either oddVisibility or</span>
+                        <span class="comment">\ evenVisibility (depending on the parity of zTileRow)</span>
+                        <span class="comment">\ as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * %00000000 if the tile corner is not visible from</span>
+                        <span class="comment">\     the player's position</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * %11111111 if the tile corner is visible from the</span>
+                        <span class="comment">\     player's position</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So the current row is in either oddVisibility or</span>
+                        <span class="comment">\ evenVisibility and the previous row is in the other</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The call also sets (Q P) to the address of the table</span>
+                        <span class="comment">\ that contains the altitude and flatness data for tile</span>
+                        <span class="comment">\ corner row zTileRow, as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   (Q P) = &6000 + (zTileRow 0)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Each value in the table at (Q P) contains the flatness</span>
+                        <span class="comment">\ of the tile in bit 0 and the altitude of the tile</span>
+                        <span class="comment">\ corner in bits 1-4</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">playerObject</a>       <span class="comment">\ Set V to the high byte of the y-coordinate of the</span>
+ <span class="mne">LDA</span> <a class="popup variable">yObjectHi</a>,<span class="register">X</span>        <span class="comment">\ player object</span>
+ <span class="mne">STA</span> <a class="popup variable">V</a>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">30</span>                <span class="comment">\ Set X = 30 to use as the column number, so we start</span>
+                        <span class="comment">\ iterating from the right, skipping the rightmost</span>
+                        <span class="comment">\ column as the tile corners in that column do not</span>
+                        <span class="comment">\ anchor any tiles (so X iterates from 30 to 0 in the</span>
+                        <span class="comment">\ following loop)</span>
+
+<span class="label">.tvis3</span><a id="tvis3" class="anchor"></a>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Set A to the X-th entry from (Q P), which contains the</span>
+ <span class="mne">TAY</span>                    <span class="comment">\ altitude and flatness of the X-th tile in the row at</span>
+ <span class="mne">LDA</span> <span class="bracket">(</span><a class="popup variable">P</a><span class="bracket">)</span>,<span class="register">Y</span>              <span class="comment">\ zTileRow</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="binary">%11111111</span>         <span class="comment">\ Set Y to a bit mask containing all set bits, to use</span>
+                        <span class="comment">\ for flagging tiles as being visible in the calculation</span>
+                        <span class="comment">\ below</span>
+
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ Shift bit 0 into the C flag, so it contains the shape,</span>
+                        <span class="comment">\ and set A as the altitude of the tile</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">tvis4</a>              <span class="comment">\ If the tile is not flat then the C flag will be set,</span>
+                        <span class="comment">\ so jump to tvis4 with Y set to the bit mask for</span>
+                        <span class="comment">\ visible tiles</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">V</a>                  <span class="comment">\ If A &lt;= V then the tile is at the same altitude or</span>
+ <span class="mne">BCC</span> <a class="popup destination">tvis4</a>              <span class="comment">\ lower than the high byte of the player object's</span>
+ <span class="mne">BEQ</span> <a class="popup destination">tvis4</a>              <span class="comment">\ altitude (which is the player's altitude rounded down</span>
+                        <span class="comment">\ to the nearest integer), so jump to tvis4 with Y set</span>
+                        <span class="comment">\ to the bit mask for visible tiles</span>
+
+                        <span class="comment">\ If we get here then the tile is flat and it is at a</span>
+                        <span class="comment">\ higher altitude than the player object, so</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment Y to zero to get a bit mask containing all</span>
+                        <span class="comment">\ clear bits, to use for flagging tiles as not being</span>
+                        <span class="comment">\ visible in the calculation below</span>
+
+<span class="label">.tvis4</span><a id="tvis4" class="anchor"></a>
+
+ <span class="mne">STY</span> <a class="popup variable">W</a>                  <span class="comment">\ Store the bit mask we just calculated in W</span>
+
+                        <span class="comment">\ We now store this tile's visibility as a single bit in</span>
+                        <span class="comment">\ in the tileVisibility table</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ First we need to calculate the location of this tile's</span>
+                        <span class="comment">\ bit in the table, which we do by encoding the tile</span>
+                        <span class="comment">\ column number in X and row number in zTileRow into an</span>
+                        <span class="comment">\ offset into the table (in T) and a bit mask lookup</span>
+                        <span class="comment">\ (in Y)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Presumably this calculation is complex to make it</span>
+                        <span class="comment">\ harder for people to work out what's going on (at</span>
+                        <span class="comment">\ least, I can't figure out why it's done this way)</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ X is the column number of the tile we are analysing,</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ in the range 0 to 30 (%00000 to %11110), so shift that</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ number into the top five bits of A and clear the last</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ two bits, so that bits 5-7 contain bits 2-4 of the</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%11100000</span>         <span class="comment">\ column number</span>
+
+ <span class="mne">ORA</span> <a class="popup variable">zTileRow</a>           <span class="comment">\ zTileRow is the row number of the tile we are</span>
+ <span class="mne">LSR</span> <span class="register">A</span>                  <span class="comment">\ analysing, again in the range 0 to 30 (%00000 to</span>
+                        <span class="comment">\ %11110), so put this into bits 0 to 4 of A and shift</span>
+                        <span class="comment">\ the whole thing to the right, so we lose bit 0 of the</span>
+                        <span class="comment">\ row number into the C flag (which we capture below)</span>
+                        <span class="comment">\ and bits 0 to 3 contain bits 1 to 4 of zTileRow</span>
+
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\ Set T to the value of A, so we now have the following</span>
+                        <span class="comment">\ in T:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Bit 7 is clear</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Bits 4-6 contain bits 2-4 of the column number</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Bits 0-3 contain bits 1-4 of the row number</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We have now encoded the tile number in T, which we can</span>
+                        <span class="comment">\ use as an index into the tileVisibility table when</span>
+                        <span class="comment">\ storing the tile's visibility</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Set bits 0 to 2 of Y as follows:</span>
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00000011</span>         <span class="comment">\</span>
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\    * Bit 0 contains bit 0 of the of the tile row (via</span>
+ <span class="mne">TAY</span>                    <span class="comment">\      the C flag from above)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\    * Bits 1-2 contain bits 0-1 of the column number</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">visibileBitMask</a>,<span class="register">Y</span>  <span class="comment">\ Set bitMask to a byte with all bits set except the</span>
+ <span class="mne">EOR</span> <span class="hash">#</span><span class="binary">%11111111</span>         <span class="comment">\ Y-th bit, counting from the left (so when Y is 0, bit</span>
+ <span class="mne">STA</span> <a class="popup variable">bitMask</a>            <span class="comment">\ 7 is clear, when Y is 1, bit 6 is clear and so on)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">oddVisibility</a>,<span class="register">X</span>    <span class="comment">\ Set A to the combined visibility of the four tile</span>
+ <span class="mne">ORA</span> <a class="popup variable">oddVisibility</a><span class="operator">+</span><span class="decimal">1</span>,<span class="register">X</span>  <span class="comment">\ corners for the tile we are analysing, by OR'ing the</span>
+ <span class="mne">ORA</span> <a class="popup variable">evenVisibility</a>,<span class="register">X</span>   <span class="comment">\ visibility bytes that we set for the four corners in</span>
+ <span class="mne">ORA</span> <a class="popup variable">evenVisibility</a><span class="operator">+</span><span class="decimal">1</span>,<span class="register">X</span> <span class="comment">\ the call to GetRowVisibility:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * oddVisibility+X contains the visibility for the</span>
+                        <span class="comment">\     tile's anchor (i.e. the X-th corner)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * oddVisibility+X+1 contains the visibility for the</span>
+                        <span class="comment">\     corner to the right of the tile's anchor</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * evenVisibility+X contains the visibility for the</span>
+                        <span class="comment">\     corner behind the tile's anchor (i.e. the corner</span>
+                        <span class="comment">\     on the same x-coordinate but from the previous</span>
+                        <span class="comment">\     row's analysis)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * evenVisibility+X+1 contains the visibility for the</span>
+                        <span class="comment">\     corner just to the right of the last one</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The GetRowVisibility routine sets visibility in the</span>
+                        <span class="comment">\ oddVisibility and evenVisibility tables as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * %00000000 if the tile corner is not visible</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * %11111111 if the tile corner is visible</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So OR'ing the four tile corners will give %11111111 if</span>
+                        <span class="comment">\ any of the tile corners are visible, and %00000000 if</span>
+                        <span class="comment">\ none of them are visible</span>
+
+ <span class="mne">AND</span> <a class="popup variable">W</a>                  <span class="comment">\ Apply the W bit mask from above, which we set to</span>
+                        <span class="comment">\ %0000000 for tiles that are flat and above the level</span>
+                        <span class="comment">\ of the player, and %11111111 otherwise</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this forces A to 0 (to indicate a hidden tile) for</span>
+                        <span class="comment">\ tiles that are flat and too high to be seen by the</span>
+                        <span class="comment">\ player, and leaves A alone for other tiles</span>
+
+ <span class="mne">AND</span> <a class="popup variable">visibileBitMask</a>,<span class="register">Y</span>  <span class="comment">\ At this point A is either %00000000 for a hidden tile</span>
+                        <span class="comment">\ or %11111111 for a visible tile, so AND'ing it with</span>
+                        <span class="comment">\ the Y-th entry in visibileBitMask (which is a bit mask</span>
+                        <span class="comment">\ with all bits set except the Y-th bit, counting from</span>
+                        <span class="comment">\ the left) will clear all bits except the Y-th bit,</span>
+                        <span class="comment">\ which will be 0 for non-visible tiles and 1 for</span>
+                        <span class="comment">\ visible tiles</span>
+
+ <span class="mne">STA</span> <a class="popup variable">U</a>                  <span class="comment">\ Store A in U, so U contains all clear bits apart from</span>
+                        <span class="comment">\ the Y-th bit, which contains the visibility of the</span>
+                        <span class="comment">\ tile we are processing</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">T</a>                  <span class="comment">\ Set A to the T-th byte in the tileVisibility table,</span>
+ <span class="mne">LDA</span> <a class="popup variable">tileVisibility</a>,<span class="register">Y</span>   <span class="comment">\ which is where we want to store our visibility bit for</span>
+                        <span class="comment">\ the tile we are processing</span>
+
+ <span class="mne">AND</span> <a class="popup variable">bitMask</a>            <span class="comment">\ We set bitMask above to a byte with all bits set</span>
+                        <span class="comment">\ except the Y-th bit, counting from the left, which</span>
+                        <span class="comment">\ matches the bit that we used in U to store the tile's</span>
+                        <span class="comment">\ visibility bit, so this AND clears that bit in the</span>
+                        <span class="comment">\ byte we just fetched from the tileVisibility table</span>
+
+ <span class="mne">ORA</span> <a class="popup variable">U</a>                  <span class="comment">\ U contains all clear bits apart from the Y-th bit,</span>
+                        <span class="comment">\ which contains the visibility of the tile we are</span>
+                        <span class="comment">\ processing, so this inserts that bit into the byte</span>
+                        <span class="comment">\ we just fetched from the tileVisibility table</span>
+
+ <span class="mne">STA</span> <a class="popup variable">tileVisibility</a>,<span class="register">Y</span>   <span class="comment">\ Store the updated byte in the tileVisibility table so</span>
+                        <span class="comment">\ it contains the visibility bit for the tile in column</span>
+                        <span class="comment">\ X on row zTileRow</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the column number to move left to the next</span>
+                        <span class="comment">\ tile in the row</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">tvis3</a>              <span class="comment">\ Loop back until we have processed all the tiles in the</span>
+                        <span class="comment">\ row</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">zTileRow</a>           <span class="comment">\ Decrement zTileRow to move forward by one tile row</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">tvis2</a>              <span class="comment">\ Loop back until we have processed all the tile rows in</span>
+                        <span class="comment">\ the landscape</span>
+
+<span class="label">.tvis5</span><a id="tvis5" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getrowvisibility"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility (Part 1 of 2)</a> (category: Drawing the landscape)</div><div class="summary">Set up the calculations to determine whether each tile corner in a tile row is obscured from the player by any intervening landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gettilealtitudes"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> (category: Drawing the landscape)</div><div class="summary">Calculate tile corner altitudes and maximum tile corner altitudes for each tile in the landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-p"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#p">P</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-u"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#u">U</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-v"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#v">V</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-w"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#w">W</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-bitmask"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#bitmask">bitMask</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Used to return a bit mask from the GetTilesAtAltitude routine that has a matching number of leading zeroes as the number of tile blocks at a specific altitude</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-drawingtableoffset"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#drawingtableoffset">drawingTableOffset</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The offset to use within the various drawing data tables for the tile we are analysing</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-evenvisibility"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#evenvisibility">evenVisibility</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">The visibility of tiles corners in even rows as they are processed by the GetRowVisibility routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-hyperspaceendsgame"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#hyperspaceendsgame">hyperspaceEndsGame</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Records whether the player performing a hyperspace has just ended the game</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-oddvisibility"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#oddvisibility">oddVisibility</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">The visibility of tiles corners in odd rows as they are processed by the GetRowVisibility routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playerobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#playerobject">playerObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the player object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tilevisibility"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/tilevisibility.html">tileVisibility</a> (category: Drawing the landscape)</div><div class="summary">A table for storing the visibility of each tile from the player's point of view, with one bit per tile (1 = visible, 0 = hidden)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tvis1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilevisibility.html#tvis1">tvis1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tvis2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilevisibility.html#tvis2">tvis2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tvis3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilevisibility.html#tvis3">tvis3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tvis4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilevisibility.html#tvis4">tvis4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tvis5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilevisibility.html#tvis5">tvis5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-visibilebitmask"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/visibilebitmask.html">visibileBitMask</a> (category: Drawing the landscape)</div><div class="summary">A table for converting a number in the range 0 to 7 into a bit mask with only that bit set, when counting from the left</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yobjecthi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/yobjecthi.html">yObjectHi</a> (category: 3D objects)</div><div class="summary">The y-coordinates in 3D space for the 3D objects (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ztilerow"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ztilerow">zTileRow</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The tile z-coordinate of the tile we are analysing in the GetRowVisibility routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawpolygonlines_part_4_of_4.html">DrawPolygonLines (Part 4 of 4)</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/visibilebitmask.html">visibileBitMask</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

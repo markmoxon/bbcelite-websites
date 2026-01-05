@@ -1,0 +1,165 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("landscape", "subroutine_gettilesataltitude.html", "The GetTilesAtAltitude subroutine", "Landscape: GetTilesAtAltitude", "Annotated code for the GetTilesAtAltitude subroutine in The Sentinel", "the_sentinel-code", "source_landscape", "subroutine_gettilesataltitude", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/addenemiestotiles.html">AddEnemiesToTiles</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/leadingbitmask.html">leadingBitMask</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetTilesAtAltitude</span>                                      <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Return a list of tile blocks at a specified altitude</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_b.html#header-gettilesataltitude">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/addenemiestotiles.html">AddEnemiesToTiles</a> calls <a href="#gettilesataltitude">GetTilesAtAltitude</a></span>
+</div>
+<hr class="light">
+ Argument:
+
+   tileAltitude        The altitude to search for
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">C flag</span>               <span class="argumentEntry">Status flag:</span>
+
+                        <span class="argumentEntry">  * Clear if at least one tile block is at an altitude</span>
+                        <span class="argumentEntry">    of tileAltitude</span>
+
+                        <span class="argumentEntry">  * Set if no tile blocks are at an altitude of</span>
+                        <span class="argumentEntry">    tileAltitude, in which case X is set to &FF</span>
+
+   <span class="argumentLabel">tilesAtAltitude</span>      <span class="argumentEntry">A list of tile block numbers whose highest tiles match</span>
+                        <span class="argumentEntry">the altitude in tileAltitude</span>
+
+   <span class="argumentLabel">T</span>                    <span class="argumentEntry">The number of entries in the list at tilesAtAltitude</span>
+
+   <span class="argumentLabel">bitMask</span>              <span class="argumentEntry">A bit mask with a matching number of leading zeroes as T</span>
+
+</div></div>
+<span class="label">.GetTilesAtAltitude</span><a id="gettilesataltitude" class="anchor"></a>
+
+                        <span class="comment">\ We start by fetching all the 4x4 tile blocks from the</span>
+                        <span class="comment">\ landscape whose altitude matches tileAltitude (so</span>
+                        <span class="comment">\ that's all the 4x4 blocks whose highest tile is at an</span>
+                        <span class="comment">\ altitude of tileAltitude)</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">63</span>                <span class="comment">\ Set an index in X to work through all 4x4 tile blocks,</span>
+                        <span class="comment">\ of which there are 64</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Set Y = 0 to count the number of tile blocks whose</span>
+                        <span class="comment">\ altitude matches tileAltitude</span>
+
+<span class="label">.galt1</span><a id="galt1" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">maxAltitude</a>,<span class="register">X</span>      <span class="comment">\ If the highest tile in the X-th tile block does not</span>
+ <span class="mne">CMP</span> <a class="popup variable">tileAltitude</a>       <span class="comment">\ have an altitude of tileAltitude, jump to galt2 to</span>
+ <span class="mne">BNE</span> <a class="popup destination">galt2</a>              <span class="comment">\ move on to the next tile block</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Store the number of the tile block in the Y-th byte of</span>
+ <span class="mne">STA</span> <a class="popup variable">tilesAtAltitude</a>,<span class="register">Y</span>  <span class="comment">\ tilesAtAltitude, so we end up compiling a list of all</span>
+                        <span class="comment">\ the tile blocks that have an altitude of tileAltitude</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the counter in Y as we have just added a</span>
+                        <span class="comment">\ block number to tilesAtAltitude</span>
+
+<span class="label">.galt2</span><a id="galt2" class="anchor"></a>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the block counter in X</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">galt1</a>              <span class="comment">\ Loop back until we have checked the altitudes of all</span>
+                        <span class="comment">\ the tile blocks</span>
+
+                        <span class="comment">\ By this point we have all the tile blocks with an</span>
+                        <span class="comment">\ altitude of tileAltitude in a list of length Y at</span>
+                        <span class="comment">\ tilesAtAltitude</span>
+
+ <span class="mne">TYA</span>                    <span class="comment">\ Set A to the length of the list at tilesAtAltitude</span>
+
+ <span class="mne">BEQ</span> <a class="popup destination">galt4</a>              <span class="comment">\ If the list is empty then jump to galt4 return from</span>
+                        <span class="comment">\ the subroutine with the C flag clear</span>
+
+ <span class="mne">STA</span> <a class="popup variable">T</a>                  <span class="comment">\ Set T to the length of the list at tilesAtAltitude</span>
+
+                        <span class="comment">\ We now set bitMask to a bit mask that covers all the</span>
+                        <span class="comment">\ non-zero bits in the list length in A, so if A is of</span>
+                        <span class="comment">\ the form %001xxxxx, for example, then bitMask will</span>
+                        <span class="comment">\ contain %00111111, while A being like %000001xx will</span>
+                        <span class="comment">\ give a bitMask of %00000111</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ To do this we count the number of continuous clear</span>
+                        <span class="comment">\ bits at the top of A, and then use this as an index</span>
+                        <span class="comment">\ into the leadingBitMask table</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we count zeroes from bit 7 down until we hit a 1,</span>
+                        <span class="comment">\ and put the result into Y</span>
+
+ <span class="mne">LDY</span> <span class="hash">#</span><span class="hex">&FF</span>               <span class="comment">\ Set Y = -1 so the following loop counts the number of</span>
+                        <span class="comment">\ zeroes correctly</span>
+
+<span class="label">.galt3</span><a id="galt3" class="anchor"></a>
+
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ Shift A to the left, moving the top bit into the C</span>
+                        <span class="comment">\ flag</span>
+
+ <span class="mne">INY</span>                    <span class="comment">\ Increment the zero counter in Y</span>
+
+ <span class="mne">BCC</span> <a class="popup destination">galt3</a>              <span class="comment">\ Loop back to keep shifting and counting zeroes until</span>
+                        <span class="comment">\ we shift a 1 out of bit 7, at which point Y contains</span>
+                        <span class="comment">\ the length of the run of zeroes in bits 7 to 0 of the</span>
+                        <span class="comment">\ length of the list at tilesAtAltitude</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">leadingBitMask</a>,<span class="register">Y</span>   <span class="comment">\ Set bitMask to the Y-th entry from the leadingBitMask</span>
+ <span class="mne">STA</span> <a class="popup variable">bitMask</a>            <span class="comment">\ table, which will give us a bit mask with a matching</span>
+                        <span class="comment">\ number of leading zeroes as A</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Clear the C flag to indicate that we have successfully</span>
+                        <span class="comment">\ found at least one tile block that matches the</span>
+                        <span class="comment">\ altitude in tileAltitude</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.galt4</span><a id="galt4" class="anchor"></a>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ If we get here then we have checked all 64 tile blocks</span>
+                        <span class="comment">\ and none of them are at an altitude of tileAltitude,</span>
+                        <span class="comment">\ so set the C flag to indicate that the returned list</span>
+                        <span class="comment">\ is empty</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-bitmask"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#bitmask">bitMask</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Used to return a bit mask from the GetTilesAtAltitude routine that has a matching number of leading zeroes as the number of tile blocks at a specific altitude</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-galt1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilesataltitude.html#galt1">galt1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-galt2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilesataltitude.html#galt2">galt2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-galt3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilesataltitude.html#galt3">galt3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-galt4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/gettilesataltitude.html#galt4">galt4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-leadingbitmask"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/leadingbitmask.html">leadingBitMask</a> (category: Landscape)</div><div class="summary">A table for converting the number of leading clear bits in a number into a bit mask with the same number of leading zeroes</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-maxaltitude"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/maxaltitude.html">maxAltitude</a> (category: Landscape)</div><div class="summary">The maximum tile altitude for each 4x4 block of tiles</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tilealtitude"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#tilealtitude">tileAltitude</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The altitude of the tile that we are currently processing</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tilesataltitude"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/tilesataltitude.html">tilesAtAltitude</a> (category: Landscape)</div><div class="summary">Storage for tile blocks at specific altitudes for placing enemies on the landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/addenemiestotiles.html">AddEnemiesToTiles</a><a class="next" rel="next" title="Next routine" href="/source/main/variable/leadingbitmask.html">leadingBitMask</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

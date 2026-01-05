@@ -1,0 +1,184 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("maths_geometry", "subroutine_getanglefromcoords_part_2_of_3.html", "The GetAngleFromCoords (Part 2 of 3) subroutine", "Maths (Geometry): GetAngleFromCoords (Part 2 of 3)", "Annotated code for the GetAngleFromCoords (Part 2 of 3) subroutine in The Sentinel", "the_sentinel-code", "source_maths_geometry", "subroutine_getanglefromcoords_part_2_of_3", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/getanglefromcoords_part_1_of_3.html">GetAngleFromCoords (Part 1 of 3)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/getanglefromcoords_part_3_of_3.html">GetAngleFromCoords (Part 3 of 3)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GetAngleFromCoords (Part 2 of 3)</span>                        <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Maths (Geometry)</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Overflow and accuracy calculations</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_a.html#header-getanglefromcoords-part-2-of-3">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">No direct references to this subroutine in this source file</span>
+</div>
+</div></div>
+                        <span class="comment">\ We now do two more shift-and-subtracts to see if we</span>
+                        <span class="comment">\ can should make the result more accurate in part 3</span>
+                        <span class="comment">\ with interpolation and rounding</span>
+
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ Repeat the shift-and-subtract loop for the ninth</span>
+ <span class="mne">BCS</span> <span class="skip">P%+6</span>               <span class="comment">\ shift, but without updating the result in T</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>
+ <span class="mne">BCC</span> <span class="skip">P%+5</span>
+ <span class="mne">SBC</span> <a class="popup variable">V</a>
+ <span class="mne">SEC</span>
+
+ <span class="mne">ROR</span> <a class="popup variable">G</a>                  <span class="comment">\ Shift the carry into bit 7 of G, so it contains the</span>
+                        <span class="comment">\ result from shifting and subtracting bit 8</span>
+
+ <span class="mne">ROL</span> <span class="register">A</span>                  <span class="comment">\ Repeat the shift-and-subtract loop for the tenth</span>
+ <span class="mne">BCS</span> <a class="popup destination">gang7</a>              <span class="comment">\ shift, but without subtracting or updating the result</span>
+ <span class="mne">CMP</span> <a class="popup variable">V</a>                  <span class="comment">\ in T</span>
+
+<span class="label">.gang7</span><a id="gang7" class="anchor"></a>
+
+ <span class="mne">ROR</span> <a class="popup variable">G</a>                  <span class="comment">\ Shift the carry into bit 7 of G, so it contains the</span>
+                        <span class="comment">\ result from shifting and subtracting the tenth shift,</span>
+                        <span class="comment">\ and the result from the ninth shift is now in bit 6</span>
+                        <span class="comment">\ of G</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So G now contains two results bits as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Bit 6 is the first extra bit from the result,</span>
+                        <span class="comment">\     and if it is set then we apply interpolation to</span>
+                        <span class="comment">\     the result in part 3</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * Bit 7 is the second extra bit from the result,</span>
+                        <span class="comment">\     and if it is set then we apply rounding to the</span>
+                        <span class="comment">\     result in part 3</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We use these below to work out whether to interpolate</span>
+                        <span class="comment">\ results from the arctan lookup table, to improve the</span>
+                        <span class="comment">\ accuracy of the result</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">T</a>                  <span class="comment">\ Set A to the result of the division we did above, so</span>
+                        <span class="comment">\ we now have the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   A = 256 * (A T) / (V W)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ but with bit 5 clear rather than the actual result</span>
+                        <span class="comment">\ and the next two result bits in bits 6 and 7 of Q</span>
+
+<span class="label">.gang8</span><a id="gang8" class="anchor"></a>
+
+                        <span class="comment">\ We now use the result of the third shift of the</span>
+                        <span class="comment">\ shift-and-subtract calculation to set bit 5 in the</span>
+                        <span class="comment">\ result, which we cleared in the calculation above</span>
+
+ <span class="mne">PLP</span>                    <span class="comment">\ Retrieve the result bit from the third shift, which</span>
+                        <span class="comment">\ we stored on the stack in part 1</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This bit represents the third bit pushed into the</span>
+                        <span class="comment">\ result, so that's what should be bit 5 of the result</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ It is now in the C flag (because it was in the C flag</span>
+                        <span class="comment">\ when we performed the PHP to push it onto the stack)</span>
+
+ <span class="mne">BCC</span> <a class="popup destination">gang9</a>              <span class="comment">\ If the C flag is clear then bit 5 of the result should</span>
+                        <span class="comment">\ remain clear, so skip the following</span>
+
+                        <span class="comment">\ Otherwise bit 5 of the result should be set, which we</span>
+                        <span class="comment">\ can do with the following addition (in which we know</span>
+                        <span class="comment">\ that the C flag is set, as we just passed through a</span>
+                        <span class="comment">\ BCC instruction)</span>
+
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="binary">%00100000</span> <span class="operator">-</span> <span class="decimal">1</span>     <span class="comment">\ Set A = A + %00100000 - 1 + C</span>
+                        <span class="comment">\       = A + %00100000</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If we get here having done all ten shifts, then we</span>
+                        <span class="comment">\ know that bit 5 of the result in A is clear, as we</span>
+                        <span class="comment">\ cleared it with the ASL T instruction just after gang6</span>
+                        <span class="comment">\ above, so this just sets bit 5 of the result in A</span>
+                        <span class="comment">\ without any risk of the addition overflowing</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If, however, we get here by aborting the sequence of</span>
+                        <span class="comment">\ shifts after the second shift and jumping to gang10,</span>
+                        <span class="comment">\ then we have already set bit 5 of the result with an</span>
+                        <span class="comment">\ ORA instruction in gang10 before jumping back to</span>
+                        <span class="comment">\ gang8, so there is a possibility for this addition to</span>
+                        <span class="comment">\ overflow ???</span>
+
+<span class="label">.gang9</span><a id="gang9" class="anchor"></a>
+
+ <span class="mne">BCC</span> <a class="popup destination">gang11</a>             <span class="comment">\ If the above addition was skipped, or it was applied</span>
+                        <span class="comment">\ and didn't overflow, then jump to gang11 to continue</span>
+                        <span class="comment">\ with the calculation</span>
+
+                        <span class="comment">\ If we get here then the above addition overflowed, so</span>
+                        <span class="comment">\ we return the highest angle possible from the table,</span>
+                        <span class="comment">\ which is 45 degrees</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">255</span>               <span class="comment">\ Set angleTangent = 255, which is the closest we can</span>
+ <span class="mne">STA</span> <a class="popup variable">angleTangent</a>       <span class="comment">\ get to the tangent of 45 degrees, which should really</span>
+                        <span class="comment">\ be represented by (1 0) in our scale</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&00</span>               <span class="comment">\ Set angle(Hi Lo) = (&20 0)</span>
+ <span class="mne">STA</span> <a class="popup variable">angleLo</a>            <span class="comment">\</span>
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&20</span>               <span class="comment">\ This represents an angle of 45 degrees, as a full</span>
+ <span class="mne">STA</span> <a class="popup variable">angleHi</a>            <span class="comment">\ circle of 360 degrees is represented by (1 0 0), and:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   360 degrees / 8 = 45</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   256 / 8 = &20</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.gang10</span><a id="gang10" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then we have stopped shifting and</span>
+                        <span class="comment">\ subtracting after just three shifts</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We stored the first two shifts in T, but didn't store</span>
+                        <span class="comment">\ the third shift in T</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">0</span>                 <span class="comment">\ Clear bits 6 and 7 of G to indicate that we should not</span>
+ <span class="mne">STA</span> <a class="popup variable">G</a>                  <span class="comment">\ apply interpolation or rounding in part 3</span>
+
+ <span class="mne">ROR</span> <a class="popup variable">T</a>                  <span class="comment">\ Set A to the bottom two bits of T, which is the same</span>
+ <span class="mne">ROR</span> <span class="register">A</span>                  <span class="comment">\ result as if we had shifted T left through the rest of</span>
+ <span class="mne">ROR</span> <a class="popup variable">T</a>                  <span class="comment">\ the shift-and-subtract process that we've skipped</span>
+ <span class="mne">ROR</span> <span class="register">A</span>
+
+ <span class="mne">ORA</span> <span class="hash">#</span><span class="binary">%00100000</span>         <span class="comment">\ Set bit 5 of the result in A ???</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So we now have the result of the division in A</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">gang8</a>              <span class="comment">\ Jump to gang8 to continue the processing from the end</span>
+                        <span class="comment">\ of the division process</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-g"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#g">G</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-t"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#t">T</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-v"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#v">V</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Temporary storage, used in a number of places</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-anglehi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#anglehi">angleHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The low byte of an angle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-anglelo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#anglelo">angleLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of an angle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-angletangent"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#angletangent">angleTangent</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The tangent of an angle in a right-angled triangle</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang11"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_3_of_3.html#gang11">gang11</a> in subroutine <a href="/source/main/subroutine/getanglefromcoords_part_3_of_3.html">GetAngleFromCoords (Part 3 of 3)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang7"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_2_of_3.html#gang7">gang7</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang8"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_2_of_3.html#gang8">gang8</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gang9"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/getanglefromcoords_part_2_of_3.html#gang9">gang9</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/getanglefromcoords_part_1_of_3.html">GetAngleFromCoords (Part 1 of 3)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/getanglefromcoords_part_3_of_3.html">GetAngleFromCoords (Part 3 of 3)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

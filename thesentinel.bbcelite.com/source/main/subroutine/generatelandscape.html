@@ -1,0 +1,326 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("landscape", "subroutine_generatelandscape.html", "The GenerateLandscape subroutine", "Landscape: GenerateLandscape", "Annotated code for the GenerateLandscape subroutine in The Sentinel", "the_sentinel-code", "source_landscape", "subroutine_generatelandscape", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawpolygon.html">DrawPolygon</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/processtiledata.html">ProcessTileData</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">GenerateLandscape</span>                                       <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Landscape</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Generate tile data for the landscape</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_e.html#header-generatelandscape">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/finishlandscape.html">FinishLandscape</a> calls <a href="#generatelandscape">GenerateLandscape</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> calls <a href="#generatelandscape">GenerateLandscape</a></span>
+</div>
+<hr class="light">
+ This routine populates the tileData table with tile data for each of the tile
+ corners in the landscape. The landscape consists of 31x31 square tiles, made
+ up of a 32x32 grid of tile corners.
+
+ One byte of tile data is generated for each tile corner in the landscape. Each
+ byte of tile data contains two pieces of information:
+
+   * The low nibble of each byte contains the tile shape, which describes the
+     layout and structure of the landscape on that tile.
+
+   * The high nibble of each byte contains the altitude of the tile corner in
+     the front-left corner of the tile (i.e. the corner closest to the
+     landscape origin). We call this tile corner the "anchor".
+
+ As each tile is defined by a tile corner and a shape, we tend to use the terms
+ "tile" and "tile corner" interchangeably, depending on the context. That said,
+ for tile corners along the furthest back and rightmost edges of the landscape,
+ the shape data is ignored, as there is no landscape beyond the edges.
+
+ See the GetTileShape routine for information on the different types of tile
+ shape.
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">doNotPlayLandscape</span>   <span class="argumentEntry">Controls how we return from the subroutine:</span>
+
+                        <span class="argumentEntry">  * If bit 7 is set, return from the subroutine normally</span>
+
+                        <span class="argumentEntry">  * If bit 7 is clear, jump to PreviewLandscape once the</span>
+                        <span class="argumentEntry">    landscape is generated</span>
+
+</div></div>
+<span class="label">.GenerateLandscape</span><a id="generatelandscape" class="anchor"></a>
+
+                        <span class="comment">\ We start by generating 81 seed numbers, though these</span>
+                        <span class="comment">\ are ignored (with one exception)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ These numbers get stored in the stripData table, from</span>
+                        <span class="comment">\ stripData+80 down to stripData+0, but there's no</span>
+                        <span class="comment">\ specific reason for this - they could just as easily</span>
+                        <span class="comment">\ be discarded</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The purpose of this step is to get the seed number</span>
+                        <span class="comment">\ generator to a point where the output is predictable</span>
+                        <span class="comment">\ and stable, so that every time we generate a sequence</span>
+                        <span class="comment">\ of seed numbers for a landscape, they are exactly the</span>
+                        <span class="comment">\ same each time while being unique to that landscape</span>
+                        <span class="comment">\ number</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ That said, the third seed number that's generated and</span>
+                        <span class="comment">\ stored at stripData+78 is used by the anti-cracker</span>
+                        <span class="comment">\ code in the SetCrackerSeed and CheckCrackerSeed</span>
+                        <span class="comment">\ routines, as it contains the high byte of the BCD</span>
+                        <span class="comment">\ landscape number (this is because the seed generator</span>
+                        <span class="comment">\ is initialised using the landscape number, and the</span>
+                        <span class="comment">\ third number out of the shift register is unchanged</span>
+                        <span class="comment">\ and still contains the initial value of that byte -</span>
+                        <span class="comment">\ see the InitialiseSeeds routine for more details)</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">80</span>                <span class="comment">\ Set a counter in X so we can generate 81 seed numbers</span>
+
+<span class="label">.land1</span><a id="land1" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetNextSeedNumber</a>  <span class="comment">\ Set A to the next number from the landscape's sequence</span>
+                        <span class="comment">\ of seed numbers</span>
+
+ <span class="mne">STA</span> <a class="popup variable">stripData</a>,<span class="register">X</span>        <span class="comment">\ Set the X-th entry in the stripData table to the seed</span>
+                        <span class="comment">\ number in A</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">land1</a>              <span class="comment">\ Loop back until we have generated all 81 seed numbers</span>
+
+                        <span class="comment">\ We now set the value of tileDataMultiplier for this</span>
+                        <span class="comment">\ landscape, which is a multiplier that we apply to the</span>
+                        <span class="comment">\ altitudes of the tile corners to alter the steepness</span>
+                        <span class="comment">\ of the landscape</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">landscapeZero</a>      <span class="comment">\ If this is not landscape 0000, jump to land2</span>
+ <span class="mne">BNE</span> <a class="popup destination">land2</a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">24</span>                <span class="comment">\ This is landscape 0000, so set A = 24 to use for the</span>
+                        <span class="comment">\ tile data multiplier in tileDataMultiplier</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">land3</a>              <span class="comment">\ Jump to land3 to skip the following (this BNE is</span>
+                        <span class="comment">\ effectively a JMP as A is never zero)</span>
+
+<span class="label">.land2</span><a id="land2" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetNextSeed0To22</a>   <span class="comment">\ Set A to the next number from the landscape's sequence</span>
+                        <span class="comment">\ of seed numbers, converted to the range 0 to 22</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Set A = A + 14</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">14</span>                <span class="comment">\</span>
+                        <span class="comment">\ So A is now a number in the range 14 to 36</span>
+
+<span class="label">.land3</span><a id="land3" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">tileDataMultiplier</a> <span class="comment">\ Set tileDataMultiplier = A</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So this is 24 for landscape 0000 and in the range 14</span>
+                        <span class="comment">\ to 36 for all other landscapes</span>
+
+                        <span class="comment">\ We now populate the tileData table with tile corner</span>
+                        <span class="comment">\ altitudes, which we store in the low nibble of the</span>
+                        <span class="comment">\ tile data (for now)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="hex">&80</span>               <span class="comment">\ Call ProcessTileData with A = &80 to set the tile data</span>
+ <span class="mne">JSR</span> <a class="popup destination">ProcessTileData</a>    <span class="comment">\ for the whole landscape to the next set of numbers</span>
+                        <span class="comment">\ from the landscape's sequence of seed numbers</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%00000000</span>         <span class="comment">\ Call SmoothTileData with bit 6 of A clear, to smooth</span>
+ <span class="mne">JSR</span> <a class="popup destination">SmoothTileData</a>     <span class="comment">\ the landscape in lines of tile corners, working along</span>
+                        <span class="comment">\ rows from left to right and along columns from front</span>
+                        <span class="comment">\ to back, and smoothing each tile by setting each tile</span>
+                        <span class="comment">\ corner's altitude to the average of its altitude with</span>
+                        <span class="comment">\ the three following tile corners</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This process is repeated twice by the single call to</span>
+                        <span class="comment">\ SmoothTileData</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ Call ProcessTileData with A = 1 to scale the tile data</span>
+ <span class="mne">JSR</span> <a class="popup destination">ProcessTileData</a>    <span class="comment">\ for the whole landscape by the tileDataMultiplier</span>
+                        <span class="comment">\ before capping each byte of data to between 1 and 11</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This capping process ensures that when we place the</span>
+                        <span class="comment">\ tile altitude in the top nibble of the tile data, we</span>
+                        <span class="comment">\ never have both bits 6 and 7 set (these bits can</span>
+                        <span class="comment">\ therefore be used to identify whether or not a tile</span>
+                        <span class="comment">\ contains an object)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="binary">%01000000</span>         <span class="comment">\ Call SmoothTileData with bit 6 of A set, to smooth</span>
+ <span class="mne">JSR</span> <a class="popup destination">SmoothTileData</a>     <span class="comment">\ the landscape in lines of tile corners, from the rear</span>
+                        <span class="comment">\ row to the front row and then from the right column to</span>
+                        <span class="comment">\ the left column, smoothing each outlier tile corner by</span>
+                        <span class="comment">\ setting its altitude to that of its closest immediate</span>
+                        <span class="comment">\ neighbour (where "closest" is in terms of altitude)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This smoothes over any single-point spikes or troughs</span>
+                        <span class="comment">\ in each row and column</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This process is repeated twice by the single call to</span>
+                        <span class="comment">\ SmoothTileData</span>
+
+                        <span class="comment">\ The tileData table now contains the altitude of each</span>
+                        <span class="comment">\ tile corner, with each altitude in the range 1 to 11,</span>
+                        <span class="comment">\ so the altitude data is in the low nibble of each byte</span>
+                        <span class="comment">\ of tile data</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We now calculate the tile shape for the tiles anchored</span>
+                        <span class="comment">\ at each tile corner in turn, where the anchor is in</span>
+                        <span class="comment">\ the front-left corner of the tile (i.e. nearest the</span>
+                        <span class="comment">\ origin)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ Note that the last tile corners at the right end of</span>
+                        <span class="comment">\ each row or at the back of each column do not anchor</span>
+                        <span class="comment">\ any tiles, as they are at the edge (so their shapes</span>
+                        <span class="comment">\ are not calculated)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We put the tile shape into the high nibble of the tile</span>
+                        <span class="comment">\ data (for now)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">30</span>                <span class="comment">\ Set zTile = 30 so we start iterating from the rear,</span>
+ <span class="mne">STA</span> <a class="popup variable">zTile</a>              <span class="comment">\ skipping the row right at the back as the tile corners</span>
+                        <span class="comment">\ in that row do not anchor any tiles (so zTile iterates</span>
+                        <span class="comment">\ from 30 to 0 in the outer loop)</span>
+
+<span class="label">.land4</span><a id="land4" class="anchor"></a>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">30</span>                <span class="comment">\ Set xTile = 30 so we start iterating from the right,</span>
+ <span class="mne">STA</span> <a class="popup variable">xTile</a>              <span class="comment">\ skipping the rightmost column as the tile corners</span>
+                        <span class="comment">\ in that column do not anchor any tiles (so xTile</span>
+                        <span class="comment">\ iterates from 30 to 0 in the inner loop)</span>
+
+<span class="label">.land5</span><a id="land5" class="anchor"></a>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileShape</a>       <span class="comment">\ Set X to the shape of the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This will be in the range 1 to 11 (so it fits into</span>
+                        <span class="comment">\ the low nibble)</span>
+
+ <span class="mne">JSR</span> <a class="popup destination">GetTileData</a>        <span class="comment">\ Set A to the tile data for the tile anchored at</span>
+                        <span class="comment">\ (xTile, zTile), which we ignore, but this also sets</span>
+                        <span class="comment">\ the tile page in tileDataPage and the index in Y, so</span>
+                        <span class="comment">\ tileDataPage+Y now points to the tile data entry in</span>
+                        <span class="comment">\ the tileData table</span>
+
+                        <span class="comment">\ We now put the tile shape into the high nibble of the</span>
+                        <span class="comment">\ tile data, so the low nibble of the tile data contains</span>
+                        <span class="comment">\ the tile altitude and the high nibble contains the</span>
+                        <span class="comment">\ tile shape (for now)</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Put the tile shape in X into the high nibble of A by</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ shifting X to the left by three spaces and OR'ing the</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ result into the tile data at tileData + Y</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\</span>
+ <span class="mne">ASL</span> <span class="register">A</span>                  <span class="comment">\ This works because both the tile altitude and tile</span>
+ <span class="mne">ORA</span> <span class="bracket">(</span><a class="popup variable">tileDataPage</a><span class="bracket">)</span>,<span class="register">Y</span>   <span class="comment">\ shape fit into the range 0 to 15, or four bits</span>
+ <span class="mne">STA</span> <span class="bracket">(</span><a class="popup variable">tileDataPage</a><span class="bracket">)</span>,<span class="register">Y</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">xTile</a>              <span class="comment">\ Decrement the tile x-coordinate in the inner loop</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">land5</a>              <span class="comment">\ Loop back until we have processed all the tile corners</span>
+                        <span class="comment">\ in the tile row at z-coordinate zTile, working from</span>
+                        <span class="comment">\ right to left</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">zTile</a>              <span class="comment">\ Decrement outer loop counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">land4</a>              <span class="comment">\ Loop back until we have processed all the tile rows in</span>
+                        <span class="comment">\ the landscape, working from the back of the landscape</span>
+                        <span class="comment">\ all the way to the front row</span>
+
+                        <span class="comment">\ By this point the high nibble of each byte of tile</span>
+                        <span class="comment">\ data contains the tile shape and the low nibble</span>
+                        <span class="comment">\ contains the tile altitude, so now we swap these</span>
+                        <span class="comment">\ around</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We do this so that we can reuse bits 6 and 7 to in</span>
+                        <span class="comment">\ each byte of tile data to store the presence of an</span>
+                        <span class="comment">\ object on the tile, as moving the tile altitude into</span>
+                        <span class="comment">\ the high nibble means that bits 6 and 7 will never</span>
+                        <span class="comment">\ be set (as the altitude is in the range 0 to 11)</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We can therefore set both bit 6 and 7 to indicate that</span>
+                        <span class="comment">\ a tile contains an object, and we can reuse the other</span>
+                        <span class="comment">\ bits to store the object information (as we only ever</span>
+                        <span class="comment">\ place objects on flat tiles, so we can discard the</span>
+                        <span class="comment">\ shape data)</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ Call ProcessTileData with A = 2 to swap the high and</span>
+ <span class="mne">JSR</span> <a class="popup destination">ProcessTileData</a>    <span class="comment">\ low nibbles of all the tile data for the whole</span>
+                        <span class="comment">\ landscape</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So now the low nibble of each byte of tile data</span>
+                        <span class="comment">\ contains the tile shape and the high nibble contains</span>
+                        <span class="comment">\ the tile altitude, as required</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This also sets the N flag, so a BMI branch would be</span>
+                        <span class="comment">\ taken at this point (see the following instruction)</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If the SmoothTileCorners routine has modified the</span>
+                        <span class="comment">\ return address on the stack, then this RTS instruction</span>
+                        <span class="comment">\ will actually take us to JumpToPreview+1, and the BMI</span>
+                        <span class="comment">\ branch instruction at JumpToPreview+1 will be taken</span>
+                        <span class="comment">\ because the call to ProcessTileData sets the N flag,</span>
+                        <span class="comment">\ so this RTS will end up taking us to PreviewLandscape</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ If the SmoothTileCorners routine has not modified the</span>
+                        <span class="comment">\ return address, then the RTS will take us to the</span>
+                        <span class="comment">\ SecretCodeError routine, just after the original</span>
+                        <span class="comment">\ caller, i.e. just after the JSR GenerateLandscape</span>
+                        <span class="comment">\ instruction (which will either be at the end of the</span>
+                        <span class="comment">\ main title loop if the player enters an incorrect</span>
+                        <span class="comment">\ secret code, or when displaying a landscape's secret</span>
+                        <span class="comment">\ code after the level is completed)</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getnextseed0to22"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getnextseed0to22.html">GetNextSeed0To22</a> (category: Maths (Arithmetic))</div><div class="summary">Set A to the next number from the landscape's sequence of seed numbers, converted to the range 0 to 22</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-getnextseednumber"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/getnextseednumber.html">GetNextSeedNumber</a> (category: Maths (Arithmetic))</div><div class="summary">Set A to a seed number</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gettiledata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gettiledata.html">GetTileData</a> (category: Landscape)</div><div class="summary">Get the tile data and tile data address for a specific tile</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-gettileshape"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/gettileshape.html">GetTileShape</a> (category: Landscape)</div><div class="summary">Calculate the shape of the tile anchored at (xTile, zTile)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-processtiledata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/processtiledata.html">ProcessTileData</a> (category: Landscape)</div><div class="summary">Process the tile data for all tiles in the landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-smoothtiledata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/smoothtiledata.html">SmoothTileData</a> (category: Landscape)</div><div class="summary">Smooth the entire landscape</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-land1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/generatelandscape.html#land1">land1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-land2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/generatelandscape.html#land2">land2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-land3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/generatelandscape.html#land3">land3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-land4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/generatelandscape.html#land4">land4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-land5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/generatelandscape.html#land5">land5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-landscapezero"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#landscapezero">landscapeZero</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A flag that is set depending on whether we are playing landscape 0000</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-stripdata"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/stripdata.html">stripData</a> (category: Landscape)</div><div class="summary">Storage for tile data when smoothing strips of tiles during the landscape generation process</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tiledatamultiplier"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#tiledatamultiplier">tileDataMultiplier</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A multiplier that we apply to the altitudes of the tile corners to alter the steepness of the landscape during landscape generation</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tiledatapage"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#tiledatapage">tileDataPage</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The address of the tileData page containing the current tile's data</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xtile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xtile">xTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner x-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ztile"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ztile">zTile</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">Tile corner z-coordinate</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/drawpolygon.html">DrawPolygon</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/processtiledata.html">ProcessTileData</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

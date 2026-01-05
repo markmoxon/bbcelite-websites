@@ -1,0 +1,107 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("gameplay", "subroutine_updateenemytimers.html", "The UpdateEnemyTimers subroutine", "Gameplay: UpdateEnemyTimers", "Annotated code for the UpdateEnemyTimers subroutine in The Sentinel", "the_sentinel-code", "source_gameplay", "subroutine_updateenemytimers", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/resetscreenaddress.html">ResetScreenAddress</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">UpdateEnemyTimers</span>                                       <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Gameplay</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Update the timers that control the enemy tactics</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_b.html#header-updateenemytimers">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/irqhandler.html">IRQHandler</a> calls <a href="#updateenemytimers">UpdateEnemyTimers</a></span>
+</div>
+</div></div>
+<span class="label">.UpdateEnemyTimers</span><a id="updateenemytimers" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">updateTimer</a>        <span class="comment">\ If updateTimer is non-zero, jump to time3 to skip</span>
+ <span class="mne">BNE</span> <a class="popup destination">time3</a>              <span class="comment">\ updating the enemy timers and run down the update</span>
+                        <span class="comment">\ timer</span>
+
+                        <span class="comment">\ If we get here then updateTimer is zero, so we</span>
+                        <span class="comment">\ update the enemy timers</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The update timer loops through 2, 1, 0, so this means</span>
+                        <span class="comment">\ we decrement the timers on one out of every three</span>
+                        <span class="comment">\ calls to the UpdateEnemyTimers</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ UpdateEnemyTimers is called from the interrupt handler</span>
+                        <span class="comment">\ at IRQHandler, but only once the game has started and</span>
+                        <span class="comment">\ the Sentinel is active</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ IRQHandler performs its actions 50 times a second, so</span>
+                        <span class="comment">\ this means the counters tick down at a rate of 16.7</span>
+                        <span class="comment">\ times a second, or once every 0.06 seconds</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So setting a timer to n means it will count down in</span>
+                        <span class="comment">\ 3 * n / 50 = 3 * 0.06 seconds</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">23</span>                <span class="comment">\ There are 24 bytes of enemy timers, split into three</span>
+                        <span class="comment">\ timers keeping track of up to eight enemies each:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * enemyDrainTimer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * enemyTacticTimer</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * enemyTimer3</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ So set a byte counter in X to update all the timers</span>
+                        <span class="comment">\ in one loop</span>
+
+<span class="label">.time1</span><a id="time1" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">enemyDrainTimer</a>,<span class="register">X</span>  <span class="comment">\ If the X-th timer is less than 2 then it has already</span>
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ counted down to 1, so jump to time2 to leave the timer</span>
+ <span class="mne">BCC</span> <a class="popup destination">time2</a>              <span class="comment">\ alone as it is inactive</span>
+
+                        <span class="comment">\ So the timers count down until they reach 1, at which</span>
+                        <span class="comment">\ point they stay put, inactive until they are reset</span>
+
+ <span class="mne">DEC</span> <a class="popup variable">enemyDrainTimer</a>,<span class="register">X</span>  <span class="comment">\ The X-th timer is actively counting down, so decrement</span>
+                        <span class="comment">\ the timer</span>
+
+<span class="label">.time2</span><a id="time2" class="anchor"></a>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the byte counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">time1</a>              <span class="comment">\ Loop back until we have decremented all the active</span>
+                        <span class="comment">\ enemy timers</span>
+
+ <span class="mne">LDA</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ Set updateTimer = 2 so it loops back to the start to</span>
+ <span class="mne">STA</span> <a class="popup variable">updateTimer</a>        <span class="comment">\ count through 2, 1, 0 again</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.time3</span><a id="time3" class="anchor"></a>
+
+ <span class="mne">DEC</span> <a class="popup variable">updateTimer</a>        <span class="comment">\ Decrement the update timer</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-enemydraintimer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyDrainTimer</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A timer for each enemy that counts down every 0.06</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-time1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/updateenemytimers.html#time1">time1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-time2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/updateenemytimers.html#time2">time2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-time3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/updateenemytimers.html#time3">time3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-updatetimer"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#updatetimer">updateTimer</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">A counter that ensures the enemy timers are updated on one of every three calls to the interrupt handler</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/resetscreenaddress.html">ResetScreenAddress</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

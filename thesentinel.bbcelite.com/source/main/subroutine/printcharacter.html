@@ -1,0 +1,123 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("text", "subroutine_printcharacter.html", "The PrintCharacter subroutine", "Text: PrintCharacter", "Annotated code for the PrintCharacter subroutine in The Sentinel", "the_sentinel-code", "source_text", "subroutine_printcharacter", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/setscannerandpause.html">SetScannerAndPause</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/printvducharacter.html">PrintVduCharacter</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">PrintCharacter</span>                                          <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Text</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Print a single-byte VDU command or character from a text token,</span>
+             <span class="headerEntry">optionally printing a drop shadow if the character is alphanumeric</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_i.html#header-printcharacter">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/printdigit.html">PrintDigit</a> calls <a href="#printcharacter">PrintCharacter</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/printvducharacter.html">PrintVduCharacter</a> calls <a href="#printcharacter">PrintCharacter</a></span>
+</div>
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">A</span>                    <span class="argumentEntry">The one-byte character to be printed</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">X</span>                    <span class="argumentEntry">X is preserved</span>
+
+</div></div>
+<span class="label">.PrintCharacter</span><a id="printcharacter" class="anchor"></a>
+
+ <span class="mne">BIT</span> <a class="popup variable">textDropShadow</a>     <span class="comment">\ If bit 7 of textDropShadow is set, jump to byte2 to</span>
+ <span class="mne">BMI</span> <a class="popup destination">byte2</a>              <span class="comment">\ print the character in A as-is (i.e. without a drop</span>
+                        <span class="comment">\ shadow if it is alphanumeric)</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="character">' '</span>               <span class="comment">\ If the character in A is a control character, jump to</span>
+ <span class="mne">BCC</span> <a class="popup destination">byte2</a>              <span class="comment">\ byte2 to print the character as-is</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">127</span>               <span class="comment">\ If the character in A is a top-bit-set character, jump</span>
+ <span class="mne">BCS</span> <a class="popup destination">byte2</a>              <span class="comment">\ jump to byte2 to print the character as-is</span>
+
+                        <span class="comment">\ If we get here then bit 7 of textDropShadow is clear</span>
+                        <span class="comment">\ and the character in A is alphanumeric, so now we</span>
+                        <span class="comment">\ print the character with a drop shadow</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ We do this by printing the sequence of VDU commands at</span>
+                        <span class="comment">\ vduShadowRear and vduShadowFront, which produce the</span>
+                        <span class="comment">\ drop shadow effect</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The drop shadow is printed by first printing the VDU</span>
+                        <span class="comment">\ commands in vduShadowRear, to print the rear character</span>
+                        <span class="comment">\ in yellow, and then in vduShadowFront, to print the</span>
+                        <span class="comment">\ front character in red or cyan</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The rear character is offset down from the front</span>
+                        <span class="comment">\ character by four graphics units, which equates to an</span>
+                        <span class="comment">\ offset of one pixel in mode 5</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ The VDU commands are printed backwards, because that</span>
+                        <span class="comment">\ makes the loop condition slightly simpler, and it also</span>
+                        <span class="comment">\ means we can poke the character to print into the</span>
+                        <span class="comment">\ start of each block of VDU commands, knowing that they</span>
+                        <span class="comment">\ will then be printed last in each VDU sequence</span>
+
+ <span class="mne">STA</span> <a class="popup variable">vduShadowFront</a>     <span class="comment">\ Insert the character to be printed into the sequence</span>
+ <span class="mne">STA</span> <a class="popup variable">vduShadowRear</a>      <span class="comment">\ of VDU commands at vduShadowRear and vduShadowFront,</span>
+                        <span class="comment">\ so that they print the required character with a drop</span>
+                        <span class="comment">\ shadow</span>
+
+ <span class="mne">TXA</span>                    <span class="comment">\ Store X on the stack so we can preserve it</span>
+ <span class="mne">PHA</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="decimal">22</span>                <span class="comment">\ The vduShadowRear and vduShadowFront variables contain</span>
+                        <span class="comment">\ a total of 23 VDU command bytes, so set a byte counter</span>
+                        <span class="comment">\ in X so we can work through them from the end of</span>
+                        <span class="comment">\ vduShadowRear backwards to the start of vduShadowFront</span>
+
+<span class="label">.byte1</span><a id="byte1" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">vduShadowFront</a>,<span class="register">X</span>   <span class="comment">\ Print the X-th character from the vduShadowRear and</span>
+ <span class="mne">JSR</span> <a class="popup destination">OSWRCH</a>             <span class="comment">\ vduShadowFront variables</span>
+
+ <span class="mne">DEX</span>                    <span class="comment">\ Decrement the byte counter</span>
+
+ <span class="mne">BPL</span> <a class="popup destination">byte1</a>              <span class="comment">\ Loop back until we have printed all 23 command bytes</span>
+
+ <span class="mne">PLA</span>                    <span class="comment">\ Retrieve X from the stack so it is preserved across</span>
+ <span class="mne">TAX</span>                    <span class="comment">\ calls to the routine</span>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.byte2</span><a id="byte2" class="anchor"></a>
+
+ <span class="mne">JMP</span> <a class="popup destination">OSWRCH</a>             <span class="comment">\ We jump here if drop shadows are disabled, or if A is</span>
+                        <span class="comment">\ not alphanumeric, in which case print the character in</span>
+                        <span class="comment">\ A and return from the subroutine using a tail call</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-oswrch"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Configuration variable <a href="/source/all/workspaces.html#oswrch">OSWRCH</a> = &FFEE</div><div class="summary">The address for the OSWRCH routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-byte1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/printcharacter.html#byte1">byte1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-byte2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/printcharacter.html#byte2">byte2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-textdropshadow"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#textdropshadow">textDropShadow</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">Controls whether text in text tokens is printed with a drop shadow</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-vdushadowfront"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/vdushadowfront.html">vduShadowFront</a> (category: Text)</div><div class="summary">VDU commands for printing the front character of a drop shadow</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-vdushadowrear"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/vdushadowrear.html">vduShadowRear</a> (category: Text)</div><div class="summary">VDU commands for printing the rear character of a drop shadow</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/setscannerandpause.html">SetScannerAndPause</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/printvducharacter.html">PrintVduCharacter</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

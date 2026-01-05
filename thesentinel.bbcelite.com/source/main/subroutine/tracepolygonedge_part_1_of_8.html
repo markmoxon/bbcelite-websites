@@ -1,0 +1,302 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("drawing_polygons", "subroutine_tracepolygonedge_part_1_of_8.html", "The TracePolygonEdge (Part 1 of 8) subroutine", "Drawing polygons: TracePolygonEdge (Part 1 of 8)", "Annotated code for the TracePolygonEdge (Part 1 of 8) subroutine in The Sentinel", "the_sentinel-code", "source_drawing_polygons", "subroutine_tracepolygonedge_part_1_of_8", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/getpolygonlines_part_5_of_6.html">GetPolygonLines (Part 5 of 6)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/tracepolygonedge_part_2_of_8.html">TracePolygonEdge (Part 2 of 8)</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">TracePolygonEdge (Part 1 of 8)</span>                          <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Drawing polygons</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Trace a polygon edge, populating xPolygonRight or xPolygonLeft</span>
+             <span class="headerEntry">with the x-coordinate of the edge for each y-coordinate</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_f.html#header-tracepolygonedge-part-1-of-8">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/getpolygonlines_part_5_of_6.html">GetPolygonLines (Part 5 of 6)</a> calls <a href="#tracepolygonedge">TracePolygonEdge</a></span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/getpolygonlines_part_6_of_6.html">GetPolygonLines (Part 6 of 6)</a> calls <a href="#tracepolygonedge">TracePolygonEdge</a></span>
+</div>
+<hr class="light">
+ This routine traces a polygon edge.
+
+ For this to work the start point must have a bigger y-coordinate than the end
+ point, so the edge is either horizontal or slopes downwards when tracing the
+ edge from start to end.
+
+<hr class="light">
+<span class="subheader"> Arguments:</span>
+
+   <span class="argumentLabel">xEdgeStart(Hi Lo)</span>    <span class="argumentEntry">The x-coordinate of the start of the edge to trace</span>
+
+   <span class="argumentLabel">yEdgeStart(Hi Lo)</span>    <span class="argumentEntry">The y-coordinate of the start of the edge to trace</span>
+
+   <span class="argumentLabel">xEdgeEnd(Hi Lo)</span>      <span class="argumentEntry">The x-coordinate of the end of the edge to trace</span>
+
+   <span class="argumentLabel">yEdgeEnd(Hi Lo)</span>      <span class="argumentEntry">The y-coordinate of the start of the edge to trace</span>
+
+   <span class="argumentLabel">yEdgeDeltaLo</span>         <span class="argumentEntry">The y-axis delta along the edge</span>
+
+   <span class="argumentLabel">yPolygonTop</span>          <span class="argumentEntry">The y-coordinate of the top of the polygon (where higher</span>
+                        <span class="argumentEntry">y-coordinates are up the screen)</span>
+
+   <span class="argumentLabel">yPolygonBottom</span>       <span class="argumentEntry">The y-coordinate of the bottom of the polygon (where</span>
+                        <span class="argumentEntry">higher y-coordinates are up the screen)</span>
+
+   <span class="argumentLabel">xPolygonAddrHi</span>       <span class="argumentEntry">The high byte of either xPolygonLeft or xPolygonRight</span>
+                        <span class="argumentEntry">to determine which of the resulting tables is written to</span>
+
+<hr class="light">
+<span class="subheader"> Returns:</span>
+
+   <span class="argumentLabel">xPolygonLeft</span>         <span class="argumentEntry">The pixel x-coordinates of the left edges of each pixel</span>
+                        <span class="argumentEntry">line in the polygon (when xPolygonAddrHi is the high</span>
+                        <span class="argumentEntry">byte of xPolygonLeft)</span>
+
+   <span class="argumentLabel">xPolygonRight</span>        <span class="argumentEntry">The pixel x-coordinates of the right edges of each pixel</span>
+                        <span class="argumentEntry">line in the polygon (when xPolygonAddrHi is the high</span>
+                        <span class="argumentEntry">byte of xPolygonRight)</span>
+
+</div></div>
+<span class="label">.tred1</span><a id="tred1" class="anchor"></a>
+
+ <span class="mne">JMP</span> <a class="popup destination">tred35</a>             <span class="comment">\ Jump to part 6 to trace an edge with two-byte start or</span>
+                        <span class="comment">\ end point x-coordinates</span>
+
+<span class="label">.tred2</span><a id="tred2" class="anchor"></a>
+
+ <span class="mne">RTS</span>                    <span class="comment">\ Return from the subroutine</span>
+
+<span class="label">.TracePolygonEdge</span><a id="tracepolygonedge" class="anchor"></a>
+
+                        <span class="comment">\ We start by updating yPolygonBottom so it covers the</span>
+                        <span class="comment">\ y-coordinate of the end point of the edge, as the end</span>
+                        <span class="comment">\ point has the lower y-coordinate</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yEdgeEndHi</a>         <span class="comment">\ If yEdgeEnd(Hi Lo) is negative then the end point is</span>
+ <span class="mne">BMI</span> <a class="popup destination">tred3</a>              <span class="comment">\ in the lower half of the screen, so jump to tred3 to</span>
+                        <span class="comment">\ set yPolygonBottom to the lowest point in the screen</span>
+                        <span class="comment">\ buffer, i.e. minPitchAngle</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">tred2</a>              <span class="comment">\ If yEdgeEndHi > 0 then the end point is off the top of</span>
+                        <span class="comment">\ the screen, so jump to tred2 to return from the</span>
+                        <span class="comment">\ subroutine</span>
+
+                        <span class="comment">\ If we get here then yEdgeEndHi = 0, so now we analyse</span>
+                        <span class="comment">\ the low byte of yEdgeEnd(Hi Lo)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yEdgeEndLo</a>         <span class="comment">\ If yEdgeEndLo >= maxPitchAngle then the edge ends</span>
+ <span class="mne">CMP</span> <a class="popup variable">maxPitchAngle</a>      <span class="comment">\ beyond the top of the screen buffer, so jump to tred2</span>
+ <span class="mne">BCS</span> <a class="popup destination">tred2</a>              <span class="comment">\ to return from the subroutine</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">yPolygonBottom</a>     <span class="comment">\ If yEdgeEndLo >= yPolygonBottom then yPolygonBottom</span>
+ <span class="mne">BCS</span> <a class="popup destination">tred5</a>              <span class="comment">\ already covers the y-coordinate, so jump to tred5 to</span>
+                        <span class="comment">\ move on to the next calculation</span>
+
+                        <span class="comment">\ If we get here then yEdgeEndLo &lt; yPolygonBottom, so we</span>
+                        <span class="comment">\ need to reduce yPolygonBottom to cater for this new</span>
+                        <span class="comment">\ y-coordinate</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">minPitchAngle</a>      <span class="comment">\ If yEdgeEndLo >= minPitchAngle, then the y-coordinate</span>
+ <span class="mne">BCS</span> <a class="popup destination">tred4</a>              <span class="comment">\ in yEdgeEndLo is inside the screen buffer, so jump</span>
+                        <span class="comment">\ to tred4 to store this as the new value of</span>
+                        <span class="comment">\ yPolygonBottom</span>
+
+                        <span class="comment">\ Otherwise yEdgeEndLo is below the bottom of the screen</span>
+                        <span class="comment">\ buffer, so we need to clip yPolygonBottom to the</span>
+                        <span class="comment">\ y-coordinate of the bottom of the screen buffer</span>
+
+<span class="label">.tred3</span><a id="tred3" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">minPitchAngle</a>      <span class="comment">\ Set A = minPitchAngle, so A is clipped to the bottom</span>
+                        <span class="comment">\ of the screen buffer</span>
+
+<span class="label">.tred4</span><a id="tred4" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">yPolygonBottom</a>     <span class="comment">\ Set yPolygonBottom to the clipped value of yEdgeEndLo</span>
+                        <span class="comment">\ as this is the lowest y-coordinate we have found yet</span>
+
+<span class="label">.tred5</span><a id="tred5" class="anchor"></a>
+
+                        <span class="comment">\ Next we update yPolygonTop so it covers the</span>
+                        <span class="comment">\ y-coordinate of the start point of the edge</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yEdgeStartHi</a>       <span class="comment">\ If yEdgeStart(Hi Lo) is negative then the start point</span>
+ <span class="mne">BMI</span> <a class="popup destination">tred2</a>              <span class="comment">\ is off the bottom of the screen, so jump to tred2 to</span>
+                        <span class="comment">\ return from the subroutine</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">tred6</a>              <span class="comment">\ If 0 &lt; yEdgeStartHi &lt; 128 then the start point is</span>
+                        <span class="comment">\ beyond the top of the screen, so jump to tred6 to set</span>
+                        <span class="comment">\ yPolygonTop to the highest point in the screen buffer,</span>
+                        <span class="comment">\ i.e. maxPitchAngle</span>
+
+                        <span class="comment">\ If we get here then yEdgeStartHi = 0, so now we</span>
+                        <span class="comment">\ analyse the low byte of yEdgeStart(Hi Lo)</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">yEdgeStartLo</a>       <span class="comment">\ If yEdgeStartLo &lt; minPitchAngle then the edge starts</span>
+ <span class="mne">CMP</span> <a class="popup variable">minPitchAngle</a>      <span class="comment">\ below the bottom of the screen buffer, so jump to</span>
+ <span class="mne">BCC</span> <a class="popup destination">tred2</a>              <span class="comment">\ tred2 to return from the subroutine</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">yPolygonTop</a>        <span class="comment">\ If yEdgeStartLo &lt; yPolygonTop then yPolygonTop already</span>
+ <span class="mne">BCC</span> <a class="popup destination">tred8</a>              <span class="comment">\ caters for the y-coordinate, so jump to tred8 to move</span>
+                        <span class="comment">\ on to the next calculation</span>
+
+                        <span class="comment">\ If we get here then yEdgeStartLo >= yPolygonTop, so we</span>
+                        <span class="comment">\ need to bump up yPolygonTop to cater for this new</span>
+                        <span class="comment">\ y-coordinate</span>
+
+ <span class="mne">CMP</span> <a class="popup variable">maxPitchAngle</a>      <span class="comment">\ If yEdgeStartLo &lt; maxPitchAngle, then the y-coordinate</span>
+ <span class="mne">BCC</span> <a class="popup destination">tred7</a>              <span class="comment">\ in yEdgeStartLo is inside the screen buffer, so jump</span>
+                        <span class="comment">\ to tred7 to store this as the new value of yPolygonTop</span>
+
+                        <span class="comment">\ Otherwise yEdgeStartLo is beyond the top of the screen</span>
+                        <span class="comment">\ buffer, so we need to clip yPolygonTop to the</span>
+                        <span class="comment">\ y-coordinate of the top of the screen buffer</span>
+
+<span class="label">.tred6</span><a id="tred6" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">maxPitchAngle</a>      <span class="comment">\ Set A = maxPitchAngle - 1, so A is clipped to the top</span>
+ <span class="mne">SEC</span>                    <span class="comment">\ of the screen buffer</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">1</span>
+
+<span class="label">.tred7</span><a id="tred7" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">yPolygonTop</a>        <span class="comment">\ Set yPolygonTop to the clipped value of yEdgeStartLo</span>
+                        <span class="comment">\ as this is the highest y-coordinate we have found yet</span>
+
+<span class="label">.tred8</span><a id="tred8" class="anchor"></a>
+
+ <span class="mne">LDA</span> <a class="popup variable">xEdgeStartHi</a>       <span class="comment">\ If either of the start or end points have a non-zero</span>
+ <span class="mne">ORA</span> <a class="popup variable">xEdgeEndHi</a>         <span class="comment">\ high byte in their x-coordinates, jump to part 4 via</span>
+ <span class="mne">BNE</span> <a class="popup destination">tred1</a>              <span class="comment">\ tred1 to trace the polygon edge accordingly</span>
+
+                        <span class="comment">\ If we get here then both xEdgeStartHi and xEdgeEndHi</span>
+                        <span class="comment">\ are zero, so the x-coordinates for the polygon edge</span>
+                        <span class="comment">\ are all in the range 0 to 255</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">xEdgeStartLo</a>       <span class="comment">\ Set A = xEdgeStartLo - xEdgeEndLo</span>
+ <span class="mne">SEC</span>                    <span class="comment">\</span>
+ <span class="mne">SBC</span> <a class="popup variable">xEdgeEndLo</a>         <span class="comment">\ So A contains the x-axis delta along the edge we are</span>
+                        <span class="comment">\ tracing</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">tred9</a>              <span class="comment">\ If the subtraction didn't underflow, jump to tred9 to</span>
+                        <span class="comment">\ store the result in xEdgeDelta, as it is already the</span>
+                        <span class="comment">\ correct sign for the absolute value</span>
+
+ <span class="mne">EOR</span> <span class="hash">#</span><span class="hex">&FF</span>               <span class="comment">\ Negate A using two's complement, so that A is now</span>
+ <span class="mne">CLC</span>                    <span class="comment">\ positive and contains the absolute value of the</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">1</span>                 <span class="comment">\ distance in the x-axis between the two points</span>
+
+ <span class="mne">STA</span> <a class="popup variable">xEdgeDelta</a>         <span class="comment">\ Store the result in xEdgeDelta, so xEdgeDelta is the</span>
+                        <span class="comment">\ positive absolute of the x-axis delta, as follows:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   xEdgeDelta = |xEdgeStartLo - xEdgeEndLo|</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="hex">&E8</span>               <span class="comment">\ Set A to the opcode for the INX instruction, so we</span>
+                        <span class="comment">\ trace along the edge by incrementing X</span>
+
+ <span class="mne">BNE</span> <a class="popup destination">tred10</a>             <span class="comment">\ Jump to tred10 to keep going (this BNE is effectively</span>
+                        <span class="comment">\ a JMP as X is never zero)</span>
+
+<span class="label">.tred9</span><a id="tred9" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">xEdgeDelta</a>         <span class="comment">\ Set xEdgeDelta to the positive x-axis delta, so this</span>
+                        <span class="comment">\ is the case:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   xEdgeDelta = |xEdgeStartLo - xEdgeEndLo|</span>
+
+ <span class="mne">LDX</span> <span class="hash">#</span><span class="hex">&CA</span>               <span class="comment">\ Set A to the opcode for the DEX instruction, so we</span>
+                        <span class="comment">\ trace along the edge by decrementing X</span>
+
+<span class="label">.tred10</span><a id="tred10" class="anchor"></a>
+
+                        <span class="comment">\ By this point we have the following:</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * xEdgeDelta = |xEdgeStartLo - xEdgeEndLo|</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * X is the correct opcode for tred12 (DEX or INX)</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">xEdgeDelta</a>         <span class="comment">\ Set the status flags on the comparison of xEdgeDelta</span>
+ <span class="mne">CPY</span> <a class="popup variable">yEdgeDeltaLo</a>       <span class="comment">\ and yEdgeDeltaLo, so we can decide which axis has the</span>
+                        <span class="comment">\ longer side along the polygon edge (and therefore</span>
+                        <span class="comment">\ which axis we should step along when tracing the edge)</span>
+
+ <span class="mne">LDY</span> <a class="popup variable">yEdgeStartLo</a>       <span class="comment">\ Set (A Y) = (xPolygonAddrHi yEdgeStartLo) to use as</span>
+ <span class="mne">LDA</span> <a class="popup variable">xPolygonAddrHi</a>     <span class="comment">\ the storage address in the modification below</span>
+
+ <span class="mne">BCS</span> <a class="popup destination">tred18</a>             <span class="comment">\ If xEdgeDelta >= yEdgeDeltaLo then the x-axis delta is</span>
+                        <span class="comment">\ the biggest and the edge has a shallow gradient, so</span>
+                        <span class="comment">\ jump to part 3 to trace the edge by stepping along the</span>
+                        <span class="comment">\ x-axis</span>
+
+                        <span class="comment">\ Otherwise the edge has a steep gradient, so fall</span>
+                        <span class="comment">\ through into part 2 to trace the edge by stepping</span>
+                        <span class="comment">\ along the y-axis</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-maxpitchangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#maxpitchangle">maxPitchAngle</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The maximum pitch angle that fits into the current screen buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-minpitchangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#minpitchangle">minPitchAngle</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The minimum pitch angle that fits into the current screen buffer</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html#tred1">tred1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred10"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html#tred10">tred10</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred18"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_3_of_8.html#tred18">tred18</a> in subroutine <a href="/source/main/subroutine/tracepolygonedge_part_3_of_8.html">TracePolygonEdge (Part 3 of 8)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html#tred2">tred2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html#tred3">tred3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred35"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_6_of_8.html#tred35">tred35</a> in subroutine <a href="/source/main/subroutine/tracepolygonedge_part_6_of_8.html">TracePolygonEdge (Part 6 of 8)</a></div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html#tred4">tred4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred5"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html#tred5">tred5</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred6"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html#tred6">tred6</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred7"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html#tred7">tred7</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred8"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html#tred8">tred8</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-tred9"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/tracepolygonedge_part_1_of_8.html#tred9">tred9</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgedelta"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgedelta">xEdgeDelta</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The scaled and signed x-axis delta between two polygon points when tracing the polygon edges (single byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgeendhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgeendhi">xEdgeEndHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of the end point in the polygon edge being processed (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgeendlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgeendlo">xEdgeEndLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of the end point in the polygon edge being processed (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgestarthi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgestarthi">xEdgeStartHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of the start point in the polygon edge being processed (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xedgestartlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xedgestartlo">xEdgeStartLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The x-coordinate of the start point in the polygon edge being processed (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-xpolygonaddrhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#xpolygonaddrhi">xPolygonAddrHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The high byte of the address of the table where we store the x-coordinate of the polygon line being processed, so this is either HI(xPolygonLeft) or HI(xPolygonRight)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgedeltalo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgedeltalo">yEdgeDeltaLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The difference in pitch angle between two polygon points, i.e. the delta along the y-axis (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgeendhi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgeendhi">yEdgeEndHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the end point in the polygon edge being processed (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgeendlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgeendlo">yEdgeEndLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the end point in the polygon edge being processed (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgestarthi"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgestarthi">yEdgeStartHi</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the start point in the polygon edge being processed (high byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-yedgestartlo"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#yedgestartlo">yEdgeStartLo</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the start point in the polygon edge being processed (low byte)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ypolygonbottom"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ypolygonbottom">yPolygonBottom</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the bottom of the polygon being drawn (where higher y-coordinates are up the screen)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ypolygontop"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#ypolygontop">yPolygonTop</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The y-coordinate of the top of the polygon being drawn (where higher y-coordinates are up the screen)</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/getpolygonlines_part_5_of_6.html">GetPolygonLines (Part 5 of 6)</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/tracepolygonedge_part_2_of_8.html">TracePolygonEdge (Part 2 of 8)</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

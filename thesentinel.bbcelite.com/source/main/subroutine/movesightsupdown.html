@@ -1,0 +1,168 @@
+<?php
+include_once("../../../templates/template_functions.php");
+page_header("sights", "subroutine_movesightsupdown.html", "The MoveSightsUpDown subroutine", "Sights: MoveSightsUpDown", "Annotated code for the MoveSightsUpDown subroutine in The Sentinel", "the_sentinel-code", "source_sights", "subroutine_movesightsupdown", "");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/movesightssideways.html">MoveSightsSideways</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/setsightsaddress.html">SetSightsAddress</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+<pre class="codeBlock sourceCode initial"><div class="headerBlockWrapper"><div class="headerBlock"><span class="headerLabel">       Name:</span> <span class="headerEntry">MoveSightsUpDown</span>                                        <span class="routineLink">[<a class="extraDataLink" href="#">Show more</a>]</span>
+<span class="headerLabel">       Type:</span> <span class="headerEntry">Subroutine</span>
+<span class="headerLabel">   Category:</span> <span class="headerEntry">Sights</span>
+<span class="headerLabel">    Summary:</span> <span class="headerEntry">Check for the up/down keys and move the sights accordingly,</span>
+             <span class="headerEntry">panning up or down if they go past the screen edges</span>
+<div class="extraData"><span class="headerLabel">    Context:</span> <span class="headerEntry">See this subroutine <a href="/source/all/the_sentinel_h.html#header-movesightsupdown">in context in the source code</a></span>
+<span class="headerLabel"> References:</span> <span class="headerEntry">This subroutine is called as follows:</span>
+             <span class="headerEntry">* <a href="/source/main/subroutine/movesights.html">MoveSights</a> calls <a href="#movesightsupdown">MoveSightsUpDown</a></span>
+</div>
+</div></div>
+<span class="label">.MoveSightsUpDown</span><a id="movesightsupdown" class="anchor"></a>
+
+ <span class="mne">LDX</span> <a class="popup variable">playerObject</a>       <span class="comment">\ Set Y to the current pitch angle of the player</span>
+ <span class="mne">LDY</span> <a class="popup variable">objectPitchAngle</a>,<span class="register">X</span>
+
+ <span class="mne">LDX</span> <a class="popup variable">keyLogger</a><span class="operator">+</span><span class="decimal">2</span>        <span class="comment">\ Set X to the key logger entry for "L" and "," (pan</span>
+                        <span class="comment">\ up, pan down), which are used to move the sights</span>
+
+ <span class="mne">BMI</span> <a class="popup destination">sadr3</a>              <span class="comment">\ If there is no key press in the key logger entry, jump</span>
+                        <span class="comment">\ to sadr3 to return from the subroutine</span>
+
+                        <span class="comment">\ If we get here then "L" or "," is being pressed, which</span>
+                        <span class="comment">\ will put 2 or 3 into the key logger respectively</span>
+
+ <span class="mne">CPX</span> <span class="hash">#</span><span class="decimal">2</span>                 <span class="comment">\ If X = 3 then "," is being pressed, so jump to siud2</span>
+ <span class="mne">BNE</span> <a class="popup destination">siud2</a>              <span class="comment">\ to process moving the sights down</span>
+
+                        <span class="comment">\ If we get here then X = 2, so "L" is being pressed,</span>
+                        <span class="comment">\ which is the key for moving the sights up</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">ySights</a>            <span class="comment">\ Increment ySights to move the sights up</span>
+ <span class="mne">CLC</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">1</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">160</span>               <span class="comment">\ If ySights &lt; 160 then skip the following, as the</span>
+ <span class="mne">BCC</span> <a class="popup destination">siud1</a>              <span class="comment">\ sights have not moved off the top edge of the screen</span>
+
+ <span class="mne">CPY</span> <a class="popup variable">highestPitchAngle</a>  <span class="comment">\ If the player's pitch angle is already equal to the</span>
+ <span class="mne">BEQ</span> <a class="popup destination">sadr3</a>              <span class="comment">\ the pitch angle of the highest gaze allowed, then jump</span>
+                        <span class="comment">\ to sadr3 to return from the subroutine without moving</span>
+                        <span class="comment">\ the sights, as we can't move them any higher</span>
+
+ <span class="mne">SEC</span>                    <span class="comment">\ Subtract 64 from A to move the sights down by 64, as</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">64</span>                <span class="comment">\ we are about to pan the screen up</span>
+
+ <span class="mne">STX</span> <a class="popup variable">panKeyBeingPressed</a> <span class="comment">\ Set panKeyBeingPressed to the key logger entry for "L"</span>
+                        <span class="comment">\ to pretend that the "L" key is being pressed to pan</span>
+                        <span class="comment">\ the screen as well as move the sights</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This will pan up by scrolling the screen down</span>
+
+<span class="label">.siud1</span><a id="siud1" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">ySights</a>            <span class="comment">\ Update the y-coordinate of the sights to the updated</span>
+                        <span class="comment">\ value in A</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00000111</span>         <span class="comment">\ If the y-coordinate is not a multiple of eight then</span>
+ <span class="mne">BNE</span> <a class="popup destination">SetSightsAddress</a>   <span class="comment">\ the sights are still within the same character row, so</span>
+                        <span class="comment">\ jump to SetSightsAddress with X = 2 to update the</span>
+                        <span class="comment">\ address variables for the sights</span>
+
+ <span class="mne">JMP</span> <a class="popup destination">siud4</a>              <span class="comment">\ Otherwise jump to sisd4 to increment X to 4 before</span>
+                        <span class="comment">\ falling into SetSightsAddress to set the address</span>
+                        <span class="comment">\ variables for the sights</span>
+
+<span class="label">.siud2</span><a id="siud2" class="anchor"></a>
+
+                        <span class="comment">\ If we get here then X = 3, so "," is being pressed,</span>
+                        <span class="comment">\ which is the key for moving the sights down</span>
+
+ <span class="mne">LDA</span> <a class="popup variable">ySights</a>            <span class="comment">\ Decrement ySights to move the sights down</span>
+ <span class="mne">SEC</span>
+ <span class="mne">SBC</span> <span class="hash">#</span><span class="decimal">1</span>
+
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="decimal">32</span>                <span class="comment">\ If ySights >= 32 then skip the following, as the</span>
+ <span class="mne">BCS</span> <a class="popup destination">siud3</a>              <span class="comment">\ sights have not moved off the bottom edge of the</span>
+                        <span class="comment">\ screen</span>
+
+ <span class="mne">CPY</span> <a class="popup variable">lowestPitchAngle</a>   <span class="comment">\ If the player's pitch angle is already equal to the</span>
+ <span class="mne">BEQ</span> <a class="popup destination">sadr3</a>              <span class="comment">\ the pitch angle of the lowest gaze allowed, then jump</span>
+                        <span class="comment">\ to sadr3 to return from the subroutine without moving</span>
+                        <span class="comment">\ the sights, as we can't move them any lower</span>
+
+ <span class="mne">CLC</span>                    <span class="comment">\ Add 64 to A to move the sights up by 64, as we are</span>
+ <span class="mne">ADC</span> <span class="hash">#</span><span class="decimal">64</span>                <span class="comment">\ about to pan the screen up</span>
+
+ <span class="mne">STX</span> <a class="popup variable">panKeyBeingPressed</a> <span class="comment">\ Set panKeyBeingPressed to the key logger entry for ","</span>
+                        <span class="comment">\ to pretend that the "," key is being pressed to pan</span>
+                        <span class="comment">\ the screen as well as move the sights</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\ This will pan down by scrolling the screen up</span>
+
+<span class="label">.siud3</span><a id="siud3" class="anchor"></a>
+
+ <span class="mne">STA</span> <a class="popup variable">ySights</a>            <span class="comment">\ Update the y-coordinate of the sights to the updated</span>
+                        <span class="comment">\ value in A</span>
+
+ <span class="mne">AND</span> <span class="hash">#</span><span class="binary">%00000111</span>         <span class="comment">\ If the y-coordinate is not one less than a multiple of</span>
+ <span class="mne">CMP</span> <span class="hash">#</span><span class="binary">%00000111</span>         <span class="comment">\ eight then the sights are still within the current</span>
+ <span class="mne">BNE</span> <a class="popup destination">SetSightsAddress</a>   <span class="comment">\ character row, so jump to SetSightsAddress with X = 3</span>
+                        <span class="comment">\ to update the address variables for the sights</span>
+
+                        <span class="comment">\ Otherwise increment X to 5 before falling into</span>
+                        <span class="comment">\ SetSightsAddress to set the address variables for the</span>
+                        <span class="comment">\ sights</span>
+
+<span class="label">.siud4</span><a id="siud4" class="anchor"></a>
+
+ <span class="mne">INX</span>                    <span class="comment">\ Increment X by 2, so:</span>
+ <span class="mne">INX</span>                    <span class="comment">\</span>
+                        <span class="comment">\   * X = 4 if "L" was pressed to move the sights up and</span>
+                        <span class="comment">\     this moved the sights into the character row above</span>
+                        <span class="comment">\</span>
+                        <span class="comment">\   * X = 5 if "," was pressed to move the sights down</span>
+                        <span class="comment">\     and this moved the sights into the character row</span>
+                        <span class="comment">\     below</span>
+
+                        <span class="comment">\ Fall into SetSightsAddress to set the address</span>
+                        <span class="comment">\ variables for the sights</span>
+</pre>
+				</div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-setsightsaddress"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Subroutine <a href="/source/main/subroutine/setsightsaddress.html">SetSightsAddress</a> (category: Sights)</div><div class="summary">Update the address variables for the sights when they move into a new character block or row</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-highestpitchangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/highestpitchangle.html">highestPitchAngle</a> (category: Sights)</div><div class="summary">The pitch angle of the highest point that the player can look at with the sights</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-keylogger"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#keylogger">keyLogger</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The four-byte key logger for logging game key presses</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-lowestpitchangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="link">Variable <a href="/source/main/variable/lowestpitchangle.html">lowestPitchAngle</a> (category: Sights)</div><div class="summary">The pitch angle of the lowest point that the player can look at with the sights</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-objectpitchangle"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/stack_variables.html#objectpitchangle">objectPitchAngle</a> in workspace <a href="/source/main/workspace/stack_variables.html">Stack variables</a></div><div class="summary">The pitch angle for each object (i.e. the vertical direction in which they are facing)</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-pankeybeingpressed"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#pankeybeingpressed">panKeyBeingPressed</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The direction in which the player is currently panning</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-playerobject"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/zero_page.html#playerobject">playerObject</a> in workspace <a href="/source/main/workspace/zero_page.html">Zero page</a></div><div class="summary">The number of the player object</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-sadr3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Entry point <a href="/source/main/subroutine/setsightsaddress.html#sadr3">sadr3</a> in subroutine <a href="/source/main/subroutine/setsightsaddress.html">SetSightsAddress</a> (category: Sights)</div><div class="summary">Contains an RTS</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-siud1"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/movesightsupdown.html#siud1">siud1</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-siud2"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/movesightsupdown.html#siud2">siud2</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-siud3"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/movesightsupdown.html#siud3">siud3</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-siud4"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Label <a href="/source/main/subroutine/movesightsupdown.html#siud4">siud4</a> is local to this routine</div></div></div></div>
+
+				<div class="codeBlockWrapper popupWrapper" id="popup-ysights"><div class="codeBlock"><div class="close">[X]</div><div class="content"><div class="name">Variable <a href="/source/main/workspace/main_variable_workspace.html#ysights">ySights</a> in workspace <a href="/source/main/workspace/main_variable_workspace.html">Main variable workspace</a></div><div class="summary">The pixel y-coordinate of the sights on-screen</div></div></div></div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous routine" href="/source/main/subroutine/movesightssideways.html">MoveSightsSideways</a><a class="next" rel="next" title="Next routine" href="/source/main/subroutine/setsightsaddress.html">SetSightsAddress</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>
