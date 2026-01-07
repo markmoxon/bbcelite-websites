@@ -62,6 +62,18 @@ switch ($SERVER_NAME) {
 		$DEFAULT_THEME = "themeElite";
 		break;
 
+	case 'thesentinel.bbcelite.com':
+	case 'dev.thesentinel.bbcelite.com':
+		$DOMAIN = "thesentinel.bbcelite.com";
+		$SITE_SUBTITLE1 = "";
+		$SITE_TITLE = "The Sentinel";
+		$SITE_SUBTITLE2 = " on the BBC Micro";
+		$SITE_SUBTITLE3 = "";
+		$SHOW_RANDOM_LINK = TRUE;
+		$AJAX_NAVIGATION = FALSE;
+		$DEFAULT_THEME = "themeElite";
+		break;
+
 	case 'lander.bbcelite.com':
 	case 'dev.lander.bbcelite.com':
 		$DOMAIN = "lander.bbcelite.com";
@@ -115,6 +127,8 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 
 	if (str_starts_with($page_type, 'aviator')) {
 		$twitter_image = 'https://aviator.bbcelite.com/images/github/github-social-preview.png';		
+	} elseif (str_starts_with($page_type, 'the_sentinel')) {
+		$twitter_image = 'https://thesentinel.bbcelite.com/images/github/github-social-preview.png';		
 	} elseif (str_starts_with($page_type, 'revs')) {
 		$twitter_image = 'https://revs.bbcelite.com/images/github/github-social-preview.png';		
 	} elseif (str_starts_with($page_type, 'lander')) {
@@ -209,6 +223,7 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 				<p><?php nav_link("www.bbcelite.com", "Mark Moxon's Software Archaeology"); ?></p>
 				<p><?php nav_link("elite.bbcelite.com", "Elite on the 6502"); ?></p>
 				<p><?php nav_link("aviator.bbcelite.com", "Aviator on the BBC Micro"); ?></p>
+				<p><?php nav_link("thesentinel.bbcelite.com", "The Sentinel on the BBC Micro"); ?></p>
 				<p><?php nav_link("revs.bbcelite.com", "Revs on the BBC Micro"); ?></p>
 				<p><?php nav_link("lander.bbcelite.com", "Lander on the Acorn Archimedes"); ?></p>
 				<p class="subheading">My writing sites</p>
