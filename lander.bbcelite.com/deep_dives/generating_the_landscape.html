@@ -23,7 +23,7 @@ page_header("deep_dives", "generating_the_landscape.html", "Generating the lands
 
 						<p>The first Archimedes machines boast memory specifications that made us Beeb owners drool back in the day; even the entry-level A305 comes with 512K of fully mapped RAM, a good four times the amount of memory in the BBC Master and 16 times that of the original BBC Micro. And these older machines had to rely on bank-switching to squeeze it all into the 6502's 8-bit memory map, while the Archimedes is the opposite, with a logical memory map that far outweighs the physical memory available (see the deep dive on <a href="the_lander_memory_map.html">the Lander memory map</a> for more on this).</p>
 
-						<p>So given all this memory, why can't we just store all of the game's landscape coordinates in memory and be done with it? Well, we possibly could, if were OK with limiting the landscape to, say, a repeating square pattern of 256 x 256 tiles, with the screen showing a 12 x 10 tile portion at any one time. (Note that Lander's landscape is actually infinite, but the game's <a href="placing_objects_on_the_map.html">object map is finite</a> and repeats like this, so this is a sensible size to choose for this hypothetical situation.) The shape of the landscape is defined by the altitude of the landscape at each tile corner, so the whole tile-shape of the landscape can be stored in 256 x 256 altitude values, so that's 65,536 numbers. As it stands, Lander calculates landscape heights as 32-bit values, so that would take up 256K of RAM, though you could probably get this down to at least half of that by dropping down the accuracy and squeezing multiple values into single words.</p>
+						<p>So given all this memory, why can't we just store all of the game's landscape coordinates in memory and be done with it? Well, we possibly could, if were OK with limiting the landscape to, say, a repeating square pattern of 256 x 256 tiles, with the screen showing a 12 x 10 tile portion at any one time (note that the game's <a href="placing_objects_on_the_map.html">object map is finite</a> and repeats every 256 x 256 tiles, so this is a sensible size to choose for this hypothetical situation). The shape of the landscape is defined by the altitude of the landscape at each tile corner, so the whole tile-shape of the landscape can be stored in 256 x 256 altitude values, so that's 65,536 numbers. As it stands, Lander calculates landscape heights as 32-bit values, so that would take up 256K of RAM, though you could probably get this down to at least half of that by dropping down the accuracy and squeezing multiple values into single words.</p>
 
 						<p>But even 128K is too much memory for a game that absolutely has to work in the Archimedes A305 (this game was commissioned by Acorn to show off all of their machines in their new range, after all). In the event, Lander needs 172K of memory in which to run, and to fit this into an A305 you have to disable the desktop, font and window managers. Adding 128K for the landscape was never going to be an option.</p>
 
@@ -119,7 +119,7 @@ page_header("deep_dives", "generating_the_landscape.html", "Generating the lands
 
 						<p>And for fans of Zarch, the more fully featured game that David Braben wrote next, using the Lander engine, it's interesting to compare a contour map of the above equation with the radar in Zarch. Here's the contour map from Wolfram Alpha:</p>
 
-						<img class="titleImage lightBorder photo" style="width: 322px; padding: 20px 20px 5px 5px; background-color: white" src="/images/deep_dives/landscape/waves_contour.gif" alt="A contour maps of the Lander landscape">
+						<img class="titleImage lightBorder photo" style="width: 322px; padding: 20px 20px 5px 5px; background-color: white" src="/images/deep_dives/landscape/waves_contour.gif" alt="A contour map of the Lander landscape">
 
 						<p>and here's a close-up of the Zarch radar:</p>
 
@@ -127,7 +127,32 @@ page_header("deep_dives", "generating_the_landscape.html", "Generating the lands
 
 						<p>Zarch clearly uses a different set of sine waves to generate its landscape, but you can see that it's the same process.</p>
 
-						<p>Very impressive!</p>
+						<p>Finally, it's worth noting that although the landscape appears to be infinite, it actually repeats periodically, just like the trigonometric functions from which is composed. In the case of Lander's landscape, the non-repeating landscape covers the range:</p>
+
+<pre class="articleIndented">  0 &lt;= x &lt; 2 * PI
+
+  0 &lt;= z &lt; 2 * PI
+</pre>
+
+						<p>because the sine lookup table at <a href="/source/main/variable/sintable.html">sinTable</a> contains 1024 values of the form:</p>
+
+<pre class="articleIndented">  (2^31 - 1) * SIN(2 * PI * (n / 1024))
+</pre>
+
+						<p>and this repeats every 1024 values of n. If we <a href="https://www.wolframalpha.com/input?i=3d+plot&assumption=%7B%22F%22%2C+%223DPlot%22%2C+%223dplotupperrange2%22%7D+-%3E%226.28%22&assumption=%7B%22F%22%2C+%223DPlot%22%2C+%223dplotupperrange1%22%7D+-%3E%226.28%22&assumption=%7B%22MC%22%2C+%223d+plot%22%7D+-%3E+%7B%22Calculator%22%2C+%22dflt%22%7D&assumption=%7B%22F%22%2C+%223DPlot%22%2C+%223dplotfunction%22%7D+-%3E%22-%282*sin%28x+-+2y%29+%2B+2*sin%284x+%2B+3y%29+%2B+2*sin%283y+-+5x%29+%2B+2*sin%283x+%2B+3y%29+%2B+sin%285x+%2B+11y%29+%2B+sin%2810x+%2B+7y%29%29%22&assumption=%7B%22F%22%2C+%223DPlot%22%2C+%223dplotvariable1%22%7D+-%3E%22x%22&assumption=%7B%22F%22%2C+%223DPlot%22%2C+%223dplotlowerrange1%22%7D+-%3E%22-6.28%22&assumption=%7B%22F%22%2C+%223DPlot%22%2C+%223dplotvariable2%22%7D+-%3E%22y%22&assumption=%7B%22F%22%2C+%223DPlot%22%2C+%223dplotlowerrange2%22%7D+-%3E%22-6.28%22">apply this range to our graph</a>, then we get this:</p>
+
+						<img class="titleImage lightBorder photo" style="width: 332px; padding: 20px 20px 5px 5px; background-color: white" src="/images/deep_dives/landscape/waves_contour_full.gif" alt="A contour map of the full Lander landscape">
+
+						<p>To make things more obvious, the range of this graph is double the period, so that's -2 * PI to 2 * PI in both axes. This means that the image shows four repeated squares of landscape, in the top-left, top-right, bottom-left and bottom-right. You can see that the repeated squares tessellate seamlessly, giving the impression of an infinite landscape when it's actually periodic.</p>
+
+						<p>And because the sine table divides n by 1024, the range in terms of landscape tile coordinates is this:</p>
+
+<pre class="articleIndented">  0 &lt;= x &lt; 1024
+
+  0 &lt;= z &lt; 1024
+</pre>
+
+						<p>which is easily big enough to make the game feel infinite. It's all very impressive.</p>
 
 						<h2 class="articleSubheader">Scale and parallel waves<br>
 						                             ------------------------</h2>
