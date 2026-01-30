@@ -97,9 +97,9 @@
 									<li><a id="deep_dives_maths_random_numbers" href="/deep_dives/random_numbers.html"><span class="menuTitle">Random numbers</span> <span class="menuSummary">How Aviator generates random numbers</span></a></li>
 								</ul>
 							</li>
-							<li id="deep_dives_other"><span class="menuTitle">Other</span> <span class="menuSummary menuSummarySubmenu">Key loggers and code secrets</span>
+							<li id="deep_dives_other"><span class="menuTitle">Miscellaneous</span> <span class="menuSummary menuSummarySubmenu">Key loggers and code secrets</span>
 								<ul id="submenu_deep_dives_other">
-									<li class="menuItemHeader">Other</li>
+									<li class="menuItemHeader">Miscellaneous</li>
 									<li><a id="deep_dives_other_the_key_logger" href="/deep_dives/the_key_logger.html"><span class="menuTitle">The key logger</span> <span class="menuSummary">Making sure that every key press makes gets recorded</span></a></li>
 									<li><a id="deep_dives_other_multi-byte_variables" href="/deep_dives/multi-byte_variables.html"><span class="menuTitle">Multi-byte variables</span> <span class="menuSummary">How Aviator stores multi-byte variables</span></a></li>
 									<li><a id="deep_dives_other_source_code_clues_hidden_in_the_game_binary" href="/deep_dives/source_code_clues_hidden_in_the_game_binary.html"><span class="menuTitle">Source code clues hidden in the game binary</span> <span class="menuSummary">Snippets of original source code and what they can tell us</span></a></li>
