@@ -11,7 +11,126 @@ page_header("deep_dives", "memory_map.html", "Memory map", "Memory map", "A deep
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Interleaving code and data to make the most of the BBC Micro's 32K of RAM</h2>
 
-						<p>This deep dive is being written and will be published in the next few weeks.</p>
+						<p>Compared to Revs, Geoff Crammond's previous game, The Sentinel is slightly less shoehorned into the BBC Micro's relatively conservative 32K of RAM, but it still manages to use pretty much every part of memory.</p>
+
+						<p>Indeed, the only unused 
+
+
+9 bytes unused in zero page 0-&08FF
+
+35 bytes in &0C00
+
+21 unused bytes in main memory
+
+
+
+<pre class="articleIndented">  +-----------------------------------+   &amp;FFFF
+  |                                   |
+  | Machine Operating System (MOS)    |
+  |                                   |
+  +-----------------------------------+   &amp;C000
+  |                                   |
+  | Paged ROMs                        |
+  |                                   |
+  +-----------------------------------+-- &amp;8000
+  |                                   |
+  | Screen memory (custom mode 5)     |
+  |                                   |
+  +-----------------------------------+-- &amp;6000
+  |                                   |
+  | Main game code                    |
+  |                                   |
+  +-----------------------------------+   &amp;5260 = <a href="/source/main/variable/objsentinel.html">objSentinel</a>
+  |                                   |
+  | Main game code & screen buffers   |
+  |                                   |
+  +-----------------------------------+-- &amp;3F00 = <a href="/source/main/variable/screenbufferrow0.html">screenBufferRow0</a>
+  |                                   |
+  | Main game code                    |
+  |                                   |
+  +-----------------------------------+   &amp;0D00 = <a href="/source/main/subroutine/nmihandler.html">NMIHandler</a>
+  |                                   |
+  | Main variable workspace           |
+  |                                   |
+  +-----------------------------------+   &amp;0C00 = <a href="/source/main/workspace/main_variable_workspace.html#sinanglelo">sinAngleLo</a>
+  |                                   |
+  | Object variables &amp; drawing tables |
+  |                                   |
+  +-----------------------------------+   &amp;0900 = <a href="/source/main/variable/xobject.html">xObject</a>
+  |                                   |
+  | Tile data                         |
+  |                                   |
+  +-----------------------------------+   &amp;0400 = <a href="/source/main/variable/tiledata.html">tileData</a>
+  |                                   |
+  | MOS VDU workspace                 |
+  |                                   |
+  +-----------------------------------+   &amp;0300
+  |                                   |
+  | MOS general workspace             |
+  |                                   |
+  +-----------------------------------+   &amp;0200
+  |                                   |
+  | 6502 stack descends from &amp;01FF    |
+  |                                   |
+  +-----------------------------------+
+  |                                   |
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  .                                   .
+  |                                   |
+  +-----------------------------------+   &amp;01C0
+  |                                   |
+  | Stack variables workspace         |
+  |                                   |
+  +-----------------------------------+   &amp;0100 = <a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a>
+  |                                   |
+  | Zero page workspace               |
+  |                                   |
+  +-----------------------------------+   &amp;0000 = <a href="/source/main/workspace/zero_page.html#enemyobject">enemyObject</a>
+</pre>
+
+						<p>Note that the memory map shows the full 64K of addressable memory that's supported by the BBC's 6502 processor, but only the bottom 32K is writable RAM, and hence usable by The Sentinel. The top 16K is mapped to the MOS (Machine Operating System) ROM, and the next 16K is mapped to the currently selected paged ROM, which might be anything from BBC BASIC to the VIEW word processor.</p>
+
+						<p>This 32K of RAM includes both screen memory and the various operating system workspaces, which can leave a pretty small amount for programs (especially in high resolution screen modes). Let's take a look at exactly how much unused memory there is in The Sentinel.</p>
+
+						<h2 class="articleSubheader">Memory usage<br>
+													 ------------</h2>
+
+						<p>Here's a full breakdown of memory usage in bytes, once The Sentinel is loaded and running:</p>
+
+						<table class="spacedTableBorder codeSummary"></td></tr>
+							<tr class="codeSummaryHeader"><th>Memory contents</th><th class="right">Bytes</th><th class="right">Unused</th></tr></td></tr>
+							<tr><td>Machine operating system (MOS) ROM</td><td class="right">16,384</td><td class="right">-</td></tr>
+							<tr><td>Paged ROMs</td><td class="right">16,384</td><td class="right">-</td></tr>
+							<tr><td>MOS general workspace in page 2</td><td class="right">256</td><td class="right">-</td></tr>
+							<tr><td>MOS VDU workspace in page 3</td><td class="right">256</td><td class="right">-</td></tr>
+							<tr><td>MOS zero page locations, &amp;D0-&amp;E1 and &amp;E4-&amp;FF inclusive</td><td class="right">46</td><td class="right">-</td></tr>
+							<tr class="codeSummaryCategory"><td>Total MOS and ROM memory</td><td class="right">33,326</td><td class="right">-</td></tr>
+							<tr><td>&nbsp;</td><td class="right">&nbsp;</td><td class="right">&nbsp;</td></tr>
+							<tr><td>Memory for the custom screen mode</td><td class="right">8,192</td><td class="right">-</td></tr>
+							<tr><td>6502 stack, stack variables (at opposite ends of page 1)</td><td class="right">256</td><td class="right">-</td></tr>
+							<tr class="codeSummaryCategory"><td>Total shared memory</td><td class="right">8,448</td><td class="right">-</td></tr>
+							<tr><td>&nbsp;</td><td class="right">&nbsp;</td><td class="right">&nbsp;</td></tr>
+							<tr><td>Main game code (excluding screen buffers)</td><td class="right">17,408</td><td class="right">21</td></tr>
+							<tr class="codeSummaryCategory"><td>Total game code memory</td><td class="right">17,408</td><td class="right">21</td></tr>
+							<tr><td>&nbsp;</td><td class="right">&nbsp;</td><td class="right">&nbsp;</td></tr>
+							<tr><td>Screen buffers</td><td class="right">3,840</td><td class="right">-</td></tr>
+							<tr><td>Object variables & drawing tables</td><td class="right">768</td><td class="right">-</td></tr>
+							<tr><td>Main variable workspace at &0C00</td><td class="right">256</td><td class="right">35</td></tr>
+							<tr><td>Zero page workspace (commonly used variables)</td><td class="right">210</td><td class="right">73</td></tr>
+							<tr class="codeSummaryCategory"><td>Total workspace memory</td><td class="right">5,074</td><td class="right">108</td></tr>
+							<tr><td>&nbsp;</td><td class="right">&nbsp;</td><td class="right">&nbsp;</td></tr>
+							<tr class="codeSummaryCategory"><td>Total memory</td><td class="right">65,536</td><td class="right">129</td></tr>
+						</table>
+
+
+
+
+
+
+
 					</div>
 				</div>
 
