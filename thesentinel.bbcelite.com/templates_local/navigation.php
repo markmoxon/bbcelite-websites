@@ -34,15 +34,20 @@
 							<li class="menuItemHeader">Index</li>
 							<li><a id="deep_dives_index" href="/deep_dives/"><span class="menuTitle">Index of all deep dive articles</span><span class="menuSummary">Discover how The Sentinel works under the hood</span></a></li>
 							<li class="menuItemHeader">Deep dives</li>
-							<li id="deep_dives_maths"><span class="menuTitle">Code structure and game loops</span> <span class="menuSummary menuSummarySubmenu">Memory maps and the main game loops</span>
-								<ul id="submenu_deep_dives_code_structure_and_game_loops">
-									<li class="menuItemHeader">Code structure and game loops</li>
-									<li><a id="deep_dives_code_structure_and_game_loops_memory_map" href="/deep_dives/memory_map.html"><span class="menuTitle">Memory map</span> <span class="menuSummary">Interleaving code and data to make the most of the BBC Micro's 32K of RAM</span></a></li>
-									<li><a id="deep_dives_code_structure_and_game_loops_entry_and_setup_code" href="/deep_dives/entry_and_setup_code.html"><span class="menuTitle">Entry and setup code</span> <span class="menuSummary">Exploring how The Sentinel unravels itself after loading</span></a></li>
-									<li><a id="deep_dives_code_structure_and_game_loops_program_flow_of_the_main_title_loop" href="/deep_dives/program_flow_of_the_main_title_loop.html"><span class="menuTitle">Program flow of the main title loop</span> <span class="menuSummary">The convoluted loop that displays the title and landscape preview screens</span></a></li>
-									<li><a id="deep_dives_code_structure_and_game_loops_program_flow_of_the_main_game_loop" href="/deep_dives/program_flow_of_the_main_game_loop.html"><span class="menuTitle">Program flow of the main game loop</span> <span class="menuSummary">The sequence of events in the main game loop</span></a></li>
-									<li><a id="deep_dives_code_structure_and_game_loops_program_flow_of_the_gameplay_loop" href="/deep_dives/program_flow_of_the_gameplay_loop.html"><span class="menuTitle">Program flow of the gameplay loop</span> <span class="menuSummary">Processing enemy tactics with the main gameplay loop</span></a></li>
-									<li><a id="deep_dives_code_structure_and_game_loops_the_interrupt_handler" href="/deep_dives/the_interrupt_handler.html"><span class="menuTitle">The interrupt handler</span> <span class="menuSummary">The key processes that run in the background, 50 times a second</span></a></li>
+							<li id="deep_dives_maths"><span class="menuTitle">Memory maps</span> <span class="menuSummary menuSummarySubmenu">Memory maps and the loading process</span>
+								<ul id="submenu_deep_dives_memory_maps">
+									<li class="menuItemHeader">Memory maps</li>
+									<li><a id="deep_dives_memory_maps_the_sentinel_memory_map" href="/deep_dives/the_sentinel_memory_map.html"><span class="menuTitle">The Sentinel memory map</span> <span class="menuSummary">Interleaving code and data to make the most of the BBC Micro's 32K of RAM</span></a></li>
+									<li><a id="deep_dives_memory_maps_entry_and_setup_code" href="/deep_dives/entry_and_setup_code.html"><span class="menuTitle">Entry and setup code</span> <span class="menuSummary">Exploring how The Sentinel unravels itself after loading</span></a></li>
+								</ul>
+							</li>
+							<li id="deep_dives_maths"><span class="menuTitle">Main loops</span> <span class="menuSummary menuSummarySubmenu">The main game loops and the interrupt handler</span>
+								<ul id="submenu_deep_dives_main_loops">
+									<li class="menuItemHeader">Main loops</li>
+									<li><a id="deep_dives_main_loops_program_flow_of_the_main_title_loop" href="/deep_dives/program_flow_of_the_main_title_loop.html"><span class="menuTitle">Program flow of the main title loop</span> <span class="menuSummary">The convoluted loop that displays the title and landscape preview screens</span></a></li>
+									<li><a id="deep_dives_main_loops_program_flow_of_the_main_game_loop" href="/deep_dives/program_flow_of_the_main_game_loop.html"><span class="menuTitle">Program flow of the main game loop</span> <span class="menuSummary">The sequence of events in the main game loop</span></a></li>
+									<li><a id="deep_dives_main_loops_program_flow_of_the_gameplay_loop" href="/deep_dives/program_flow_of_the_gameplay_loop.html"><span class="menuTitle">Program flow of the gameplay loop</span> <span class="menuSummary">Processing enemy tactics with the main gameplay loop</span></a></li>
+									<li><a id="deep_dives_main_loops_the_interrupt_handler" href="/deep_dives/the_interrupt_handler.html"><span class="menuTitle">The interrupt handler</span> <span class="menuSummary">The key processes that run in the background, 50 times a second</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_maths"><span class="menuTitle">3D geometry</span> <span class="menuSummary menuSummarySubmenu">Pitch angles, yaw angles and coordinates</span>
