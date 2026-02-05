@@ -11,7 +11,49 @@ page_header("deep_dives", "entry_and_setup_code.html", "Entry and setup code", "
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Exploring how The Sentinel unravels itself after loading</h2>
 
-						<p>This deep dive is being written and will be published in the next few weeks.</p>
+						<p>Revs, the amazing racing game that Geoff Crammond wrote before The Sentinel, has one of the most convoluted loading processes I have ever analysed; see the deep dive on <a href="https://revs.bbcelite.com/deep_dives/the_jigsaw_puzzle_binary.html">the jigsaw puzzle binary</a> for the gory details. In comparison, the loading process for The Sentinel is simplicity itself.</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/general/loading_screen_sam6.png" alt="The Sentinel loading screen in the Play It Again Sam 6 compilation">
+
+						<p>This is particularly true of the version that I've analysed on this site, which comes from the Play It Again Sam 6 compilation, which was released in 1989, some three years after the original. By that point in the game's life it wasn't worth spending a lot of effort on copy protection or obfuscation, and apart from hiding the game files from the disc catalogue, the game binaries are otherwise unprotected. This is unlike the original 1986 release, which contained plenty of fiendish protection (see <a href="https://www.level7.org.uk/miscellany/the-sentinel-disassembly.txt">Level7's disassembly</a> for an analysis of the tape protection, for example).</p>
+
+						<p>There is still a small process of unfolding that occurs during the loading process, so for completeness I'll document it here, though this isn't exactly a deep dive, more of a shallow surface skim. The game itself still contain a whole load of anti-cracker code, though; see the deep dive on <a href="anti-cracker_checks.html">anti-cracker checks</a> for more information.</p>
+
+						<h2 class="articleSubheader">The loading process<br>
+													 -------------------</h2>
+
+						<p>The game binary has a load address of &amp;1900 and an execution address of &amp;6D00, which is the address of the Entry routine.</p>
+
+						<p>The loading process moves the game binary around in memory in two stages. First, it moves the whole binary down from &amp;1900 to &amp;0400, which is where the game runs; and second, it moves a block of code from &amp;4100 to &amp;5800.</p>
+
+						<p>This latter move is necessary because the loading screen uses mode 5 but the game uses a custom mode 5 with a different start address. Once the game binary has loaded it is moved below address &amp;5800, which is the starting point for screen memory in mode 5, so the mode can be reset and reprogrammed to the custom screen mode 5. The custom mode 5 starts at address &amp;6000, so once it has been set up in the ConfigureMachine routine, the second block of game code can be moved just before screen memory at &amp;5800-&amp;5FFF. (The routine actually copies an extra page of memory into the first 256 bytes of the custom screen, so the entire copy is from &amp;4100-&amp;49FF is copied to &amp;5800-&amp;60FF, but the extra bytes have no effect and are overwritten by the screen being cleared.)</p>
+
+						<p>Here's a breakdown of the loading process once the binary is loaded and Entry is called:</p>
+
+						<p><a href="/source/main/subroutine/entry.html">Entry</a></p>
+
+						<ul>
+
+							<li>Copy the game code from &amp;1900-&amp;6CFF to &amp;0400-&amp;57FF</li>
+
+							<li>Jump to <a href="/source/main/subroutine/configuremachine.html">ConfigureMachine</a> (see below)</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/configuremachine.html">ConfigureMachine</a></p>
+
+						<ul>
+							<li>Set up the custom screen mode (see the deep dive on <a href="the_custom_screen_mode.html">the custom screen mode</a> for details)</li>
+
+							<li>Add a break handler to clear memory on BREAK, even on the older MOS 0.1 (otherwise crackers could load the game on MOS 0.10 and simply press BREAK to access the loaded game code)</li>
+
+							<li>Copy the game code from &amp;4100-&amp;49FF to &amp;5800-&amp;60FF</li>
+
+							<li>Initialise the 6522 timers</li>
+
+							<li>Initialise the IRQ handler</li>
+
+							<li>Jump to <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> (see <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a> for details)</li>
+						</ul>
 					</div>
 				</div>
 
