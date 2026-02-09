@@ -11,7 +11,177 @@ page_header("deep_dives", "program_flow_of_the_main_game_loop.html", "Program fl
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The sequence of events in the main game loop</h2>
 
-						<p>This deep dive is being written and will be published in the next few weeks.</p>
+						<p>Here is a high-level look at the main game loop. This loop runs while the game is in progress, and only exits when either the player or the Sentinel have won.</p>
+
+						<img class="titleImage" style="width: 320px" src="/images/general/landscape_0000_view.png" alt="A view over landscape 0000 in the Sentinel on the BBC Micro">
+
+						<h2 class="articleSubheader">Starting the game<br>
+													 -----------------</h2>
+
+						<p>The main game loop starts with the PlayGame routine, which is called after the landscape preview has been shown and the player has pressed a key (see <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a> for details). This sets things up for the main game loop itself.</p>
+
+						<p><a href="/source/main/subroutine/playgame.html">PlayGame</a></p>
+
+						<ul>
+							<li>Call <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> with A = &amp;83 to set the palette to the correct colour scheme for the landscape's number of enemies, which was set in <a href="/source/main/subroutine/spawnenemies.html">SpawnEnemies</a> during the landscape generation phase (see the deep dive on <a href="adding_enemies_and_trees_to_the_landscape.html">adding enemies and trees to the landscape</a> for details).</li>
+
+							<li>Call <a href="/source/main/subroutine/readkeyboard.html">ReadKeyboard</a> to wait for a key press.</li>
+
+							<li>Fall into <a href="/source/main/subroutine/maingameloop_part_1_of_3.html">part 1 of MainGameLoop</a> to run the main game loop (see below).</li>
+						</ul>
+
+						<h2 class="articleSubheader">Drawing the landscape<br>
+													 ---------------------</h2>
+
+						<p>We now enter the main game loop. We get here when we are starting a brand new game, or we jump here from part 3 below when one of the following occurs:</p>
+
+						<ul>
+							<li>The Sentinel has won</li>	
+
+							<li>The player has moved to a new tile</li>	
+
+							<li>The player has pressed the quit game key</li>
+						</ul>
+
+						<p>Part 1 processes all of these game states as follows.</p>
+
+						<p><a href="/source/main/subroutine/maingameloop_part_1_of_3.html">MainGameLoop (Part 1 of 3)</a></p>
+
+						<ul>
+							<li>Call <a href="/source/main/subroutine/flushsoundbuffers.html">FlushSoundBuffers</a> to flush all four sound channel buffers.</li>
+
+							<li>If the player has pressed the quit key at any time during the game loop, jump to jump to <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> to restart from the main title screen (see <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a>).</li>
+
+							<li>If the Sentinel has won the game, jump to game6 to restart the landscape as follows:
+
+								<ul>
+									<li>Call <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> to reset all the game's main variables.</li>
+
+									<li>Call <a href="/source/main/subroutine/initialiseseeds.html">InitialiseSeeds</a> to initialise the seed number generator so it generates the sequence of seed numbers for the entered landscape number.</li>
+
+									<li>Jump to <a href="/source/main/subroutine/maintitleloop.html#main4">main4 in the main title loop</a> to restart the landscape without having to enter the landscape's secret code again (see <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a>).</li>
+								</ul>
+							</li>
+
+							<li>If we get here then we have either started a brand new landscape or we jumped to MainGameLoop from part 3 when the player moved to a new tile, so now we consider generating a brand new landscape view:
+
+								<ul>
+									<li>Call <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> with A = 4 to set the palette to all-blue (to hide the screen-drawing process).</li>
+
+									<li>Reset a handful of variable and call <a href="/source/main/subroutine/setscannerandpause.html">SetScannerAndPause</a> to stop the scanner from updating and delay for 40 empty loops of 256 iterations each (i.e. 10,240 loops).</li>
+
+									<li>If the game has ended because the player has hyperspaced from the Sentinel's tower, thus winning the game, then jump to part 2 to process winning the landscape.</li>
+
+									<li>If the game has ended because the player tried to hyperspace without enough energy to create a destination robot, then call <a href="/source/main/subroutine/clearscreen.html">ClearScreen</a> to clear the screen and skip the next bullet point (so we don't draw the landscape if the player has just lost the game).</li>
+
+									<li>We now draw the landscape as follows:
+
+										<ul>
+											<li>If this is not a U-turn, then call <a href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a> to go through each tile in the landscape and calculate whether the player can see that tile, storing the result in the visibility table. This helps speed up the process of drawing the landscape. We don't need to recalculate this when doing a U-turn as the player isn't moving, so the visibility values in the table won't change.</li>
+
+											<li>Call <a href="/source/main/subroutine/clearscreen.html">ClearScreen</a> to clear the screen.</li>
+
+											<li>Call <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView</a> to draw the landscape view (see the deep dive on <a href="drawing_the_landscape_view.html">drawing the landscape view</a>).</li>
+
+											<li>Call <a href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a> to update the icons in the top-left corner of the screen to show the player's current energy level and redraw the scanner box.</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+
+							<li>Set screenOrBuffer and call <a href="/source/main/subroutine/configurebuffer.html">ConfigureBuffer</a> to configure the drawing routines to draw into the screen buffer (as opposed to drawing directly onto the screen) and set up the screen buffer for use as a column buffer</li>
+
+							<li>Call <a href="/source/main/subroutine/processsound.html">ProcessSound</a> to process any sound effects or music that is playing in the background, repeatedly calling the routine until they have all finished.</li>
+
+							<li>Call <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> with A = &amp;83 to set the palette to the correct colour scheme for the landscape's number of enemies, which was set in <a href="/source/main/subroutine/spawnenemies.html">SpawnEnemies</a> during the landscape generation phase (see the deep dive on <a href="adding_enemies_and_trees_to_the_landscape.html">adding enemies and trees to the landscape</a> for details).</li>
+
+							<li>If the game has not ended because of a hyperspace, jump to part 3 to move on to running the gameplay loop.
+
+							<li>Otherwise the game has ended because of a hyperspace, and it must be because the player ran out of energy, as otherwise we would have taken the branch to part 2 above, so process the game ending as follows:
+
+								<ul>
+									<li>Set bit 7 of sentinelHasWon to indicate that the player has run out of energy and the Sentinel has won.</li>
+
+									<li>Call <a href="/source/main/subroutine/showgameoverscreen.html">ShowGameOverScreen</a> with A = 5 and soundEffect = 6 to display the game over screen, decaying the screen to black with a mass of 5 * 2400 = 12,000 randomly placed black dots, while the game over sound effect plays.</li>
+
+									<li>Call <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> to reset all the game's main variables.</li>
+
+									<li>Call <a href="/source/main/subroutine/initialiseseeds.html">InitialiseSeeds</a> to initialise the seed number generator so it generates the sequence of seed numbers for the entered landscape number.</li>
+
+									<li>Jump to <a href="/source/main/subroutine/maintitleloop.html#main4">main4 in the main title loop</a> to restart the landscape without having to enter the landscape's secret code again (see <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a>).</li>
+								</ul>
+							</li>
+						</ul>
+
+						<h2 class="articleSubheader">Landscape successfully completed<br>
+													 --------------------------------</h2>
+
+						<p>If we get here then we have successfully completed the landscape, so we display the secret code for the next landscape and go back to the title screen.</p>
+
+						<p><a href="/source/main/subroutine/maingameloop_part_2_of_3.html">MainGameLoop (Part 2 of 3)</a></p>
+
+						<ul>
+							<li>Call <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> with A = 4 to set the palette to all-blue (to hide the screen-drawing process).</li>
+
+							<li>In order to display the secret code for the next landscape we need to generate that landscape, so call <a href="/source/main/subroutine/resettilesobjects.html">ResetTilesObjects</a> to reset the landscape seed generator, the tile visibility table and the object flags, to get ready for the generation process in the FinishLandscape routine
+
+							<li>Call <a href="/source/main/subroutine/finishlandscape.html">FinishLandscape</a> to add the player's energy to the landscape number to get the number of the next landscape and display that landscape's secret code (see <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a>).</li>
+
+							<li>Call <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> with A = &amp;87 to set the palette to blue, black, red and yellow.</li>
+
+							<li>Call <a href="/source/main/subroutine/playmusic.html">PlayMusic</a> to play the music for when the player finishes a landscape, and call <a href="/source/main/subroutine/processsound.html">ProcessSound</a> in a loop until the music has finished.</li>
+
+							<li>Call <a href="/source/main/subroutine/printtexttoken.html">PrintTextToken</a> with A = 0 to print "PRESS ANY KEY" (text token 0).</li>
+
+							<li>Call <a href="/source/main/subroutine/readkeyboard.html">ReadKeyboard</a> to wait for a key press.</li>
+
+							<li>Jump back to <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> to restart the game from the main title screen (see <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a>).</li>
+						</ul>
+
+						<h2 class="articleSubheader">Gameplay loop and panning<br>
+													 -------------------------</h2>
+
+						<p>This part of the main game loop jumps into the gameplay loop, which is described in the deep dive on <a href="program_flow_of_the_gameplay_loop.html">program flow of the gameplay loop</a>. It also processes the return state from that loop, which includes implementing the scrolling part of a landscape pan when the player has held a pan key for long enough for the new part of the landscape to have been drawn into the screen buffer.</p>
+
+						<p><a href="/source/main/subroutine/maingameloop_part_3_of_3.html">MainGameLoop (Part 3 of 3)</a></p>
+
+						<ul>
+							<li>Call <a href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a> to run the gameplay loop (see <a href="program_flow_of_the_gameplay_loop.html">program flow of the gameplay loop</a>)</li>
+
+							<li>If, on exiting the gameplay loop, we have finished drawing a landscape pan into the screen buffer and the player is still holding down a pan key, then we start the screen-scrolling process as follows:
+
+								<ul>
+									<li>Set numberOfScrolls = 0 to reset the scroll counter so the interrupt handler will not scroll the screen while we set up the new pan.</li>
+
+									<li>If the sights are not visible on-screen, set bit 7 of keepCheckingPanKey so DrawLandscapeView will abort the drawing process if the player releases the pan key before the drawing process has finished.</p>
+
+									<li>Call <a href="/source/main/subroutine/panlandscapeview.html">PanLandscapeView</a> to pan the landscape and update the landscape view.</li>
+
+									<li>Clear bit 7 of keepCheckingPanKey so DrawLandscapeView will keep drawing the landscape irrespective of the pan keys being held down (so this takes the routine back to its default behaviour).</li>
+
+									<li>Call <a href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a> to update the icons in the top-left corner of the screen to show the player's current energy level and redraw the scanner box.</li>
+
+									<li>Set scrollCounter to the number of scrolls required for the pan, so the interrupt handler will scroll the screen by this many steps in the background.</li>
+
+									<li>Wait until the interrupt handler has finished scrolling the landscape view, thus implementing the pan on-screen.</li>
+
+									<li>Loop back to the start of this section (so we go back to the gameplay loop again).</li>
+								</ul>
+							</li>
+
+							<li>Otherwise the ProcessGameplay routine returned because one of the following is true:
+
+								<ul>
+									<li>The Sentinel has won</li>
+
+									<li>The player has moved to a new tile</li>
+
+									<li>The player has pressed the quit game key</li>
+								</ul>
+
+								so jump to part 1 of MainGameLoop to process the relevant action (see above).
+							</li>
+						</ul>
 					</div>
 				</div>
 
