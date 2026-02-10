@@ -11,18 +11,18 @@ page_header("deep_dives", "program_flow_of_the_main_title_loop.html", "Program f
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The convoluted loop that displays the title and landscape preview screens</h2>
 
-						<p>Here is a high-level look at the main title loop. This displays the main title screen when the game loads (shown below), followed by the landscape preview once the player has chosen a landscape numbers. It is also responsible for drawing the game over screen once the game has ended, and the landscape secret code screen (when the player wins).</p>
-
-						<img class="titleImage" style="width: 320px" src="/images/general/main_title.png" alt="The Sentinel loading screen in the Play It Again Sam 6 compilation">
+						<p>Here is a high-level look at the main title loop in The Sentinel. This loop displays the main title screen, asks for a landscape number and secret code (if it isn't landscape 0000), and shows the landscape preview. It is also responsible for drawing the game over screen if the player loses, or the secret code for the next landscape if the player wins.</p>
 
 						<p>Note that the following program flow is a simplified version of the code, as the game contains a number of obfuscations that are designed to put crackers off the trail. These are documented in the deep dive on <a href="anti-cracker_checks.html">anti-cracker checks</a>, but have been left out of the following to make things easier to follow.</p>
 
 						<h2 class="articleSubheader">The title screen<br>
 													 ----------------</h2>
 
-						<p>The main title loop looks after the title screen (the one with "THE SENTINEL" in 3D text, shown above), and the entering of the landscape number and secret code, if applicable.</p>
+						<p>The main title loop starts by displaying the title screen (shown below) and processes the player typing in the landscape number and, if applicable, the secret code.</p>
 
-						<p><a href="/source/main/subroutine/maintitleloop.html">1/2: MainTitleLoop</a></p>
+						<img class="titleImage" style="width: 320px" src="/images/general/main_title.png" alt="The Sentinel loading screen in the Play It Again Sam 6 compilation">
+
+						<p><a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a></p>
 
 						<ul>
 							<li>Call <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> with A = 4 to set the palette to all-blue (to hide the screen-drawing process).</li>
@@ -47,16 +47,16 @@ page_header("deep_dives", "program_flow_of_the_main_title_loop.html", "Program f
 
 							<li>Call <a href="/source/main/subroutine/initialiseseeds.html">InitialiseSeeds</a> to initialise the seed number generator so it generates the sequence of seed numbers for the entered landscape number.</li>
 
-							<li>If this is landscape zero, copy the hand-coded secret code for landscape zero to the input buffer, otherwise call <a href="/source/main/subroutine/readnumber.html">ReadNumber</a> and <a href="/source/main/subroutine/stringtonumber.html">StringToNumber</a> to get the player to enter the secret code.</li>
+							<li>If this is landscape 0000 then copy the hard-coded secret code for landscape 0000 into the input buffer, otherwise call <a href="/source/main/subroutine/readnumber.html">ReadNumber</a> and <a href="/source/main/subroutine/stringtonumber.html">StringToNumber</a> to get the player to enter the secret code.</li>
 
 							<li>Call <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> with A = 4 to set the palette to all-blue (to hide the screen-drawing process).</li>
 
-							<li>Call <a href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a> to generate the landscape and play the game (see below).</li>
+							<li>Call <a href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a> to generate the landscape, show the landscape preview and play the game (see below).</li>
 
-							<li>If the call to GenerateLandscape returns normally then the secret code did not match, so fall through into <a href="/source/main/subroutine/secretcodeerror.html">SecretCodeError</a> to display an error (see below).</li>
+							<li>If the call to GenerateLandscape returns normally then the secret code that the player entered is not correct, so fall through into <a href="/source/main/subroutine/secretcodeerror.html">SecretCodeError</a> to display an error (see below).</li>
 						</ul>
 
-						<p><a href="/source/main/subroutine/secretcodeerror.html">2/2: SecretCodeError</a></p>
+						<p><a href="/source/main/subroutine/secretcodeerror.html">SecretCodeError</a></p>
 
 						<ul>
 							<li>Call <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> to reset all the game's main variables.</li>
@@ -75,71 +75,75 @@ page_header("deep_dives", "program_flow_of_the_main_title_loop.html", "Program f
 						<h2 class="articleSubheader">Generating and previewing the landscape<br>
 													 ---------------------------------------</h2>
 
-						<p>Once the landscape number and code have been entered, the landscape is generated and the preview screem is shown.</p>
+						<p>Once the landscape number and code have been entered, then the landscape is generated, the preview screen is shown and the game itself can start.</p>
 
-						<p><a href="/source/main/subroutine/generatelandscape.html">1/2: GenerateLandscape</a></p>
+						<img class="titleImage" style="width: 320px" src="/images/general/landscape_0000_preview.png" alt="The landscape preview screen for for landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<p><a href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a></p>
 
 						<ul>
 							<li>Generate the landscape (see the deep dive on <a href="generating_the_landscape.html">generating the landscape</a> for details).</li>
 
-							<li>If bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#donotplaylandscape">doNotPlayLandscape</a> is set then return (this bit is cleared by the ResetVariables routine, so by default we do not return early from this routine, but if we just want to calculate the secret code for a landscape without playing it, as in the FinishLandscape routine below, we can set bit 7 to achieve this).</li>
+							<li>If bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#donotplaylandscape">doNotPlayLandscape</a> is set then return from the subroutine without previewing the landscape. This bit is cleared by the ResetVariables routine, so by default we do not return early from this routine, but if we just want to calculate the secret code for a landscape without playing it, as in the GetNextLandscape routine below, then we can set bit 7 to achieve this.</li>
 
 							<li>Otherwise jump to <a href="/source/main/subroutine/previewlandscape.html">PreviewLandscape</a> (see below).</li>
 						</ul>
 
-						<p><a href="/source/main/subroutine/previewlandscape.html">2/2: PreviewLandscape</a></p>
+						<p><a href="/source/main/subroutine/previewlandscape.html">PreviewLandscape</a></p>
 
 						<ul>
 							<li>Call <a href="/source/main/subroutine/spawnenemies.html">SpawnEnemies</a> to calculate the number of enemies for this landscape, add them to the landscape and set the palette accordingly (see the deep dive on <a href="adding_enemies_and_trees_to_the_landscape.html">adding enemies and trees to the landscape</a> for details).</li>
 
-							<li>Call <a href="/source/main/subroutine/drawtitleview.html">DrawTitleView</a> to draw the landscape preview (see the deep dive on <a href="drawing_the_landscape_preview.html">drawing the landscape preview</a>).</li>
+							<li>Call <a href="/source/main/subroutine/drawtitleview.html">DrawTitleView</a> to draw the landscape preview (see the deep dive on <a href="drawing_the_landscape_preview.html">drawing the landscape preview</a> for details).</li>
 
 							<li>Call <a href="/source/main/subroutine/spawnplayer.html">SpawnPlayer</a> and <a href="/source/main/subroutine/spawntrees.html">SpawnTrees</a> to add the player and trees to the landscape (see the deep dive on <a href="adding_enemies_and_trees_to_the_landscape.html">adding enemies and trees to the landscape</a> for details).</li>
 
-							<li>If the call to SpawnPlayer returns normally then the secret code that the player entered did not match, so jump to <a href="/source/main/subroutine/secretcodeerror.html">SecretCodeError</a> to display an error (see above).</li>
+							<li>If the call to SpawnPlayer returns normally then the secret code that the player entered is not correct, so jump to <a href="/source/main/subroutine/secretcodeerror.html">SecretCodeError</a> to display an error (see above).</li>
 
-							<li>Otherwise SpawnTrees will jump to <a href="/source/main/subroutine/playgame.html">PlayGame</a> to play the game (see below).</li>
+							<li>Otherwise SpawnTrees will jump to <a href="/source/main/subroutine/playgame.html">PlayGame</a> to play the game (see <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a> for details).</li>
 						</ul>
 
-						<h2 class="articleSubheader">Playing the game to completion<br>
-													 ------------------------------</h2>
+						<p>At this point the main game loop takes over, which you can read all about in the <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a>. The main game loop can terminate in two different ways, so let's look at both of those now.</p>
 
-						<p>At this point the main game loop takes over, which you can read all about in the <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a>. This can end in two different ways: with the the Sentinel winning, or with the player winning.</p>
+						<h2 class="articleSubheader">Winning the game<br>
+													 ----------------</h2>
 
-						<p><a href="/source/main/subroutine/playgame.html">1/3: PlayGame</a></p>
+						<p>The main game loop can terminate with either the player or the Sentinel winning. If the player wins, then the secret code for the next landscape is shown by calling <a href="/source/main/subroutine/finishlandscape.html">FinishLandscape</a>:</p>
+
+						<img class="titleImage" style="width: 320px" src="/images/general/secret_code.png" alt="The secret code screen in the BBC Micro version of The Sentinel">
+
+						<p>Here is the program flow for the winning process.</p>
+
+						<p><a href="/source/main/subroutine/finishlandscape.html">FinishLandscape</a></p>
 
 						<ul>
-							<li>Play the game.</li>
+							<li>Call <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> with A = 4 to set the palette to all-blue (to hide the screen-drawing process).</li>
 
-							<li>If the Sentinel wins, call <a href="/source/main/subroutine/showgameoverscreen.html">ShowGameOverScreen</a> (see below) and restart the same landscape.</li>
+							<li>In order to display the secret code for the next landscape we need to generate that landscape, so call <a href="/source/main/subroutine/resettilesobjects.html">ResetTilesObjects</a> to reset the landscape seed generator, the tile visibility table and the object flags, to get ready for the generation process in the GetNextLandscape routine.</li>
 
-							<li>If player wins, call <a href="/source/main/subroutine/finishlandscape.html">FinishLandscape</a> (see below) and jump to <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> to restart from the main title screen (see above).</li>
+							<li>Call <a href="/source/main/subroutine/getnextlandscape.html">GetNextLandscape</a> to add the player's energy to the landscape number to get the number of the next landscape and display that landscape's secret code (see below).</li>
+
+							<li>Call <a href="/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> with A = &amp;87 to set the palette to blue, black, red and yellow.</li>
+
+							<li>Call <a href="/source/main/subroutine/playmusic.html">PlayMusic</a> to play the music for when the player finishes a landscape, and call <a href="/source/main/subroutine/processsound.html">ProcessSound</a> in a loop until the music has finished.</li>
+
+							<li>Call <a href="/source/main/subroutine/printtexttoken.html">PrintTextToken</a> with A = 0 to print "PRESS ANY KEY" (text token 0).</li>
+
+							<li>Call <a href="/source/main/subroutine/readkeyboard.html">ReadKeyboard</a> to wait for a key press.</li>
+
+							<li>Jump back to <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> to restart the game from the main title screen (see <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a>).</li>
 						</ul>
 
-						<p><a href="/source/main/subroutine/showgameoverscreen.html">2/3: ShowGameOverScreen</a></p>
+						<p><a href="/source/main/subroutine/getnextlandscape.html">GetNextLandscape</a></p>
 
 						<ul>
-							<li>Call <a href="/source/main/subroutine/cleariconsscanner.html">ClearIconsScanner</a> to clear the energy icon and scanner row at the top of the screen.</li>
-
-							<li>Call <a href="/source/main/subroutine/decayscreentoblack.html">DecayScreenToBlack</a> to decay the screen to black with a mass of 600,000 randomly placed black dots.</li>
-
-							<li>Call <a href="/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> to spawn an object of type titleObjectToDraw as object #1 (by the time the game ends, titleObjectToDraw has been set to the type of object that caused the player's demise, be it the Sentinel, a sentry, a meanie or the player themselves, so this displays the correct culprit on the game over screen).</li>
-
-							<li>Call <a href="/source/main/subroutine/playmusic.html">PlayMusic</a> with A = 50 to play the game over music.</li>
-
-							<li>Call <a href="/source/main/subroutine/decayscreentoblack.html">DecayScreenToBlack</a> to smother the screen in 72,000 randomly placed black dots to decay the screen to black.</li>
-
-							<li>Return from the subroutine.</li>
-						</ul>
-
-						<p><a href="/source/main/subroutine/finishlandscape.html">3/3: FinishLandscape</a></p>
-
-						<ul>
-							<li>Call <a href="/source/main/subroutine/getplayerenergybcd.html">GetPlayerEnergyBCD</a> to fetch the player's energy in BCD.</li>
+							<li>Call <a href="/source/main/subroutine/getplayerenergybcd.html">GetPlayerEnergyBCD</a> to fetch the player's energy in binary coded decimal.</li>
 
 							<li>Add the player's energy to the current landscape number to get the next landscape number.</li>
 
-							<li>Call <a href="/source/main/subroutine/initialiseseeds.html">InitialiseSeeds</a> to initialise the seed number generator so it generates the sequence of seed numbers for the next landscape (we set bit 7 of doNotPlayLandscape for this so the following calls to GenerateLandscape and SpawnPlayer return normally and without previewing the landscape or starting the game).</li>
+							<li>Call <a href="/source/main/subroutine/initialiseseeds.html">InitialiseSeeds</a> to initialise the seed number generator so it generates the sequence of seed numbers for the next landscape.</li>
+
+							<li>By this point bit 7 of doNotPlayLandscape is set (it is actually set in the <a href="/source/main/subroutine/performhyperspace.html">PerformHyperspace</a> routine that is called when the player hyperspaces to win the game). As noted above, this means that the following calls to GenerateLandscape and SpawnPlayer return normally and without previewing the landscape or starting the game.</li>
 
 							<li>Call <a href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a> to generate the landscape and return without previewing the landscape or playing the game.</li>
 
@@ -149,12 +153,40 @@ page_header("deep_dives", "program_flow_of_the_main_title_loop.html", "Program f
 
 							<li>Call <a href="/source/main/subroutine/drawtitlescreen.html">DrawTitleScreen</a> with A = &amp;80 to draw the screen showing the landscape's secret code.</li>
 
-							<li>Call <a href="/source/main/subroutine/printtexttoken.html">PrintTextToken</a> with A = 5 to print "SECRET ENTRY CODE" (text token 5).</li>
+							<li>Call <a href="/source/main/subroutine/printtexttoken.html">PrintTextToken</a> with A = 5 to print "SECRET ENTRY CODE" and "LANDSCAPE" (text token 5).</li>
 
 							<li>Call <a href="/source/main/subroutine/printlandscapenum.html">PrintLandscapeNum</a> to print the four-digit landscape (0000 to 9999).</li>
 
 							<li>Return from the subroutine.</li>
 						</ul>
+
+						<h2 class="articleSubheader">Losing the game<br>
+													 ---------------</h2>
+
+						<p>The main game loop can terminate with either the player or the Sentinel winning. If the Sentinel wins then the game over screen is shown by calling <a href="/source/main/subroutine/showgameoverscreen.html">ShowGameOverScreen</a>:</p>
+
+						<img class="titleImage" style="width: 320px" src="/images/general/game_over.png" alt="The game over screen in the BBC Micro version of The Sentinel">
+
+						<p>Here is the program flow for the game over process.</p>
+
+						<p><a href="/source/main/subroutine/showgameoverscreen.html">ShowGameOverScreen</a></p>
+
+						<ul>
+							<li>Call <a href="/source/main/subroutine/cleariconsscanner.html">ClearIconsScanner</a> to clear the energy icon and scanner row at the top of the screen.</li>
+
+							<li>Call <a href="/source/main/subroutine/decayscreentoblack.html">DecayScreenToBlack</a> to decay the screen to black with a mass of 600,000 randomly placed black dots (so this decays the screen from the end of the screen).</li>
+
+							<li>Call <a href="/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> to spawn an object of type titleObjectToDraw as object #1. By the time the game ends, titleObjectToDraw has been set to the type of object that caused the player's demise, be it the Sentinel, a sentry, a meanie or the player themselves, so this displays the correct culprit on the game over screen.</li>
+
+							<li>Call <a href="/source/main/subroutine/playmusic.html">PlayMusic</a> with A = 50 to play the game over music.</li>
+
+							<li>Call <a href="/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> to draw the culprit object on-screen with a dithered effect, and without the surrounding landscape, so the culprit appears to hover into view as the player's view dissolves.</li>
+
+							<li>Call <a href="/source/main/subroutine/decayscreentoblack.html">DecayScreenToBlack</a> to smother the screen in 72,000 randomly placed black dots to decay the screen to black.</li>
+
+							<li>Return from the subroutine.</li>
+						</ul>
+
 					</div>
 				</div>
 
