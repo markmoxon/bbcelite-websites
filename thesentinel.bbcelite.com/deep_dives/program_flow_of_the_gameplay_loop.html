@@ -9,12 +9,192 @@ page_header("deep_dives", "program_flow_of_the_gameplay_loop.html", "Program flo
 
 				<div class="codeBlockWrapper">
 					<div class="codeBlock article">
-						<h2 class="articleSubheader deepDive">Processing enemy tactics with the main gameplay loop</h2>
+						<h2 class="articleSubheader deepDive">Processing key presses and enemy tactics with the gameplay loop</h2>
 
-						<p>This deep dive is being written and will be published in the next few weeks.</p>
+						<p>Here is a high-level look at the gameplay loop. This loop runs while the landscape view is on-screen and the player is actually playing the game, and it implements the game's key presses and applies tactics to the enemies.</p>
 
 						<img class="titleImage" style="width: 320px" src="/images/general/sentry.png" alt="A sentry in the Sentinel on the BBC Micro">
 
+						<p>The gameplay loop is run by calling the <a href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a> routine from <a href="/source/main/subroutine/maingameloop_part_2_of_2.html">part 2 of the main game loop</a>. The gameplay loop returns if the player holds down a pan key long enough for the new part of the landscape to have been drawn into the screen buffer; it also returns if the Sentinel has won, the player has moved to a new tile or the player has pressed the quit key.</p>
+
+						<p>You can read all about the main game loop in the deep dive on <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a>, but for now let's look at the program flow of the gameplay loop itself.</p>
+
+						<h2 class="articleSubheader">The gameplay loop<br>
+													 -----------------</h2>
+
+						<p>The gameplay loop processes all game key presses, only returning to the main game loop when the player moves, quits, loses or pans.</p>
+
+						<p><a href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a></p>
+
+						<ul>
+							<li>Clear bit 7 of focusOnKeyAction to tell the game to apply tactics and check the keyboard in the following.</li>
+
+							<li>If bit 7 of focusOnKeyAction is clear then the game is not currently focusing on a key action such as a landscape pan, so do the following:
+
+								<ul>
+									<li>Check whether we have just finished processing a landscape pan, and if so whether the player is still holding down the same pan key. If so, set bit 7 of samePanKeyPress to record this fact for use in the CheckObjVisibility routine, so we can work out whether it is safe to update objects without corrupting any ongoing pans in the landscape view.</li>
+
+									<li>Call <a href="/source/main/subroutine/applyenemytactics.html">ApplyEnemyTactics</a> to apply tactics to the next enemy object. This applies tactics to one enemy on each iteration of the gameplay loop, working through the enemies at a rate of one per iteration (see the deep dive on <a href="enemy_tactics.html">enemy tactics</a> for details).</li>
+
+									<li>If the tactics routine has set bit 7 of sentinelHasWon then the Sentinel has won, so call <a href="/source/main/subroutine/showgameoverscreen.html">ShowGameOverScreen</a> with A = 30 to display the game over screen, decaying the screen to black with a mass of 30 * 2400 = 72,000 randomly placed black dots. When the effect has finished, return to the main game loop (see <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a> for details).</li>
+
+									<li>If the player has moved to a new tile, return from the gameplay loop back to the main game loop (see <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a> for details).</li>
+
+									<li>If the player has pressed the quit key, return from the gameplay loop back to the main game loop (see <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a> for details).</li>
+
+									<li>Call <a href="/source/main/subroutine/getplayerdrain.html">GetPlayerDrain</a> to calculate whether the player is being scanned by an enemy and whether the enemy can see the player's tile.</li>
+
+									<li>Call <a href="/source/main/subroutine/processpausekeys.html">ProcessPauseKeys</a> to pause or unpause the game when COPY or DELETE are pressed.</li>
+
+									<li>Call <a href="/source/main/subroutine/processsound.html">ProcessSound</a> to process any sounds or music that are being made in the background.</li>
+
+									<li>Call <a href="/source/main/subroutine/processvolumekeys.html">ProcessVolumeKeys</a> to adjust the volume of the sound envelopes when the volume keys are pressed.</li>
+
+									<li>Loop back to repeat the check of bit 7 of focusOnKeyAction above, as this may have been altered in the meantime, and either repeat the actions above or move on to the next step.</p>
+								</ul>
+							</li>
+
+							<li>If bit 7 of focusOnKeyAction is set then the game is currently focusing on a key action such as a landscape pan, so check whether the player is still holding down the same pan key. If they are, return to the main game loop to display the pan on-screen.</li>
+
+							<li>If the key logger is empty, jump back to <a href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a> to repeat the gameplay loop.</li>
+
+							<li>If the sights are not visible and the player has pressed absorb, transfer, create robot, create tree or create boulder, then we can't process the key press as you can't do any of those things without the sights, so jump back to <a href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a> to repeat the gameplay loop.</li>
+
+							<li>The player has pressed a key that expends or absorbs energy, which activates the Sentinel at the very start of each level (the Sentinel and Sentries are inactive until this point, giving the player time to get their bearings when they first start a landscape). So clear bit 7 of activateSentinel to indicate that the Sentinel is activated and the game has started.</li>
+
+							<li>Call <a href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys</a> to process the action key press (see below).</li>
+
+							<li>If the call to ProcessActionKeys added or removed an object, do the following:
+
+								<ul>
+									<li>Call <a href="/source/main/subroutine/flushsoundbuffer0.html">FlushSoundBuffer0</a> to flush the sound channel 0 buffer</li>
+
+									<li>Call <a href="/source/main/subroutine/makesound.html">MakeSound</a> with A = 2 to make sound #2 (create/absorb object white noise)</li>
+
+									<li>Call <a href="/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> to draw the updated object (or the landscape where the object used to be) into the screen buffer and dither it onto the screen, pixel by pixel and randomly.</li>
+
+									<li>Call <a href="/source/main/subroutine/flushsoundbuffer0.html">FlushSoundBuffer0</a> to flush the sound channel 0 buffer</li>
+
+									<li>Call <a href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a> to update the icons in the top-left corner of the screen to show the player's current energy level and redraw the scanner box.</li>
+								</ul>
+							</li>
+
+							<li>If the player has moved to a new tile, return from the gameplay loop back to the main game loop (see <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a> for details).</li>
+
+							<li>Jump back to <a href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a> to repeat the gameplay loop.</li>
+						</ul>
+
+						<h2 class="articleSubheader">Processing action keys<br>
+													 ----------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys</a> routine processes any action key presses that are captured in the gameplay loop. Those actions are as follows: absorb, transfer, create robot, create tree or create boulder, hyperspace and U-turn.</li>
+
+						<p>Note that the ProcessActionKeys routine contains a separate anti-cracker routine embedded within it. This is documented in the deep dive on <a href="anti-cracker_checks.html">anti-cracker checks</a>, but I have left it out of the following to make things easier to follow.</p>
+
+						<p><a href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys (Part 1 of 2)</a></p>
+
+						<ul>
+							<li>If "H" (hyperspace) is being pressed, call <a href="/source/main/subroutine/performhyperspace.html">PerformHyperspace</a> to hyperspace the player to a brand new tile, ideally at the same altitude as the current tile, and then return to the gameplay loop.</li>
+
+							<li>If "U" (U-turn) is being pressed, check that we haven't just done a U-turn. If this is the case then rotate the player's yaw angle through 180 degrees to turn them around and call <a href="/source/main/subroutine/playmusic.html">PlayMusic</a> to play the U-turn music. Then return to the gameplay loop.</li>
+
+							<li>If we get here then the key press is either create, absorb or transfer, so do the following:
+
+								<ul>
+									<li>Call <a href="/source/main/subroutine/getsightsvector.html">GetSightsVector</a> to get the vector from the player's eyes to the sights.</li>
+
+									<li>Call <a href="/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector</a> to follow the gaze vector from the player to determine whether they can see a flat tile or a platform (i.e. boulder or tower).</li>
+
+									<li>If the player can't see a tile or platform through the sights, make an error sound and return from the subroutine, as we can't see a suitable surface for the create, absorb or transfer action.</li>
+								</ul>
+							</li>
+
+							<li>If the key press is a create key, jump to part 2 to create the relevant object.</li>
+
+							<li>If we get here then the key press is either absorb or transfer, so do the following:
+
+								<ul>
+									<li>If the tile in the player's sights does not contain an object, make an error sound and return from the subroutine, as we can't absorb or transfer to an empty tile.</li>
+
+									<li>If the key press is "A" (absorb), jump to part 2 to absorb the object.</li>
+								</ul>
+							</li>
+
+							<li>If we get here then the key press must be "Q" (transfer), so do the following:
+
+								<ul>
+									<li>If the tile in the player's sights does not contain a robot, make an error sound and return from the subroutine, as the player can only transfer into other robots.</li>
+
+									<li>Call <a href="/source/main/subroutine/focusonkeyaction.html">FocusOnKeyAction</a> to tell the game to start focusing effort on the action that has been initiated, i.e. the transfer.</li>
+
+									<li>Set the player's object to the robot, which effectively performs the transfer.</li>
+
+									<li>Fall into part 2 to call <a href="/source/main/subroutine/playmusic.html">PlayMusic</a> to play the transfer music, and then return to the gameplay loop.
+								</ul>
+							</li>
+						</ul>
+
+						<p><a href="/source/main/subroutine/processactionkeys_part_2_of_2.html">ProcessActionKeys (Part 2 of 2)</a></p>
+
+						<ul>
+							<li>If the key press is "A" (absorb), do the following:
+
+								<ul>
+									<li>Check whether the Sentinel object still exists. If it doesn't then it has been absorbed by the player, at which point the player is no longer allowed to absorb other objects, so make an error sound and return from the subroutine.</li>
+
+									<li>If the player is trying to absorb a meanie, do the following:
+
+										<ul>
+											<li>Loop through all the enemy objects, of which there are up to eight, looking for the object whose enemyMeanieTree entry matches the meanie that the player is trying to absorb (so we are looking for the enemy that turned a tree into this meanie).</li>
+
+											<li>For each possible parent enemy, confirm that the enemy is either the Sentinel or a sentry, and that the enemy still exists and has not been absorbed, and that the enemy is indeed the creator of the meanie being absorbed.</li>
+
+											<li>If we have managed to find the enemy that created this meanie, unset the enemyMeanieTree entry to remove the enemy's status as a meanie parent.</li>
+
+											<li>Delete the meanie object that the player is absorbing.</li>
+
+											<li>Call <a href="/source/main/subroutine/updateplayerenergy.html">UpdatePlayerEnergy</a> to update the player's energy levels by adding the energy from the meanie.</li>
+
+											<li>Return from the subroutine.</li>
+										</ul>
+									</li>
+
+									<li>If the player is trying to absorb the Sentinel's tower, make an error sound and return from the subroutine.</li>
+
+									<li>Otherwise the player is absorbing a tree, boulder, robot, sentry or the Sentinel, so do the following:
+
+										<ul>
+											<li>Call <a href="/source/main/subroutine/deleteobject.html">DeleteObject</a> to delete the object and remove it from the landscape.</li>
+
+											<li>Call <a href="/source/main/subroutine/updateplayerenergy.html">UpdatePlayerEnergy</a> to update the player's energy levels by adding the amount of energy from the absorbed object.</li>
+
+											<li>Return from the subroutine.</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+
+							<li>If the key press is a create key ("T" for tree, "B" for boulder or "R" for robot), do the following:
+
+								<ul>
+									<li>Call <a href="/source/main/subroutine/spawnobject.html">SpawnObject</a> to add a new object of the correct type to the objectTypes table (so that's a tree, boulder or robot).</li>
+
+									<li>If the object could not be spawned, make an error sound and return from the subroutine.</li>
+
+									<li>Call <a href="/source/main/subroutine/updateplayerenergy.html">UpdatePlayerEnergy</a> to update the player's energy levels by subtracting the energy required to create the object from the player.</li>
+
+									<li>If the creation of the object reduces the player's energy below zero, make an error sound and return from the subroutine.</li>
+
+									<li>Call <a href="/source/main/subroutine/placeobjectontile.html">PlaceObjectOnTile</a> to place the object on the target tile, putting it on top of any existing boulders or towers.</li>
+
+									<li>If the object could not be placed on the tile, call <a href="/source/main/subroutine/updateplayerenergy.html">UpdatePlayerEnergy</a> to refund the energy that the player just spent, make an error sound and return from the subroutine.</li>
+
+									<li>If we just created a robot, set the yaw angle for the newly created robot to the player's yaw angle rotated through 180 degrees, so the new robot faces the player.</li>
+
+									<li>Return from the subroutine.</li>
+								</ul>
+							</li>
+						</ul>
 					</div>
 				</div>
 

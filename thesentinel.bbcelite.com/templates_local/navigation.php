@@ -46,7 +46,7 @@
 									<li class="menuItemHeader">Main loops</li>
 									<li><a id="deep_dives_main_loops_program_flow_of_the_main_title_loop" href="/deep_dives/program_flow_of_the_main_title_loop.html"><span class="menuTitle">Program flow of the main title loop</span> <span class="menuSummary">The convoluted loop that displays the title and landscape preview screens</span></a></li>
 									<li><a id="deep_dives_main_loops_program_flow_of_the_main_game_loop" href="/deep_dives/program_flow_of_the_main_game_loop.html"><span class="menuTitle">Program flow of the main game loop</span> <span class="menuSummary">The sequence of events in the main game loop</span></a></li>
-									<li><a id="deep_dives_main_loops_program_flow_of_the_gameplay_loop" href="/deep_dives/program_flow_of_the_gameplay_loop.html"><span class="menuTitle">Program flow of the gameplay loop</span> <span class="menuSummary">Processing enemy tactics with the main gameplay loop</span></a></li>
+									<li><a id="deep_dives_main_loops_program_flow_of_the_gameplay_loop" href="/deep_dives/program_flow_of_the_gameplay_loop.html"><span class="menuTitle">Program flow of the gameplay loop</span> <span class="menuSummary">Processing key presses and enemy tactics with the gameplay loop</span></a></li>
 									<li><a id="deep_dives_main_loops_the_interrupt_handler" href="/deep_dives/the_interrupt_handler.html"><span class="menuTitle">The interrupt handler</span> <span class="menuSummary">The key processes that run in the background, 50 times a second</span></a></li>
 								</ul>
 							</li>
