@@ -11,11 +11,11 @@ page_header("deep_dives", "the_interrupt_handler.html", "The interrupt handler",
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The key processes that run in the background, 50 times a second</h2>
 
-						<p>Timing is crucial in a game like the Sentinel. The clockwork inevitability of our robotic overlords is such an essential part of the game's scary nature: the enemies rotate on fixed schedules that wait for no-one, and even when the player is busy scrolling the screen, frantically looking for a way out, the regular chug-chug-chug of enemy rotations happen exactly on time, every single time. Resistance, as they say, is futile.</li>
+						<p>Timing is crucial in a game like the Sentinel. The clockwork inevitability of our robotic overlords is such an essential part of the game's scary nature: the enemies rotate on fixed schedules that wait for no-one, and even when the player is busy scrolling the screen, frantically looking for a way out, the regular chug-chug-chug of enemy rotations happens exactly on time, every single time. Resistance, as they say, is futile.</li>
 
 						<img class="titleImage" style="width: 330px" src="/images/general/TheSentinel.png" alt="The Sentinel on the BBC Micro screenshot">
 
-						<p>It's therefore no surprise to discover that at the core of this relentless clockwork world is an interrupt handler. Interrupts enable the computer to run code on a fixed schedule, with the interrupt system halting the current task and passing control to the interrupt handler, and that's how the game manages to make its timing so unflinchingly constant.</p>
+						<p>It's therefore no surprise to discover that at the core of this relentless clockwork world is an interrupt handler. Interrupts enable the computer to run code on a fixed schedule, with the interrupt system halting the current task and passing control to the interrupt handler, and that's how the game manages to make its timings so unflinchingly constant.</p>
 
 						<p>Let's take a look at how it works.</p>
 
@@ -24,7 +24,7 @@ page_header("deep_dives", "the_interrupt_handler.html", "The interrupt handler",
 
 						<p>The Sentinel has just one interrupt handler, <a href="/source/main/subroutine/irqhandler.html">IRQHandler</a>, and it is called exactly 50 times a second. The timing for the interrupt is configured in the <a href="/source/main/subroutine/configuremachine.html">ConfigureMachine</a> routine when the game first loads (see the deep dive on the <a href="entry_and_setup_code.html">entry and setup code</a> for details).</p>
 
-						<p>Specifically, ConfigureMachine sets timer 1 in the 6522 User VIA to count down regularly, triggering the interrupt handler routine at IRQHandler every time it counts down. The timer is initially set to count down from 14,592 to zero, and then a value of 19,998 is latched into the timer so that it triggers the interrupt every time it counts down from 20,000 to zero (the latching process takes two ticks, which gives us a total count of 20,000).</p>
+						<p>Specifically, ConfigureMachine sets timer 1 in the 6522 User VIA to count down regularly, triggering the interrupt handler routine every time it reaches zero, at which point the timer restarts the whole process repeats. To achieve this repeated loop, the timer is configured so a value of 19,998 gets latched into the timer each time the timer reaches zero; the latching process takes two ticks, so this gives us a total count of 20,000, meaning the interrupt is triggered every time the timer counts down from 20,000 to zero.</p>
                         
                         <p>The User VIA timer counts down at 1 MHz, or one million times a second, so this means the interrupt is triggered every 0.02 seconds, or exactly 50 times a second. The final step is to point the interrupt vector at IRQ1V to the handler routine, which lives at <a href="/source/main/subroutine/irqhandler.html">IRQHandler</a>.</p>
                         
@@ -33,34 +33,36 @@ page_header("deep_dives", "the_interrupt_handler.html", "The interrupt handler",
 						<h2 class="articleSubheader">Handling the interrupt<br>
 													 ----------------------</h2>
 
-						<p>The first thing that the <a href="/source/main/subroutine/irqhandler.html">IRQHandler</a> routine does is to check whether it is being called as a result of User VIA timer 1 running down; if it isn't then it terminates and hands the interrupt off to the default interrupt handler. We therefore know that the body of the handler will be run exactly 50 times a second, no more, no less.</p>
+						<p>The first thing that the <a href="/source/main/subroutine/irqhandler.html">IRQHandler</a> routine does is to check whether it is being called as a result of the User VIA timer 1 running down; if it isn't then it terminates and hands the interrupt off to the default interrupt handler. We therefore know that the body of the handler will be run exactly 50 times a second, no more, no less.</p>
 
-						<p>The routine then does the following:</p>
+						<p>The only thing that could get in the way would be a non-maskable interrupt (NMI) which could take precedence over the timer interrupt, but the only sources of NMIs in a BBC Micro are the floppy disc controller, Econet and some 1 MHz bus peripherals, and the Sentinel doesn't use any of these. Indeed, the game code occupies the memory that's used to handle NMIs at &amp;0D00, which is why the <a href="/source/main/subroutine/nmihandler.html">NMIHandler</a> exists at that address (this routine contains a single RTI instruction, so any NMIs that do happen to be triggered will have no effect anyway).</p>
+
+						<p>Once the interrupt handler has confirmed that this is indeed the User VIA timer 1 interrupt, it does the following:</p>
 
 						<ul>
 							<li>Clear the timer 1 interrupt.</li>
 
 							<li>Decrement the sound timer in <a href="/source/main/workspace/main_variable_workspace.html#soundcounter">soundCounter</a>, which is used to control when sound effects should finish (see the deep dive on <a href="sound_effects.html">sound effects</a> for details).</li>
 
-							<li>If a game is not yet in progress (i.e. we are in the main title screen or landscape preview), then we return from the handler at this point, as the game timers aren't needed in the title screens.</li>
+							<li>If a game is not yet in progress (i.e. we are in the main title screen or landscape preview), then we return from the handler at this point, as the game timers aren't needed until the game starts.</li>
 
-							<li>If the Sentinel has won and we are currently showing the game over screen, then call <a href="/source/main/subroutine/drawblackdots.html">DrawBlackDots</a> to draw 80 random black dots for the game over screen, and return from the handler. This combines the dithering of the winning object (e.g. the Sentinel) to the screen while at the same time fading the screen to black, to create the hypnotic effect of the winning entity fading in and out of the screen as the game ends.</li>
+							<li>If the Sentinel has won and we are currently showing the game over screen, then call <a href="/source/main/subroutine/drawblackdots.html">DrawBlackDots</a> to draw 80 random black dots on-screen and return from the handler. This ensures that the screen is faded to black at the same time as the winning object (e.g. the Sentinel) is dithered onto the game over screen by the <a href="/source/main/subroutine/showgameoverscreen.html">ShowGameOverScreen</a> routine. This creates the hypnotic effect of the winning entity fading in and out of the screen as the game ends (see the deep dive on <a href="drawing_the_title_screens.html">drawing the title screens</a> for more details).</li>
 
 							<li>If the game is paused, call <a href="/source/main/subroutine/scanforgamekeys.html">ScanForGameKeys</a> to scan for the pause, unpause and volume keys and return from the handler</li>
 
-							<li>If we get here then a game is in progress, the Sentinel has not won and the game is not paused, so we do the following:
+							<li>If we get here then the game is in progress, the Sentinel has not won and the game is not paused, so we do the following:
 
 								<ul>
-									<li>If scrollCounter is non-zero then we are in the process of scrolling a new portion of the landscape view from the screen buffer onto the screen, as part of a pan, so do the following:
+									<li>If <a href="/source/main/workspace/main_variable_workspace.html#scrollcounter">scrollCounter</a> is non-zero then we are in the process of scrolling a new portion of the landscape view from the screen buffer onto the screen, as part of a pan, so do the following:
 
 										<ul>
-											<li>Call <a href="/source/main/subroutine/scrollplayerview.html">ScrollPlayerView</a> to scroll the screen (using a hardware scroll) and copy data from the screen buffer into screen memory to implement the player's scrolling landscape view. This also decrements scrollCounter, so ScrollPlayerView will end up being called the correct number of times for the landscape pan.</li>
+											<li>Call <a href="/source/main/subroutine/scrollplayerview.html">ScrollPlayerView</a> to scroll the screen (using a hardware scroll) and copy data from the screen buffer into screen memory to implement the player's scrolling landscape view. This also decrements <a href="/source/main/workspace/main_variable_workspace.html#scrollcounter">scrollCounter</a>, so ScrollPlayerView will end up being called the correct number of times for the landscape pan.</li>
 
 											<li>Call <a href="/source/main/subroutine/showiconbuffer.html">ShowIconBuffer</a> to display the contents of the icon screen buffer by copying it into screen memory, as the scrolling process will have scrolled this part of the screen, so we need to redraw it to prevent the energy icons and scanner from moving.</li>
 										</ul>
 									</li>
 
-									<li>If bit 7 of activateSentinel is clear then the Sentinel has been activated and the game has started properly, so do the following:
+									<li>If bit 7 of activateSentinel is clear then the Sentinel has been activated and the game is fully started, so do the following:
 
 										<ul>
 											<li>Call <a href="/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a> to update the timers that control the enemy tactics (see the deep dive on <a href="game_timings.html">game timings</a> for details).</li>
@@ -69,12 +71,19 @@ page_header("deep_dives", "the_interrupt_handler.html", "The interrupt handler",
 										</ul>
 									</li>
 
-									<li>If bit 7 of focusOnKeyAction is clear then the game is not currently focusing its effort on implementing a key action such as a landscape pan, so call <a href="/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a> to check for various game key presses and update the key logger, and if the sights are being moved then they are redrawn. See the deep dive on <a href="the_key_logger.html">the key logger</a> for details.</li>
+									<li>If bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#focusonkeyaction">focusOnKeyAction</a> is clear then the game is not currently focusing its effort on implementing a key action such as a landscape pan, so do the following:
+
+										<ul>
+											<li>Call <a href="/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a> to check for various game key presses and update the key logger (see the deep dive on <a href="the_key_logger.html">the key logger</a> for details).</li>
+
+											<li>If the sights are being moved then redraw them.</li>
+										</ul>
+									</li>
 								</ul>
 							</li>
 						</ul>
 
-
+						<p>And that's how the Sentinel keeps accurate, robotic and split-second timing.</p>
 					</div>
 				</div>
 
