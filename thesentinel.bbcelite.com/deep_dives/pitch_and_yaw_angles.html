@@ -11,7 +11,54 @@ page_header("deep_dives", "pitch_and_yaw_angles.html", "Pitch and yaw angles", "
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Pitch and yaw angles are fundamental to the way The Sentinel works</h2>
 
-						<p>This deep dive is being written and will be published in the next few weeks.</p>
+						<h2 class="articleSubheader">Angles and screen coordinates<br>
+													 -----------------------------</h2>
+
+						<p>Angles in Revs are stored as signed integers, representing a full circle in the range -127 to +128. If we consider an overhead view of our car, with the car looking forwards towards 0 degrees, then the range looks like this:</p>
+
+<pre class="articleIndented">           0
+     -32   |   +32
+        \  |  /
+         \ | /                 ^
+          \|/                  |
+  -64 -----+----- +64          +   Overhead view of car, looking forward
+          /|\
+         / | \
+        /  |  \
+     -96   |   +96
+          128
+</pre>
+
+						<p>So positive angles are to the right, negative angles are to the left, and angles whose magnitude is greater than 64 are behind.</p>
+
+						<p>To convert angles to screen coordinates, we consider the origin to be in the centre of the screen, and then simply scale the relevant angle. So, for example, in the x-axis, we take the yaw angle and multiply it by 4, and then we add 80 to move it into the screen's coordinate range (as the origin for the screen is in the bottom-left corner, and the screen is 160 pixels wide, so adding 80 converts to screen x-coordinates).</p>
+
+						<p>This means that the field of view from the player's perspective is from -20 to +20 units of yaw angle (i.e. -28.125 to +28.125 degrees, or 360 * 20 / 256, giving a total field of view arc of 56.25 degrees); everything else is either off-screen or behind us. It also means that we can think of yaw angle as being equivalent to the projected x-coordinate, and the pitch angle as being equivalent to the projected y-coordinate. Some variable names, like <a href="/source/main/variable/yvergeright.html">yVergeRight</a> or <a href="/source/main/variable/xvergerightlo.html">xVergeRightLo</a>, are actually angles, but because of their context it's easier to think of them as screen coordinates, so I've chosen more coordinate-friendly variable names.</p>
+
+						<p>Converting directly from pitch and yaw angle into screen coordinates is possible because the viewing strip in Revs is quite restricted. It adds a bit of a fisheye effect to the view, in that cars directly ahead of the player will be more spaced out, while those around the periphery will be slightly squashed together, but this isn't terribly noticeable, and if anything it adds a bit of a TV-camera lensing effect. What is does do, though, is provide us with a system that not only supports screen coordinates, but also collision detection and distance calculations, all in the same angle system.</p>
+  
+						<h2 class="articleSubheader">Angles as compass headings<br>
+													 --------------------------</h2>
+
+						<p>The main game code tends to make more sense if you use the angle system above, but there is another interpretation of the yaw angle system, is we consider the angles as unsigned integers instead. Doing this gives us the following angle system:</p>
+
+<pre class="articleIndented">           0
+     224   |   32
+        \  |  /
+         \ | /                 ^
+          \|/                  |
+  192 -----+----- 64           +   Overhead view of car, looking forward
+          /|\
+         / | \
+        /  |  \
+     160   |   96
+          128
+</pre>
+
+						<p>This is equivalent to thinking of the angles in a circle going from 0 to 360 degrees, just stored in the range 0 to 255. So 90 degrees is stored as 64, 180 degrees is stored as 128, 270 degrees as 192, and so on. In terms of the code, there is no difference between this system and the signed system described above, but when talking about the car's view ahead, it is much easier to talk about a field of view of +/-32 than a field of view from 224 to 255 and 0 to 32.</p>
+
+						<p>However, when talking about the track's compass heading in the extra track files, it is much easier to talk in terms of angles from 0 to 360 degrees, in which case this interpretation is more useful. See the deep dive on <a href="dynamic_track_generation_in_the_extra_tracks.html">dynamic track generation in the extra tracks</a> for details.</p>
+
 					</div>
 				</div>
 

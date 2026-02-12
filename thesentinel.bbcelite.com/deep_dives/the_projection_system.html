@@ -11,7 +11,41 @@ page_header("deep_dives", "the_projection_system.html", "The projection system",
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The plate carr&eacute;e equirectangular projection used in The Sentinel</h2>
 
-						<p>This deep dive is being written and will be published in the next few weeks.</p>
+						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
+
+						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
+
+						<p>All 3D games have some kind of projection system that takes coordinates from the 3D world and projects them onto the 2D screen. The most common approach in 8-bit games is the simple perspective projection, in which we convert 3D coordinates to 2D coordinates by simply dividing the x-coordinate (left-right) and y-coordinate (up-down) by the z-coordinate (into and out of the screen):</p>
+
+<pre class="articleIndented">  screen_x = x / z
+
+  screen_y = y / z
+</pre>
+
+						<p>This is the approach used in both Elite and Aviator: in Elite, the projection logic is in the <a href="https://elite.bbcelite.com/cassette/main/subroutine/proj.html">PROJ routine</a>, while in Aviator it's in the <a href="https://aviator.bbcelite.com/source/main/subroutine/projectpoint_part_1_of_3.html">ProjectPoint routine</a>. At the core of each routine is simple division by the z-coordinate, giving us a screen coordinate that we can scale appropriately to fit on-screen.  For more details of the maths behind this projection, plus lots of information about other types of projection, see the <a href="https://en.wikipedia.org/wiki/3D_projection#Perspective_projection">Wikipedia article on perspective projection</a>.</p>
+
+						<p>However, Revs doesn't use this simple perspective projection. Instead, the 3D world in Revs is projected into yaw and pitch angles, which then double up as screen coordinates; the technical name for this projection system is the <em>plate carr&eacute;e</em> equirectangular projection; see <a href="https://en.wikipedia.org/wiki/Equirectangular_projection">this Wikipedia entry</a> for more information.</p>
+
+						<p>In practice, because of the close relationship between the angles and screen coordinates, it's often easier just to think of them as equivalent terms, like this:
+
+						<ul>
+							<li>Yaw angle = azimuth angle = x-coordinate = distance across the screen = left (-ve) to right (+ve) coordinate</li>
+
+							<li>Pitch angle = elevation angle = y-coordinate = distance up the screen = down (-ve) to up (+ve) coordinate</li>
+						</ul>
+
+						<p>In reality things are a bit more subtle than this implies, but when trying to get your head around the coordinate system in Revs, it's a handy shortcut. Let's look at what's involved.</p>
+
+						<h2 class="articleSubheader">Projection in Revs<br>
+													 ------------------</h2>
+
+						<p>The core routine in the Revs projection system is <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a>, which calculates the pitch and yaw angles for an object, from the point of view of the player; the angles themselves are calculated in the <a href="/source/main/subroutine/getobjyawangle_part_1_of_4.html">GetObjYawAngle</a> and <a href="/source/main/subroutine/getobjpitchangle.html">GetObjPitchAngle</a> routines.</p>
+
+						<p>Taken from the point of view of the player's car (i.e. our car as we drive around the track), the object's yaw angle rotates around the up-down y-axis, while the pitch angle rotates around the x-axis. If an object has a higher pitch angle from the perspective of the player, then it is higher up, and we'd need to bend our head back and look up to see the object; if an object has a higher yaw angle, then it is round to the right, and we'd have to twist our neck to the right to see it.</p>
+
+						<p>These are the same terms that we use to describe the spaceship angles in Elite or the Spitfire angles in Aviator, though in Revs there are only pitch and yaw, as the simulation does not extend to rolling the car (i.e. rotating around the z-axis). If you are of an astronomical persuasion, alternative names for pitch and yaw are elevation and azimuth.</p>
+
+						<p>Revs stores its 3D world using standard three-axis 16-bit coordinates, but for most calculations it converts these coordinates into pitch and yaw angles, relative to another object. The GetObjectAngles routine calculates the angles of an object relative to the player, and it's mainly used when working out where to draw objects in the track view, as the track view is from the perspective of the player.</p>
 					</div>
 				</div>
 
