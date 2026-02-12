@@ -11,54 +11,95 @@ page_header("deep_dives", "pitch_and_yaw_angles.html", "Pitch and yaw angles", "
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Pitch and yaw angles are fundamental to the way The Sentinel works</h2>
 
-						<h2 class="articleSubheader">Angles and screen coordinates<br>
-													 -----------------------------</h2>
+						<p>There are two separate coordinate systems used in The Sentinel: pitch and yaw angles, and Cartesian coordinates. In this article, we take a look at pitch and yaw angles, which are absolutely core to the way the game works.</p>
 
-						<p>Angles in Revs are stored as signed integers, representing a full circle in the range -127 to +128. If we consider an overhead view of our car, with the car looking forwards towards 0 degrees, then the range looks like this:</p>
+						<p>You can read all about the other system in the deep dive on <a href="cartesian_coordinates.html">Cartesian coordinates</a>, and for an explanation on how the game converts coordinates between the two systems, see the deep dive on <a href="coordinate_conversion.html">coordinate conversion</a>.</p>
+
+						<h2 class="articleSubheader">Pitch and yaw angles<br>
+													 --------------------</h2>
+
+						<p>The terms "pitch" and "yaw" are absolutely key to understanding how the complex geometry works in The Sentinel; there are an awful lot of angles in this game, and knowing the orientation of those angles is vital.</p>
+
+						<p>So consider the Sentinel, standing alone on top of the Sentinel's tower and gazing out over the landscape:</p>
+
+						<img class="titleImage" style="width: 330px" src="/images/general/TheSentinel.png" alt="The Sentinel on the BBC Micro screenshot">
+
+						<p>The direction of that gaze (which we call the "gaze vector") is defined by a pitch angle and a yaw angle, as follows:</p>
+
+						<ul>
+							<li>Pitch angle:
+
+								<ul>
+									<li>The pitch angle defines the direction of the gaze in the vertical direction, so changing the pitch angle will rotate the Sentinel's gaze up or down.</li>
+
+									<li>A higher, more positive pitch angle makes the Sentinel look up, while a lower, more negative pitch angles makes the Sentinel look down.</li>
+
+									<li>The pitch angle rotates the Sentinel's gaze around the x-axis, where the x-axis goes from left to right.</li>
+
+									<li>Changing the Sentinel's pitch angle effectively makes the Sentinel tilt its head backwards and forwards (although, being a rigid robot, it doesn't actually do this).</li>
+
+									<li>If you are of an astronomical persuasion, an alternative name for pitch is "elevation".</li>
+								</ul>
+							</li>
+
+							<li>Yaw angle:
+
+								<ul>
+									<li>The yaw angle defines the direction of the gaze in the horizontal direction, so changing the yaw angle will rotate the Sentinel's gaze left or right.</li>
+
+									<li>A higher, more positive yaw angle makes the Sentinel look to the right, while a lower, more negative yaw angle makes the Sentinel look to the left.</li>
+
+									<li>The yaw angle rotates the Sentinel's gaze around the y-axis, where the y-axis goes from down to up.</li>
+
+									<li>Changing the Sentinel's yaw angle rotates the Sentinel to the left or the right, which you can see if you look at the Sentinel in-game once the game has fully started (when the Sentinel changes yaw angle, it makes an eerie grinding sound).</li>
+
+									<li>If you are of an astronomical persuasion, an alternative name for yaw is "azimuth".</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>Note that "pitch" and "yaw" are the same terms that we use to describe the spaceship angles in Elite, or the Spitfire angles in Aviator, or the car angles in Revs. The first two games also support the concept of a roll angle, which is a rotation around the z-axis (which goes into the screen), but this extra angle isn't needed in Revs or The Sentinel. Indeed, the angle system in The Sentinel is exactly the same as the angle system in Revs, and it uses the exact same underlying code; see the deep dive on <a href="reusing_the_geometry_routines_from_revs.html">reusing the geometry routines from Revs</a> for details.</p>
+
+						<p>Now that we're clear on exactly which angle is which, let's take a closer look at how the pitch and yaw angles are stored in The Sentinel.</p>
+
+						<h2 class="articleSubheader">Angles in The Sentinel<br>
+													 ----------------------</h2>
+
+						<p>Angles in The Sentinel are stored as signed integers, representing a full circle in the range -127 to +128. If we consider an overhead view of the Sentinel, with the Sentinel's gaze looking upwards in the diagram, towards 0 degrees, then the range looks like this:</p>
 
 <pre class="articleIndented">           0
      -32   |   +32
         \  |  /
          \ | /                 ^
           \|/                  |
-  -64 -----+----- +64          +   Overhead view of car, looking forward
-          /|\
+  -64 -----+----- +64          +   Overhead view of the Sentinel,
+          /|\                      looking forwards
          / | \
         /  |  \
      -96   |   +96
           128
 </pre>
 
-						<p>So positive angles are to the right, negative angles are to the left, and angles whose magnitude is greater than 64 are behind.</p>
+						<p>So from the point of view of the Sentinel, positive yaw angles are to the right, negative yaw angles are to the left, and angles whose magnitude is greater than 64 are behind.</p>
 
-						<p>To convert angles to screen coordinates, we consider the origin to be in the centre of the screen, and then simply scale the relevant angle. So, for example, in the x-axis, we take the yaw angle and multiply it by 4, and then we add 80 to move it into the screen's coordinate range (as the origin for the screen is in the bottom-left corner, and the screen is 160 pixels wide, so adding 80 converts to screen x-coordinates).</p>
-
-						<p>This means that the field of view from the player's perspective is from -20 to +20 units of yaw angle (i.e. -28.125 to +28.125 degrees, or 360 * 20 / 256, giving a total field of view arc of 56.25 degrees); everything else is either off-screen or behind us. It also means that we can think of yaw angle as being equivalent to the projected x-coordinate, and the pitch angle as being equivalent to the projected y-coordinate. Some variable names, like <a href="/source/main/variable/yvergeright.html">yVergeRight</a> or <a href="/source/main/variable/xvergerightlo.html">xVergeRightLo</a>, are actually angles, but because of their context it's easier to think of them as screen coordinates, so I've chosen more coordinate-friendly variable names.</p>
-
-						<p>Converting directly from pitch and yaw angle into screen coordinates is possible because the viewing strip in Revs is quite restricted. It adds a bit of a fisheye effect to the view, in that cars directly ahead of the player will be more spaced out, while those around the periphery will be slightly squashed together, but this isn't terribly noticeable, and if anything it adds a bit of a TV-camera lensing effect. What is does do, though, is provide us with a system that not only supports screen coordinates, but also collision detection and distance calculations, all in the same angle system.</p>
+						<p>Similarly, if we consider a side view of the Sentinel with the Sentinel looking to the right in the following diagram, towards 0 degrees, then the range looks like this:</p>
   
-						<h2 class="articleSubheader">Angles as compass headings<br>
-													 --------------------------</h2>
-
-						<p>The main game code tends to make more sense if you use the angle system above, but there is another interpretation of the yaw angle system, is we consider the angles as unsigned integers instead. Doing this gives us the following angle system:</p>
-
-<pre class="articleIndented">           0
-     224   |   32
-        \  |  /
-         \ | /                 ^
-          \|/                  |
-  192 -----+----- 64           +   Overhead view of car, looking forward
-          /|\
-         / | \
-        /  |  \
-     160   |   96
-          128
+<pre class="articleIndented">          +64
+           |   +32
+           |  /
+           | /
+           |/
+           +----- 0            +---&gt; Side view of the Sentinel,
+           |\                        looking to the right
+           | \
+           |  \
+           |   -32
+          -64
 </pre>
 
-						<p>This is equivalent to thinking of the angles in a circle going from 0 to 360 degrees, just stored in the range 0 to 255. So 90 degrees is stored as 64, 180 degrees is stored as 128, 270 degrees as 192, and so on. In terms of the code, there is no difference between this system and the signed system described above, but when talking about the car's view ahead, it is much easier to talk about a field of view of +/-32 than a field of view from 224 to 255 and 0 to 32.</p>
+						<p>So from the point of view of the Sentinel, positive pitch angles are up and negative yaw angles are down. The underlying system can cope with pitch angles whose magnitude is greater than 64 (in which case the Sentinel would be looking backwards), but in practice pitch angles are restricted to looking forwards, as even the Sentinel doesn't have eyes in the back of its head.</p>
 
-						<p>However, when talking about the track's compass heading in the extra track files, it is much easier to talk in terms of angles from 0 to 360 degrees, in which case this interpretation is more useful. See the deep dive on <a href="dynamic_track_generation_in_the_extra_tracks.html">dynamic track generation in the extra tracks</a> for details.</p>
-
+						<p>Along with the pitch and yaw angles, the game implements a Cartesian coordinate system for the tile landscape, which is described in the deep dive on <a href="cartesian_coordinates.html">Cartesian coordinates</a>. And to find out how to convert from one coordinate system to the other, see the deep dive on <a href="coordinate_conversion.html">coordinate conversion</a>.</p>
 					</div>
 				</div>
 
