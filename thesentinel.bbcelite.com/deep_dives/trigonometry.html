@@ -11,113 +11,50 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">A look at the various ways in which The Sentinel implements trigonometry</h2>
 
-						<p>Trigonometry is a fundamental requirement for any game that works with 3D graphics, and Revs is no exception. Modern computers come with all sorts of sophisticated libraries and graphics engines that manage these calculations for us, but on machines like the BBC Micro, the challenge is how to implement accurate trigonometric functions in 8-bit assembly language, given that the CPU only supports integers from 0 to 255, and only includes instructions for addition, subtraction and bitwise shifting.</p>
+						<p>Trigonometry is a fundamental requirement for any game that works with 3D graphics, and The Sentinel is no exception. Modern computers come with all sorts of sophisticated libraries and graphics engines that manage these calculations for us, but on machines like the BBC Micro, the challenge is how to implement accurate trigonometric functions in 8-bit assembly language, given that the CPU only supports integers from 0 to 255, and only includes instructions for addition, subtraction and bitwise shifting.</p>
 
-						<p>Revs uses a number of techniques to get around these limitations, so let's take a look at the details.</p>
+						<p>The Sentinel uses a number of techniques to get around these limitations. Quite a few of these are taken directly from Geoff Crammond's previous game Revs, which you can read all about in the deep dive on <a href="reusing_the_geometry_routines_from_revs.html">reusing the geometry routines from Revs</a>. As for the routines themselves, let's take a look at the details.</p>
 
 						<h2 class="articleSubheader">Pitch and yaw lookup tables<br>
 													 ---------------------------</h2>
 
-						<p>The simplest method for implementing trigonometric functions in assembly code is to use lookup tables that contain pre-calculated values. For example, Revs contains two lookup tables that are used by the pitch and yaw angle routines, one for calculating arctangent, and the other for calculating scale factors through division.</p>
+						<p>The simplest method for implementing trigonometric functions in assembly code is to use lookup tables that contain pre-calculated values. For example, The Sentinel contains two lookup tables that are used by the pitch and yaw angle routines, one for calculating arctangent, and the other for calculating sine and cosine.</p>
 
 						<p>The tables used in calculating pitch and yaw angles are as follows:</p>
 
 						<ul>
-							<li><a href="/source/main/variable/arctany.html">arctanY</a> is used by the <a href="/source/main/subroutine/getobjyawangle_part_2_of_4.html">GetObjYawAngle</a> routine to calculate the object's yaw angle as an arctangent.</li>
+							<li>arctan(<a href="/source/main/variable/arctanhi.html">Hi</a> <a href="/source/main/variable/arctanlo.html">Lo</a>)</a> is used by the <a href="/source/main/subroutine/getanglefromcoords_part_3_of_3.html">GetAngleFromCoords</a> routine to calculate the yaw angle as an arctangent when converting a 3D Cartesian vector into pitch and yaw angles.</li>
 
-							<li><a href="/source/main/variable/dividex.html">divideX</a> is used by the <a href="/source/main/subroutine/getobjpitchangle.html">GetObjPitchAngle</a> routine to calculate the object's size as a scale factor, based on dividing by the x-delta (see the diagram below).</li>
+							<li><a href="/source/main/variable/sin.html">sin</a> is used by the <a href="/source/main/subroutine/getsineandcosine.html">GetSineAndCosine</a> routine when calculating the view-relative pitch and yaw angles of all the points in an object.</li>
 						</ul>
 
-						<p>Taking the first table as an example, the table contains 256 values, as follows:</p>
+						<p>Taking the second example, the table at <a href="/source/main/variable/sin.html">sin</a> contains the following values:</p>
 
-<pre class="articleIndented">  FOR I%, 0, 255
-   EQUB INT(0.5 + ATN(I% / 256) * 256 / ATN(1))
+<pre class="articleIndented">  FOR I%, 0, 127
+   EQUB INT(0.5 + 256 * SIN((I% / 128) * (PI / 2)))
   NEXT
 </pre>
 
-						<p>So the Y-th entry in the table contains arctan(Y / 256), multiplied by a scale factor of 256 / ATN(1) and rounded up to the nearest integer. The scale factor ensures that values in the table range from 0 to 255, with the maximum value when the angle is 45 degrees (i.e. when the adjacent and opposite sides are equal, so opposite / adjacent = tan(I%) = 1). This ensures that the table contains maximum accuracy for the angle range 0 to 45 degrees, which is a good enough range as objects with yaw angles greater than 45 degrees are off-screen.</p>
+						<p>This table contains sine values for a quarter of a circle, i.e. for the range 0 to 90 degrees, or 0 to PI/2 radians. The table contains values for indexes 0 to 127, which cover the quarter from 0 to PI/2 radians. Entry X in the table is therefore (X / 128) * (PI / 2) radians of the way round the quarter circle, so the table at index X contains the sine of this value.</p>
 
-						<p>To use this table, the GetObjYawAngle routine sets Y to the following value:</p>
-
-<pre class="articleIndented">  Y = 256 * |z-delta| / |x-delta|
-</pre>
-
-						<p>which gets converted to the yaw angle via this lookup:</p>
-
-<pre class="articleIndented">  LDA arctanY,Y
-</pre>
-
-						<p>This sets A to arctan(Y), which is arctan(|z-delta| / |x-delta|). To see what this represents, consider the following triangle, which is an overhead view of the player's car, with the player in the bottom-left corner. The player is looking straight ahead, which means they are looking up the screen, and there's an object in front of and to the right of the player:</p>
-
-<pre class="articleIndented">                            object
-                         +
-                       .´|
-                     .´  |
-                   .´    |  z-delta
-      ^          .´      |
-      |        .´        |
-      |      .´ a        |
-    player  +------------+
-               x-delta
-</pre>
-
-						<p>If the object is x-delta to the right of the player and z-delta ahead of the player (so x-delta and z-delta are the coordinates of the object relative to the player), then we can calculate the yaw angle a of the object relative to the player by using the definition of tangent and arctangent:</p>
-
-<pre class="articleIndented">             opposite     z-delta
-  tan(a)  =  --------  =  -------
-             adjacent     x-delta
-
-
-              ( z-delta )
-  a  =  arctan( ------- )
-              ( x-delta )
-</pre>
-
-						<p>So the lookup table lets us convert an object's relative coordinates into the object's relative yaw angle, without having to do any maths; all we need is a simple lookup, which is quick and easy.</p>
-
-						<h2 class="articleSubheader">Dashboard lookup tables<br>
-													 -----------------------</h2>
-
-						<p>Another area where trigonometry is needed is on the dashboard, specifically when drawing the hand on the rev counter and the dash on the steering wheel. Both of these involve calculating the coordinates of a point on a circle, where we know how far round the circle we want to draw our line; for the rev counter, the rev count gives us this position, while for the steering wheel it's the amount of turn on the wheel. As both of these values are effectively angles (i.e. positions on a circular dial) the solution requires trigonometry.</p>
-
-						<p>Again, lookup tables are used, with two lookup tables, one for the rev counter and one for the steering wheel. These tables both contain cosine values that convert angles into coordinates, as follows:
+						<p>The value of sine across the quarter circle ranges from 0 to 1:</p>
 
 						<ul>
-							<li><a href="/source/main/variable/handpixels.html">handPixels</a> gives the length of the adjacent side of a right-angled triangle, with a hypotenuse of length 28, and an angle ranging from 0 to PI/4 (i.e. one eighth of a circle), with this range split up into 21 points.</li>
+							<li>sin(0) = 0</li>
 
-							<li><a href="/source/main/variable/wheelpixels.html">wheelPixels</a> gives the length of the adjacent side of a right-angled triangle, with a hypotenuse of length 53, and an angle ranging from 0 to PI/4 (i.e. one eighth of a circle), with this range split up into 42 points (so the table's 38 points cover a little less than an eighth of a circle).</li>
+							<li>sin(90) = sin(PI/2) = 1</li>
 						</ul>
 
-						<p> In other words, if we have a clock whose centre is at the origin, then the handPixels table contains the x-coordinate of the end of a clock hand of length 28 as it moves from 3 o'clock to half past 4, which we can use to calculate the coordinates of the end of the hand in the rev counter; and the wheelPixels table contains the x-coordinate of the end of a clock hand of length 53, which we can use to calculate the coordinates of the end of the dash line on the steering wheel.</p>
+						<p>It might help to think of sin(X) as an integer ranging from 0 to 256 across the quarter circle, so entry X in this table contains sin(X) * 256, where X ranges from 0 to 128 over the course of a quarter circle.</p>
 
-						<p>The values in the table are cosines. For example, the handPixels table contains the following values:</p>
+						<p>So the table contains sine values for a quarter-circle, and we can use this to work out the values of sine and cosine for the entire circle using the trigonometric identities described at the end of this article.</p>
 
-<pre class="articleIndented">  FOR I%, 0, 21
-   EQUB INT(0.5 + 28 * COS((PI/4) * I% / 21))
-  NEXT
-</pre>
-
-						<p>These enable us to convert angles into coordinates. Consider the rev counter dial hand, which is 28 pixels long. If we draw this as a clock hand on a dial, it corresponds to a right-angled triangle like this:</p>
-
-<pre class="articleIndented">
-        _ - _
-     =         =                      |`.
-   = :`.         =                    |  `.  28
-  =  :  `.        =                   |    `.
-  = -+----+       =      -------&gt;     |    r `.
-   =             =                    +--------`
-    =           =                      28 * cos(r)
-     `--_____--´                     
-</pre>
-
-						<p>The x-coordinate of the end of the hand is therefore 28 * cos(r) to the left of the centre of the dial, so this is the value we fetch from the lookup table in handPixels table. The code is a bit more generalised than this and uses the table to provide the coordinate of the longest side of the triangle, which might be the x-coordinate or the y-coordinate, but the principle is the same for all angles, and for the steering wheel dash.</p>
-
-						<p>See the <a href="/source/main/subroutine/updatedashboard.html">UpdateDashboard</a> routine for details of both drawing processes.</p>
+						<p>For more information on how the GetAngleFromCoords routine uses the arctan lookup, see the deep dive on <a href="coordinate_conversion.html">coordinate conversion</a>.</p>
 
 						<h2 class="articleSubheader">Approximating PI<br>
 													 ----------------</h2>
 
-						<p>Lookup tables are useful, but they do take up a fair amount of memory, and on the unexpanded BBC Micro, memory is at a premium (see the deep dive on <a href="the_revs_memory_map.html">the Revs memory map</a> to see just how tight things are). To avoid this problem, Revs also implements mathematical trigonometric functions that calculate the values of sine and cosine, rather than simply looking them up in a table.</p>
+						<p>Lookup tables are useful, but they do take up a fair amount of memory, and on the unexpanded BBC Micro, memory is at a premium (see <a href="the_sentinel_memory_map.html">The Sentinel memory map</a> to see just how tight things are). To avoid this problem, the game also implements mathematical trigonometric functions that calculate the values of sine and cosine, rather than simply looking them up in a table.</p>
 
 						<p>In order to understand these, we need to talk about PI. Most mathematical algorithms for calculating trigonometric functions operate on radians rather than degrees - even the lookup tables above use radians. We humans tend to think in degrees, where a full circle is 360 degrees, and a quarter circle is 90 degrees, but if we're to create efficient 8-bit trigonometry, we need to think of a circle as 2 * PI radians, and a quarter circle as PI/2 radians.</p>
 
@@ -168,7 +105,7 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>In this, x! (or "x factorial") is equal to x * (x - 1) * (x - 2) * ... * 1, so 3! = 3 * 2 * 1 = 6, for example. See the <a href="https://en.wikipedia.org/wiki/Taylor_series#Trigonometric_functions">Wikipedia entry on the Taylor series</a> for more details on the Taylor series and how it can be used to calculate all sorts of trigonometric values.</p>
 
-						<p>Because the components in the above sum get smaller and smaller as the various factorials increase, we can approximate the value of sin(x) by doing just the first few calculations. Revs uses this technique in <a href="/source/main/subroutine/getrotationmatrix_part_2_of_5.html">GetRotationMatrix</a>, where for small values of yawRadians, it calculates the following:</p>
+						<p>Because the components in the above sum get smaller and smaller as the various factorials increase, we can approximate the value of sin(x) by doing just the first few calculations. The Sentinel uses this technique in <a href="/source/main/subroutine/getrotationmatrix_part_2_of_5.html">GetRotationMatrix</a>, where for small values of yawRadians, it calculates the following:</p>
 
 <pre class="articleIndented">  (yawRadians / 2 - (171 / 256) * (yawRadians / 2) ^ 3) * 2
 </pre>
@@ -195,7 +132,7 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 						<h2 class="articleSubheader">Small angle approximation<br>
 													 -------------------------</h2>
 
-						<p>The above calculation works fine for small values of yawRadians that don't overflow the 8-bit arithmetic, but for larger angles - i.e. those in the range 122 to 255, or 42.5 to 90 degrees - we need a different approach. In this case, we can use what is known as the "small angle approximation". Let's see how this fits into the algorithm in Revs.</p>
+						<p>The above calculation works fine for small values of yawRadians that don't overflow the 8-bit arithmetic, but for larger angles - i.e. those in the range 122 to 255, or 42.5 to 90 degrees - we need a different approach. In this case, we can use what is known as the "small angle approximation". Let's see how this fits into the algorithm in The Sentinel.</p>
 
 						<p>To calculate the sine of a larger angle, we calculate the following, which we do in <a href="/source/main/subroutine/getrotationmatrix_part_3_of_5.html">part 3 of GetRotationMatrix</a>:</p>
 
@@ -272,7 +209,7 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>This approach saves building multiple routines for sine and cosine, when simple manipulation of the angle and result means we can make do with only one routine, thus taking up less space while giving us the same results.</p>
 
-						<p>So, in summary, Revs uses lookup tables for arctangent and cosine, and it uses radians, the Taylor series, the small angle approximation and a number of trigonometric identities to calculate sine and cosine on-the-fly. It's quite the trigonometry toolbox...</p>
+						<p>So, in summary, The Sentinel uses lookup tables for arctangent and sine, and it uses radians, the Taylor series, the small angle approximation and a number of trigonometric identities to calculate sine and cosine on-the-fly. It's quite the trigonometry toolbox...</p>
 					</div>
 				</div>
 

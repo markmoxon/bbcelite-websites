@@ -11,39 +11,359 @@ page_header("deep_dives", "coordinate_conversion.html", "Coordinate conversion",
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Using two-triangle maths to convert between angles and Cartesian coordinates</h2>
 
-						<h2 class="articleSubheader">Calculating object angles<br>
-													 -------------------------</h2>
 
-						<p>The pitch and yaw angles are calculated using trigonometry. Let's just consider the yaw angle for simplicity, and let's work out the yaw angle for an object that's in front of and to the right of the player's car. It looks like this, if the player's car is at the origin in the bottom-left corner, again as an overhead view of car, looking forwards:</p>
+						<p>Because The Sentinel uses two different coordinate systems - <a href="pitch_and_yaw_angles.html">pitch and yaw angles</a> and <a href="cartesian_coordinates.html">Cartesian coordinates</a> - we often need to convert between them.</p>
 
-<pre class="articleIndented">
+						<p>This article takes a look at how we can do this, in both directions.</p>
 
-  ^         (x, z) = object
-  |       /|
-  |      / |
-  |     /  |
-  |    /   |
-  |   /    | &lt;------- z
-  |  /     |
-  | /      |
-  |/ t     |
-  +-----------------------&gt;
+						<h2 class="articleSubheader">Converting angles to coordinates<br>
+													 --------------------------------</h2>
 
-  &lt;-- x --&gt;
+						<p>The <a href="/source/main/subroutine/getvectorforangles.html">GetVectorForAngles</a> routine converts a vector from pitch and yaw angles into a 3D Cartesian vector.</p>
+
+
+
+ This routine uses the rotation matrix routine from Revs to convert a vector
+ from a pair of pitch and yaw angles into a cartesian [x y z] vector.
+
+ The pitch and yaw angles are 16-bit numbers as follows:
+
+   vectorPitchAngle(Hi Lo)
+
+   vectorYawAngle(Hi Lo)
+
+ The same vector, but expressed as a cartesian vector, is calculated as
+ follows:
+
+   [ xVector(Lo Bot) ]
+   [ yVector(Lo Bot) ]
+   [ zVector(Lo Bot) ]
+
+ The calculation is this:
+
+   yVector = sinVectorPitchAngle / 16
+
+   zVector = cosVectorPitchAngle * cosVectorYawAngle / 16
+
+   xVector = cosVectorPitchAngle * sinVectorYawAngle / 16
+
+ ******************************************************************************
+
+.GetVectorForAngles
+
+
+
+                         In the following commentary I am talking about the
+                         vector from the player's eyes to the sights, as that
+                         makes it easier to describe the various points, but
+                         this routine can convert any vector into angles using
+                         the same process
+
+                         We start by converting the pitch angle of the vector
+                         from the player's eyes to the sights into a cartesian
+                         y-coordinate in the global 3D coordinate system, where
+                         the y-axis is the up-down axis
+                        
+                         We store the resulting y-coordinate in the 16-bit
+                         variable yVector(Lo Bot)
+                        
+                         We calculate yVector by considering a triangle with
+                         the sights vector as the hypotenuse, and we drop the
+                         end point down onto the y = 0 plane (i.e. onto the
+                         ground)
+                        
+                         Consider the case where the player is looking up at an
+                         angle of vectorPitchAngle, so the vector from the
+                         player's eye to the sights is from the bottom-left to
+                         the top-right in the following triangle:
+                        
+                                                           sights
+                                                       _.-+             ^
+                                                   _.-´   |             |
+                                      vector   _.-´       |         y-axis (up)
+                                           _.-´           |
+                                       _.-´               |  y
+                                   _.-´                   |
+                                .-´ vectorPitchAngle      |
+                           eye +--------------------------+
+                                           p
+                        
+                         To make the calculations easier, let's say the length
+                         of the vector is 1
+                        
+                         Trigonometry gives us the following:
+                        
+                           sin(vectorPitchAngle) = opposite / hypotenuse
+                                                 = y / 1
+                        
+                         So the y-coordinate is given by:
+                        
+                           y = sin(vectorPitchAngle)
+                        
+                         which is what we calculate now
+                        
+                         Incidentally, the adjacent side p, which is the length
+                         of the vector projected down onto the y = 0 plane, is
+                         calculated in a similar way:
+                        
+                           cos(vectorPitchAngle) = adjacent / hypotenuse
+                                                 = p / 1
+                        
+                         So p = cos(vectorPitchAngle), which we will use to
+                         calculate the x- and z-coordinates of the vector later
+
+
+
+
+
+
+ JSR GetRotationMatrix   This routine is taken from Revs, where it calculates a
+                         rotation matrix from an angle
+                        
+                         We don't need a full rotation matrix here, but the
+                         Revs routine calculates the values that we do need
+                         here, specifically:
+                        
+                           cosVectorPitchAngle = cos(vectorPitchAngle)
+                        
+                           sinVectorPitchAngle = sin(vectorPitchAngle)
+                        
+                         These calculations return 16-bit sign-magnitude
+                         numbers with the sign in bit 0, which the DivideBy16
+                         routine converts into normal 16-bit signed numbers
+                        
+                         Note that because GetRotationMatrix is copied from
+                         Revs, where we only ever rotate through the yaw angle,
+                         the matrix values are actually returned in the various
+                         yawAngle variables, but for simplicity let's pretend
+                         they are returned as above
+
+ LDY #1                  Set (A X) = cosVectorPitchAngle / 16
+ JSR DivideBy16
+
+ STA cosVectorPitchHi    Set cosVectorPitch(Hi Lo) = cosVectorPitchAngle / 16
+ STX cosVectorPitchLo
+
+ LDY #0                  Set (A X) = sinVectorPitchAngle / 16
+ JSR DivideBy16
+
+ STA yVectorLo           Set yVector(Lo Bot) = sinVectorPitchAngle / 16
+ STX yVectorBot         
+
+
+
+
+                         So we now have the y-coordinate of the sights vector
+                         as follows:
+                        
+                           y = sin(vectorPitchAngle)
+
+                         Now we convert the yaw angle of the sights vector
+                         into cartesian x- and z-coordinates, where the x-axis
+                         is the left-right axis and the z-axis goes into the
+                         screen
+                        
+                         We store the resulting x-coordinate in the 16-bit
+                         variable xVector(Lo Bot) and the z-coordinate in
+                         zVector(Lo Bot)
+                        
+                         We calculate xVector and zVector by considering a
+                         triangle on the y = 0 plane, so that's a triangle on
+                         the ground
+                        
+                         The hypotenuse of this triangle is side p from the
+                         first calculation, which is the sights vector
+                         projected down onto the ground - the shadow from a
+                         light source directly above, if you like
+                        
+                         The opposite and adjacent sides of this tringle will
+                         give us the x- and z-coordinates of the vector
+                        
+                         To see this, consider the same vector as before, with
+                         p as the vector projected down onto the ground, and
+                         where the player is looking sideways at a yaw angle of
+                         vectorYawAngle
+                        
+                         This gives us a triangle like this, when viewed from
+                         above, so it's as if we are the light source directly
+                         above the sights vector, projecting the vector down
+                         onto p, and with the vector going from the top-left to
+                         the bottom-right, and the sights end of the vector
+                         higher than the eye end:
+                        
+                                           z
+                           eye +--------------------------+       z-axis -->
+                                `-._ vectorYawAngle       |       into screen
+                                    `-._                  |
+                                        `-._              | x
+                                         p  `-._          |
+                                                `-._      |        x-axis left
+                                                    `-._  |          to right
+                                                        `-+             |
+                                                            sights      v
+                        
+                         Again, simple trigonometry gives us the following:
+                        
+                           sin(vectorYawAngle) = opposite / hypotenuse
+                                               = x / p
+                        
+                         So:
+                        
+                           x = p * sin(vectorYawAngle)
+                        
+                         And:
+                        
+                           cos(vectorYawAngle) = adjacent / hypotenuse
+                                               = z / p
+                        
+                         So:
+                        
+                           z = p * cos(vectorYawAngle)
+                        
+                         We calculated above that:
+                        
+                           p = cos(vectorPitchAngle)
+                        
+                         So substituting that into our result gives us:
+                        
+                           x = p * sin(vectorYawAngle)
+                             = cos(vectorPitchAngle) * sin(vectorYawAngle)
+                        
+                           z = p * cos(vectorYawAngle)
+                             = cos(vectorPitchAngle) * cos(vectorYawAngle)
+                        
+                         which is what we calculate now
+
+
+
+
+						<h2 class="articleSubheader">Converting coordinates to angles<br>
+													 --------------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/getanglefromcoords_part_1_of_3.html">GetAngleFromCoords</a> routine converts a 3D Cartesian vector into pitch and yaw angles.</p>
+
+
+
+
+
+
+
+
+						<p>Taking the first example, the two tables at <a href="/source/main/variable/arctanhi.html">arctanHi</a> and <a href="/source/main/variable/arctanlo.html">arctanLo</a> contain 257 16-bit values, split up between high and low bytes, as follows:</p>
+
+<pre class="articleIndented">  FOR I%, 0, 256
+   EQUB INT(0.5 + 32 * ATN(I% / 256) * 256 / ATN(1))
+  NEXT
 </pre>
 
-						<p>Say the object is x coordinates to the right of the player's car, and z coordinates into the screen. The yaw angle is therefore t in the above diagram, and we can calculate its value using the arctangent, as follows:</p>
+						<p>So the Y-th entry in the table contains 32 * arctan(Y / 256), multiplied by a scale factor of 256 / ATN(1) and rounded up to the nearest integer. The scale factor ensures that values in the table range from 0 to 32 * 255, with the maximum value when the angle is 45 degrees (i.e. when the adjacent and opposite sides are equal, so opposite / adjacent = tan(I%) = 1). This ensures that the table contains maximum accuracy for the angle range 0 to 45 degrees, which is a good enough range as objects with yaw angles greater than 45 degrees are off-screen.</p>
 
-<pre class="articleIndented">  t = arctan(z / x)
+						<p>To use this table, the GetObjYawAngle routine sets Y to the following value:</p>
+
+<pre class="articleIndented">  Y = 256 * |z-delta| / |x-delta|
 </pre>
 
-						<p>This calculation is performed by the GetObjYawAngle routine, which does the division using the Divide16x16 routine, and then uses a lookup table at <a href="/source/main/variable/arctany.html">arctanY</a> to convert the result into the required angle range, as shown above.</p>
+						<p>which gets converted to the yaw angle via this lookup:</p>
 
-						<p>There's a similar calculation for the pitch angle in the GetObjPitchAngle routine. This routine also uses the <a href="/source/main/variable/dividex.html">divideX</a> lookup table to calculate the object's scale factor, depending on the value of x (so the object is smaller when x is larger and the object is further away).</p>
+<pre class="articleIndented">  LDA arctanY,Y
+</pre>
 
-						<p>To summarise, you will see angles used everywhere in Revs. For example, when building the track verges, the <a href="/source/main/subroutine/getsectionangles_part_1_of_3.html">GetSectionAngles</a> routine fetches angles for sections using the GetSectionYawAngle and GetObjPitchAngle routines, while the <a href="/source/main/subroutine/getsegmentangles_part_1_of_3.html">GetSegmentAngles</a> routine does a similar job for segments, this time using the <a href="/source/main/subroutine/getsegmentyawangle.html">GetSegmentYawAngle</a> and GetObjPitchAngle routines. And when working out whether the player's car has moved forwards into the next segment, <a href="/source/main/subroutine/moveplayersegment.html">MovePlayerSegment</a> works out the angles between the car and the nearest segment to determine exactly where the car is within the segment.</p>
+						<p>This sets A to arctan(Y), which is arctan(|z-delta| / |x-delta|). To see what this represents, consider the following triangle, which is an overhead view of the player's car, with the player in the bottom-left corner. The player is looking straight ahead, which means they are looking up the screen, and there's an object in front of and to the right of the player:</p>
 
-						<p>It's precision engineering, with minimal trigonometry and no matrices. That alone makes this a very different approach to Elite and Aviator...</p>
+<pre class="articleIndented">                            object
+                         +
+                       .´|
+                     .´  |
+                   .´    |  z-delta
+      ^          .´      |
+      |        .´        |
+      |      .´ a        |
+    player  +------------+
+               x-delta
+</pre>
+
+						<p>If the object is x-delta to the right of the player and z-delta ahead of the player (so x-delta and z-delta are the coordinates of the object relative to the player), then we can calculate the yaw angle a of the object relative to the player by using the definition of tangent and arctangent:</p>
+
+<pre class="articleIndented">             opposite     z-delta
+  tan(a)  =  --------  =  -------
+             adjacent     x-delta
+
+
+              ( z-delta )
+  a  =  arctan( ------- )
+              ( x-delta )
+</pre>
+
+						<p>So the lookup table lets us convert an object's relative coordinates into the object's relative yaw angle, without having to do any maths; all we need is a simple lookup, which is quick and easy.</p>
+
+
+
+						<h2 class="articleSubheader">Calculating the hypotenuse<br>
+													 --------------------------</h2>
+
+
+
+  |`.       (1)                |`.                     (2)
+  |t `.                        |t `.
+  |    `. a                    |    `. a      h
+a |      `.                  a |      `.   ,´
+  |      p `.                  |        `.´
+  | p ___--´                   |    ___--´`.  c
+  +--´                         +--´---------`+
+                                   b
+
+                        __+
+                   __--´   \         (3)
+              __--´        |  c
+         __--´              \
+    __--´ 90-p           90 |
+  +´------------------------+
+                b
+
+
+
+t = theta, our triangle's angle
+p = phi
+a, b = sides of the triangle (e.g. coordinates)
+
+We want to find h
+
+Extend circle arc (1) into a triangle (2), and for small angles we get
+
+h =~ a + c
+
+So what is c?
+
+Focus in on right-angled triangle (3)
+
+For small theta, the angle in the bottom-right tends towards a right angle
+
+        180 - theta
+phi  =  -----------  =  90 - theta/2
+             2
+
+So:
+
+90 - phi = 90 - (90 - theta/2)
+         = theta/2
+
+From (3):
+
+tan(90 - phi) = c / b
+
+So
+
+c = b * tan(90 - phi)
+  = b * tan(theta / 2)
+
+So 
+
+h =~ a + c
+  =~ a + b * tan(theta / 2)
+
+So the table contains the hypotenuse for angle theta and triangle sides a and b
+
+
 					</div>
 				</div>
 

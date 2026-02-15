@@ -11,36 +11,135 @@ page_header("deep_dives", "tile_data.html", "Tile data", "Tile data", "A deep di
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The fundamental data structure at the heart of The Sentinel's tile landscape</h2>
 
-						<p>The landscape in The Sentinel consists of a tiled area of 31x31 tiles, like an undulating chess board that's sitting on a table in front of us, going into the screen.</p>
+						<p>As described in the deep dive on <a href="cartesian_coordinates.html">Cartesian coordinates</a>, the landscape in The Sentinel consists of a tiled area of 31 x 31 tiles. You can think of it like an undulating chess board that's sitting on a table in front of us, going into the screen.</p>
 
-						<p>The shape of the landscape is defined by the altitude of the corners of each tile, so that's a 32x32 grid of altitudes, one for each tile corner.</p>
+						<p>For example, here's the preview for landscape 9153, which enjoys an awful lot of undulation:</p>
 
-						<p>The x-axis is along the front edge, from left to right, while the z-axis goes into the screen from front to back, away from us.</p>
+						<img class="titleImage" style="width: 320px" src="/images/general/landscape_9153_preview.png" alt="The landscape preview screen for for landscape 9153 in the BBC Micro version of The Sentinel">
 
-						<p>This table contains one byte of data for each tile corner in the landscape.</p>
+						<p>The shape of the landscape is defined by the altitude of the corners of each tile, so that's a 32 x 32 grid of altitudes, one for each tile corner.</p>
 
-						<p>If there is no object placed on the tile, then the data contained in each byte is as follows:</p>
+						<p>This information is stored in the tile data table at <a href="/source/main/variable/tiledata.html">tileData</a>, which contains one byte for each tile, so that's a total size of 32 x 32 = 1024 bytes. At 1K in size, this makes the tileData table the biggest individual data table in the game.</p>
+
+						<p>We can refer to individual tiles by using a tile coordinate of the form (xTile, zTile). The x-axis runs along the front edge of the landscape, from left to right, while the z-axis goes into the screen from front to back, away from us. The <a href="/source/main/subroutine/gettiledata.html">GetTileData</a> routine takes a tile coordinate as an argument and returns the tile data.</p>
+
+						<p>The single byte of tile data comes in two formats: one format for when there is no object on the tile, and another format for when there is an object on the tile. Both of these formats co-exist in the same data table, in a rather elegant use of space. Let's take a look at both formats.</p>
+
+						<h2 class="articleSubheader">No object on tile<br>
+													 -----------------</h2>
+
+						<p>If there is no object placed on the tile, then the data contained in each byte is as follows, split into the high nibble in bits 4 to 7, and the low nibble in bits 0 to 3:</p>
+
+<pre class="articleIndented">                   7654 3210
+                   aaaa ssss
+                    ^     ^
+                    |     |
+                    |     |
+             Altitude     Shape
+              1 to 11     0 to 15
+       %0001 to %1011     %0000 to %1111
+</pre>
+
+						<p>To break this down:</p>
 
 						<ul>
-							<li>The low nibble of each byte contains the tile shape, which describes the layout and structure of the landscape on that tile (0 to 15).</li>
+							<li>The low nibble of each byte contains the tile shape %sss, which describes the layout and structure of the landscape on that tile (0 to 15). See the deep dive on <a href="tile_shapes.html">tile shapes</a> for information on the different types of tile shape.</li>
 
-							<li>The high nibble of each byte contains the altitude of the tile corner in the front-left corner of the tile (i.e. the corner closest to the origin of the landscape). We call this tile corner the "anchor". The altitude is in the range 1 to 11, so the top nibble never has both bit 6 and 7 set.</li>
+							<li>The high nibble of each byte contains the altitude %aaaa of the tile corner in the front-left corner of the tile (i.e. the corner closest to the origin of the landscape). We call this tile corner the "anchor". The altitude is in the range 1 to 11, so the top nibble never has both bit 6 and 7 set.</li>
 						</ul>
 
-						<p>If there is an object placed on the tile, then the data contained in each byte is as follows:</p>
+						<p>You will often see tile data being split into two nibbles to extract the tile shape and altitude, though this only applies when bits 6 and 7 are not both set. If they are, then there is an object on the tile, which brings us to the second data format.</p>
+
+						<h2 class="articleSubheader">Object on tile<br>
+													 --------------</h2>
+
+						<p>If there is an object placed on the tile, then the data contained in each byte is as follows, split into bits 6 and 7, and bits 0 to 5:</p>
+
+<pre class="articleIndented">                   76 543210
+                   11 nnnnnn
+                          ^
+                          |
+                          |
+                          Object number
+                          0 to 163
+                          %000000 to %111111
+</pre>
+
+						<p>To break this down:</p>
 
 						<ul>
-							<li>Bits 0 to 5 contain the number of the object on the tile (0 to 63). If there are multiple objects stacked on the tile, this is the number of the object on the top of the stack.</li>
+							<li>Bits 0 to 5 contain the number %nnnnnn of the object on the tile (0 to 63). If there are multiple objects stacked on the tile, this is the number of the object on the top of the stack. See the deep dive on <a href="stacking_objects.html">stacking objects</a> for more details on object stacks.</li>
 
-							<li>Bits 6 and 7 of the byte are set.</li>
+							<li>Bits 6 and 7 of the byte are both set when there is an object on the tile.</li>
 						</ul>
 
-						<p>We can therefore test for the presence of an object on a tile by checking whether both bit 6 and 7 are set (as empty tiles have the tile altitude in the top nibble, and this is in the range 1 to 11).</p>
+						<p>We can therefore test for the presence of an object on a tile by checking whether both bit 6 and 7 are set (as empty tiles have the tile altitude in the top nibble, and this is in the range 1 to 11). Only flat tiles can contain objects, so in this case we don't need to store the tile shape, as we know it is shape 0 (flat).</p>
 
-						<p>As each tile is defined by a tile corner and a shape, we tend to use the terms "tile" and "tile corner" interchangeably, depending on the context. That said, for tile corners along the furthest back and rightmost edges of the landscape, the shape data is ignored, as there is no landscape beyond the edges.</p>
+						<p>As each tile is defined by a tile corner and a shape, we tend to use the terms "tile" and "tile corner" interchangeably, depending on the context. That said, for the tile corners along the furthest back and rightmost edges of the landscape (i.e. when xTile = 31 or zTile = 31), the shape data is ignored, as there is no landscape beyond the edges.</p>
 
-						<p>See the GetTileShape routine for information on the different types of tile shape.</p>
+						<h2 class="articleSubheader">Table layout<br>
+													 ------------</h2>
 
+						<p>The tileData table is not laid out in a particularly obvious manner. Instead of being stored in a standard x-axis by z-axis structure, it is stored as an interlaced set of tile columns. There doesn't seem to be a programmatic reason for this; it could be a simple trick to hide the landscape structure from anyone trying to poke through the game memory to work out how to hack it, but it's hard to tell.</p>
+
+						<p>Specifically, the tile data table at tileData is made up of sequences of 32 columns of tile corners going into the screen, where each column goes from zTile = 0 to 31 along the same x-coordinate, with the columns interleaved in steps of 4 like this:</p>
+
+<pre class="articleIndented">   &amp;0400-&amp;041F = 32-corner column going into the screen at xTile =  0
+   &amp;0420-&amp;043F = 32-corner column going into the screen at xTile =  4
+   &amp;0440-&amp;045F = 32-corner column going into the screen at xTile =  8
+   &amp;0460-&amp;047F = 32-corner column going into the screen at xTile = 12
+   &amp;0480-&amp;049F = 32-corner column going into the screen at xTile = 16
+   &amp;04A0-&amp;04BF = 32-corner column going into the screen at xTile = 20
+   &amp;04C0-&amp;04DF = 32-corner column going into the screen at xTile = 24
+   &amp;04E0-&amp;04FF = 32-corner column going into the screen at xTile = 28
+
+   &amp;0500-&amp;051F = 32-corner column going into the screen at xTile =  1
+   &amp;0520-&amp;053F = 32-corner column going into the screen at xTile =  5
+   &amp;0540-&amp;055F = 32-corner column going into the screen at xTile =  9
+   &amp;0560-&amp;057F = 32-corner column going into the screen at xTile = 13
+   &amp;0580-&amp;059F = 32-corner column going into the screen at xTile = 17
+   &amp;05A0-&amp;05BF = 32-corner column going into the screen at xTile = 21
+   &amp;05C0-&amp;05DF = 32-corner column going into the screen at xTile = 25
+   &amp;05E0-&amp;05FF = 32-corner column going into the screen at xTile = 29
+
+   &amp;0600-&amp;061F = 32-corner column going into the screen at xTile =  2
+   &amp;0620-&amp;063F = 32-corner column going into the screen at xTile =  6
+   &amp;0640-&amp;065F = 32-corner column going into the screen at xTile = 10
+   &amp;0660-&amp;067F = 32-corner column going into the screen at xTile = 14
+   &amp;0680-&amp;069F = 32-corner column going into the screen at xTile = 18
+   &amp;06A0-&amp;06BF = 32-corner column going into the screen at xTile = 22
+   &amp;06C0-&amp;06DF = 32-corner column going into the screen at xTile = 26
+   &amp;06E0-&amp;06FF = 32-corner column going into the screen at xTile = 30
+
+   &amp;0700-&amp;071F = 32-corner column going into the screen at xTile =  3
+   &amp;0720-&amp;073F = 32-corner column going into the screen at xTile =  7
+   &amp;0740-&amp;075F = 32-corner column going into the screen at xTile = 11
+   &amp;0760-&amp;077F = 32-corner column going into the screen at xTile = 15
+   &amp;0780-&amp;079F = 32-corner column going into the screen at xTile = 19
+   &amp;07A0-&amp;07BF = 32-corner column going into the screen at xTile = 23
+   &amp;07C0-&amp;07DF = 32-corner column going into the screen at xTile = 27
+   &amp;07E0-&amp;07FF = 32-corner column going into the screen at xTile = 31
+</pre>
+
+
+						<p>To implement this structure, the <a href="/source/main/subroutine/gettiledata.html">GetTileData</a> routine converts a tile coordinate of (xTile, zTile) into an address and offset using this algorithm:</p>
+
+<pre class="articleIndented">  tileDataPage(1 0) = tileData + (xTile mod 4) * &amp;100
+                        
+  Y = (xTile div 4) * &amp;20 + zTile
+</pre>
+
+						<p>This gives us the following result:</p>
+
+						<ul>
+							<li>The address in tileDataPage(1 0) gives the page within tileData for the tile anchored at (xTile, zTile), and is always one of &amp;0400, &amp;0500, &amp;0600 or &amp;0700 because (xTile mod 4) is one of 0, 1, 2 or 3.</p>
+
+							<li>The value of Y is the offset within that page of the tile data for the tile anchored at (xTile, zTile).</li>
+						</ul>
+
+						<p>We can therefore fetch the tile data for the specified tile using Y as an index offset from tileDataPage(1 0), using a LDA (tileDataPage),Y instruction.</p>
+
+						<p>Don't worry, I think it's <i>supposed</i> to be confusing...</p>
 					</div>
 				</div>
 

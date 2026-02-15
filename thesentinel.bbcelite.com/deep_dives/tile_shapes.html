@@ -11,21 +11,22 @@ page_header("deep_dives", "tile_shapes.html", "Tile shapes", "Tile shapes", "A d
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How The Sentinel describes the shape of each tile</h2>
 
+						<p>As described in the deep dive on <a href="tile_data.html">tile data</a>, the shape of the landscape in The Sentinel is stored in the tileData table, with one byte for each tile. The landscape is stored as a 32 x 32 set of tile corners, which between them define a 31 x 31 grid of tiles. Part of the data that is stored for each tile is the tile shape, which we'll take a look at here.</p>
 
-See temp2 for notes on animating GIFs, shape variations etc.
+						<p>The tile shape describes the layout of each tile. Seen from above, each tile is square, like a chess board; however, each tile corner can have a different altitude, so while some tiles are flat and have the same altitude at each corner, other tiles are slopes while others contain channels, and some even end up as shapes that don't lend themselves to simple descriptions.</p>
 
-Checking to see if a tile is flat (e.g. for adding objects in PlaceObjectBelow, fetching tile altitudes in GetHighestTiles, how FollowGazeVector interacts with tile shapes, drawing tiles in DrawTileAndObjects, DrawFlatTile, DrawOneFaceTile, DrawSlopingTile, DrawTwoFaceTile
+						<p>Here's the preview for landscape 9000, for example:</p>
 
-tileShapeColour
-triangleStartPoint
+						<img class="titleImage" style="width: 320px" src="/images/general/landscape_9000_preview.png" alt="The landscape preview screen for for landscape 9000 in the BBC Micro version of The Sentinel">
 
-tileEdges
+						<p>There are lots of tile shapes in the later landscapes, and landscape 9000 is no exception: it includes at least one of each tile shape. Let's take a look at them all.</p>
 
+						<h2 class="articleSubheader">Calculating the tile shape<br>
+													 --------------------------</h2>
 
+						<p>The <a href="/source/main/subroutine/gettileshape.html">GetTileShape</a> routine calculates a tile's shape by taking the set of four tile corner altitudes and comparing them. The result is a number from 0 to 15 that describes the tile shape (with the exception of shape 8, which is unused).</p>
 
-						<p>See the <a href="/source/main/subroutine/gettileshape.html">GetTileShape</a> routine for details of how the tile shape is determined.</p>
-
-						<p>Given a tile at altitude S, with neighbouring altitudes T, U and V:</p>
+						<p>The tile's altitude is determined by the bottom-left tile corner, which is known as the anchor for that tile. The tile shape is therefore defined by the altitude of the tile anchor and of the three neighbouring tile corners. Specifically, let's consider a tile with a tile anchor at altitude S and with neighbouring altitudes of T, U and V, like this:</p>
 
 <pre class="articleIndented">
      ^           [T]  [U]
@@ -33,20 +34,35 @@ tileEdges
      |           [S]  [V]
   z-axis
    into
-  screen      x-axis from left to right --->
+  screen      x-axis from left to right ---&gt;
 </pre>
 
-						<p>The shape is calculated as follows, where:</p>
+						<p>The tile shape is calculated as shown in the table below, where:</p>
 
 						<ul>
-							<li>0 and 1 represent arbitrary altitudes that are in that order, with 1 being higher than 0</li>
+							<li>0 and 1 represent arbitrary altitudes that are in that order, with 1 being higher than 0.</li>
 
-							<li>a, b represent arbitrary altitudes where a &lt;&gt; b &lt;&gt; 1</li>
+							<li>a, b represent arbitrary altitudes where a &lt;&gt; b &lt;&gt; 1.</li>
 
-							<li>c represents an arbitrary altitude where a &lt;&gt; b &lt;&gt; c (and c can be 1)</li>
+							<li>c represents an arbitrary altitude where a &lt;&gt; b &lt;&gt; c (and c can be 1).</li>
 						</ul>
 
-						<p>These are all the different types of shape (note there is no shape 8, and shapes 4 and 12 can have multiple layouts):</p>
+						<p>Let's look at all the shapes; it's a lot easier to show than tell in this case...</p>
+
+						<h2 class="articleSubheader">Tile shapes<br>
+													 -----------</h2>
+
+						<p>The table below shows all the different tile shapes. Note there is no shape 8, and shapes 4 and 12 can have multiple layouts. The face colours in the images have the following meanings:</p>
+
+						<ul>
+							<li>The red face points towards the front of the landscape.</li>
+
+							<li>The brown face points towards the back of the landscape.</li>
+
+							<li>The blue face is the shape itself, i.e. the top of the tile that is drawn in the game.</li>
+						</ul>
+
+						<p>See below the table for some notes.</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Shape</th><th>Criteria</th><th>Layout</th><th>Example</th></tr>
@@ -74,19 +90,48 @@ tileEdges
 						<p>It is worth noting that:</p>
 
 						<ul>
-							<li>Shape 0 has four horizontal edges</li>
+							<li>Shape 0 has four horizontal edges.</li>
 
-							<li>Shapes 4 and 12b have one horizontal edge and three sloping edges</li>
+							<li>Shapes 4 and 12b have one horizontal edge and three sloping edges.</li>
 
-							<li>Shape 12a has either one or zero horizontal edges and either three or four sloping edges</li>
+							<li>Shape 12a has either one or zero horizontal edges and either three or four sloping edges (the example above is the one with one horizontal edge).</li>
 
-							<li>Shape 8 is unused</li>
+							<li>Shape 8 is unused.</li>
 
-							<li>All other shapes (1, 2, 3, 5, 6, 7, 9, 10, 11, 14 and 15) have two horizontal edges and two sloping edges</li>
+							<li>All other shapes (1, 2, 3, 5, 6, 7, 9, 10, 11, 14 and 15) have two horizontal edges and two sloping edges.</li>
+
+							<li>Most shapes are simply rotations of others:
+
+								<ul>
+									<li>Shapes 1, 5, 9 and 13 are all slopes.</li>
+
+									<li>Shapes 2, 3, 7 and 15 are all gullies.</li>
+
+									<li>Shapes 6, 10, 11, 14 are all ridges.</li>
+								</ul>
+							</li>
 						</ul>
 
+						<p>Let's finish off by looking at a few uses for the tile shape.</p>
 
+						<h2 class="articleSubheader">Uses for the tile shape<br>
+													 -----------------------</h2>
 
+						<p>The tile shape is used in a number of places. Here's a complete list:</p>
+
+						<ul>
+							<li>The <a href="/source/main/subroutine/placeobjectbelow.html">PlaceObjectBelow</a> routine checks whether a tile is flat before placing an object on it.</li>
+
+							<li>The <a href="/source/main/subroutine/gethighesttiles.html">GetHighestTiles</a> routine only matches flat tiles when trying to find the highest tiles for placing enemies.</li>
+
+							<li>The <a href="/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector</a> routine uses the tile shape to work out whether or not a gaze is being obscured by a tile (see the deep dive on <a href="calculating_gaze.html">calculating gaze</a> for details).</li>
+
+							<li>The <a href="/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a> routine uses the tile shape to decide how to draw a tile, using one of the following routines: <a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a>, <a href="/source/main/subroutine/drawonefacetile.html">DrawOneFaceTile</a>, <a href="/source/main/subroutine/drawslopingtile.html">DrawSlopingTile</a> or <a href="/source/main/subroutine/drawtwofacetile.html">DrawTwoFaceTile</a>.</li>
+
+							<li>The <a href="/source/main/workspace/zero_page.html#tileshapeoffset">tileShapeOffset</a> and <a href="/source/main/workspace/zero_page.html#viewingquadrantx4">viewingQuadrantx4</a> variables use the fact that most tile shapes are rotations of each other to support drawing of the landscape from different perspectives (see the deep dive on <a href="drawing_the_landscape_view.html">drawing the landscape view</a> for more on this).</li>
+						</ul>
+
+						<p>The tile shape is also used to fetch tile colours from the <a href="/source/main/variable/tileshapecolour.html">tileShapeColour</a> table, triangle start points from the <a href="/source/main/variable/trianglestart.html">triangleStart</a> table, and the mapping from tile shapes and gaze vector direction to tile edges in the <a href="/source/main/variable/tileedges.html">tileEdges</a> table.</p>
 					</div>
 				</div>
 
