@@ -1,0 +1,80 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "converting_coordinates_to_angles.html", "Converting coordinates to angles", "Converting coordinates to angles", "A deep dive into converting coordinates to angles in The Sentinel on the BBC Micro", "the_sentinel", "deep_dives_3d_geometry", "converting_coordinates_to_angles");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="converting_angles_to_coordinates.html">Converting angles to coordinates</a><a class="next" rel="next" title="Next deep dive" href="calculating_the_hypotenuse.html">Calculating the hypotenuse</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How to get angles from coordinates using an arctangent lookup table</h2>
+
+						<p>There are quite a few routines that convert 3D Cartesian coordinates into angles, but they all end up calling the <a href="/source/main/subroutine/gethypotenuseangle.html">GetHypotenuseAngle</a> routine, which in turn calls the <a href="/source/main/subroutine/getanglefromcoords_part_1_of_3.html">GetAngleFromCoords</a> routine to convert a 3D Cartesian vector into pitch and yaw angles.</p>
+
+						<p>The calculation is essentially the reverse of the conversion from angles to coordinates (see the deep dive on <a href="converting_angles_to_coordinates.html">converting angles to coordinates</a> for details). It takes two Cartesian coordinates and returns the angle from the right-angled triangle that the coordinates form when they are the adjacent and opposite sides (so that's the angle of the hypotenuse).</p>
+
+						<p>A classic use is to find the yaw angle of a point when given that point's x-coordinate and z-coordinate - for example, the yaw angle of a tile coordinate. Because the routine is general-purpose and can be applied to any pair of orthogonal axes, the variables are expressed in terms of deltas; the other classic use is finding the angles of vectors between objects, which is where the delta terminology comes from.</p>
+
+						<p>The specific calculation in the GetAngleFromCoords routine is this:</p>
+
+<pre class="articleIndented">  angle(Hi Lo) = arctan( z-delta / x-delta )
+</pre>
+
+						<p>To see what this represents, consider the first example, where we are trying to find the yaw angle of a tile coordinate from the perspective of the player. The calculation is shown in the following triangle, which is an overhead view of the player, with the player in the bottom-left corner. The player is looking straight ahead, which means they are looking upwards in the following diagram, and there's a tile in front of and to the right of the player:</p>
+
+<pre class="articleIndented">                            tile
+                         +
+                       .´|
+                     .´  |
+                   .´    |  z-delta
+      ^          .´      |
+      |        .´        |
+      |      .´ a        |
+    player  +------------+
+               x-delta
+</pre>
+
+						<p>If the tile is x-delta to the right of the player and z-delta ahead of the player (so x-delta and z-delta are the coordinates of the tile relative to the player), then we can calculate the yaw angle a of the tile relative to the player by using the definition of tangent and arctangent:</p>
+
+<pre class="articleIndented">             opposite     z-delta
+  tan(a)  =  --------  =  -------
+             adjacent     x-delta
+</pre>
+
+						<p>so:</p>
+
+<pre class="articleIndented">              ( z-delta )
+  a  =  arctan( ------- )
+              ( x-delta )
+</pre>
+
+						<p>To get the arctan, we use the two lookup tables at <a href="/source/main/variable/arctanhi.html">arctanHi</a> and <a href="/source/main/variable/arctanlo.html">arctanLo</a>. These tables between them contain a range of 16-bit values as follows:</p>
+
+<pre class="articleIndented">  FOR I%, 0, 256
+   EQUB INT(0.5 + 32 * ATN(I% / 256) * 256 / ATN(1))
+  NEXT
+</pre>
+
+						<p>So the Y-th entry in the table contains 32 * arctan(Y / 256), multiplied by a scale factor of 256 / ATN(1) and rounded up to the nearest integer. The scale factor ensures that values in the table range from 0 to 32 * 255, with the maximum value when the angle is 45 degrees (i.e. when the adjacent and opposite sides are equal, so opposite / adjacent = tan(I%) = 1). This ensures that the table contains maximum accuracy for the angle range 0 to 45 degrees, which is a good enough range as objects with yaw angles greater than 45 degrees are off-screen.</p>
+
+						<p>So the lookup table lets us convert a tile coordinate into the tile's yaw angle, without having to do any maths; all we need is a simple lookup, which is quick and easy.</p>
+
+						<p>To see this calculation in action, take a look at the following routines: <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a>, <a href="/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a>, <a href="/source/main/subroutine/getobjpointangles.html">GetObjPointAngles</a>, <a href="/source/main/subroutine/getpitchangledelta.html">GetPitchAngleDelta</a> and <a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles</a>.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="converting_angles_to_coordinates.html">Converting angles to coordinates</a><a class="next" rel="next" title="Next deep dive" href="calculating_the_hypotenuse.html">Calculating the hypotenuse</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>
