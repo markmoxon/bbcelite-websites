@@ -69,8 +69,8 @@
 									<li><a id="deep_dives_generating_the_landscape_tile_shapes" href="/deep_dives/tile_shapes.html"><span class="menuTitle">Tile shapes</span> <span class="menuSummary">How The Sentinel describes the shape of each tile</span></a></li>
 									<li><a id="deep_dives_generating_the_landscape_seed_number_generation" href="/deep_dives/seed_number_generation.html"><span class="menuTitle">Seed number generation</span> <span class="menuSummary">The maths behind each landscape's unique sequence of seed numbers</span></a></li>
 									<li><a id="deep_dives_generating_the_landscape_generating_the_landscape" href="/deep_dives/generating_the_landscape.html"><span class="menuTitle">Generating the landscape</span> <span class="menuSummary">Using procedural generation to create the 10,000 landscapes in The Sentinel</span></a></li>
-									<li><a id="deep_dives_generating_the_landscape_the_landscape_secret_code" href="/deep_dives/the_landscape_secret_code.html"><span class="menuTitle">The landscape secret code</span> <span class="menuSummary">Generating the eight-digit secret code for each landscape</span></a></li>
 									<li><a id="deep_dives_generating_the_landscape_adding_enemies_and_trees_to_the_landscape" href="/deep_dives/adding_enemies_and_trees_to_the_landscape.html"><span class="menuTitle">Adding enemies and trees to the landscape</span> <span class="menuSummary">How the game adds objects to the tile landscape</span></a></li>
+									<li><a id="deep_dives_generating_the_landscape_the_landscape_secret_code" href="/deep_dives/the_landscape_secret_code.html"><span class="menuTitle">The landscape secret code</span> <span class="menuSummary">Generating the eight-digit secret code for each landscape</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_maths"><span class="menuTitle">3D objects</span> <span class="menuSummary menuSummarySubmenu">Trees, boulders, robots and various 3D enemies</span>
@@ -127,7 +127,7 @@
 								<ul id="submenu_deep_dives_tactics_and_gameplay">
 									<li class="menuItemHeader">Tactics and gameplay</li>
 									<li><a id="deep_dives_tactics_and_gameplay_the_crosshair_sights" href="/deep_dives/the_crosshair_sights.html"><span class="menuTitle">The crosshair sights</span> <span class="menuSummary">Aiming the player's gaze through the crosshair sights</span></a></li>
-									<li><a id="deep_dives_tactics_and_gameplay_calculating_gaze" href="/deep_dives/calculating_gaze.html"><span class="menuTitle">Calculating gaze</span> <span class="menuSummary">How the game traces line-of-sight by tracing the gaze vector</span></a></li>
+									<li><a id="deep_dives_tactics_and_gameplay_calculating_gaze" href="/deep_dives/calculating_gaze.html"><span class="menuTitle">Calculating gaze</span> <span class="menuSummary">How the game follows line-of-sight by tracing the gaze vector</span></a></li>
 									<li><a id="deep_dives_tactics_and_gameplay_enemy_tactics" href="/deep_dives/enemy_tactics.html"><span class="menuTitle">Enemy tactics</span> <span class="menuSummary">An analysis of exactly how the Sentinel, sentries and meanies act and think</span></a></li>
 									<li><a id="deep_dives_tactics_and_gameplay_game_timings" href="/deep_dives/game_timings.html"><span class="menuTitle">Game timings</span> <span class="menuSummary">How the interrupt handler manages game timings and controls enemy tactics</span></a></li>
 								</ul>
