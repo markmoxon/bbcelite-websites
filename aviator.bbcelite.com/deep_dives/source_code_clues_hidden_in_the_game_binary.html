@@ -60,7 +60,7 @@ page_header("deep_dives", "source_code_clues_hidden_in_the_game_binary.html", "S
 
 						<p>One of the easiest ways of tracking down clues in a game binary is to load the binary into a hex editor. Hex editors show the contents of the file both as hexadecimal bytes and as ASCII characters, so if there's a block of original source code hidden in there, it should be fairly obvious. In the table above, the offsets are given from the start of the game binary, so if you load the AVIA.bin file into a hex editor and jump to the relevant offset, you should be able to see the snippets for yourself (you can <a href="https://github.com/markmoxon/aviator-source-code-bbc-micro/blob/main/3-assembled-output/AVIA.bin">grab the file from the accompanying repository</a> if you want to try this).</p>
 
-						<p>In the case of hidden code from the BBC BASIC assembler sources, the embedded assembly language is generally quite readable, though the surrounding BASIC is tokenised and line numbers are stored as integers rather than ASCII text, so the source code appears as assembly language, embedded in random noise. Luckily it's easy enough to copy the source snippets into a modern text editor and strip out the line numbers, and it wouldn't be that hard to convert them to the original line numbers, given a bit of patience (I've left the line numbers out of the examples below, for clarity).</p>
+						<p>In the case of hidden code from the BBC BASIC assembler sources, the embedded assembly language is generally quite readable, though the surrounding BASIC is tokenised and line numbers are stored as integers rather than ASCII text, so the source code appears as assembly language, embedded in random noise. Luckily it's easy enough to copy the source snippets into a modern text editor and work out the line numbers (the first two bytes at the start of each line contain the line number, high byte then low byte, followed by the line length and then the line itself).</p>
 
 						<p>Finding machine code that's hidden in the binary is rather more difficult, as it won't be obvious from the hex editor. The only way to track this type down is to disassemble the whole binary, and work out which parts are used and which are noise.</p>
 
@@ -71,31 +71,30 @@ page_header("deep_dives", "source_code_clues_hidden_in_the_game_binary.html", "S
 						<h2 class="articleSubheader">Clue 1<br>
 													 ------</h2>
 
-						<p>This big block of BBC BASIC assembler code is hidden in the workspace between the <a href="/source/main/variable/maxlinedistance.html">maxLineDistance</a> and <a href="/source/main/variable/scoretext.html">scoreText</a> variables. It contains 570 bytes of source code that looks like this once the BASIC line number bytes are stripped out (the ellipses either indicate corrupted source, or variables like maxObjDistance that contain content that overwrites the source):</p>
+						<p>This big block of BBC BASIC assembler code is hidden in the workspace between the <a href="/source/main/variable/maxlinedistance.html">maxLineDistance</a> and <a href="/source/main/variable/scoretext.html">scoreText</a> variables. It contains 570 bytes of source code that looks like this (the ellipses either indicate corrupted source, or variables like maxObjDistance that contain content that overwrites the source, and to make it easier to read I have inserted a space between the line number and the code that isn't in the original):</p>
 
-<pre class="articleIndented">  .dlp2 STA&amp;76
-  .dl ... :B ... :BNE dlp2
-        DEC&amp;74:BNE dlp1
-        rts
- 
-  .UBUL LDY#15:STY OB:LDA#98:STA PP
-  .ubu2 TYA:CLC:ADC#&amp;D8:TAX
-        JSR MOBJ
-        JSR UOBJ
-        LDY OB:LDA OSTAT,Y:BMI ubu1
-        LDA#0:STA FRFLAG 
-  .ubu1 DEC PP:DEC OB
-        LDY OB:CPY#12:BCS ubu2
-        rts
- 
-  .SUTR JMP TEST:BMI sut1:BEQ sut1
-        LDA&amp;0CC5:BNE sut1
-        LDA&amp;FE64: ... 
-        ... #15:CMP#14:BCS sut1
-        ... A#16
-  .sut3 DEC THEME:LDX#7
-  .sut5 CPX THEME:BEQ sut4
-  .sut2 CMP FLDPTR,X:B
+<pre class="articleIndented">   945 .dlp2 STA&amp;76
+   946 .dl ... :B ... :BNE dlp2
+   948       DEC&amp;74:BNE dlp1
+   949       rts
+   950
+   959 .UBUL LDY#15:STY OB:LDA#98:STA PP
+   960 .ubu2 TYA:CLC:ADC#&amp;D8:TAX
+   970       JSR MOBJ
+   980       JSR UOBJ
+   990       LDY OB:LDA OSTAT,Y:BMI ubu1
+  1000       LDA#0:STA FRFLAG 
+  1010 .ubu1 DEC PP:DEC OB
+  1020       LDY OB:CPY#12:BCS ubu2
+  1030       rts
+  1040
+  1050 .SUTR JMP TEST:BMI sut1:BEQ sut1
+  1060       LDA&amp;0CC5:BNE sut1
+  1070       LDA&amp;FE64: ... #15:CMP#14:BCS sut1
+  1080       ... A#16
+  1090 .sut3 DEC THEME:LDX#7
+  1100 .sut5 CPX THEME:BEQ sut4
+  1110 .sut2 CMP FLDPTR,X:B
 </pre>
 
 						<p>Think about it: this is part of Geoff Crammond's original source code! He literally wrote this - it's in his own, personal style, with his own indented layout, spaces between the mnemonics and variable names (but no spaces between mnemonics and numbers), and his own label names, with routine names in four-letter capitals, and in-routine labels in lower case with three letters and a number.</p>
@@ -170,32 +169,33 @@ page_header("deep_dives", "source_code_clues_hidden_in_the_game_binary.html", "S
 						<h2 class="articleSubheader">Clue 3<br>
 													 ------</h2>
 
-						<p>The machine code in clue 2 is actually embedded in a larger 623-byte block of BBC BASIC assembler source - it's as if the clues themselves contain clues! This bigger block is between <a href="/source/main/subroutine/removescore.html">RemoveScore</a> and <a href="/source/main/variable/xtemppoint2Hi.html">xTempPoint2Hi</a>, and it looks like this:</p>
+						<p>The machine code in clue 2 is actually embedded in a larger 623-byte block of BBC BASIC assembler source - it's as if the clues themselves contain clues! This bigger block is between <a href="/source/main/subroutine/removescore.html">RemoveScore</a> and <a href="/source/main/variable/xtemppoint2Hi.html">xTempPoint2Hi</a>, and it looks like this (with a space inserted between the line number and the code that isn't in the original, to make it easier to read):</p>
 
-<pre class="articleIndented">        LDA&amp;86:CLC:A
+<pre class="articleIndented">             LDA&amp;86:CLC:A
 
-        ... machine code (see clue 2) ...
+             ... machine code (see clue 2) ...
 
-  .STIP LDX#2
-  .sti1 LDA XALO,Y:CLC:ADC DTIP:STA&amp;77,X
-        LDA XAHI,Y:ADC#5:STA&amp;7A,X
-  .sti4 TYA:CLC:ADC#40:TAY
-  .sti2 DEX:BPL sti3:rts
-  .sti3 BEQ sti1
-        LDA XALO,Y:STA&amp;77,X
-        LDA XAHI,Y:STA&amp;7A,X:JMP sti4
- 
-  .HITS LDX#2
-  .hit2 TYA:CLC:ADC#40:TAY
-        LDA XALO,Y:SEC:SBC&amp;77,X:STA&amp;74
-        LDA XAHI,Y:SBC&amp;7A,X:BNE hit1
-        LDA&amp;74:CMP&amp;80,X:BCS hit1
-        DEX:BPL hit2:LDA OB:STA EPTR
-        TSX:INX:INX:TXS
-        LDA#27:STA EPLO:rts
-  .hit1 rts
- 
-  .ADIF LDA#0:STA&amp;70:STA&amp;72
+       .STIP LDX#2
+  2330 .sti1 LDA XALO,Y:CLC:ADC DTIP:STA&amp;77,X
+  2340       LDA XAHI,Y:ADC#5:STA&amp;7A,X
+  2350 .sti4 TYA:CLC:ADC#40:TAY
+  2360 .sti2 DEX:BPL sti3:rts
+  2370 .sti3 BEQ sti1
+  2380       LDA XALO,Y:STA&amp;77,X
+  2390       LDA XAHI,Y:STA&amp;7A,X:JMP sti4
+  2400
+  2410 .HITS LDX#2
+  2420 .hit2 TYA:CLC:ADC#40:TAY
+  2430       LDA XALO,Y:SEC:SBC&amp;77,X:STA&amp;74
+  2440       LDA XAHI,Y:SBC&amp;7A,X:BNE hit1
+  2450       LDA&amp;74:CMP&amp;80,X:BCS hit1
+  2460       DEX:BPL hit2:LDA OB:STA EPTR
+  2470       TSX:INX:INX:TXS
+  2471       LDA#27:STA EPLO:rts
+  2480 .hit1 rts
+  2490
+  2500 .ADIF LDA#0:STA&amp;70:STA&amp;72
+  2510
 </pre>
 
 						<p>Again, this contains part of the original source code, specifically the routine that I call <a href="/source/main/subroutine/getalienweakspot.html">GetAlienWeakSpot</a> in my disassembly (which is called STIP in the original), <a href="/source/main/subroutine/checkalienweakspot.html">CheckAlienWeakSpot</a> (called HITS in the original), and the start of <a href="/source/main/subroutine/gettrailvectorstep.html">GetTrailVectorStep</a> (called ADIF in the original).</p>
