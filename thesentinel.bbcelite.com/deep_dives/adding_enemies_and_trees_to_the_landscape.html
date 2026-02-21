@@ -11,7 +11,7 @@ page_header("deep_dives", "adding_enemies_and_trees_to_the_landscape.html", "Add
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How the game adds objects to the tile landscape</h2>
 
-						<p>The deep dive on <a href="generating_the_landscape.html">generating the landscape</a> explains how The Sentinal creates 10,000 different landscapes, using the landscape seed generator and a collection of smoothing and scaling algorithms to convert 1024 random numbers into a tiled landscape for the player to explore.</p>
+						<p>The deep dive on <a href="generating_the_landscape.html">generating the landscape</a> explains how The Sentinel creates 10,000 different landscapes, using the landscape seed generator and a collection of smoothing and scaling algorithms to convert 1024 random numbers into a tiled landscape for the player to explore.</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/general/robot_close_up.png" alt="A close-up of a robot in the Sentinel on the BBC Micro">
 
@@ -23,35 +23,235 @@ page_header("deep_dives", "adding_enemies_and_trees_to_the_landscape.html", "Add
 							<li>If the player has just beaten the Sentinel, then we need to display the secret code for the next landscape that's just been unlocked. To do that we call the <a href="/source/main/subroutine/getnextlandscape.html">GetNextLandscape</a> routine to generate the new landscape and add all the objects but without previewing the landscape, as this is how we get the secret code (see the deep dive on <a href="the_landscape_secret_code.html">the landscape secret code</a> for details).</li>
 						</ul>
 
-						<p>The rest of this article explores how the enemies, player and trees are added to the landscape, using more landscape seeds and more algorithms.</p>
+						<p>The process of adding enemies, the player and trees uses more landscape seeds and more algorithms, and it's more complex that you might think. Let's look at the steps involved.</p>
 
-						<h2 class="articleSubheader">Adding enemies<br>
-													 --------------</h2>
+						<h2 class="articleSubheader">Adding objects to the landscape<br>
+													 -------------------------------</h2>
 
+						<p>Here's a top-level breakdown of the process for adding all the game objects to the landscape. We'll go into more detail about each step below, and you can click on a step number to jump straight to the detailed explanation:</p>
 
-<a href="/source/main/subroutine/spawnenemies.html">SpawnEnemies</a>
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Step</th><th style="width: 12ch">Summary</th><th>Description</th><th>Code</th></tr>
+							<tr><td><a href="#step1">1</a></td><td>Calculate number of enemies</td><td>Calculate the number of enemies for this landscape</td><td><a href="/source/main/subroutine/getenemycount.html">GetEnemyCount</a></td></tr>
+							<tr><td><a href="#step2">2</a></td><td>Calculate highest tiles</td><td>Calculate both the highest tiles in each 4x4 block of tiles in the landscape and the altitude of the highest tile in the landscape </td><td><a href="/source/main/subroutine/gethighesttiles.html">GetHighestTiles</a></td></tr>
+							<tr><td><a href="#step3">3</a></td><td>Add enemies</td><td>Add the required number of enemies to the landscape, starting from the highest altitude and working down, with no more than one enemy on each contour </td><td><a href="/source/main/subroutine/addenemiestotiles.html">AddEnemiesToTiles</a></td></tr>
+							<tr><td><a href="#step4">4</a></td><td>Set palette</td><td>Set the landscape palette according to the number of enemies</td><td><a href="/source/main/subroutine/spawnenemies.html">SpawnEnemies</a></td></tr>
+							<tr><td><a href="#step5">5</a></td><td>Add player</td><td>Add the player object to the landscape, ideally placing it below all the enemies and in the bottom half of the landscape</td><td><a href="/source/main/subroutine/spawnplayer.html">SpawnPlayer</a></td></tr>
+							<tr><td><a href="#step6">6</a></td><td>Add trees</td><td>Add trees to the landscape, ideally placing them below all the enemies in the landscape</td><td><a href="/source/main/subroutine/spawntrees.html">SpawnTrees</a></td></tr>
+						</table>
 
+						<p>Let's work through each of the steps in turn.</p>
 
+						<h2 class="articleSubheader"><a class="anchor" id="step1"></a>1: Calculate the number of enemies<br>
+													 ----------------------------------</h2>
 
+						<p>The first step is to calculate how many enemies this particular landscape has. This is a number in the range 1 to 8, with higher landscape numbers typically producing more enemies. There is always at least one enemy - the Sentinel - plus between zero and seven sentries.</p>
 
+						<p>The number of enemies is calculated as follows:</p>
 
-						<h2 class="articleSubheader">Adding the player<br>
+						<ul>
+							<li>Take the top digit of the four-digit landscape number and add 2 (so for landscape 1234 that would be 1 + 2 = 3). Store this in T, so T is in the range 2 to 11, with higher values of T for higher landscape numbers</li>
+
+							<li>Fetch the next number from the landscape's sequence of seed numbers.</li>
+
+							<li>Set Y to the number of leading zeroes in the seed number, when it's written down in binary, starting the count from bit 7. This means that Y is in the range 0 to 7.</li>
+
+							<li>If bit 7 in the seed number that we fetched is set, flip all the bits in Y, which will turn Y into the range -1 to -8. This means that Y is now a number in the range -8 to +7.</li>
+
+							<li>Add T and Y to get a number in the range -6 to 18.</li>
+
+							<li>If the result is in the range 0 to 7 then add 1 to get the number of enemies, and we are done; if the result is not in the range 0 to 7, jump back to fetch another seed number and repeat the process.</li>
+						</ul>
+
+						<p>This process generates a random number of enemies that tends to be bigger for higher landscape numbers (but isn't always). The result is stored in the <a href="/source/main/workspace/main_variable_workspace.html#numberofenemies">numberOfEnemies</a> variable and is used (amongst other things) to set the landscape palette in step 4.</p>
+
+						<h2 class="articleSubheader"><a class="anchor" id="step2"></a>2: Calculate the highest tiles<br>
+													 ------------------------------</h2>
+
+						<p>The second step is to calculate the heights of all the flat tiles in the landscape, in a way that enables us to place the Sentinel on the highest point and the sentries (if there are any) at the next highest levels, all while preventing crowding.</p>
+
+						<p>To this end, the <a href="/source/main/subroutine/gethighesttiles.html">GetHighestTiles</a> routine works through the tile corners in the landscape in 4x4 blocks and finds the highest flat tile within each block, so we can consider putting an enemy there.</p>
+                        
+                        <p>To do this we split the 32x32-corner landscape up into 8x8 blocks of 4x4 tile corners each, iterating along each row of 4x4 blocks from left to right, and then moving back four rows to the next row of 4x4 blocks behind. Because the tile corners along the right and back edges of the landscape don't have tile altitudes associated with them, we ignore those corners.</p>
+
+						<p>The results are stored as follows:</p>
+
+						<ul>
+							<li><a href="/source/main/variable/maxaltitude.html">maxAltitude</a> contains the altitude of the highest tile in each 4x4 block in the landscape.</li>
+                        
+							<li><a href="/source/main/variable/xtilemaxaltitude.html">xTileMaxAltitude</a> contains the tile x-coordinate of the highest tile in each 4x4 block in the landscape.</li>
+                        
+							<li><a href="/source/main/variable/ztilemaxaltitude.html">zTileMaxAltitude</a> contains the tile z-coordinate of the highest tile in each 4x4 block in the landscape.</li>
+                        
+							<li><a href="/source/main/variable/tilealtitude.html">tileAltitude</a> contains the altitude of the highest tile in the entire landscape.</li>
+						</ul>
+
+						<p>The first three are tables that are laid out with one byte for each 4x4 block, starting in the front-left corner of the landscape at tile coordinate (0, 0), and moving along the front row from left to right, and then moving back by four tiles and moving that row from left to right, until we reach the rear row of 4x4 blocks.</p>
+
+						<p>The rear row and rightmost column of blocks are one tile smaller, so they are 4x3-tile and 3x4-tile blocks, with the far-right block being 3x3 tiles.</p>
+
+						<p>You can picture this as partitioning the 31x31-tile landscape into an 8x8 chess board, where each square on the chess board is made up of a 4x4 block of landscape tiles (and with smaller squares along the right and rear edges).</p>
+
+						<p>The last result, tileAltitude, is an integer that contains the altitude of the highest tile in the landscape, which we can use to place the Sentinel.</p>
+
+						<h2 class="articleSubheader"><a class="anchor" id="step3"></a>3: Add the enemies<br>
+													 ------------------</h2>
+
+						<p>The third step takes the altitudes of the 4x4 tile blocks from step 2 and adds all the enemies to the appropriate tiles. This is done in the <a href="/source/main/subroutine/addenemiestotiles.html">AddEnemiesToTiles</a> routine.</p>
+
+						<p>We start with the Sentinel and then move on to the sentries (if there are any). The process is the same for both types of enemy:</p>
+
+						<ul>
+							<li>Call the <a href="/source/main/subroutine/gettilesataltitude.html">GetTilesAtAltitude</a> routine to generate a list of suitable 4x4 tile blocks for the enemy, ideally at the altitude at which we would like to place the enemy (but lower if necessary).</li>
+
+							<li>Choose one of these tile blocks for our enemy and place an enemy object on the highest tile in that block.</li>
+
+							<li>Remove the chosen tile block and all its immediate neighbours from the list, so when we repeat this process for the next enemy, it will not be added too close to any enemies we've already added to the landscape.</li>
+
+							<li>Repeat the process for the next enemy.</li>
+						</ul>
+
+						<p>The GetTilesAtAltitude routine calculates the list of suitable tile blocks by working through the result tables from step 2 and returning a list of all 4x4 tile blocks whose highest tile is at the altitude specified in tileAltitude. If there aren't any tile blocks at an altitude of tileAltitude, then the GetTilesAtAltitude routine subtracts 1 from tileAltitude and try again.</p>
+
+						<p>The value of tileAltitude starts out at the altitude of the highest tile in the landscape, so when we try to place the Sentinel, we try to place it at the highest point on the landscape. The value of tileAltitude gets reduced as we add more enemies and the higher altitudes fill up, so the sentries are also placed as high as possible, but we work down the landscape if there isn't any more room at the top.</p>
+
+						<p>If we end up working our way down to altitude 0 without finding any suitable tile blocks, then we stop adding enemies at that point.</p>
+
+						<p>Assuming GetTilesAtAltitude has returned a suitable list of 4x4 tile blocks, the selection process starts. This has a number of steps:</p>
+
+						<ul>
+							<li>Fetch the next number from the landscape's sequence of seed numbers.</li>
+
+							<li>Reduce this number so it can be used as an index into the list of 4x4 tile blocks, as follows:
+
+								<ul>
+									<li>Along with the list of tile blocks, GetTilesAtAltitude also returns the length of the list of tile blocks in T, and a bit mask that contains the same number of leading zeroes as T, with the rest of the bits all set.</li> 
+
+									<li>Apply the bit mask to the seed number, so it now contains same number of leading zeroes as the number of tile blocks in the list. This means the range of the seed is now between 0 and the lowest power of 2 that's greater or equal to the list size. Specifically, if the list contain n entries, this reduces the seed into the range 0 to 2^ceil(log2(n)) - 1. For example, if the list contains 11 entries, then this reduces the seed into the range 0 to 15, as 16 is the lowest power of 2 that is greater or equal to 11.</li>
+
+									<li>If the reduced seed is greater than or equal to T, loop back to pick another seed number and repeat the same process, until we have a number in the range 0 to T - 1.</li>
+								</ul>
+							</li>
+
+							<li>We now have a number in the range 0 to T - 1, which we can use to choose an entry from the list of 4x4 tile blocks at the correct altitude.</li>
+						</ul>
+
+						<p>Now that we have identified a tile block for the enemy, we can go ahead and place it, as follows:</p>
+
+						<ul>
+							<li>Update the tile altitude tables to zero the altitude of the tile block we've chosen, plus all the tile blocks that are immediate neighbours (so that's a total of nine tile blocks, assuming we're not at the edge of the landscape). This will prevent the GetTilesAtAltitude routine from returning any of these tile blocks in future, so this ensures no enemies get placed too close to the enemy we just added.</li>
+
+							<li>Call <a href="/source/main/subroutine/placeobjectontile.html">PlaceObjectOnTile</a> to place the enemy on the highest tile in the tile block that we've chosen. This also fetches the next seed number for the landscape and uses this to set the object's yaw angle (see the deep dive on <a href="object_spawning.html">object spawning</a> for details of this process). If we are placing the Sentinel, we first add the Sentinel's tower, and then the Sentinel on top of that.</li>
+
+							<li>Reset the meanie data for the enemy we just added, so the enemy is not marked as having turned a tree into a meanie (see the deep dive on <a href="enemy_tactics.html">enemy tactics</a> for details).</li>
+
+							<li>Fetch the next number from the landscape's sequence of seed numbers.</li>
+
+							<li>Set the enemy's tactics timer to the seed number, converted into the range 5 to 63, so that sets the timer to somewhere between 5 * 0.06 = 0.3 seconds and 63 * 0.06 = 3.8 seconds. See the deep dive on <a href="game_timings.html">game timings</a> for details.</li>
+
+							<li>Set the enemy's yaw step to either 20 or -20, according to bit 0 of the seed number. The enemyYawStep speed is the angle through which the enemy rotates on each rotation, so this means we are setting the rotation speed to +20 degrees (a clockwise turn) or -20 degrees (an anticlockwise turn). See the deep dive on <a href="game_timings.html">game timings</a> for details.</li>
+						</ul>
+
+						<p>We repeat the above process for all the enemies we need to add to the landscape, until they have all been added or we have run out of room. And as a final step, we set <a href="/source/main/workspace/main_variable_workspace.html#minenemyaltitude">minEnemyAltitude</a> to the altitude of the last enemy that we added, so when we come to add the player in step 5, we can try to ensure the player starts at a lower altitude than all the enemies.</p>
+
+						<h2 class="articleSubheader"><a class="anchor" id="step4"></a>4: Set the palette<br>
+													 ------------------</h2>
+
+						<p>The fourth step is to set the palette for the landscape. This depends on the number of enemies, which we calculated in step 1 and stored in the <a href="/source/main/workspace/main_variable_workspace.html#numberofenemies">numberOfEnemies</a>  variable.</p>
+
+						<p>The landscape palette is set as follows:</p>
+
+						<ul>
+							<li>Enemy count = 1: blue, black, white, green</li>
+
+							<li>Enemy count = 2: blue, black, yellow, red</li>
+
+							<li>Enemy count = 3: blue, black, cyan, yellow</li>
+
+							<li>Enemy count = 4: blue, black, red, cyan</li>
+
+							<li>Enemy count = 5: blue, black, white, red</li>
+
+							<li>Enemy count = 6: blue, black, yellow, cyan</li>
+
+							<li>Enemy count = 7: blue, black, cyan, red</li>
+
+							<li>Enemy count = 8: blue, black, red, yellow</li>
+						</ul>
+
+						<p>The physical colour numbers for the different palettes are taken from the <a href="/source/main/variable/landscapecolour2.html">landscapeColour2</a> table (for logical colour 2) and the <a href="/source/main/variable/landscapecolour3.html">landscapeColour3</a> table (for logical colour 3), using an index of numberOfEnemies - 1.</p>
+
+						<h2 class="articleSubheader"><a class="anchor" id="step5"></a>5: Add the player<br>
 													 -----------------</h2>
 
-<a href="/source/main/subroutine/spawnplayer.html">SpawnPlayer</a>
+						<p>The fifth step is to add the player, now that the enemies have been placed.</p>
 
+						<p>First of all, we spawn the player object and set the <a href="/source/main/workspace/zero_page.html#playerobject">playerObject</a> variable to the player's object number (see the deep dive on <a href="object_spawning.html">object spawning</a> for details of this process).</p>
 
+						<p>If this is landscape 0000, then the player is added to the landscape on tile (xTile, zTile) = (8, 17), by calling the <a href="/source/main/subroutine/placeobjectontile.html">PlaceObjectOnTile</a> routine with these hard-coded coordinates. This is the only landscape that has a hand-picked starting point; all other landscapes calculate the starting point, as follows.</p>
 
+						<p>First we calculate the ideal starting altitude for the player, the <a href="/source/main/workspace/main_variable_workspace.html#minenemyaltitude">minEnemyAltitude</a> variable, which we set to the altitude of the last enemy that we added, back in step 3. We now calculate:</p>
 
+<pre class="articleIndented">
+A = min(6, minEnemyAltitude)
+</pre>
 
-						<h2 class="articleSubheader">Adding trees<br>
-													 ------------</h2>
+						<p>So A contains an altitude that is no higher than any enemies and is no greater than 6. We can use this as a cap on the player's starting altitude to ensure that the player starts below all the enemies, and in the bottom half of the landscape (which ranges from altitude 1 to 11).</p>
 
-<a href="/source/main/subroutine/spawntrees.html">SpawnTrees</a>
+						<p>The actual placement is performed by the <a href="/source/main/subroutine/placeobjectbelow.html">PlaceObjectBelow</a> routine, to which we pass the maximum desired altitude of the player via tileAltitude. We then do the following, trying up to 255 different tiles with this value of tileAltitude:</p>
 
-<!--
-See steps in https://github.com/simonowen/sentland/
--->
+						<ul>
+							<li>Call <a href="/source/main/subroutine/getnextseed0to30.html">GetNextSeed0To30</a> twice to fetch the next two numbers from the landscape's sequence of seed numbers, converting them with an AND into the range 0 to 30 (and fetching another seed if the conversion gives us 31). We now use these numbers as the coordinates (xTile, zTile) of the tile on which we can attempt to place the player.</li>
+
+							<li>If the chosen tile contains an object, go back to pick another coordinate to try, until we have tried a maximum of 255 tiles.</li>
+
+							<li>If the chosen tile is not flat, go back to pick another coordinate to try, until we have tried a maximum of 255 tiles.</li>
+
+							<li>If the altitude of the chosen tile is equal to or higher than the maximum altitude in tileAltitude, then this tile is too high, so go back to pick another coordinate to try, until we have tried a maximum of 255 tiles.</li>
+
+							<li>If we get here then we have found an unoccupied flat tile with an altitude that's less than tileAltitude, so we place the player object on this tile and we're done.</li>
+						</ul>
+
+						<p>If we have tried 255 tiles at this altitude and haven't found a suitable tile for the player, then we increment tileAltitude and have another 255 attempts to find a suitable starting point for the player, repeating the process until we've found a tile where we can spawn the player.</p>
+
+						<h2 class="articleSubheader"><a class="anchor" id="step6"></a>6: Add the trees<br>
+													 ----------------</h2>
+
+						<p>The final step is to add trees to the landscape, which is done in the <a href="/source/main/subroutine/spawntrees.html">SpawnTrees</a> routine.</p>
+
+						<p>First, we need to calculate the number of trees to add to this landscape, as follows:
+
+						<ul>
+							<li>Call <a href="/source/main/subroutine/getnextseed0to22.html">GetNextSeed0To22</a> to get the next seed number for the landscape and convert it into the range 0 to 22. We do this by extracting bits 0-2 and bits 3-6 of the number and adding the resulting two numbers together. Bits 0-2 give a number in the range 0 to 7 and bits 3-6 give a number in the range 0 to 15, so the sum is in the range 0 to 22.</li>
+
+							<li>Add 10 to the result get a number in the range 14 to 32.</li>
+
+							<li>Cap the result to a maximum value of 48 - 3 * numberOfEnemies</li>
+						</ul>
+
+						<p>The resulting number is the number of trees that we add to the landscape.</p>
+
+						<p>Note that the last step only affects the result when numberOfEnemies is six or more, at which point this reduces the range as follows:</p>
+
+						<ul class="tightList">
+							<li>When numberOfEnemies = 6, the range is capped to 10 to 30</li>
+
+							<li>When numberOfEnemies = 7, the range is capped to 10 to 27</li>
+
+							<li>When numberOfEnemies = 8, the range is capped to 10 to 24</li>
+						</ul>
+
+                        <p>As the total number of enemies and trees determines the total amount of energy in the landscape, and each sentry is worth 3 energy points, this calculation ensures that the total amount of energy in the landscape is never greater than 49 (as the Sentinel is worth 4 energy points, while each sentry is worth 3). </p>
+
+						<p>We now try to add the specified number of trees to the landscape, again using the <a href="/source/main/subroutine/placeobjectbelow.html">PlaceObjectBelow</a> routine for each tree, but this time with the maximum altitude set to minEnemyAltitude. This means we try to spawn all the trees at a lower
+                        altitude to the enemies, though because there may be a lot of them, the chances are that the algorithm will end up having to search for higher altitudes to fit them all in.</p>
+
+						<h2 class="articleSubheader">Next steps<br>
+													 ----------</h2>
+
+						<p>By this point we have generated the landscape and added enemies, the player and trees. The landscape is now finished and is ready to play, but there is one more important step.</p>
+
+						<p>We now need to generate the landscape's secret code, either to display it on-screen (if the player has just beaten the Sentinel), or check it against the secret code that the player has entered (if we are about to play a new landscape). See the deep dive on <a href="the_landscape_secret_code.html">the landscape secret code</a> for details.</p>
 					</div>
 				</div>
 
