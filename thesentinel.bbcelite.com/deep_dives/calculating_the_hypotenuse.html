@@ -15,7 +15,9 @@ page_header("deep_dives", "calculating_the_hypotenuse.html", "Calculating the hy
 
 						<p>To do this calculation we therefore need to calculate the length of the hypotenuse of the first triangle so we can then use that as the adjacent length in the second triangle. Here's our triangle:</p>
 
-<pre class="articleIndented">    |`.
+<pre class="articleIndented">
+    +
+    |`.
     |t `.
     |    `.  h
   a |      `.
@@ -38,64 +40,133 @@ page_header("deep_dives", "calculating_the_hypotenuse.html", "Calculating the hy
 </pre>
 
 
-						<p>Here's how the calculation of h works:</p>
+						<p>Here's how the calculation of h works. We take the triangle that we want to analyse:</p>
 
-<pre class="articleIndented">    |`.       (1)                |`.             (2)
-    |t `.                        |t `.
-    |    `. a                    |    `. a      h
-  a |      `.                  a |      `.   ,´
-    |      p `.                  |        `.´
-    | p ___--´                   |    ___--´`.  c
-    +--´                         +--´---------`+
-                                     b
-
-                          __+
-                     __--´   \         (3)
-                __--´        |  c
-           __--´              \                          t = theta
-      __--´ 90-p           90 |                          p = phi
-    +´------------------------+
-                  b
+<pre class="articleIndented">
+    +
+    |`.
+    |t `.
+    |    `.  h
+  a |      `.
+    |        `.
+    |          `.
+    +------------`+
+          b
 </pre>
 
-						<p>Take our original triangle and draw a circle arc with a radius of a (1), and superimpose this on top of the triangle to give (2). This gives us the following:</p>
+						<p>and split up the hypotenuse into two parts, one part being the length of the adjacent side (a) and the other part an unknown length (c):</p>
+
+<pre class="articleIndented">
+    +
+    |`.
+    |t `.
+    |    `.
+  a |      `.
+    |        `.
+    |          `.   a
+    |            `.
+    |              `.
+    |                `.
+    |                __`.´
+    |           __--´    `.
+    |      __--´           `. c
+    | __--´                  `.
+    +´-------------------------+
+</pre>
+
+						<p>This gives us the following:</p>
 
 <pre class="articleIndented">  h = a + c
 </pre>
 
-						<p>We know a, but what is c? If we focus in on the right-angled triangle at the bottom of (2), as shown in (3), then for small values of theta, the angle in the bottom-right tends towards a right angle, so we get:</p>
+						<p>We already know a, so our mission is to calculate c.</p>
 
-<pre class="articleIndented">           180 - theta
-  phi  =~  -----------  =  90 - theta/2
-                2
+						<p>To do this, let's examine the two triangles that we now have. Here's the top triangle, which is an isosceles triangle with two sides of length a, an angle of theta (t) and two equal angles that we can call phi (p):</p>
+
+<pre class="articleIndented">
+    +
+    |`.
+    |t `.
+    |    `.
+  a |      `.
+    |        `.
+    |          `.   a
+    |            `.
+    |              `.
+    |             p  `.
+    |                __`+
+    |           __--´
+    | p    __--´
+    | __--´
+    +´
+</pre>
+
+						<p>Because the angles in a triangle always add up to 180 degrees, we get the following:</p>
+
+<pre class="articleIndented">
+          180 - theta
+  phi  =  -----------  =  90 - (theta / 2)
+               2
+</pre>
+
+						<p>And here's the lower triangle, which has the opposite side of length b along the bottom, and our unknown length c. Because the sides of length a and b form a right-angled triangle, we can calculate the angle on the left of the second triangle as 90 - phi, as follows:</p>
+
+<pre class="articleIndented">
+                     __.+
+                __--´    `.
+           __--´         c `.
+      __--´ 90-p             `.
+    +´-------------------------+
+                  b
+</pre>
+
+						<p>Combining the two angle calculations, we get:</p>
+
+<pre class="articleIndented">  90 - phi  =  90 - (90 - (theta / 2))
+            =  theta / 2
+</pre>
+
+
+						<p>We now introduce our approximation, by converting the second triangle into a right-angled triangle like this:</p>
+
+<pre class="articleIndented">
+                               +
+                          __--´|
+                     __.+´     |
+                __--´    `.    | c´
+           __--´         c `.  |
+      __--´ t/2              `.|
+    +´-------------------------+
+                  b
+</pre>
+
+						<p>If we can calculate c´ then it's not going to be far off the value of c, particularly for small values of theta, so that's what we do now. Our new right-angled triangle gives us this:
+
+<pre class="articleIndented">
+  tan(theta / 2) = c´ / b
 </pre>
 
 						<p>So:</p>
 
-<pre class="articleIndented">  90 - phi =~ 90 - (90 - theta/2)
-           =  theta/2
-</pre>
-
-						<p>From (3) we can calculate:</p>
-
-<pre class="articleIndented">  tan(90 - phi) = c / b
+<pre class="articleIndented">
+  c´ = b * tan(theta / 2)
 </pre>
 
 						<p>So:</p>
 
-<pre class="articleIndented">  c =  b * tan(90 - phi)
-    =~ b * tan(theta / 2)
+<pre class="articleIndented">
+  h =  a + c
+    =~ a + c´
+    =  a + b * tan(theta / 2)
 </pre>
 
-						<p>So:</p>
+						<p>If we implement the tan(theta / 2) part with a lookup, then we will have an approximation for the hypotenuse using just one lookup and one multiplication, as required.</p>
 
-<pre class="articleIndented">  h =  a + c
-    =~ a + b * tan(theta / 2)
-</pre>
+						<p>The <a href="/source/main/variable/tanhalfangle.html">tanHalfAngle</a> table implements the lookup. However, instead of taking the angle theta as the lookup index, the table actually uses the tangent of the angle, X = tan(theta), as the index. This is because we already have this value calculated whenever we call the <a href="/source/main/subroutine/gethypotenuse.html">GetHypotenuse</a> routine, so it's more efficient to use this than the angle itself.</p>
 
-						<p>The <a href="/source/main/variable/tanhalfangle.html">tanHalfAngle</a> table contains lookup values for calculating the tangent of a half angle. Specifically, given the tangent of an angle, X = tan(theta), this table contains the following at index X:</p>
+						<p>So the tanHalfAngle table contains the following at index X:</p>
 
-<pre class="articleIndented">  tanHalfAngle,X = 2 * tan(theta / 2)
+<pre class="articleIndented">  tanHalfAngle+X = 2 * tan(theta / 2)
 </pre>
 
 						<p>which is implemented by this loop:</p>
@@ -108,7 +179,7 @@ page_header("deep_dives", "calculating_the_hypotenuse.html", "Calculating the hy
 
 						<p>The table contains lookup values for indexes 0 to 128, which correspond to theta angles of 0 to 45 degrees.</p>
 
-						<p>So that's how we can calculate the hypotenuse for angle theta and triangle sides a and b using just one lookup and one multiplication.</p>
+						<p>So that's how we can approximate the hypotenuse for angle theta and triangle sides a and b using just one lookup and one multiplication.</p>
 					</div>
 				</div>
 
