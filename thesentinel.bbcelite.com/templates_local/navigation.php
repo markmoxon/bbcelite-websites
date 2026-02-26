@@ -76,7 +76,7 @@
 							<li id="deep_dives_maths"><span class="menuTitle">3D objects</span> <span class="menuSummary menuSummarySubmenu">Trees, boulders, robots and various 3D enemies</span>
 								<ul id="submenu_deep_dives_3d_objects">
 									<li class="menuItemHeader">3D objects</li>
-									<li><a id="deep_dives_3d_objects_object_spawning" href="/deep_dives/object_spawning.html"><span class="menuTitle">Object spawning</span> <span class="menuSummary">Creating, deleting and managing up to 64 objects on the landscape</span></a></li>
+									<li><a id="deep_dives_3d_objects_object_management" href="/deep_dives/object_management.html"><span class="menuTitle">Object management</span> <span class="menuSummary">Creating, deleting and managing up to 64 objects on the landscape</span></a></li>
 									<li><a id="deep_dives_3d_objects_stacking_objects" href="/deep_dives/stacking_objects.html"><span class="menuTitle">Stacking objects</span> <span class="menuSummary">How the game manages multiple objects all stacked on the same tile</span></a></li>
 									<li><a id="deep_dives_3d_objects_3d_object_definitions" href="/deep_dives/3d_object_definitions.html"><span class="menuTitle">3D object definitions</span> <span class="menuSummary">Details of all the 3D objects, from trees and boulders to the Sentinel itself</span></a></li>
 									<li><a id="deep_dives_3d_objects_drawing_objects" href="/deep_dives/drawing_objects.html"><span class="menuTitle">Drawing objects</span> <span class="menuSummary">Converting objects from 3D definitions into colourful on-screen polygons</span></a></li>
