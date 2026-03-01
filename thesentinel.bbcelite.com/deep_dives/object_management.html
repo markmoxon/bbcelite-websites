@@ -11,134 +11,174 @@ page_header("deep_dives", "object_management.html", "Object management", "Object
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Creating, deleting and managing up to 64 objects on the landscape</h2>
 
-						<p>The tiled landscape of The Sentinel can be home to up to a number of 3D objects, from trees and boulders to sentries and meanies. Up to 64 of these objects can be created ("spawned"), deleted, placed on tiles and removed from tiles, and some objects can even be stacked on top of one another, like this robot on top of a boulder:</p>
+						<p>The tiled landscape of The Sentinel is home to a number of 3D objects, from trees and boulders to sentries and meanies. Up to 64 of these objects can be added to the landscape's flat tiles, and some objects can even be stacked on top of one another, like this robot on top of a boulder:</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/objects/robot_on_boulder.png" alt="A robot on a boulder in the Sentinel on the BBC Micro">
 
 						<p>In this article we look at how objects are managed. See the deep dive on <a href="stacking_objects.html">stacking objects</a> for more information about object stacks, and check out the deep dives on <a href="3d_object_definitions.html">3D object definitions</a> and <a href="drawing_objects.html">drawing objects</a> for details of how all these objects are drawn on-screen.</p>
 
-						<h2 class="articleSubheader">Object management<br>
-													 -----------------</h2>
+						<h2 class="articleSubheader">Object numbers<br>
+													 --------------</h2>
 
-						<p>If we want to add an object to the landscape, then the first thing we need to do is call <a href="/source/main/subroutine/getobjectnumber.html">GetObjectNumber</a> to fetch an object number that we can use for the new object. We pass the object type for the new object in A, as follows:</p>
+						<p>Each object in The Sentinel has an associated object number, from 0 to 63, so the system can support up to 64 objects. The object number is the unique way of referring to each object.</p>
+
+						<p>Some objects always have the same object numbers; for example, the Sentinel is always object #0, any sentries are always in the range object #1 to object #7, and the Sentinel's tower is always object #63. All unused object numbers are available for objects that are created and absorbed during gameplay, and if an enemy is absorbed, then its object number will also be available for reuse: there are no reserved object numbers as such.</p>
+
+						<p>If we want to add an object to the landscape, then the first thing we need to do is call the <a href="/source/main/subroutine/getobjectnumber.html">GetObjectNumber</a> routine to find an unused object number that we can use for our new object. We pass the object type for the new object in A, as follows:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Type</th><th>Object</th></tr>
+							<tr><td>0</td><td>Robot (the player object is one of these)</td></tr>
+							<tr><td>1</td><td>Sentry</td></tr>
+							<tr><td>2</td><td>Tree</td></tr>
+							<tr><td>3</td><td>Boulder</td></tr>
+							<tr><td>4</td><td>Meanie</td></tr>
+							<tr><td>5</td><td>The Sentinel</td></tr>
+							<tr><td>6</td><td>The Sentinel's tower</td></tr>
+							<tr><td>7</td><td>3D text block: no block (left), block (right)</td></tr>
+							<tr><td>8</td><td>3D text block: block (left), no block (right)</td></tr>
+							<tr><td>9</td><td>3D text block: block (left), block (right)</td></tr>
+						</table>
+
+						<p>The last three object types are only used when drawing the large 3D text on the title screens - they aren't used in-game at all (see the deep dive on <a href="drawing_3d_text_using_blocks.html">drawing 3D text using blocks</a> for more information).</p>
+
+						<p>Assuming the GetObjectNumber returns a suitable object number that we can use for our new object, we can go ahead and actually spawn an object using that number, so let's look at that next.</p>
+
+						<h2 class="articleSubheader">Spawning and deleting objects<br>
+													 -----------------------------</h2>
+
+						<p>The data for each object is stored in multiple places, but arguably the most important is the <a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a> table. If the entry in the X-th byte in the objectFlags table has bit 7 set, this indicates that object number #X has not yet been allocated to an object; conversely, if bit 7 is clear, then object number #X has been allocated to an object, and that object exists on the landscape (in other words, that object has been "spawned", which is the term we use for object creation).</p>
+
+						<p>When the game is first started, all 64 entries in the objectFlags table are set to contain %10000000, to indicate that no object numbers have been allocated. The table is also reset by the <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> and <a href="/source/main/subroutine/resettilesobjects.html">ResetTilesObjects</a> routines.</p>
+
+						<p>When we call <a href="/source/main/subroutine/getobjectnumber.html">GetObjectNumber</a>, the routine looks for an object number that isn't currently allocated to an object so we can use it to spawn a new object via one of the spawning routines. It does this by searching the objectFlags table for a free number to allocate - i.e. an entry with bit 7 set. It starts at the entry for object #63 and works its way down the table until it finds a free number.</p>
+
+						<p>If it finds a new number then it stores the object type in the X-th entry in the <a href="/source/main/variable/objecttypes.html">objectTypes</a> table and returns to the caller with the new object's number and the flags set to indicate success or failure (for example, it will fail to allocate a new object number if we already have 64 spawned objects, as then we can't add any more).</p>
+
+						<p>Once we have the object number that we can use for our object, we need to spawn that object in the landscape. This is done by the <a href="/source/main/subroutine/spawnobjectontile.html">SpawnObjectOnTile</a>, which takes the object number and a tile coordinate as arguments, and attempts to add the object to that tile.</p>
+
+						<p>Sometimes this isn't possible - for example, if the tile is already occupied by an object that we can't stack another object onto, then we can't add our new object to the tile and the spawning process will fail (see the deep dive on <a href="stacking_objects.html">stacking objects</a> for more about object stacks). But assuming all is well and we can add our new object to the tile, the spawning routine will clear bit 7 of objectFlags, and the object will be successfully spawned.</p>
+
+						<p>The SpawnObjectOnTile routine is the only place where objects are spawned in this way, but it isn't the only spawning routine. There are various other options, all of which call SpawnObjectOnTile to do the actual spawning:</p>
 
 						<ul>
-							<li>0 = Robot (the player object is one of these)</li>
+							<li><a href="/source/main/subroutine/spawnobjectbelow.html">SpawnObjectBelow</a> attempts to spawn an object on a tile that is below a maximum specified altitude.</li>
 
-							<li>1 = Sentry</li>
+							<li><a href="/source/main/subroutine/spawnenemies.html">SpawnEnemies</a> spawns the Sentinel and sentries and adds them to the landscape.</li>
 
-							<li>2 = Tree</li>
+							<li><a href="/source/main/subroutine/spawnplayer.html">SpawnPlayer</a> adds the player object to the landscape, ideally placing it below all the enemies and in the bottom half of the landscape.</li>
 
-							<li>3 = Boulder</li>
+							<li><a href="/source/main/subroutine/spawntrees.html">SpawnTrees</a> adds trees to the landscape, ideally placing them below all the enemies in the landscape.</li>
 
-							<li>4 = Meanie</li>
+							<li><a href="/source/main/subroutine/spawncharacter3d_part_1_of_2.html">SpawnCharacter3D</a> spawn a text character on the landscape in large 3D blocks for drawing on the main title screen or secret code screen.</li>
 
-							<li>5 = The Sentinel</li>
+							<li><a href="/source/main/subroutine/spawnsecretcode3d.html">SpawnSecretCode3D</a> draws the landscape's secret code by spawning a set of large 3D text block objects.</li>
 
-							<li>6 = The Sentinel's tower</li>
-
-							<li>7 = 3D text block: no block (left), block (right)</li>
-
-							<li>8 = 3D text block: Block (left), No block (right)</li>
-
-							<li>9 = 3D text block: Block (left), block (right)</li>
+							<li><a href="/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> spawns object #1 for the title screen (a robot or the Sentinel) or the game over screen (the responsible for ending the game).</li>
 						</ul>
 
-						<p>The last three objects are only used when drawing the large 3D text on the title screens - they aren't used in-game at all, so we can ignore these for the rest of this article. See the deep dive on <a href="drawing_3d_text_using_blocks.html">drawing 3D text using blocks</a> for more information.</p>
+						<p>Once the object has been spawned and added to the objectFlags and objectTypes tables, the next step is to configure all the object's settings, from coordinates to gaze angle. Let's look at these next.</p>
 
-						<p>When we create an object, it has an object number allocated to it. This object number is in the range 0 to 63, as the system can support up to 64 objects. The data for each object is stored in multiple places, but one of the most important is the objectFlags table. If the entry in the X-th byte in objectFlags has bit 7 set, this indicates that object number #X has not yet been allocated to an object; conversely, if bit 7 is clear, then object number #X refers to an object that we have spawned. That object might not appear on the landscape, but the object number has been allocated.</p>
+						<h2 class="articleSubheader">Configuring objects<br>
+													 -------------------</h2>
 
-						<p>When the game is first started, all 64 entries in the objectFlags table are set to contain %10000000, to indicate that no object numbers have been allocated. The table is also reset by the ResetVariables and ResetTilesObjects routines.</p>
+						<p>Most object characteristics are set in the <a href="/source/main/subroutine/spawnobjectontile.html">SpawnObjectOnTile</a> routine when a new object is spawned, though the other spawning routines mentioned in the previous section tend to configure the objects further once they are spawned.</p>
 
-						<p>The GetObjectNumber routine therefore looks for an object number that isn't currently allocated to an object so we can use it to spawn a new object via one of the spawning routines. It does this by searching the objectFlags table for a free number to allocate - i.e. an entry with bit 7 set. It starts at the entry for object #63 and works its way down the table until it finds a free number.</p>
-
-						<p>If it finds a new number then it stores the object type in the X-th entry in the objectTypes table and returns to the caller with the new object's number and the flags set on success or failure (for example, if we already have 64 objects and can't add any more).</p>
-
-						<p>The next step is to spawn the object using this object number and add the object to the landscape. This is done by the <a href="/source/main/subroutine/spawnobjectontile.html">SpawnObjectOnTile</a> routine, which starts by checking whether the tile is a suitable home for the new object (i.e. whether the tile is empty, or contains an object stack that we can add the new object to). If we can place the object on the tile, then SpawnObjectOnTile goes ahead and creates the object as follows (assuming we are spawning object number #X on the tile):</p>
+						<p>As mentioned above, SpawnObjectOnTile starts by checking whether the tile is a suitable home for the new object (i.e. it must either be empty or contain an object stack to which we can add the new object). If we can place the object on the tile, then SpawnObjectOnTile goes ahead and configures the object as follows (assuming we are spawning object number #X on the tile):</p>
 
 						<ul>
-							<li>The X-th entry in (xObject, yObject, zObject) is set to the 3D coordinate of the newly added object, where the y-coordinate is a 16-bit value in yObject(Hi Lo) that contains an integer and fractional part.</li>
+							<li>The X-th entry in <a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a> has bit 6 cleared to indicate that object number #X has now been allocated to an object.</li>
 
-							<li>The X-th entry in objectFlags, bit 7 is clear to indicate that object number #X has now been allocated to an object.</li>
+							<li>The X-th entry in <a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a> has bit 6 set if we are adding the object on top of a boulder or tower (and the object number of the boulder/tower is in bits 0-5).</li>
 
-							<li>The X-th entry in objectFlags has bit 6 set if we add the object on top of a boulder or tower (and the object number of the boulder/tower is in bits 0-5).</li>
+							<li>The X-th entry in (<a href="/source/main/variable/xobject.html">xObject</a>, <a href="/source/main/variable/yobjecthi.html">yObjectHi</a>), <a href="/source/main/variable/zobject.html">zObject</a>) is set to the tile coordinate of the newly added object.</li>
 
-							<li>The X-th entry in yObjectLo is set to 224, so objects are spawned at a height of 224 above the tile itself, or 0.875 tile widths (this is used for the gaze vector calculations, so this is effectively the height of the object's eyes above the tile).</li>
+							<li>The X-th entry in yObject(<a href="/source/main/variable/yobjecthi.html">Hi</a> <a href="/source/main/variable/yobjectlo.html">Lo</a>) is set to a two-byte y-coordinate that represents the object's altitude. See below for an explanation of this value.</li>
 
-							<li>The X-th entry in objectPitchAngle is set to -11, so objects look slightly downwards at a pitch angle of 15.5 degrees.</li>
+							<li>The X-th entry in <a href="/source/main/workspace/stack_variables.html#objectpitchangle">objectPitchAngle</a> is set to -11, so objects look slightly downwards at a pitch angle of 15.5 degrees. This is the pitch rotation of the object relative to the landscape, so an object with a pitch angle of 0 will be looking straight ahead, and neither down nor up.</li>
 
-							<li>The X-th entry in objectYawAngle is set to a multiple of 11.25 degrees, as determined by the next seed, with 96 added to it (135 degrees). This is presumably intended to make the player's rotation work well on the starting level, though it is added to all objects and not just the player object (though it is also overridden after spawning for some objects).</li>
+							<li>The X-th entry in <a href="/source/main/variable/objectyawangle.html">objectYawAngle</a> is set to a multiple of 11.25 degrees, as determined by the next seed number for the landscape, with 96 added to it (135 degrees). This is the yaw rotation of the object relative to the landscape, so an object with a yaw angle of 0 will be looking in the same direction as the camera in the landscape preview, i.e. straight towards the rear row of the landscape. The extra 135 degrees is added to make the player's rotation work well on the starting level, though it is added to all objects and not just the player object. Some objects, such as the Sentinel's tower, override this setting to set yObjectLo to zero once the object is spawned, but 224 is the default fractional altitude for all objects when they are spawned.</li>
 
-							<li>The tileData for the tile is set to the object number in X in bits 0 to 5, and bits 6 and 7 are set to indicate that the tile contains an object.</li>
+							<li>The <a href="/source/main/variable/tiledata.html">tileData</a> entry for the tile is set to the object number in X in bits 0 to 5, and bits 6 and 7 are set to indicate that the tile contains an object (see the deep dive on <a href="tile_data.html">tile data</a> for details).</li>
 						</ul>
 
-						<p>xxx</p>
+						<p>The two-byte y-coordinate in yObject(Hi Lo) needs more explanation, so let's look at that now.</p>
 
+						<h2 class="articleSubheader">The object y-coordinate<br>
+													 -----------------------</h2>
 
+						<p>When talking about the object y-coordinate, it might help to imagine the 3D world as being made up of "tile cubes", with side lengths of one coordinate. If the bottom of the landscape is a flat chess board on the table in front of us, then we can build up our landscape by stacking lots of cubes on the board. Each cube fits nicely onto a chess board square, and the full 3D landscape can be made by stacking cubes on top of each other to create peaks and valleys (and, to be 100% accurate, carving each of the top cubes on the landscape into the correct shape to create the undulating world in the preview).</p>
 
+						<p>In terms of coordinates, then, the high byte in yObjectHi is an integer that represents the altitude of the cube containing the object, and the low byte in yObjectLo represents the fractional altitude of the object within that cube. By default, SpawnObjectOnTile sets yObjectHi to the tile coordinate and yObjectLo to 224, so objects are spawned at a height of 224 / 256 above the tile itself, or 0.875 tile widths. This setting is used for the gaze vector calculations, so this is effectively the height of the object's eyes above the tile. If we are spawning an object on an object stack, then the object's altitude will be altered once spawned to the correct position, but the spawning process always sets the fractional part to 0.875.</p>
 
-GetObjectCoords
+						<p>This fractional coordinate system for objects is extended even further when we need to do calculations involving objects and things like gaze vectors (e.g. can an object be seen by an enemy) and visibility (e.g. can an object be seen by the player). The <a href="/source/main/subroutine/getobjectcoords.html">GetObjectCoords</a> routine fetches an object's Cartesian coordinates and returns the result in three 24-bit numbers: xCoord(Hi Lo Bot), yCoord(Hi Lo Bot) and zCoord(Hi Lo Bot). The high byte can be thought of as the integer, with the low and bottom bytes as the fractional part, with two fractional bytes enabling more accuracy when calculating the geometry.</p>
 
- This routine fetches the Cartesian coordinates of object #X as three 24-bit
- numbers, as follows:
+						<p>Objects are regarded as always being in the centre of the tiles on which they are places, so in this more accurate coordinate representation, an object that's been placed directly on the tile that's anchored at (2, y, 3) will actually appear at (2.5, y, 3.5). And the y-coordinate - i.e. the altitude of the object above the tile itself - depends on the object type and whether it is stacked on top of another object.</p>
 
-   xCoord(Hi Lo Bot)
+						<p>So we don't need to store the fractional parts of the object's x- and z-coordinates, as they are always 0.5, but we do need to store the fractional part of the y-coordinate.</p>
 
-   yCoord(Hi Lo Bot)
+						<h2 class="articleSubheader">Deleting objects<br>
+													 ----------------</h2>
 
-   zCoord(Hi Lo Bot)
+						<p>Objects can be deleted using the <a href="/source/main/subroutine/deleteobject.html">DeleteObject</a> routine. Conceptually this is a simple process of setting bit 7 in the relevant objectFlags byte, as that will free up the object number and make it available for the next object to be spawned. However, there are two further steps that need to be done:</p>
 
- The high byte can be thought of as the integer with low and bottom bytes as
- the fractional part.
+						<ul>
+							<li>If the object is involved in an object stack, then we need to remove it cleanly from the stack.</p>
 
- Tile corners are integers in the x- and z-axis, and objects are placed in the
- centre of tiles by setting the fractional part to 0.5. So an object that's
- been placed directly on the tile that's anchored at (2, y, 3) will appear at
- (2.5, y, 3.5).
+							<li>If the object is the only object on the tile, then we need to remove it cleanly from the tile.</li>
+						</ul>
 
- The y-coordinate - i.e. the altitude of the object above the tile itself -
- depends on the object type and whether it is stacked on top of another object.
+						<p>To read about how we remove an object from an object stack, see the deep dive on <a href="stacking_objects.html">stacking objects</a>.</p>
 
-From another dive:
-This also fetches the next seed number for the landscape and uses this to set the object's yaw angle (see the deep dive on object management for details of this process).
+						<p>For solitary objects, we need to undo the process of adding the object to the tile. When we did this during the spawning process, we put the object number into bits 0 to 5 of the relevant <a href="/source/main/variable/tiledata.html">tileData</a> entry, and we set bits 6 and 7 are set to indicate that the tile contained an object. So we need to reverse this and instead change the tile data back to the format we use for when there is no object on the tile, i.e. with the tile altitude in the high nibble and the tile shape in the low nibble.</p>
 
+						<p>We know that the tile has to be flat as objects can only be placed on flat tiles, so that means the tile shape must be 0. And we can get the tile altitude from the altitude of the object, and specifically from the high byte in yObjectHi, which contains the altitude of the relevant tile cube. The bottom of the cube effectively sits on the tile at the tile's integer tile y-coordinate, and so yObjectHi gives us the tile's altitude to put back into the tile date byte.</p>
 
-
+						<p>And that concludes the deletion process.</p>
 
 						<h2 class="articleSubheader">Object variables and routines<br>
 													 -----------------------------</h2>
 
-						<p>There are quite a few tables that are involved in managing objects in the game world. Here's a list that we'll explain in more detail below.</p>
+						<p>There are quite a few tables that are involved in managing objects in the game world. To finish off, here's a list of all the variables that are related to object management:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Variable</th><th>Description</th></tr>
-							<tr><td><a href="/source/main/variable/objecttypes.html">objectTypes</a></td><td>A table of object types for up to 64 in-game objects</td></tr>
-							<tr><td><a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a></td><td>Object flags for up to 64 objects (object number allocation, stack details)</td></tr>
+							<tr><td><a href="/source/main/workspace/stack_variables.html#objectflags">objectFlags</a></td><td>Object flags for up to 64 objects (object number allocation, object stack details)</td></tr>
+							<tr><td><a href="/source/main/variable/objecttypes.html">objectTypes</a></td><td>Object types for up to 64 objects</td></tr>
 							<tr><td><a href="/source/main/workspace/stack_variables.html#objectpitchangle">objectPitchAngle</a></td><td>The pitch angle for each object (i.e. the vertical direction in which they are facing)</td></tr>
-							<tr><td><a href="/source/main/variable/objectyawangle.html">objectYawAngle</a></td><td>The yaw angle for each object (i.e. the horizontal direction inwhich they are facing)</td></tr>
+							<tr><td><a href="/source/main/variable/objectyawangle.html">objectYawAngle</a></td><td>The yaw angle for each object (i.e. the horizontal direction in which they are facing)</td></tr>
 							<tr><td><a href="/source/main/variable/xobject.html">xObject</a></td><td>The integer x-coordinate of the tile containing the object (i.e. along the left-right axis)</td></tr>
 							<tr><td><a href="/source/main/variable/yobjecthi.html">yObjectHi</a></td><td>The integer part of the object's y-coordinate, i.e. the altitude in tile blocks</td></tr>
 							<tr><td><a href="/source/main/variable/yobjectlo.html">yObjectLo</a></td><td>The fractional part of the object's y-coordinate, i.e. the fractional altitude within the tile block</td></tr>
 							<tr><td><a href="/source/main/variable/zobject.html">zObject</a></td><td>The integer z-coordinate of the tile containing the object (i.e. along the axis into and out of the screen)</td></tr>
+						</table>
+
+						<p>And here are two lookup tables containing read-only object data:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Variable</th><th>Description</th></tr>
 							<tr><td><a href="/source/main/variable/objecttypeenergy.html">objectTypeEnergy</a></td><td>The amount of energy encapsulated in each type of object, i.e. the amount of energy acquired or spent when absorbing or creating the object</td></tr>
 							<tr><td><a href="/source/main/variable/objecthalfwidth.html">objectHalfWidth</a></td><td>Each object's width in terms of tile widths, for half of the object only</td></tr>
 						</table>
 
-						<p>There are also a few routines that enable us to manage objects in the landscape:</p>
+						<p>Finally, here's a list of all the routines that enable us to manage objects in the landscape:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Subroutine</th><th>Description</th></tr>
 							<tr><td><a href="/source/main/subroutine/getobjectnumber.html">GetObjectNumber</a></td><td>Fetch an object number that we can use for a new object</td></tr>
-							<tr><td><a href="/source/main/subroutine/deleteobject.html">DeleteObject</a></td><td>Delete an object, removing it from the landscape and vacating its object number</td></tr>
 							<tr><td><a href="/source/main/subroutine/spawnobjectontile.html">SpawnObjectOnTile</a></td><td>Spawn an object on a tile, putting it on top of any existing boulders or towers</td></tr>
 							<tr><td><a href="/source/main/subroutine/spawnobjectbelow.html">SpawnObjectBelow</a></td><td>Attempt to spawn an object on a tile that is below the maximum altitude specified in A</td></tr>
+							<tr><td><a href="/source/main/subroutine/spawnenemies.html">SpawnEnemies</a></td><td>Spawn the Sentinel and sentries and adds them to the landscape</td></tr>
+							<tr><td><a href="/source/main/subroutine/spawnplayer.html">SpawnPlayer</a></td><td>Add the player object to the landscape, ideally placing it below all the enemies and in the bottom half of the landscape</td></tr>
+							<tr><td><a href="/source/main/subroutine/spawntrees.html">SpawnTrees</a></td><td>Add trees to the landscape, ideally placing them below all the enemies in the landscape</td></tr>
+							<tr><td><a href="/source/main/subroutine/spawncharacter3d_part_1_of_2.html">SpawnCharacter3D</a></td><td>Spawn a text character on the landscape in large 3D blocks for drawing on the main title screen or secret code screen</td></tr>
+							<tr><td><a href="/source/main/subroutine/spawnsecretcode3d.html">SpawnSecretCode3D</a></td><td>Draw the landscape's secret code by spawning a set of large 3D text block objects</td></tr>
+							<tr><td><a href="/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a></td><td>Spawn object #1 for the title screen (a robot or the Sentinel) or the game over screen (the responsible for ending the game)</td></tr>
+							<tr><td><a href="/source/main/subroutine/deleteobject.html">DeleteObject</a></td><td>Delete an object, removing it from the landscape and vacating its object number</td></tr>
 							<tr><td><a href="/source/main/subroutine/getobjectcoords.html">GetObjectCoords</a></td><td>Get an object's coordinates</td></tr>
 						</table>
 
-						<p>Let's take a look at how these routines and variables are used to manage objects in The Sentinel.</p>
-
-
-
+						<p>For more information on how objects are managed, check out the deep dive on <a href="stacking_objects.html">stacking objects</a>.</p>
 					</div>
 				</div>
 
