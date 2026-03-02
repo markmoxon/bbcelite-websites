@@ -11,19 +11,25 @@ page_header("deep_dives", "3d_object_definitions.html", "3D object definitions",
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Details of all the 3D objects, from trees and boulders to the Sentinel itself</h2>
 
-						<p>xxx</p>
+						<p>The Sentinel's incredible 10,000 landscapes might be the most talked-about aspect of the game, but when it comes to gameplay, it's all about the 3D objects.</p>
 
+						<p>There are ten different types of object in total. Three of these are large blocks that are used to draw the 3D text on the title screens; these are included here, but for more information about how they are used, see the deep dive on <a href="drawing_3d_text_using_blocks.html">drawing 3D text using blocks</a>.</p>
 
+						<p>The other seven are the game objects. There are three types of enemy object: the Sentinel, the sentry and the meanie. Then there's the player, who's represented by the robot. And then there are the various inanimate objects: the boulder, the tree and the Sentinel's tower.</p>
+
+						<p>First let's take a look at what these objects look like, and then I'll talk about how these objects are defined and displayed.</p>
 
 						<h2 class="articleSubheader">Object definitions<br>
 													 ------------------</h2>
 
+						<p>In the following table, the objects are all shown at the same scale, apart from the 3D text blocks, which are shown at half-scale.</p>
 
-Object dimensions?
+						<p>I've captured each object in-game in two different palettes: on the left is the palette for landscape 0000 (blue, black, white, green), while on the right is the title screen palette (blue, black, red, yellow).</p>
 
+						<p>To try to show the shape of each object, the first row has the object facing towards us but looking slightly to our left, while the second row has the object turned by 90 degrees to the left, so the object is facing to the left and slightly away from us (from the perspective of the object, they have turned 90 degrees to their right for the second mug shot). Some of the more symmetrical objects don't look particularly different side-on, but I've left all of the different rotations in for consistency.</p>
 
 						<table class="spacedTableBorder codeSummary">
-							<tr class="codeSummaryHeader"><th>Object</th><th class="center">Examples</th></tr>
+							<tr class="codeSummaryHeader"><th style="width: 20ch">Object</th><th class="center">Examples</th></tr>
 							<tr><td style="vertical-align: middle"><span class="highlight">Robot</span><br><br>Object type: 0<br><br>Polygons: 0 to 26<br>(27 polygons)<br><br>Points: 0 to 28<br>(29 points)</td><td>
 								<div class="center">
 									Facing towards us and slightly to our left:
@@ -146,84 +152,188 @@ Object dimensions?
 							</td></tr>
 						</table>
 
+						<p>Let's take a look at how these objects are defined, and what the figures in the above table actually mean.</p>
+
+						<h2 class="articleSubheader">3D object definitions<br>
+													 ---------------------</h2>
+
+						<p>The 3D objects in The Sentinel are implemented in a fascinating way that lends itself nicely to the game's unique angle system and the enemies' rotational gameplay. In order to understand the following, I recommend you take a look at the deep dive on <a href="pitch_and_yaw_angles.html">pitch and yaw angles</a>, as angles literally lie at the heart of the 3D objects in The Sentinel.</p>
+
+						<p>Games that contain 3D objects typically define the shapes of those objects in terms of Cartesian coordinates. Elite, for example, defines its ships using vertices, faces and edges, where the vertices are coordinates in the usual (x, y, z) coordinate space (see my Elite deep dive on <a href="https://elite.bbcelite.com/deep_dives/ship_blueprints.html">ship blueprints</a> for details).</p>
+
+						<p>In terms of previous Geoff Crammond games, Aviator defines its 3D objects in terms of lines and points, again using Cartesian coordinates (see my Aviator deep dive on <a href="https://aviator.bbcelite.com/deep_dives/3d_objects.html">3D objects</a>). And Revs doesn't actually contain 3D objects, but instead creates pretend 3D objects from 2D shapes (see my Revs deep dive on <a href="https://revs.bbcelite.com/deep_dives/drawing_a_3d_car_from_2d_parts.html">drawing a 3D car from 2D parts</a>).</p>
+
+						<p>The Sentinel, though, is different, because it defines its object points using extruded polar coordinates, which are then used to define polygons in 3D space that together make up the objects we see on-screen. The advantage of this system is that it makes it almost trivial to rotate objects around their centres, which is pretty important when your game is based on enemies scanning a 3D landscape by rotating around to their left or right.</p>
+
+						<p>Let's look at the three levels of object definition in turn: points, polygons and objects.</p>
+
+						<h2 class="articleSubheader">Points<br>
+													 ------</h2>
+
+						<p>At the fundamental level, objects are made up of points in 3D space. These points are grouped into polygons to form objects, which we'll cover later, but for now let's just consider the points, as their implementation is interesting.</p>
+
+						<p>There are 160 points defined in The Sentinel, each with an ID from 0 to 159, and between them they specify the coordinates of all the points within all the 3D objects. The <a href="/source/main/variable/objpointrange.html">objPointRange</a> table defines the range of points that is used for each object, so object type 0 (the robot) is constructed using points 0 to 28, while object type 4 (the meanie) uses points 76 to 93. These ranges are shown in the table above.</p>
+
+						<p>Each point's coordinate is defined using three values, but they aren't the normal (x, y, z) Cartesian coordinates that you might expect. Instead each point is defined using polar coordinates that are extruded from the object's origin. These coordinate values are stored in the following tables, each of which contains the specified value for all 160 points:</p>
+
+						<ul>
+							<li>The <a href="/source/main/variable/objpointyaw.html">objPointYaw</a> table contains the polar yaw angles for each of the points in each of the objects.</li>
+
+							<li>The <a href="/source/main/variable/objpointdistance.html">objPointDistance</a> table contains the polar distances for each of the points in each of the objects.</li>
+
+							<li>The <a href="/source/main/variable/objpointheight.html">objPointHeight</a> table contains the height of each of the points in each of the objects, relative to the object's origin.</li>
+						</ul>
+
+						<p>To visualise how these coordinates work, consider an object such as the Sentinel, like this:
+
+						<div class="center">
+							<img class="titleImage lightBorder" style="width: 192px; margin: 1ch; display: inline-block" src="/images/objects/sentinel_forward_red.png" alt="The Sentinel object in the Sentinel on the BBC Micro">
+							<img class="titleImage lightBorder" style="width: 192px; margin: 1ch; display: inline-block" src="/images/objects/sentinel_left_red.png" alt="The Sentinel object in the Sentinel on the BBC Micro">
+						</div>
+
+						<p>Now imagine a vertical rod running through the object from head to toe, going straight through the middle of the object. This is the height axis, and it points upwards, so height values increase as we moved up the rod. In the middle of this rod is the object's origin, at height 0, and the height is negative below the origin and positive above the origin.</p>
+
+						<p>To find out where a point lies within the object, we first take the point's height from the objPointHeight table and work out where this lies on our vertical rod. We then consider the horizontal plane passing through this height, and apply the point's yaw angle and distance within this plane using the standard polar coordinate system, giving us a point in space.</p>
+
+						<p>To explain this further, consider this overhead view of our Sentinel object, with its beady eyes pointing upwards in this diagram. This is us looking down onto the top of its head, and the vertical rod is the + in the middle:</p>
+
+<pre class="articleIndented">           0
+     -32   |   +32
+        \  |  /
+         \ | /                 ^
+          \|/                  |
+  -64 -----+----- +64          +   Overhead view of the Sentinel,
+          /|\                      looking forwards
+         / | \
+        /  |  \
+     -96   |   +96
+          128
+</pre>
+
+						<p>If the yaw angle in objPointYaw is 32, then this point is forwards and right of the Sentinel's gaze, so it could be part of the right side of its prominent nose; while if it's -64 then it's directly to the left of the Sentinel, which could be a point on the left side of its helmet.</p>
+
+						<p>Once we have the angle, we move away from our central rod in this direction, and the distance we move away is given in the objPointDistance table. So the point of the Sentinel's nose will have a bigger distance value than the tuck under its chin.</p>
+
+						<p>Finally, the objPointHeight table defines how high the point is within the object, so negative heights will be towards the Sentinel's feet and positive heights will be towards its head. You can think of this stage as extruding the points that we're defining, pulling them away from the origin at the centre of the object by the specified distance.</p>
+
+						<p>The beauty of this system lies in the ease of rotation. Enemy objects rotate as they scan the landscape, and the player's robot does the same as it pans the landscape view, so rotation is core to the gameplay. In particular, it's yaw rotation that we see with objects, as the 3D objects rotate left and right but they don't change shape when they look up and down (though they do change the pitch of their gaze in-game, it's just not shown on-screen).</p>
+
+						<p>The process for drawing a 3D object is described in the deep dive on <a href="drawing_objects.html">drawing objects</a>, but the core of the calculation is to take the object's position, rotation and object definition, and to calculate where each object point within the object appears on-screen, so we can draw the relevant polygons. Because we use polar coordinates rather than Cartesian coordinates, it's no more effort to do this calculation when the object is rotated - we simply add the object's yaw rotation to the objPointYaw angles in the object definition, and that will turn the object in space. If we had to rotate each of the object points in space using Cartesian coordinates, this would be a pretty complicated calculation, but in the Sentinel it effectively takes zero extra effort.</p>
+
+						<p>Of course, there is still plenty of heavy maths involved in The Sentinel despite this simplification, but implementing object points as extruded polar coordinates does make yaw rotations very easy indeed.</p>
+
+						<h2 class="articleSubheader">Polygons<br>
+													 --------</h2>
+
+						<p>Each object's shape is made up of multiple polygons. These are the shapes that are actually drawn on-screen.</p>
+
+						<p>There are 160 polygons defined in The Sentinel each with an ID from 0 to 159, and between them they specify the style and shape of each polygon. The <a href="/source/main/variable/objpolygonrange.html">objPolygonRange</a> table defines the range of polygons that is used for each object, so object type 0 (the robot) is constructed using polygons 0 to 26, while object type 4 (the meanie) uses points 77 to 101. These ranges are shown in the table above.</p>
+
+						<p>It's worth confirming that, yes, the number of points is the same as the number of polygons - i.e. 160. This is a lovely example of Geoff Crammond squeezing in as much data as possible into the small memory footprint of the BBC Micro, because this means the vast majority of point and polygon tables will be 160 bytes long. These therefore fit beautifully into the spare memory after each of the higher-number screen row buffers, which are also 160 bytes long. Because the buffers are spaced out every 320 bytes, like character rows in screen memory, they create a series of 160-byte gaps that aren't needed for buffering, but they do make a perfect home for the object point and polygon data; see the deep dive on <a href="screen_buffers.html">screen buffers</a> for more details.</p>
+
+						<p>Each polygon is essentially a collection of points and a set of polygon data. Here are all the tables that store polygon definitions:</p>
+
+						<ul>
+							<li>The points in each polygon are stored in the tables <a href="/source/main/variable/objrobot.html#objpolygon000">objPolygon000</a> through <a href="/source/main/variable/objtextblock.html#objpolygon151">objPolygon151</a>.</li>
+
+							<li>The <a href="/source/main/variable/objpolygondata.html">objPolygonData</a> table contains various data for object polygons (such as colour and drawing phase).</li>
+
+							<li>The <a href="/source/main/variable/objpointdistance.html">objPolygonPhases</a> table contains the phase configuration for each object.</li>
+						</ul>
+
+						<p>The points that make up each polygon are stored as sequences of point IDs, with the first point ID being repeated at the end of each list; take a look at <a href="/source/main/variable/objrobot.html#objpolygon000">objPolygon000</a> for an example. There doesn't seem to be a reason for storing this repeat, as we could easily stash the first ID and reuse it again at the end during the drawing process, but perhaps the drawing routines started out supporting open shapes as well as closed polygons, and this is a remnant of that approach; this is a guess, though, and all the polygon point lists have this repeated entry at the end.</p>
+
+						<p>Note that in the polygon point lists, the point IDs are stored with 64 added to them because these values are used as offsets into the drawing tables, and specifically into the table of object point angles that are stored from drawing index 64 (see the deep dive on <a href="the_drawing_tables.html">the drawing tables</a> for details).</p>
+
+						<p>As well as the point data, each polygon has a set of data that determines how we draw it. The data is stored in <a href="/source/main/variable/objpolygondata.html">objPolygonData</a> for each polygon, and is structured as follows:</p>
+
+						<ul>
+							<li>Bit 7 is the phase in which to draw this polygon (0 = first phase, 1 = second phase).</li>
+
+							<li>Bit 6 is unused and is always clear.</li>
+
+							<li>Bits 4-5 contain the edge colour (0 to 3).</li>
+
+							<li>Bits 2-3 contain the fill colour (0 to 3).</li>
+
+							<li>Bits 0-1 give the number of sides (0 = three sides, 1 = four sides).</li>
+						</ul>
+
+						<p>The phase determines the order in which polygons are drawn in each specific object. Most objects are drawn in one phase, but some are drawn in two phases; the number of phases for each object type are defined in the <a href="/source/main/variable/objpolygonphases.html">objPolygonPhases</a> table. The number of phases can depend on the relative altitude of the object compared to the viewer (for the robot, the sentry or the Sentinel), or it can depend on the object's gaze direction as given in the object's yaw angle (for the meanie). Drawing in phases lets the game support concave 3D objects like the meanie; see the deep dive on <a href="drawing_objects.html">drawing objects</a> for more details on polygon phases.</p>
+
+						<p>The rest of the polygon data is pretty obvious: it defines the number of sides in the polygon, and the colours that are used to draw it. Again, see the deep dive on <a href="drawing_objects.html">drawing objects</a> for more information.</p>
+
+						<h2 class="articleSubheader">Objects<br>
+													 ------</h2>
+
+						<p>Each 3D object is defined as a collection of polygons, and each polygon is defined as a collection of points. For example, the Sentinel object is defined in the <a href="/source/main/variable/objsentinel.html">objSentinel</a> table, while the meanie object is defined in the <a href="/source/main/variable/objmeanie.html">objMeanie</a> table.</p>
+
+						<p>In practice, the data for each object isn't a list of polygon IDs, but instead it's a list of points, grouped into polygons. So the Sentinel object is formed by sequences of points, all stored in the format described in the previous section (i.e. point IDs with 64 added to them, and with the first point repeating at the end). This sequence of polygon point lists has an address lookup table in the form of the objPolygonAddr(Hi Lo) table, which contains the addresses of each polygon within each object definition.</p>
+
+						<p>When deciding how to label the object definitions in my disassembly, I could have gone in another direction. The labels I have added for the objects - i.e. <a href="/source/main/variable/objsentinel.html">objSentinel</a>, <a href="/source/main/variable/objmeanie.html">objMeanie</a> and so on - are not actually used in the code, they are purely there to make it easier for us humans to follow along. The core of each object definition is the range of polygons in <a href="/source/main/variable/objpolygonrange.html">objPolygonRange</a>, which defines the range of polygon IDs in each object, and the code then uses this range to look up the addresses of the point lists for each of those polygons, which are given in the objPolygonAddr(Hi Lo) table.</p>
+
+						<p>This latter table is split into the <a href="/source/main/variable/objpolygonaddrhi.html">objPolygonAddrHi</a> and <a href="/source/main/variable/objpolygonaddrlo.html">objPolygonAddrLo</a> tables, the contents of which is just a sequence of addresses, starting at <a href="/source/main/variable/objrobot.html#objpolygon000">objPolygon000</a> and working through to <a href="/source/main/variable/objtextblock.html#objpolygon151">objPolygon151</a>. There is no concept of object definitions as such, just polygon ranges and a look-up table to the point lists for each of those polygons.</p>
+
+						<p>I've added the object-specific labels to make it easier to find the polygon point lists for each object, though, because this disassembly is for us, not them.</p>
+
+						<h2 class="articleSubheader">Text blocks<br>
+													 -----------</h2>
+
+						<p>To finish off, let's take a quick look at the 3D text blocks in objects #7 to #9. Each of these objects has the same basic shape - a 3D rectangular block - so as a result we can reuse the same object definition for each of them.</p>
+
+						<p>That definition is in <a href="/source/main/variable/objtextblock.html">objTextBlock</a>, and the code uses these same point lists for each of the three objects, but each object has a different point range, and therefore each object  has different dimensions.</p>
+
+						<p>These dimensions are set up so there's one for each of the three block pairs we need to draw large 3D text on the title screens, as follows:</p>
+
+						<ul>
+							<li>Object #7, 3D text block 1, draws no-block (left), block (right). It is made up of polygons 148 to 151, using points 136 to 143.</li>
+
+							<li>Object #8, 3D text block 2, draws block (left), no-block (right). It is made up of polygons 152 to 155, using points 144 to 151.</li>
+
+							<li>Object #9, 3D text block 3, draws block (left), block (right). It is made up of polygons 156 to 159, using points 152 to 159.</li>
+						</ul>
+
+						<p>See the deep dive on <a href="drawing_3d_text_using_blocks.html">drawing 3D text using blocks</a> for more information about how these three objects are used.</p>
+
+						<h2 class="articleSubheader">3D object variables and routines<br>
+													 --------------------------------</h2>
+
+						<p>There are quite a few lookup tables that define the 3D objects. To finish off, here's a list of all of the object definitions:</p>
 
 						<table class="spacedTableBorder codeSummary">
-							<tr class="codeSummaryHeader"><th>Variable</th><th>Type</th><th>Contents</th></tr>
-							<tr><td><a href="/source/main/variable/objrobot.html">objRobot</a></td><td>Shape</td><td>The list of polygons and points for the robot object (polygons 0 to 26, using points 0 to 28)</td></tr>
-							<tr><td><a href="/source/main/variable/objsentry.html">objSentry</a></td><td>Shape</td><td>The list of polygons and points for the sentry object (polygons 27 to 51, using points 29 to 50)</td></tr>
-							<tr><td><a href="/source/main/variable/objtree.html">objTree</a></td><td>Shape</td><td>The list of polygons and points for the tree object (polygons 52 to 66, using points 51 to 67)</td></tr>
-							<tr><td><a href="/source/main/variable/objboulder.html">objBoulder</a></td><td>Shape</td><td>The list of polygons and points for the boulder object (polygons 67 to 76, using points 68 to 75)</td></tr>
-							<tr><td><a href="/source/main/variable/objmeanie.html">objMeanie</a></td><td>Shape</td><td>The list of polygons and points for the meanie object (polygons 77 to 101, using points 76 to 93)</td></tr>
-							<tr><td><a href="/source/main/variable/objsentinel.html">objSentinel</a></td><td>Shape</td><td>The list of polygons and points for the Sentinel object (polygons 102 to 136, using points 94 to 123)</td></tr>
-							<tr><td><a href="/source/main/variable/objtower.html">objTower</a></td><td>Shape</td><td>The list of polygons and points for the Sentinel's tower object (polygons 137 to 147, using points 124 to 135)</td></tr>
-							<tr><td><a href="/source/main/variable/objtextblock.html">objTextBlock</a></td><td>Shape</td><td>The list of polygons and points for the 3D text block object (polygons 148 to 151, using points 136 to 143)</td></tr>
-							<tr><td><a href="/source/main/variable/objpointrange.html">objPointRange</a></td><td>Point</td><td>The first and last point numbers for each object</td></tr>
-							<tr><td><a href="/source/main/variable/objpointyaw.html">objPointYaw</a></td><td>Point</td><td>Polar yaw angles for each of the points in each of the objects</td></tr>
-							<tr><td><a href="/source/main/variable/objpointdistance.html">objPointDistance</a></td><td>Point</td><td>Polar distances for each of the points in each of the objects</td></tr>
-							<tr><td><a href="/source/main/variable/objpointheight.html">objPointHeight</a></td><td>Point</td><td>The height of each of the points in each of the objects, relative to the object's origin</td></tr>
-							<tr><td><a href="/source/main/variable/objpolygondata.html">objPolygonData</a></td><td>Polygon</td><td>Various data for object polygons (colour, drawing phase)</td></tr>
-							<tr><td><a href="/source/main/variable/objpolygonrange.html">objPolygonRange</a></td><td>Polygon</td><td>The first and last polygon numbers for each object</td></tr>
-							<tr><td><a href="/source/main/variable/objpolygonphases.html">objPolygonPhases</a></td><td>Polygon</td><td>The phase configuration for each object</td></tr>
-							<tr><td><a href="/source/main/variable/objpolygonaddrhi.html">objPolygonAddrHi</a></td><td>Polygon</td><td>High byte of the addresses for the lists of polygons and points for each object</td></tr>
-							<tr><td><a href="/source/main/variable/objpolygonaddrlo.html">objPolygonAddrLo</a></td><td>Polygon</td><td>Low byte of the addresses for the lists of polygons and points for each object</td></tr>
+							<tr class="codeSummaryHeader"><th style="width: 17ch">Table</th><th>Contents</th></tr>
+							<tr><td><a href="/source/main/variable/objrobot.html">objRobot</a></td><td>The list of polygons and points for the robot object (polygons 0 to 26, using points 0 to 28)</td></tr>
+							<tr><td><a href="/source/main/variable/objsentry.html">objSentry</a></td><td>The list of polygons and points for the sentry object (polygons 27 to 51, using points 29 to 50)</td></tr>
+							<tr><td><a href="/source/main/variable/objtree.html">objTree</a></td><td>The list of polygons and points for the tree object (polygons 52 to 66, using points 51 to 67)</td></tr>
+							<tr><td><a href="/source/main/variable/objboulder.html">objBoulder</a></td><td>The list of polygons and points for the boulder object (polygons 67 to 76, using points 68 to 75)</td></tr>
+							<tr><td><a href="/source/main/variable/objmeanie.html">objMeanie</a></td><td>The list of polygons and points for the meanie object (polygons 77 to 101, using points 76 to 93)</td></tr>
+							<tr><td><a href="/source/main/variable/objsentinel.html">objSentinel</a></td><td>The list of polygons and points for the Sentinel object (polygons 102 to 136, using points 94 to 123)</td></tr>
+							<tr><td><a href="/source/main/variable/objtower.html">objTower</a></td><td>The list of polygons and points for the Sentinel's tower object (polygons 137 to 147, using points 124 to 135)</td></tr>
+							<tr><td><a href="/source/main/variable/objtextblock.html">objTextBlock</a></td><td>The list of polygons and points for the 3D text block object (polygons 148 to 159, using points 136 to 159)</td></tr>
 						</table>
 
+						<p>And here's a list of tables that define all the points:</p>
 
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th style="width: 17ch">Table</th><th>Contents</th></tr>
+							<tr><td><a href="/source/main/variable/objpointrange.html">objPointRange</a></td><td>The first and last point numbers for each object</td></tr>
+							<tr><td><a href="/source/main/variable/objpointyaw.html">objPointYaw</a></td><td>Polar yaw angles for each of the points in each of the objects</td></tr>
+							<tr><td><a href="/source/main/variable/objpointdistance.html">objPointDistance</a></td><td>Polar distances for each of the points in each of the objects</td></tr>
+							<tr><td><a href="/source/main/variable/objpointheight.html">objPointHeight</a></td><td>The height of each of the points in each of the objects, relative to the object's origin</td></tr>
+						</table>
 
-objTextBlock
+						<p>And finally, here's a list of tables that define the various polygons:</p>
 
- The three 3D text block objects share the same point lists below, as they have
- the same basic block shape, but they have different point ranges and so have
- different dimensions (one for each of the three block pairs we need to draw
- large 3D text on the title screens).
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th style="width: 17ch">Table</th><th>Contents</th></tr>
+							<tr><td><a href="/source/main/variable/objpolygondata.html">objPolygonData</a></td><td>Various data for object polygons (colour, drawing phase)</td></tr>
+							<tr><td><a href="/source/main/variable/objpolygonrange.html">objPolygonRange</a></td><td>The first and last polygon numbers for each object</td></tr>
+							<tr><td><a href="/source/main/variable/objpolygonphases.html">objPolygonPhases</a></td><td>The phase configuration for each object</td></tr>
+							<tr><td><a href="/source/main/variable/objpolygonaddrhi.html">objPolygonAddrHi</a></td><td>High byte of the addresses for the lists of polygons and points for each object</td></tr>
+							<tr><td><a href="/source/main/variable/objpolygonaddrlo.html">objPolygonAddrLo</a></td><td>Low byte of the addresses for the lists of polygons and points for each object</td></tr>
+						</table>
 
-   * Object 7, 3D text block 1, draws no-block (left), block (right).
-     It is made up of polygons 148 to 151, using points 136 to 143.
-
-   * Object 8, 3D text block 2, draws block (left), no-block (right).
-     It is made up of polygons 152 to 155, using points 144 to 151.
-
-   * Object 9, 3D text block 3, draws block (left), block (right).
-     It is made up of polygons 156 to 159, using points 152 to 159.
-
- See the SpawnCharacter3D routine for more about the block pairs that are used
- to draw large 3D text.
-
-
-
-
-objPolygonData
-
-Polygon data is stored as follows:
-
-   * Bit 7 is the phase in which to draw this polygon (0 = first phase,
-     1 = second phase)
-
-   * Bit 6 is unused and is always clear
-
-   * Bits 4-5 contain the edge colour (0 to 3)
-
-   * Bits 2-3 contain the fill colour (0 to 3)
-
-   * Bits 0-1 give the number of sides (0 = three sides, 1 = four sides)
-
- The individual object tables (such as objTree and objSentinel) list the points
- that are used to draw each polygon.
-
-
-
-
-objPolygonPhases
-
- Most objects are drawn in one phase, but some are drawn in two phases. This
- can depend on the relative altitude of the object compared to the viewer (for
- the robot, the sentry or the Sentinel), or it can depend on the object's gaze
- direction as given in the object's yaw angle (for the meanie).
-
- See the DrawObject routine for details.
-
-
-
+						<p>For more information on how the 3D objects are drawn on-screen, check out the deep dive on <a href="drawing_objects.html">drawing objects</a>.</p>
 					</div>
 				</div>
 
