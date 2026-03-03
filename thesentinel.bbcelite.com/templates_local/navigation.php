@@ -29,7 +29,7 @@
 					<li class="menuItemHeader showForMobile">Playing with The Sentinel source code</li>
 					<li id="playing_the_sentinel"><a id="playing_the_sentinel_index" href="/playing_the_sentinel/"><span class="menuTitle">Playing The Sentinel in the 21st century</span> <span class="menuSummary">How to play all the versions of The Sentinel analysed here</span></a></li>
 					<li id="deep_dives"><span class="menuTitle">Deep dive articles</span>
-						<span class="menuSummary menuSummarySubmenu">Over 45 articles on how The Sentinel weaves its magic</span>
+						<span class="menuSummary menuSummarySubmenu">Over 50 articles on how The Sentinel weaves its magic</span>
 						<ul id="submenu_deep_dives">
 							<li class="menuItemHeader">Index</li>
 							<li><a id="deep_dives_index" href="/deep_dives/"><span class="menuTitle">Index of all deep dive articles</span><span class="menuSummary">Discover how The Sentinel works under the hood</span></a></li>
@@ -79,7 +79,8 @@
 									<li><a id="deep_dives_3d_objects_object_management" href="/deep_dives/object_management.html"><span class="menuTitle">Object management</span> <span class="menuSummary">Creating, deleting and managing up to 64 objects on the landscape</span></a></li>
 									<li><a id="deep_dives_3d_objects_stacking_objects" href="/deep_dives/stacking_objects.html"><span class="menuTitle">Stacking objects</span> <span class="menuSummary">How the game manages multiple objects all stacked on the same tile</span></a></li>
 									<li><a id="deep_dives_3d_objects_3d_object_definitions" href="/deep_dives/3d_object_definitions.html"><span class="menuTitle">3D object definitions</span> <span class="menuSummary">Details of all the 3D objects, from trees and boulders to the Sentinel itself</span></a></li>
-									<li><a id="deep_dives_3d_objects_drawing_objects" href="/deep_dives/drawing_objects.html"><span class="menuTitle">Drawing objects</span> <span class="menuSummary">Converting objects from 3D definitions into colourful on-screen polygons</span></a></li>
+									<li><a id="deep_dives_3d_objects_calculating_angles_for_drawing_objects" href="/deep_dives/calculating_angles_for_drawing_objects.html"><span class="menuTitle">Calculating angles for drawing objects</span> <span class="menuSummary">The trigonometry that converts 3D object definitions into on-screen polygons</span></a></li>
+									<li><a id="deep_dives_3d_objects_drawing_objects" href="/deep_dives/drawing_objects.html"><span class="menuTitle">Drawing objects</span> <span class="menuSummary">How concave 3D objects are drawn using different phases</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_maths"><span class="menuTitle">Drawing the screen</span> <span class="menuSummary menuSummarySubmenu">Screen projection, filled polygons and more</span>
