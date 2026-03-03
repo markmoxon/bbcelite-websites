@@ -11,9 +11,157 @@ page_header("deep_dives", "stacking_objects.html", "Stacking objects", "Stacking
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How the game manages multiple objects all stacked on the same tile</h2>
 
-						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
+						<p>One of the most important gameplay aspects of The Sentinel is the ability to stack objects. Stacking boulders and robots is the primary way of moving around the landscape, and it's key to the end goal of being able to peer down onto the top of the Sentinel's platform. Without object stacking there would be no game.</p>
 
-						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
+						<p>Here's a stack of objects, in this case three boulders with a robot on top:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/objects/robot_on_stack.png" alt="A robot on a stack of boulders in the Sentinel on the BBC Micro">
+
+						<p>There are two ways in which we can build an object stack:</p>
+
+						<ul>
+							<li>One or more boulders, optionally topped by another object.</p>
+
+							<li>The Sentinel's tower, with either the Sentinel or a robot on top.</p>
+						</ul>
+
+						<p>This article looks at how object stacks are structured, and how some of the key routines operate on those stacks.</p>
+
+						<h2 class="articleSubheader">Building an object stack<br>
+													 ------------------------</h2>
+
+						<p>Object stacks in The Sentinel are effectively implemented as linked lists (if 6502 assembly language can be said to have such things). The links only go one way, from the top object to the bottom, like this:</p>
+
+						<ul>
+							<li>If the tileData entry for a specific tile has bits 6 and 7 set, then this indicates that the tile contains an object. The number of this object is in bits 0 to 5. Let's call this Object #A; in the above example, this is the robot on top of the stack.</li>
+
+							<li>If Object #A is on top of another object, then bit 6 of the objectFlags for Object #A will be set, and the number of the Object #Beneath Object #A will be in bits 0 to 5 of the objectFlags for Object #A. Let's call this lower object Object #B; in the above example, this is the boulder just below the robot.</p>
+
+							<li>If Object #B is on top of another object, then bit 6 of the objectFlags for Object #B will be set, and the number of the Object #Beneath Object #B will be in bits 0 to 5 of the objectFlags for Object #B. Let's call this lower object Object #C; in the above example, this is the middle boulder.</p>
+
+							<li>We repeat this process, working down the stack until we reach an object where bit 6 of the objectFlags is clear, which indicates that this object doesn't have another one beneath it. In the above example, this is the bottom boulder.</li>
+						</ul>
+
+						<p>If we consider the stack shown above, with three boulders and a robot, then this is how the stack looks, starting with the tile data for the tile containing the stack:<p>
+
+<pre class="articleIndented">
+         +-------------------------+
+         |                         |
+         |  Tile data = %11aaaaaa  |
+         |  Bits 6-7  = %11        |
+         |  Bits 0-5  = %aaaaaa    |
+         |                 |       |
+         +-----------------|-------+
+                           |
+                           |
+                           v
+    +------------------------------+
+    |                              |
+    |  Object #A: Robot            |
+    |  Top object in stack         |
+    |  Object number = %aaaaaa     |
+    |  objectFlags   = %01bbbbbb   |
+    |  Bit 6         = 1           |
+    |  Bits 0-5      = %bbbbbb     |
+    |                     |        |
+    +---------------------|--------+
+                          |
+                          |
+                          v
+    +------------------------------+
+    |                              |
+    |  Object #B: Top boulder      |
+    |  Second object in stack      |
+    |  Object number = %bbbbbb     |
+    |  objectFlags   = %01cccccc   |
+    |  Bit 6         = 1           |
+    |  Bits 0-5      = %cccccc     |
+    |                     |        |
+    +---------------------|--------+
+                          |
+                          |
+                          v
+    +------------------------------+
+    |                              |
+    |  Object #C: Middle boulder   |
+    |  Third object in stack       |
+    |  Object number = %cccccc     |
+    |  objectFlags   = %01dddddd   |
+    |  Bit 6         = 1           |
+    |  Bits 0-5      = %dddddd     |
+    |                     |        |
+    +---------------------|--------+
+                          |
+                          |
+                          v
+    +------------------------------+
+    |                              |
+    |  Object #D: Bottom boulder   |
+    |  Fourth object in stack      |
+    |  Object number = %dddddd     |
+    |  objectFlags   = %00xxxxxx   |
+    |  Bit 6         = 0           |
+    |                              |
+    +------------------------------+
+</pre>
+
+						<p>Note that because the tile contains an object, the tileData entry contains an object number rather than a tile shape and an altitude. So what happens to this data, which we still need to store somewhere? Well, we know the tile shape must be zero as only flat tiles can contain objects, and we also know that the y-coordinate of the bottom object will be the same as the tile altitude. Specifically, the tile altitude will be in the integer part of the object's altitude in yObjectHi, as tile altitudes are always integers.</li>
+
+                        <p>Given this structure, let's see how we can walk through the object stack, from top to bottom and from bottom to top.</p>
+
+						<h2 class="articleSubheader">Traversing an object stack from top to bottom<br>
+													 ---------------------------------------------</h2>
+
+                        <p>It isn't difficult to take an object stack and work our way through the stack from top to bottom: we just follow the links in the linked list. Similarly, given any object in the stack, we can find out the tile altitude pretty easily by following the stack to the bottom object and fetching that object's altitude.</p>
+
+                        <p>This downwards traversal is quite common; a good example is the loop at <a href="/source/main/subroutine/gettileviewangles_part_3_of_4.html#tang7">label tang7 in GetTileViewAngles (Part 3 of 4)</a>, which takes the tile data for the tile containing an object and loops through the stack to get the tile altitude from the bottom object. Because both the tile data and object flags use the same approach of putting the object number in bits 0 to 5, the loop is satisfyingly compact.</p>
+
+                        <p>Another example can be found at <a href="/source/main/subroutine/gettilealtitude.html#tile7">label tile7 in GetTileAltitude</a>, though this time the loop is stretched out across the bulk of the routine.</p>
+
+                        <p>The linked list structure also makes it easy to get the details of the top object in a stack, given the tile coordinates: we just grab the tile data, and it contains the object number we're after. This is useful when working out whether the player can create or absorb objects on specific tiles, as those operations only affect the top object in a stack. There's a good example of this in <a href="/source/main/subroutine/spawnobjectontile.html">SpawnObjectOnTile</a>, where we quickly check the top object on a tile to work out whether or not we can spawn a new object there.</p>
+
+                        <p>If we need to work our way up an object stack, however, things are rather more involved, so let's look at that next.</p>
+
+						<h2 class="articleSubheader">Traversing an object stack from bottom to top<br>
+													 ---------------------------------------------</h2>
+
+                        <p>Sometimes we need to walk our way through an object stack from bottom to top. The best example of this is when we draw an object stack on-screen. If the player is high up on the landscape and is looking down at an object stack, then objects lower down the stack will be further away from the player than those at the top, so when we draw the objects on the stack, we need to draw the lowest objects first and the higher objects last, so that the closer objects will hide those behind them in the correct manner.</p>
+
+                        <p>This very case can be seen in the <a href="/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a> routine. The approach is a bit long-winded, but it works:</p>
+
+                        <ul>
+                            <li>First of all, loop down through the entire stack to reach the bottom object and make a note of the following:
+
+                                <ul>
+                                    <li>Set Y to the object number of the bottom object (so Object #Y is the bottom object).</li>
+
+                                    <li>Set objectStackCounter to the number of objects in the stack.</li>
+                                </ul>
+
+                                You can see the above steps at the start of <a href="/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a>.
+                            </li>
+
+                            <li>We now loop through the objects from bottom to top, drawing them in turn:
+
+                                <ul>
+                                    <li>Check whether Object #Y is at a higher altitude than the player, and if so, jump to a part of the code that draws the object stack from top to bottom, using a simple top-to-bottom loop as described in the previous section (see this loop at <a href="/source/main/subroutine/drawobjectstack.html#stak6">label stak6 in DrawObjectStack</a>). Otherwise Object #Y is at a lower altitude than the player and we need to draw the stack from bottom to top, so keep going.</p>
+
+                                    <li>Draw Object #Y.</li>
+
+                                    <li>Decrement objectStackCounter and stop drawing when we have drawn the entire stack.</p>
+
+                                    <li>Starting at the top of the stack, work our way down through objectStackCounter objects in the linked list. The object we reach will be the one above the object that we just drew, as we decremented objectStackCounter in the step above.</li>
+
+                                    <li>Set Y to the number of the object we just reached, extracting it from the object flags, so Object #Y is now the next object up the stack.</li>
+
+                                    <li>Loop back to check the altitude of the new Object #Y and keep drawing the stack in the correct direction.</li>
+                                </ul>
+
+                                You can see the above loop at <a href="/source/main/subroutine/drawobjectstack.html#stak2">label stak2 in DrawObjectStack</a>.
+                            </li>
+                        </ul>
+
+                        <p>This is a bit of a faff, especially when compared to the simple process of walking down an object stack from top to bottom. But it saves memory, as we don't need to store any details of upward relationships in object stacks, and can simply reuse the same bit 0-5 approach as the tile data to store our linked lists. It isn't necessarily elegant, but it's simple. </p>
 					</div>
 				</div>
 
