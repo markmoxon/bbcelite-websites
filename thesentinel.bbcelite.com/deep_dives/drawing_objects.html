@@ -30,7 +30,7 @@ page_header("deep_dives", "drawing_objects.html", "Drawing objects", "Drawing ob
 
 						<p>Objects are drawn by the <a href="/source/main/subroutine/drawobject.html">DrawObject</a> routine, which takes the object number as an argument.</p>
 
-						<p>The first step in the process is to calculate all the angles involved in the object in the 3D world of the game's landscape. We then need to convert those into pitch and yaw angles that can be projected onto the screen. This process is done by calling the <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a> and <a href="/source/main/subroutine/getobjpointangles.html">GetObjPointAngles</a> routines, and it's worthy of its own deep dive, so if you want to follow the trigonomtric rabbit-hole in the first few lines of DrawObject, check out the deep dive on <a href="calculating_angles_for_drawing_objects.html">calculating angles for drawing objects</a>.</p>
+						<p>The first step in the process is to calculate all the angles involved in the object in the 3D world of the game's landscape. We then need to convert those into pitch and yaw angles that can be projected onto the screen. This process is done by calling the <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a> and <a href="/source/main/subroutine/getobjpointangles.html">GetObjPointAngles</a> routines, and it's worthy of its own deep dive, so if you want to follow the trigonometric rabbit-hole in the first few lines of DrawObject, check out the deep dive on <a href="calculating_angles_for_drawing_objects.html">calculating angles for drawing objects</a>.</p>
 
 						<p>This article is going to concentrate on the actual drawing process, so for our purposes let's assume that we have already calculated the on-screen coordinates for each point in each polygon that makes up our on-screen object. These points are 16-bit values and are stored in the drawing tables as follows:</p>
 
@@ -49,134 +49,80 @@ page_header("deep_dives", "drawing_objects.html", "Drawing objects", "Drawing ob
 
 						<p>Before starting the drawing process, the code checks how far away the object is and sets a flag that controls whether the polygons in the object should have distinct edges where configured. Every polygon has two colours defined in the <a href="/source/main/variable/objpolygondata.html">objPolygonData</a> table, one for the edge and another for the fill colour.</p>
 
-						<p>A lot of polygon definitions set these to the same colour so although they technically still have edges, the end result is a single-colour shape. Others have different edge colours, such as the side of the Sentinel's nose in the above example (it's a yellow polygon with a black edge, with the edge forming the curve of the nose).</p>
+						<p>A lot of polygon definitions set these to the same colour, so although they technically still have edges, the end result is a single-colour shape. Others have different edge colours, such as the side of the Sentinel's nose in the above example (it's a yellow polygon with a black edge, with the edge forming the curve of the nose).</p>
 
 						<p>The problem is that these edges don't look good when the object is small - there just aren't enough pixels to show the edge detail - so the code checks the horizontal distance to the object, which the call to <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a> put in hypotenuseHi (as well as objectAdjacentHi). If this is greater or equal to 15 then the object is a fair distance away from the viewer along the z-axis, so we set bit 7 of blendPolygonEdges. This makes the <a href="/source/main/subroutine/drawpolygonlines_part_1_of_4.html">DrawPolygonLines</a> routine draw the polygon edges in the same colour as the polygon body (which is drawn in the fill colour), so the edges blend into the body and the object looks less messy.</p>
+
+						<h2 class="articleSubheader">Back-face culling<br>
+													 -----------------</h2>
+
+						<p>Now that we have the screen coordinates of each of the object's polygons in the drawing tables, the next step is to draw them on-screen. The actual drawing is done by calling the <a href="/source/main/subroutine/drawpolygon.html">DrawPolygon</a> routine for each polygon, and it's this routine that decides whether or not a particular polygon is visible (i.e. pointing towards the viewer) or hidden (i.e. pointing away from the viewer).</p>
+
+						<p>The process of deciding which faces to show is called "back-face culling", and The Sentinel implements this with some very simple logic. This logic is baked into the polygon-drawing routine, which is described in more detail in the deep dive on <a href="drawing_filled_polygons.html">drawing filled polygons</a>, but essentially this routine works by tracing the edges of the polygon and creating a set of horizontal scan lines that can then be analysed and drawn as follows:</p>
+
+						<ul>
+							<li>Call the <a href="/source/main/subroutine/getpolygonlines_part_1_of_6.html">GetPolygonLines</a> routine to generate a set of horizontal polygon lines that we can draw on-screen to display the filled polygon. You can think of these as scan lines on the screen that make up the polygon shape.</p>
+
+							<li>If the line-generation process generates a set of horizontal polygon lines where the y-coordinate of the top line is lower down the screen than the y-coordinate of the bottom line, then this means that the polygon must be facing away from us, so we don't draw it (effectively this means the polygon has been flipped in the up-down direction so that it faces away from us). This logic can be found in the GetPolygonLines routine.</li>
+
+							<li>If the line-generation process generates any horizontal scan lines where the x-coordinate of the right edge is less than the x-coordinate of the left edge, then this means that the polygon must be facing away from us, so we don't draw it (effectively this means the polygon has been flipped in the left-right direction so that it faces away from us). This logic can be found in the <a href="/source/main/subroutine/drawpolygonlines_part_1_of_4.html">DrawPolygonLines</a> routine.</li>
+						</ul>
+
+						<p>Of course, implementing back-face culling in this manner means we effectively have to start drawing the polygon in order to find out whether it is visible, but the advantage is that the checks are simple comparisons, which is considerably simpler than other methods, such as the face normal checks in Elite (see the Elite deep dive on <a href="https://elite.bbcelite.com/deep_dives/back-face_culling.html">back-face culling</a> for details).</p>
 
 						<h2 class="articleSubheader">Drawing objects in phases<br>
 													 -------------------------</h2>
 
-Fetch objPolygonPhases
+						<p>Back-face culling ensures that polygons that are facing away from the viewer are not drawn, and for simple shapes like the boulder or the Sentinel's tower, that's all we need to make sure the object looks good on-screen. However, for more complicated shapes like the meanie and the Sentinel, we need another layer of processing to make sure everything works properly.</p>
 
+						<p>When drawing objects, we always draw the polygons in numerical order, so when we draw the boulder, for example, we start with polygon 67 and finish up with polygon 76, as defined by the object's polygon range (see the deep dive on <a href="3d_object_definitions.html">3D object definitions</a> for details). Unfortunately, for more complex objects in certain positions and orientations, simply drawing all the visible polygons in this order can cause problems. The solution is to draw the object in two phases when this is perceived as a potential issue.</p>
 
-						<p>The phase determines the order in which polygons are drawn in each specific object. Most objects are drawn in one phase, but some are drawn in two phases; the number of phases for each object type are defined in the <a href="/source/main/variable/objpolygonphases.html">objPolygonPhases</a> table. The number of phases can depend on the relative altitude of the object compared to the viewer (for the robot, the sentry or the Sentinel), or it can depend on the object's gaze direction as given in the object's yaw angle (for the meanie). Drawing in phases lets the game support concave 3D objects like the meanie; see the deep dive on <a href="drawing_objects.html">drawing objects</a> for more details on polygon phases.</p>
+						<p>To see what's at stake, let's consider the meanie, which has the most challenging layout of all the objects in the game. Shaped a bit like an angle-poise lamp, the meanie has its polygons defined in the order that works when drawing the object face-on, i.e. when it is facing the camera. Here's what it looks like:</p>
 
+						<div class="center">
+							<img class="titleImage lightBorder" style="width: 192px; margin: 1ch; display: inline-block" src="/images/objects/meanie_forward_red.png" alt="The meanie object in the Sentinel on the BBC Micro">
+							<img class="titleImage lightBorder" style="width: 192px; margin: 1ch; display: inline-block" src="/images/objects/meanie_left_red.png" alt="The meanie object in the Sentinel on the BBC Micro">
+						</div>
 
-If A = 0 then this object only has one drawing phase,
-                        \ so jump to drob4 to move on to drawing the object
-                        \ (this applies to the tree, the boulder, the Sentinel's
-                        \ tower and the 3D text blocks)
+						<p>In the first image the meanie is facing towards us and slightly to our left, while in the second image it's facing to the left and slightly away from us. The first image is drawn with the polygons in the normal polygon order - i.e. starting with polygon 77 and ending with polygon 101 - but in the second image the meanie is facing away from the camera, so it is drawn in two phases.</p>
 
-                        \ If we get here then bit 1 of A must be set, as the
-                        \ only values used in the objPolygonPhases table are
-                        \ %00, %10 and %11
+						<p>To see why this is necessary, let's turn the meanie around so it is facing directly away from the camera. The meanie has a broad red yellow-edged back that covers up most of the detail, and you can just make out the red rear sides of the meanie's head poking out like ears, either side of its head, like this:</p>
 
+						<img class="titleImage marginBorder" style="width: 128px" src="/images/objects/drawing_meanie_10.png" alt="The meanie object facing away from us in the Sentinel on the BBC Micro">
 
-ROBOT SENTRY SENTINEL
+						<p>If we look at how this is drawn, we can see that the meanie's back is the last detail to be drawn, as it's the closest part to the camera:</p>
 
-\ If bit 0 of A is set then this object might need two
- BCS drob1              \ drawing phases, so jump to drob1 to work out how many
-                        \ phases are required by checking the relative altitude
-                        \ of the object (this applies to the robot, the sentry
-                        \ and the Sentinel)
+						<img class="titleImage marginBorder" style="width: 128px" src="/images/objects/drawing_meanie.gif" alt="The drawing process for the meanie object, slowed down, in the Sentinel on the BBC Micro">
 
- LDA objectOppositeHi   \ If objectOpposite(Hi Lo) has a non-zero high byte,
- BNE drob2              \ then jump to drob2 to:
-                        \
-                        \   * Draw the object in two phases if objectOppositeHi
-                        \     is positive (i.e. the object is reasonably far
-                        \     above the viewer)
-                        \
-                        \   * Draw the object in one phase if objectOppositeHi
-                        \     is negative (i.e. the object is below the viewer)
+						<p>What isn't apparent is that this is being drawn in two phases, with everything apart from the meanie's back being drawn first, and then the back being drawn last. If we disable two-phase drawing and try again, then the polygons are drawn in their normal order, and the meanie's head gets turned inside out:</p>
 
- LDA objectOppositeLo   \ If objectOpposite(Hi Lo) = 0 then the object is at the
- BEQ drob4              \ same height as the viewer, so jump to drob4 to draw
-                        \ the object in one phase (by leaving drawingPhaseCount
-                        \ set to 0)
+						<img class="titleImage marginBorder" style="width: 128px" src="/images/objects/drawing_meanie_no_phases_10.png" alt="The meanie object facing away from us with phases disabled in the Sentinel on the BBC Micro">
 
-                        \ If we get here then objectOppositeHi is zero but
-                        \ objectOppositeLo is non-zero, so the object is only a
-                        \ little bit above the viewer and we draw the object in
-                        \ two phases (so now we set drawingPhaseCount = 2)
+						<p>Slowing down the drawing process again shows that with two-phase drawing disabled, the meanie's back gets drawn too soon, before we've had a chance to draw the head, and that leads to a meanie that doesn't look right at all:</p>
 
+						<img class="titleImage marginBorder" style="width: 128px" src="/images/objects/drawing_meanie_no_phases.gif" alt="The drawing process for the meanie object, slowed down and with phases disabled, in the Sentinel on the BBC Micro">
 
+						<p>So the solution in this case is to change the drawing order of the polygons when the meanie is facing away from the camera, to ensure that the meanie's back gets drawn last rather than in the third step. We do this by splitting the process up into two phases, with the back polygon being drawn in the second phase rather than the first.</p>
 
+						<p>In practice there are other polygons that are moved into the second phase as well, to cope with the meanie facing away from us but at an oblique angle, but we can't see those in this specific example as they are facing away from the camera and aren't drawn in the above animations. But the idea is the same: phases let us change the drawing order to prevent incorrect overlapping of polygons.</p>
 
-MEANIE
+						<p>Each polygon in the game therefore given a phase, and the phase determines the order in which the polygons are drawn in each specific object. Most objects are drawn in one phase, but some are drawn in two phases; the number of phases for each object type are defined in the <a href="/source/main/variable/objpolygonphases.html">objPolygonPhases</a> table. The number of phases defaults to just one (i.e. draw all the polygons in order), but we switch to two-phase drawing in the following cases:</p>
 
-\ If we get here then bit 0 of A is clear and bit 1 is
-                        \ set, so we need to work out how many phases are
-                        \ required by checking whether or not the object is
-                        \ facing the viewer as given in the object's yaw angle
-                        \ (this applies to the meanie only)
+						<ul>
+							<li>We are drawing a meanie and it is facing away from the viewer (as above).</li>
 
- LDA objectGazeYawHi    \ Set A to the object's gaze yaw angle + 192, to turn it
- ADC #192               \ anticlockwise (left) through 90 degrees for the phase
-                        \ calculation (the addition works because the C flag is
-                        \ clear, as we just passed through a BCS)
+							<li>We are drawing a robot, a sentry or the Sentinel and the object is above the viewer.</li>
+						</ul>
 
- JMP drob3              \ Jump to drob3 to set drawingPhaseCount to 0 or 2,
-                        \ depending on the direction in which the meanie is now
-                        \ facing:
-                        \
-                        \   * 0 = one phase if the meanie's gaze yaw angle is
-                        \     positive after the rotation, which means it must
-                        \     be facing towards the viewer (so we leave
-                        \     drawingPhaseCount = 0)
-                        \
-                        \   * 2 = two phases if the meanie's gaze yaw angle is
-                        \     negative after the rotation, which means it must
-                        \     be facing away from the viewer (so we set the
-                        \     drawingPhaseCount = 2)
+						<p>The number of phases is calculated in the <a href="/source/main/subroutine/drawobject.html">DrawObject</a> routine and is stored in the drawingPhaseCount variable, which is set to 2 for a two-phase drawing process or 0 for a one-phase drawing process. then we draw the polygons as follows:</p>
 
+						<ul>
+							<li>If we are drawing in one phase, we simply work through the polygons in numerical order and call the <a href="/source/main/subroutine/drawpolygon.html">DrawPolygon</a> routine for each one, which will draw all the visible polygons in the object.</li>
 
-OR
+							<li>If we are drawing in two phases, then we work through the polygons twice. Each polygon has a phase number specified in the <a href="/source/main/variable/objpolygondata.html">objPolygonData</a> table, so on the first pass we draw the polygons that are specified as being in the first phase, and on the second pass we draw the polygons that are specified as being in the second phase. There are only two phases, so this draws all the visible polygons in the object, but in a different order to the one-phase process (though within each phase we still draw polygons in numerical order).</li>
+						</ul>
 
-Set drawingPhaseCount = 2 so we draw the object in two when:
-
-                        \ If we get here then one of these is true:
-                        \
-                        \   * We are drawing a meanie and it is facing away from
-                        \     the viewer
-                        \
-                        \   * We are drawing a robot, a sentry or the Sentinel
-                        \     and one of these is true:
-                        \
-                        \     * objectOpposite(Hi Lo) is positive and
-                        \       objectOppositeHi > 0 (so the object is
-                        \       reasonably far above the viewer)
-                        \
-                        \     * objectOppositeHi is zero and objectOppositeLo is
-                        \       non-zero (so the object is a little bit above
-                        \       the viewer)
-                        \
-                        \     In other words we are drawing a robot, a sentry or
-                        \     the Sentinel and the object is above the viewer
-
-
-THEN work through polygons in object
-
-If there are two phases, draw phase 1 then phase 2
-Otherwise just draw
-
-Extract colours from polygon data
-number of sides
-
-                          Set drawViewAngles(1 0) to the address of the list of
- STA drawViewAngles     \ object-relative point numbers for this polygon so the
- LDA objPolygonAddrHi,Y \ DrawPolygon routine can use the yaw and pitch angles
- STA drawViewAngles+1   \ that we calculated for the object points in the
-                        \ GetObjPointAngles routine
-
-Draw polygon and loop back for next one, then do next phase if appropriate
-
-
-
-
-Backface culling happens in the DrawPolygon routine, so mention that
-
-
+						<p>So that's how The Sentinel draws 3D objects with filled graphics and support for reasonably complex structures.</p>
 					</div>
 				</div>
 
