@@ -80,7 +80,7 @@
 									<li><a id="deep_dives_3d_objects_stacking_objects" href="/deep_dives/stacking_objects.html"><span class="menuTitle">Stacking objects</span> <span class="menuSummary">How the game manages multiple objects all stacked on the same tile</span></a></li>
 									<li><a id="deep_dives_3d_objects_3d_object_definitions" href="/deep_dives/3d_object_definitions.html"><span class="menuTitle">3D object definitions</span> <span class="menuSummary">Details of all the 3D objects, from trees and boulders to the Sentinel itself</span></a></li>
 									<li><a id="deep_dives_3d_objects_calculating_angles_for_drawing_objects" href="/deep_dives/calculating_angles_for_drawing_objects.html"><span class="menuTitle">Calculating angles for drawing objects</span> <span class="menuSummary">The trigonometry that converts 3D object definitions into on-screen polygons</span></a></li>
-									<li><a id="deep_dives_3d_objects_drawing_objects" href="/deep_dives/drawing_objects.html"><span class="menuTitle">Drawing objects</span> <span class="menuSummary">How concave 3D objects are drawn using different phases</span></a></li>
+									<li><a id="deep_dives_3d_objects_drawing_objects" href="/deep_dives/drawing_objects.html"><span class="menuTitle">Drawing objects</span> <span class="menuSummary">How complex 3D objects are drawn using different phases</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_maths"><span class="menuTitle">Drawing the screen</span> <span class="menuSummary menuSummarySubmenu">Screen projection, filled polygons and more</span>
