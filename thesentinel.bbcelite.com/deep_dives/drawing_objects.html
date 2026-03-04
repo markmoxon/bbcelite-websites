@@ -30,7 +30,7 @@ page_header("deep_dives", "drawing_objects.html", "Drawing objects", "Drawing ob
 
 						<p>Objects are drawn by the <a href="/source/main/subroutine/drawobject.html">DrawObject</a> routine, which takes the object number as an argument.</p>
 
-						<p>The first step in the process is to calculate all the angles involved in the object in the 3D world of the game's landscape. We then need to convert those into pitch and yaw angles that can be projected onto the screen. This process is worthy of its own deep dive, so if you want to follow the trigonomtric rabbit-hole in the first few lines of DrawObject, check out the deep dive on <a href="calculating_angles_for_drawing_objects.html">calculating angles for drawing objects</a>.</p>
+						<p>The first step in the process is to calculate all the angles involved in the object in the 3D world of the game's landscape. We then need to convert those into pitch and yaw angles that can be projected onto the screen. This process is done by calling the <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a> and <a href="/source/main/subroutine/getobjpointangles.html">GetObjPointAngles</a> routines, and it's worthy of its own deep dive, so if you want to follow the trigonomtric rabbit-hole in the first few lines of DrawObject, check out the deep dive on <a href="calculating_angles_for_drawing_objects.html">calculating angles for drawing objects</a>.</p>
 
 						<p>This article is going to concentrate on the actual drawing process, so for our purposes let's assume that we have already calculated the on-screen coordinates for each point in each polygon that makes up our on-screen object. These points are 16-bit values and are stored in the drawing tables as follows:</p>
 
@@ -44,22 +44,17 @@ page_header("deep_dives", "drawing_objects.html", "Drawing objects", "Drawing ob
 
 						<p>The routines that populate the drawing tables also populate a large number of other tables with data that is used throughout the object-drawing process, but we'll only mention those if we have to. For a full list, see the deep dive on <a href="calculating_angles_for_drawing_objects.html">calculating angles for drawing objects</a>.</p>
 
+						<h2 class="articleSubheader">Object polygon edges<br>
+													 --------------------</h2>
+
+						<p>Before starting the drawing process, the code checks how far away the object is and sets a flag that controls whether the polygons in the object should have distinct edges where configured. Every polygon has two colours defined in the <a href="/source/main/variable/objpolygondata.html">objPolygonData</a> table, one for the edge and another for the fill colour.</p>
+
+						<p>A lot of polygon definitions set these to the same colour so although they technically still have edges, the end result is a single-colour shape. Others have different edge colours, such as the side of the Sentinel's nose in the above example (it's a yellow polygon with a black edge, with the edge forming the curve of the nose).</p>
+
+						<p>The problem is that these edges don't look good when the object is small - there just aren't enough pixels to show the edge detail - so the code checks the horizontal distance to the object, which the call to <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a> put in hypotenuseHi (as well as objectAdjacentHi). If this is greater or equal to 15 then the object is a fair distance away from the viewer along the z-axis, so we set bit 7 of blendPolygonEdges. This makes the <a href="/source/main/subroutine/drawpolygonlines_part_1_of_4.html">DrawPolygonLines</a> routine draw the polygon edges in the same colour as the polygon body (which is drawn in the fill colour), so the edges blend into the body and the object looks less messy.</p>
+
 						<h2 class="articleSubheader">Drawing objects in phases<br>
 													 -------------------------</h2>
-
-
-
-
- LDA hypotenuseHi       \ If hypotenuseHi (i.e. objectAdjacentHi) is greater or
- CMP #15                \ equal to 15 then the object is a fair distance away
- ROR blendPolygonEdges  \ from the viewer along the z-axis, so set bit 7 of
-                        \ blendPolygonEdges so we draw the polygon edges in the
-                        \ same colour as the polygon body (i.e. the fill
-                        \ colour), so the edges blend into the body
-                        \
-                        \ We do this for distant objects because distinct edge
-                        \ colours can make those object look messy
-
 
 Fetch objPolygonPhases
 
