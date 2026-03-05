@@ -114,7 +114,7 @@
 								<ul id="submenu_deep_dives_the_title_screens">
 									<li class="menuItemHeader">The title screens</li>
 									<li><a id="deep_dives_the_title_screens_drawing_the_title_screens" href="/deep_dives/drawing_the_title_screens.html"><span class="menuTitle">Drawing the title screens</span> <span class="menuSummary">The main title screen, landscape preview and game over screen</span></a></li>
-									<li><a id="deep_dives_the_title_screens_3d_text_using_blocks" href="/deep_dives/3d_text_using_blocks.html"><span class="menuTitle">3D text using blocks</span> <span class="menuSummary">How the title screens use the landscape routines to draw blocky 3D text</span></a></li>
+									<li><a id="deep_dives_the_title_screens_drawing_3d_text_using_blocks" href="/deep_dives/drawing_3d_text_using_blocks.html"><span class="menuTitle">Drawing 3D text using blocks</span> <span class="menuSummary">How the title screens use the landscape routines to draw blocky 3D text</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_maths"><span class="menuTitle">The energy icon and scanner row</span> <span class="menuSummary menuSummarySubmenu">Displaying energy levels and exposure information</span>
