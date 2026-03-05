@@ -11,9 +11,11 @@ page_header("deep_dives", "calculating_angles_for_drawing_objects.html", "Calcul
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The trigonometry that converts 3D object definitions into on-screen polygons</h2>
 
-						<p>When drawing 3D objects on-screen, the first challenge is to calculate where the object lives in the 3D world, and then we need to project that onto the screen. Only then can we move on to the drawing process itself, with its phases and backface culling and colourful filled polygons.</p>
+						<p>When drawing 3D objects on-screen, the first challenge is to calculate where the object lives in the 3D world, and then we need to project that onto the screen. Only then can we move on to the drawing process itself, with its phases and back-face culling and colourful filled polygons.</p>
 
-						<p>The drawing process is described in the deep dive on <a href="drawing_objects.html">drawing objects</a>, but for this article we're going to look at the maths that feeds into the drawing process.</p>
+						<p>The drawing process is described in the deep dive on <a href="drawing_objects.html">drawing objects</a>, but for this article we're going to look at the maths that feeds into that process.</p>
+
+						<p>In order to understand the following, I highly recommend you read the deep dives on <a href="converting_angles_to_coordinates.html">converting angles to coordinates</a> and <a href="converting_coordinates_to_angles.html">converting coordinates to angles</a>, as they explain the fundamental geometry behind the following routines.</p>
 
 						<h2 class="articleSubheader">The GetObjectAngles routine<br>
 													 ---------------------------</h2>
@@ -29,15 +31,13 @@ page_header("deep_dives", "calculating_angles_for_drawing_objects.html", "Calcul
 
                         	<li><span class="highlight">hypotenuse(Hi Lo):</span> Set to the length of the hypotenuse in the above triangle, so that's the length of the 3D vector from the viewer to the object when projected down onto the ground plane.</li>
 
-                        	<li><span class="highlight">objectViewYaw(Hi Lo):</span> The angle of the hypotenuse is the yaw angle of the 3D vector from the viewer to the object we are analysing. We subtract the viewer's yaw angle and the yaw adjustment, and add half a screen width to get the yaw angle delta from the viewer's gaze to the object, relative to the viewer's gaze, i.e. the screen. This gives us the yaw angle relative to the view. You can think of this as the screen x-coordinate of the object, or how far the object appears from the left edge of the screen.</li>
+                        	<li><span class="highlight">objectViewYaw(Hi Lo):</span> The angle of the hypotenuse is the yaw angle of the 3D vector from the viewer to the object we are analysing. We subtract the viewer's yaw angle and add half a screen width to get the yaw angle delta from the viewer's gaze to the object, relative to the viewer's gaze, i.e. the screen. This gives us the yaw angle relative to the view. You can think of this as the screen x-coordinate of the object, or how far the object appears from the left edge of the screen.</li>
 
-                        	<li><span class="highlight">objectGazeYaw(Hi Lo):</span> Set to the object's gaze relative to the viewer's gaze. This is the difference in yaw angles between the viewer's gaze towards the object and the object's gaze to wherever it is looking (so that's the object's gaze relative to the viewer's gaze).</li>
+                        	<li><span class="highlight">objectGazeYaw(Hi Lo):</span> Set to the object's gaze relative to the viewer's gaze. This is the difference in yaw angles between the viewer's gaze towards the object and the object's gaze to wherever it is looking (so that's the object's gaze relative to the viewer's gaze). If this is the landscape preview, rotate the object to face forwards and scale it so it looks good.</li>
 
-                        	<li>If this is the landscape preview, rotate the object to face forwards and scale it so it looks good.</li>
+                        	<li><span class="highlight">objectAdjacent(Hi Lo):</span> Set objectAdjacent(Hi Lo) to hypotenuse(Hi Lo) so it can be used as the length of the adjacent side in the vertical right-angled triangle with the projected vector along the bottom and the vector from the viewer to the object as the hypotenuse. This means that hypotenuse(Hi Lo) and objectAdjacent(Hi Lo) are therefore same value, as the hypotenuse of the ground plane triangle is the same as the adjacent side of the vertical triangle. This therefore gives us the distance along the z-axis from the viewer to the object, which we can use to decide whether to draw the object's polygon edges in distinct colours.</li>
 
-                        	<li><span class="highlight">objectAdjacent(Hi Lo):</span> Set objectAdjacent(Hi Lo) to hypotenuse(Hi Lo) so it can be used as the length of the adjacent side in the vertical right-angled triangle with the projected vector along the bottom and the vector from the viewer to the object as the hypotenuse. Note that hypotenuse(Hi Lo) and objectAdjacent(Hi Lo) are therefore same value, as the hypotenuse of the ground plane triangle is the same as the adjacent side of the vertical triangle.</li>
-
-                        	<li><span class="highlight">objectOpposite(Hi Lo):</span> Set to the length of the opposite side in the vertical right-angled triangle with the projected vector along the bottom and the vector from the viewer to the object as the hypotenuse.</li>
+                        	<li><span class="highlight">objectOpposite(Hi Lo):</span> Set to the length of the opposite side in the vertical right-angled triangle with the projected vector along the bottom and the vector from the viewer to the object as the hypotenuse. This therefore gives us the object's view-relative y-coordinate.</li>
 						</ul>
 
 						<p>The routine also sets objectToAnalyse to the number of the object that we are drawing.</p>
@@ -50,11 +50,11 @@ page_header("deep_dives", "calculating_angles_for_drawing_objects.html", "Calcul
 						<p>More specifically, the routine loops through each point in an object definition and calculates the following:</p>
 
 						<ul>
-                        	<li><span class="highlight">A:</span> Calculate the yaw angle of the point, rotated by the rotation of the object itself (i.e. its gaze), so this is the yaw angle of the object point within the object, but with the correct rotation for the direction the object is facing.</li>
+                        	<li><span class="highlight">Yaw angle:</span> Calculate the yaw angle of the point, rotated by the rotation of the object itself (i.e. its gaze), so this is the yaw angle of the object point within the object, but with the correct rotation for the direction the object is facing.</li>
 
                         	<li><span class="highlight">xDelta(Hi Lo), zDelta(Hi Lo):</span> Convert this yaw angle and the polar distance into x- and z-coordinates for the point in the y = 0 plane (i.e. on the ground) using cos(A) and sin(A) on a triangle with the line along the polar distance to the point as the hypotenuse. So these are the x- and z-coordinates of the object point within the object itself (i.e. relative to the object's origin and rotated to the correct gaze).</li>
 
-                        	<li><span class="highlight">angle(Hi Lo):</span> Calculate the angle of the right-angled triangle made up of the object point's object-relative x- and z-coordinates, to give us the angle of the vector from the object's origin to the to the point within the object.</li>
+                        	<li><span class="highlight">angle(Hi Lo):</span> Calculate the angle of the right-angled triangle made up of the object point's object-relative x- and z-coordinates, to give us the angle of the vector from the object's origin to the point within the object.</li>
 
                         	<li><span class="highlight">drawViewYaw(Hi Lo):</span> Rotate the yaw angle of the point within the object definition by the object's view-relative yaw angle to get the view-relative yaw angle of the point. This is the yaw angle of the vector from the viewer to the object point.</li>
 
