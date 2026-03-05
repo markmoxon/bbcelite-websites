@@ -11,91 +11,9 @@ page_header("deep_dives", "calculating_angles_for_drawing_objects.html", "Calcul
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The trigonometry that converts 3D object definitions into on-screen polygons</h2>
 
-						<p>When drawing 3D objects on-screen, the first challenge is to calculate where the object lives in the 3D world, and then we need to project that onto the screen. Only then can we move on to the drawing process itself, with its phases and back-face culling and colourful filled polygons.</p>
+						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
 
-						<p>The drawing process is described in the deep dive on <a href="drawing_objects.html">drawing objects</a>, but for this article we're going to look at the maths that feeds into that process.</p>
-
-						<p>In order to understand the following, I highly recommend you read the deep dives on <a href="converting_angles_to_coordinates.html">converting angles to coordinates</a> and <a href="converting_coordinates_to_angles.html">converting coordinates to angles</a>, as they explain the fundamental geometry behind the following routines.</p>
-
-						<h2 class="articleSubheader">The GetObjectAngles routine<br>
-													 ---------------------------</h2>
-
-						<p>The first step in calculating object angles is to call the <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a> routine, to calculate the angles and distances of the vector from the viewer to the object we are drawing.</p>
-
-						<p>The result is relative to the viewer, which in this case is the player, so this gives us the position of the object's origin relative to the viewer. The results are returned via the following variables:</p>
-                        
-						<ul>
-                        	<li><span class="highlight">objTypeToAnalyse:</span> Set to the type of the object we are analysing.</li>
-
-                        	<li><span class="highlight">xDelta(Hi Lo), yDelta(Hi Lo), zDelta(Hi Lo):</span> Calculate the difference (the delta) in all three axes between the viewer and the object we are analysing, to give us the 3D vector from the viewer to the object.</li>
-
-                        	<li><span class="highlight">angle(Hi Lo):</span> Calculate the angle of the hypotenuse of the triangle formed by the x-axis and z-axis, which is the projection of the 3D vector from the viewer to the object down onto the ground plane (so imagine a light shining down from above, casting the vector's shadow onto the y = 0 plane, and that's the hypotenuse).</li>
-
-                        	<li><span class="highlight">hypotenuse(Hi Lo):</span> Set to the length of the hypotenuse in the above triangle, so that's the length of the 3D vector from the viewer to the object when projected down onto the ground plane.</li>
-
-                        	<li><span class="highlight">objectViewYaw(Hi Lo):</span> The angle of the hypotenuse is the yaw angle of the 3D vector from the viewer to the object we are analysing. We subtract the viewer's yaw angle and add half a screen width to get the yaw angle delta from the viewer's gaze to the object, relative to the viewer's gaze, i.e. the screen. This gives us the yaw angle relative to the view. You can think of this as the screen x-coordinate of the object, or how far the object appears from the left edge of the screen.</li>
-
-                        	<li><span class="highlight">objectGazeYaw(Hi Lo):</span> Set to the object's gaze relative to the viewer's gaze. This is the difference in yaw angles between the viewer's gaze towards the object and the object's gaze to wherever it is looking (so that's the object's gaze relative to the viewer's gaze). If this is the landscape preview, rotate the object to face forwards and scale it so it looks good.</li>
-
-                        	<li><span class="highlight">objectAdjacent(Hi Lo):</span> Set objectAdjacent(Hi Lo) to hypotenuse(Hi Lo) so it can be used as the length of the adjacent side in the vertical right-angled triangle with the projected vector along the bottom and the vector from the viewer to the object as the hypotenuse. This means that hypotenuse(Hi Lo) and objectAdjacent(Hi Lo) are therefore same value, as the hypotenuse of the ground plane triangle is the same as the adjacent side of the vertical triangle. This therefore gives us the distance along the z-axis from the viewer to the object, which we can use to decide whether to draw the object's polygon edges in distinct colours.</li>
-
-                        	<li><span class="highlight">objectOpposite(Hi Lo):</span> Set to the length of the opposite side in the vertical right-angled triangle with the projected vector along the bottom and the vector from the viewer to the object as the hypotenuse. This therefore gives us the object's view-relative y-coordinate.</li>
-						</ul>
-
-						<p>The routine also sets objectToAnalyse to the number of the object that we are drawing.</p>
-
-						<h2 class="articleSubheader">The GetObjPointAngles routine<br>
-													 -----------------------------</h2>
-
-						<p>The second step in calculating object angles is to call the <a href="/source/main/subroutine/getobjpointangles.html">GetObjPointAngles</a> routine, to calculate the view-relative pitch and yaw angles of all the points in the object and put them into the drawing tables at drawViewYaw(Hi Lo) and drawViewPitch(Hi Lo). We can use these as screen x- and y-coordinates, using the same equirectangular screen projection that is used in Revs.</p>
-
-						<p>It does this by working out the position of each point within the object, relative to the object's origin, so we can add this to the result from the previous section to give us the position of each point within the object, relative to the viewer (i.e. the position of the point on-screen).</p>
-
-						<p>More specifically, the routine loops through each point in an object definition and calculates the following:</p>
-
-						<ul>
-                        	<li><span class="highlight">Yaw angle:</span> Calculate the yaw angle of the point, rotated by the rotation of the object itself (i.e. its gaze), so this is the yaw angle of the object point within the object, but with the correct rotation for the direction the object is facing.</li>
-
-                        	<li><span class="highlight">xDelta(Hi Lo), zDelta(Hi Lo):</span> Convert this yaw angle and the polar distance into x- and z-coordinates for the point in the y = 0 plane (i.e. on the ground) using cos(A) and sin(A) on a triangle with the line along the polar distance to the point as the hypotenuse. So these are the x- and z-coordinates of the object point within the object itself (i.e. relative to the object's origin and rotated to the correct gaze).</li>
-
-                        	<li><span class="highlight">zDelta(Hi Lo):</span> Add the z-coordinate to objectAdjacent(Hi Lo) to move the object point away from us to the correct distance, so we end up with the z-coordinate of the point relative to the viewer rather than the object's origin. We don't change the x-coordinate, so the next calculation is as if the object was directly in front of the viewer (instead, we add the x-coordinate in the drawViewYaw step below, after we do the angle calculation, when we add the object's view-relative yaw angle).</li>
-
-                        	<li><span class="highlight">angle(Hi Lo):</span> Calculate the angle of the right-angled triangle made up of the object point's x- and z-coordinates, to give us the yaw angle of the vector from the viewer to the point within the object, as if the object was directly in front of the viewer.</li>
-
-                        	<li><span class="highlight">drawViewYaw(Hi Lo):</span> Take this calculated yaw angle from the viewer to the object, and add it to the object's view-relative yaw angle to get the view-relative yaw angle of the point. This is the yaw angle of the vector from the viewer to the object point, with the object moved sideways into its correct x-axis position.</li>
-
-                        	<li><span class="highlight">drawViewPitch(Hi Lo):</span> Construct the vertical triangle that has the vector from the viewer to the point as the hypotenuse, the point altitude as the opposite side and the projection onto the ground of the vector as the adjacent side, and use this to calculate the pitch angle of the vector from the viewer to the object point.</li>
-						</ul>
-
-						<p>Let's look at the last two calculations in more detail, where we calculate the yaw and pitch angles of the point from the perspective of the viewer, which gives us the screen coordinates we need to draw the polygon.</p>
-                        
-						<p>We do this by constructing two right-angled triangles, one flat on the ground (to calculate the yaw angle) and the other standing vertically (to calculate the pitch angle).</p>
-                        
-						<p>Let's start with the triangle on the ground.</p>
-                        
-						<p>The object has a view-relative yaw angle of objectViewYaw(Hi Lo), which was set up by the call to the GetObjectAngles routine in the previous section. This contains the yaw angle of the object relative to the view.</p>
-                        
-						<p>We just calculated the yaw angle of the object point relative to the viewer, for when the object is directly in front of the viewer, and put it in angle(Hi Lo). so if we add these two yaw angles together like this:</p>
-
-<pre class="articleIndented">
-  angle(Hi Lo) + objectViewYaw(Hi Lo)
-</pre>
-
-						<p>then this gives us the view-relative yaw angle of the object point, which is what we are trying to calculate in this routine, so we can store this result in drawViewYaw(Hi Lo).</p>
-
-						<p>We now move on to calculating the view-relative pitch angle of the object point by looking at the second triangle.</p>
-                        
-						<p>In the first triangle, we calculated the length and angle of the hypotenuse along the ground, which represents the projection from above of the vector from the viewer to the object point.</p>
-                        
-						<p>We're now interested in the y-axis element, so let's construct a triangle that stands vertically, and whose hypotenuse is the 3D vector from the viewer to the object point.</p>
-                        
-						<p>The hypotenuse that we used to calculate the yaw angle is now along the ground, acting as the bottom side of the new triangle, i.e. the adjacent side where the triangle's angle is the pitch angle.</p>
-                        
-						<p>The opposite side of the triangle is the height of the point above the ground (if we're looking up) or below ground (if we're looking down), which we can calculate using the objPointHeight table, which contains the height of the point within the object, and adding the view-relative y-coordinate of the object, which is in objectOpposite(Hi Lo).</p>
-                        
-						<p>Given these two sides, we can then calculate the pitch angle of our new triangle to give the view-relative pitch angle of the object point, which is what we are trying to calculate in this routine, so we can store this result in drawViewPitch(Hi Lo).</p>
-
-						<p>The results are then available to the DrawObject routine, which works out which polygons to draw and in which order, and actually draws the object on-screen. See the deep dive on <a href="drawing_objects.html">drawing objects</a> for more information on this part of the process.</p>
+						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
 					</div>
 				</div>
 
