@@ -140,7 +140,7 @@
 									<li><a id="deep_dives_sound_and_music_music" href="/deep_dives/music.html"><span class="menuTitle">Music</span> <span class="menuSummary">The iconic chords that add so much atmosphere to this unique robotic world</span></a></li>
 								</ul>
 							</li>
-							<li id="deep_dives_maths"><span class="menuTitle">Miscellaneous</span> <span class="menuSummary menuSummarySubmenu">Anti-cracker code, text tokens, the key logger and more</span>
+							<li id="deep_dives_maths"><span class="menuTitle">Miscellaneous</span> <span class="menuSummary menuSummarySubmenu">Anti-cracker code, text tokens and the key logger</span>
 								<ul id="submenu_deep_dives_miscellaneous">
 									<li class="menuItemHeader">Miscellaneous</li>
 									<li><a id="deep_dives_miscellaneous_random_number_generation" href="/deep_dives/random_number_generation.html"><span class="menuTitle">Random number generation</span> <span class="menuSummary">How random numbers are generated for gameplay and the dithered screen</span></a></li>
