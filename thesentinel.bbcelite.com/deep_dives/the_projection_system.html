@@ -11,9 +11,89 @@ page_header("deep_dives", "the_projection_system.html", "The projection system",
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The plate carr&eacute;e equirectangular projection used in The Sentinel</h2>
 
-						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
+						<p>The Sentinel is famous for its scrolling landscape view. Fully filled 3D graphics were a bit of a rarity on 8-bit computers, and even though the panning process isn't real time and scrolls the screen in noticeable steps, the graphics in The Sentinel were highly praised and still hold up today.</p>
 
-						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
+						<p>The panning process is very clever and uses <a href="screen_buffers.html">screen buffers</a> and <a href="panning_and_hardware_scrolling.html">hardware scrolling</a> to get around the speed restrictions of the 8-bit hardware to produce the scrolling landscape view... but none of this would be possible without the projection system that underpins the entire panning process, and that's what we're going to look at here.</p>
+
+						<h2 class="articleSubheader">Thank you, Revs<br>
+													 ---------------</h2>
+
+						<p>The Sentinel gets all the plaudits for its scrolling landscape view, and quite rightly too, but I'm here to fly the flag for the real hero, because it isn't The Sentinel that we should be praising, but Revs, Geoff Crammond's previous game.</p>
+
+						<p>This is what Revs looks like:</p>
+
+						<img class="titleImage" style="width: 320px" src="/images/panorama/revs_panorama_from_cockpit.png" alt="The view at the start of a race in BBC Micro Revs">
+
+						<p>In this case, we're on the starting grid at Silverstone waiting for the lights to change and the race to start. If we hack the game at this point to change the direction of the camera, then we can take a bunch of screenshots at lots of different camera angles to give us a 360-degree headcam shot, like this:</p>
+
+						<a href="/images/panorama/revs_panorama.png"><img class="titleImage lightBorder" style="width: 100%" src="/images/panorama/revs_panorama.png" alt="A 360-degree panorama of the view at the start of a race in BBC Micro Revs"></a>
+
+						<p>This is pretty tiny, but you can click on the image to see it in its full glory, or if you're on a touchscreen device, you should be able to zoom in on the image as far as you like. To give you a sense of just how big this panorama is, here it is with the original starting screen highlighted:</p>
+
+						<a href="/images/panorama/revs_panorama_grid.png"><img class="titleImage lightBorder" style="width: 100%" src="/images/panorama/revs_panorama_grid.png" alt="A 360-degree panorama view with the starting screen marked in BBC Micro Revs"></a>
+
+						<p>If we hack the game to change the yaw angle of the camera, then effectively the projection system moves this red rectangle left and right across this panorama.</p>
+
+
+
+
+						<p>Revs introduced the pitch and yaw angle system that is core to The Sentinel, and the core maths routines in the latter game are lifted straight from its predecessor - see the deep dive on <a href="reusing_the_geometry_routines_from_revs.html">reusing the geometry routines from Revs</a> for details. And this isn't the only aspect that The Sentinel pinches from Revs, because it also uses the same projection system.</p>
+
+						<p>Before we look at the details of the projection system, let's see why it's so vital to the way The Sentinel works. The game manages to implement 3D scrolling of filled graphics by scrolling the screen a bit at a time: when the players holds down a pan key, the game starts busily drawing a small strip of landscape that can be tacked onto the sides (for horizontal pans) or to the top or bottom of the landscape view (for vertical pans). This process is described in the deep dive on <a href="panning_and_hardware_scrolling.html">panning and hardware scrolling</a>, and the reason that it's possible is because The Sentinel borrows the projection system from Revs.</p>
+
+						<p>Known as the "equirectangular projection", this method of converting 3D world coordinates into 2D screen coordinates has one vital characteristic: the perspective of the view doesn't change with the viewing direction. This is not true of things like humans and cameras; if you have ever gone on holiday and taken a bunch of photos of a beautiful view, and then you've tried to stitch those photos together to make a panorama, then you'll know that they don't slot together neatly at all. This is because the perpective of the camera lens - just like the human eye - is focused around the centre of the shot, and each photo has its own subtle fish-eye lens effect that means they don't sit together correctly.</p>
+
+						<p>If we were redrawing the entire landscape view in The Sentinel every time we panned, then this perspective shift wouldn't be a problem, but because we have to take a strip from the "neighbouring photograph" and scroll that into view, things would get messy prett quickly.</p>
+
+						<p>Luckily the equirectangular projection that Revs uses doesn't suffer from this problem, and instead individual parts of the projected world slot together perfectly, making it a perfect fit for The Sentinel. Revs doesn't actually care whether different images fit together as it does redraw the whole screen for each frame, but it turns out that this unused aspect of the Revs graphics engine makes The Sentinel possible.</p>
+
+						<p>So, thank you, Revs. We owe you one.</p>
+
+						<h2 class="articleSubheader">The plate carr&eacute;e equirectangular projection<br>
+													 --------------------------------------------</h2>
+
+
+
+
+
+
+						<p>All 3D games have some kind of projection system that takes coordinates from the 3D world and projects them onto the 2D screen. The most common approach in 8-bit games is the simple perspective projection, in which we convert 3D coordinates to 2D coordinates by simply dividing the x-coordinate (left-right) and y-coordinate (up-down) by the z-coordinate (into and out of the screen):</p>
+
+<pre class="articleIndented">  screen_x = x / z
+
+  screen_y = y / z
+</pre>
+
+						<p>This is the approach used in both Elite and Aviator: in Elite, the projection logic is in the <a href="https://elite.bbcelite.com/cassette/main/subroutine/proj.html">PROJ routine</a>, while in Aviator it's in the <a href="https://aviator.bbcelite.com/source/main/subroutine/projectpoint_part_1_of_3.html">ProjectPoint routine</a>. At the core of each routine is simple division by the z-coordinate, giving us a screen coordinate that we can scale appropriately to fit on-screen.  For more details of the maths behind this projection, plus lots of information about other types of projection, see the <a href="https://en.wikipedia.org/wiki/3D_projection#Perspective_projection">Wikipedia article on perspective projection</a>.</p>
+
+						<p>However, Revs doesn't use this simple perspective projection, and nor does The Sentinel. Instead, the 3D world in Revs is projected into pitch and yaw angles, which then double up as screen coordinates; the technical name for this projection system is the <em>plate carr&eacute;e</em> equirectangular projection; see <a href="https://en.wikipedia.org/wiki/Equirectangular_projection">this Wikipedia entry</a> for more information.</p>
+
+						<p>In practice, because of the close relationship between the angles and screen coordinates, it's often easier just to think of them as equivalent terms, like this:
+
+						<ul>
+							<li>Yaw angle = azimuth angle = x-coordinate = distance across the screen = left (-ve) to right (+ve) coordinate</li>
+
+							<li>Pitch angle = elevation angle = y-coordinate = distance up the screen = down (-ve) to up (+ve) coordinate</li>
+						</ul>
+
+						<p>In reality things are a bit more subtle than this implies, but when trying to get your head around the coordinate system in Revs, it's a handy shortcut. Let's look at what's involved.</p>
+
+						<h2 class="articleSubheader">Projection in Revs<br>
+													 ------------------</h2>
+
+
+
+
+						<p>To convert angles to screen coordinates, we consider the origin to be in the centre of the screen, and then simply scale the relevant angle. So, for example, in the x-axis, we take the yaw angle and multiply it by 4, and then we add 80 to move it into the screen's coordinate range (as the origin for the screen is in the bottom-left corner, and the screen is 160 pixels wide, so adding 80 converts to screen x-coordinates).</p>
+
+						<p>This means that the field of view from the player's perspective is from -20 to +20 units of yaw angle (i.e. -28.125 to +28.125 degrees, or 360 * 20 / 256, giving a total field of view arc of 56.25 degrees); everything else is either off-screen or behind us. It also means that we can think of yaw angle as being equivalent to the projected x-coordinate, and the pitch angle as being equivalent to the projected y-coordinate. Some variable names, like <a href="/source/main/variable/yvergeright.html">yVergeRight</a> or <a href="/source/main/variable/xvergerightlo.html">xVergeRightLo</a>, are actually angles, but because of their context it's easier to think of them as screen coordinates, so I've chosen more coordinate-friendly variable names.</p>
+
+						<p>Converting directly from pitch and yaw angle into screen coordinates is possible because the viewing strip in Revs is quite restricted. It adds a bit of a fisheye effect to the view, in that cars directly ahead of the player will be more spaced out, while those around the periphery will be slightly squashed together, but this isn't terribly noticeable, and if anything it adds a bit of a TV-camera lensing effect. What is does do, though, is provide us with a system that not only supports screen coordinates, but also collision detection and distance calculations, all in the same angle system.</p>
+
+
+
+ is described in detail in the deep dive on <a href="panning_and_hardware_scrolling.html">panning and hardware scrolling</a>, but 
+
 
 <!--
 
@@ -154,7 +234,7 @@ Three pans vertically between images
 
 						<p>This is the approach used in both Elite and Aviator: in Elite, the projection logic is in the <a href="https://elite.bbcelite.com/cassette/main/subroutine/proj.html">PROJ routine</a>, while in Aviator it's in the <a href="https://aviator.bbcelite.com/source/main/subroutine/projectpoint_part_1_of_3.html">ProjectPoint routine</a>. At the core of each routine is simple division by the z-coordinate, giving us a screen coordinate that we can scale appropriately to fit on-screen.  For more details of the maths behind this projection, plus lots of information about other types of projection, see the <a href="https://en.wikipedia.org/wiki/3D_projection#Perspective_projection">Wikipedia article on perspective projection</a>.</p>
 
-						<p>However, Revs doesn't use this simple perspective projection. Instead, the 3D world in Revs is projected into yaw and pitch angles, which then double up as screen coordinates; the technical name for this projection system is the <em>plate carr&eacute;e</em> equirectangular projection; see <a href="https://en.wikipedia.org/wiki/Equirectangular_projection">this Wikipedia entry</a> for more information.</p>
+						<p>However, Revs doesn't use this simple perspective projection. Instead, the 3D world in Revs is projected into pitch and yaw angles, which then double up as screen coordinates; the technical name for this projection system is the <em>plate carr&eacute;e</em> equirectangular projection; see <a href="https://en.wikipedia.org/wiki/Equirectangular_projection">this Wikipedia entry</a> for more information.</p>
 
 						<p>In practice, because of the close relationship between the angles and screen coordinates, it's often easier just to think of them as equivalent terms, like this:
 
