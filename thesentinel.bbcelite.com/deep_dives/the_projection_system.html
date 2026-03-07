@@ -30,32 +30,32 @@ page_header("deep_dives", "the_projection_system.html", "The projection system",
 
 						<p>This is pretty tiny, but you can click on the image to see it in its full glory, or if you're on a touchscreen device, you should be able to zoom in on the image as far as you like. To give you a sense of just how big this panorama is, here it is with the original starting screen highlighted:</p>
 
-						<a href="/images/panorama/revs_panorama_grid.png"><img class="titleImage lightBorder" style="width: 100%" src="/images/panorama/revs_panorama_grid.png" alt="A 360-degree panorama view with the starting screen marked in BBC Micro Revs"></a>
+						<a href="/images/panorama/revs_panorama_screen_size.png"><img class="titleImage lightBorder" style="width: 100%" src="/images/panorama/revs_panorama_grid.png" alt="A 360-degree panorama view with the starting screen marked in BBC Micro Revs"></a>
 
-						<p>If we hack the game to change the yaw angle of the camera, then effectively the projection system moves this red rectangle left and right across this panorama.</p>
+						<p>If we hack the game to change the yaw angle of the camera, then that will effectively move this red rectangle left and right across this panorama, which means we could scroll the view by a small amount and tack the new part of the view onto the sides (though Revs doesn't so this, it's just something that the projection supports).</p>
 
+						<p>The exact same hack works with The Sentinel, but this time we can move the camera both horizontally and vertically. Here's a panorama of landscape 0000, giving us an almost complete 360-degree shot in both the yaw and pitch axes (though the pitch range isn't quite a full circle, as we'll discuss below):</p>
 
+						<a href="/images/panorama/the_sentinel_panorama.png"><img class="titleImage lightBorder" style="width: 100%" src="/images/panorama/the_sentinel_panorama.png" alt="A 360-degree panorama of landscape 0000 in the Sentinel on the BBC Micro"></a>
 
+						<p>This view is quite extensive compared to the horizontal strip in Revs; here it is with the opening screen highlighted:</p>
 
-						<p>Revs introduced the pitch and yaw angle system that is core to The Sentinel, and the core maths routines in the latter game are lifted straight from its predecessor - see the deep dive on <a href="reusing_the_geometry_routines_from_revs.html">reusing the geometry routines from Revs</a> for details. And this isn't the only aspect that The Sentinel pinches from Revs, because it also uses the same projection system.</p>
+						<a href="/images/panorama/the_sentinel_panorama_screen_size.png"><img class="titleImage lightBorder" style="width: 100%" src="/images/panorama/the_sentinel_panorama_screen_size.png" alt="A 360-degree panorama of landscape 0000 with the starting screen marked in the Sentinel on the BBC Micro"></a>
+
+						<p>The similarities are clear, even if The Sentinel's world is far larger and more detailed. Revs introduced the pitch and yaw angle system that is core to The Sentinel, and the core maths routines in the latter game are lifted straight from its predecessor - see the deep dive on <a href="reusing_the_geometry_routines_from_revs.html">reusing the geometry routines from Revs</a> for details. And this isn't the only aspect that The Sentinel pinches from Revs, because it also uses the same projection system.</p>
 
 						<p>Before we look at the details of the projection system, let's see why it's so vital to the way The Sentinel works. The game manages to implement 3D scrolling of filled graphics by scrolling the screen a bit at a time: when the players holds down a pan key, the game starts busily drawing a small strip of landscape that can be tacked onto the sides (for horizontal pans) or to the top or bottom of the landscape view (for vertical pans). This process is described in the deep dive on <a href="panning_and_hardware_scrolling.html">panning and hardware scrolling</a>, and the reason that it's possible is because The Sentinel borrows the projection system from Revs.</p>
 
-						<p>Known as the "equirectangular projection", this method of converting 3D world coordinates into 2D screen coordinates has one vital characteristic: the perspective of the view doesn't change with the viewing direction. This is not true of things like humans and cameras; if you have ever gone on holiday and taken a bunch of photos of a beautiful view, and then you've tried to stitch those photos together to make a panorama, then you'll know that they don't slot together neatly at all. This is because the perpective of the camera lens - just like the human eye - is focused around the centre of the shot, and each photo has its own subtle fish-eye lens effect that means they don't sit together correctly.</p>
+						<p>Known as the "equirectangular projection", this method of converting 3D world coordinates into 2D screen coordinates has one vital characteristic: the perspective of the view doesn't change with the viewing direction. This is not true of things like humans and cameras; if you have ever gone on holiday and taken a bunch of photos of a beautiful view, and then you've tried to stitch those photos together to make a panorama, then you'll know that they don't slot together neatly at all. This is because the perspective of the camera lens - just like the human eye - is focused around the centre of the shot, and each photo has its own subtle fish-eye lens effect that means they don't sit together correctly.</p>
 
-						<p>If we were redrawing the entire landscape view in The Sentinel every time we panned, then this perspective shift wouldn't be a problem, but because we have to take a strip from the "neighbouring photograph" and scroll that into view, things would get messy prett quickly.</p>
+						<p>If we were redrawing the entire landscape view in The Sentinel every time we panned, then this perspective shift wouldn't be a problem, but because we have to take a strip from the "neighbouring photograph" and scroll that into view, things would get messy pretty quickly.</p>
 
 						<p>Luckily the equirectangular projection that Revs uses doesn't suffer from this problem, and instead individual parts of the projected world slot together perfectly, making it a perfect fit for The Sentinel. Revs doesn't actually care whether different images fit together as it does redraw the whole screen for each frame, but it turns out that this unused aspect of the Revs graphics engine makes The Sentinel possible.</p>
 
 						<p>So, thank you, Revs. We owe you one.</p>
 
 						<h2 class="articleSubheader">The plate carr&eacute;e equirectangular projection<br>
-													 --------------------------------------------</h2>
-
-
-
-
-
+													 -------------------------------------------</h2>
 
 						<p>All 3D games have some kind of projection system that takes coordinates from the 3D world and projects them onto the 2D screen. The most common approach in 8-bit games is the simple perspective projection, in which we convert 3D coordinates to 2D coordinates by simply dividing the x-coordinate (left-right) and y-coordinate (up-down) by the z-coordinate (into and out of the screen):</p>
 
@@ -64,9 +64,9 @@ page_header("deep_dives", "the_projection_system.html", "The projection system",
   screen_y = y / z
 </pre>
 
-						<p>This is the approach used in both Elite and Aviator: in Elite, the projection logic is in the <a href="https://elite.bbcelite.com/cassette/main/subroutine/proj.html">PROJ routine</a>, while in Aviator it's in the <a href="https://aviator.bbcelite.com/source/main/subroutine/projectpoint_part_1_of_3.html">ProjectPoint routine</a>. At the core of each routine is simple division by the z-coordinate, giving us a screen coordinate that we can scale appropriately to fit on-screen.  For more details of the maths behind this projection, plus lots of information about other types of projection, see the <a href="https://en.wikipedia.org/wiki/3D_projection#Perspective_projection">Wikipedia article on perspective projection</a>.</p>
+						<p>This is the approach used in both Elite and Aviator: in Elite, the projection logic is in the <a href="https://elite.bbcelite.com/cassette/main/subroutine/proj.html">PROJ routine</a>, while in Aviator it's in the <a href="https://aviator.bbcelite.com/source/main/subroutine/projectpoint_part_1_of_3.html">ProjectPoint routine</a>. At the core of each routine is simple division by the z-coordinate, giving us a screen coordinate that we can scale appropriately to fit on-screen. For more details of the maths behind this projection, plus lots of information about other types of projection, see the <a href="https://en.wikipedia.org/wiki/3D_projection#Perspective_projection">Wikipedia article on the perspective projection</a>.</p>
 
-						<p>However, Revs doesn't use this simple perspective projection, and nor does The Sentinel. Instead, the 3D world in Revs is projected into pitch and yaw angles, which then double up as screen coordinates; the technical name for this projection system is the <em>plate carr&eacute;e</em> equirectangular projection; see <a href="https://en.wikipedia.org/wiki/Equirectangular_projection">this Wikipedia entry</a> for more information.</p>
+						<p>However, Revs and The Sentinel don't use this simple perspective projection. Instead, the 3D world is calculated using pitch and yaw angles, which then double up as screen coordinates. The technical name for this projection system is the <em>plate carr&eacute;e</em> equirectangular projection, which is a special case of the equirectangular projection that maps pitch angles to latitude and yaw angles to longitude. For more information about this projection, see <a href="https://en.wikipedia.org/wiki/Equirectangular_projection">th Wikipedia entry on the equirectabgular projection</a>.</p>
 
 						<p>In practice, because of the close relationship between the angles and screen coordinates, it's often easier just to think of them as equivalent terms, like this:
 
@@ -76,190 +76,82 @@ page_header("deep_dives", "the_projection_system.html", "The projection system",
 							<li>Pitch angle = elevation angle = y-coordinate = distance up the screen = down (-ve) to up (+ve) coordinate</li>
 						</ul>
 
-						<p>In reality things are a bit more subtle than this implies, but when trying to get your head around the coordinate system in Revs, it's a handy shortcut. Let's look at what's involved.</p>
+						<p>In reality things are a bit more subtle than this implies, but when trying to get your head around the coordinate system in The Sentinel, it's a handy shortcut.</p>
 
-						<h2 class="articleSubheader">Projection in Revs<br>
-													 ------------------</h2>
+						<h2 class="articleSubheader">Projection in The Sentinel<br>
+													 --------------------------</h2>
 
+						<p>Projection in The Sentinel is the same as projection in Revs, but with one difference: the screen in The Sentinel is half the field of view of Revs. In Revs the screen width covers a yaw angle range from -20 to +20, but in The Sentinel the range is -10 to +10, giving a much more claustrophobic feeling compared to the widescreen vista that you need in a racing game. Also, the pitch angle range in The Sentinel is much bigger than in Revs, because the latter doesn't draw anything in the blue sky, and most of the black track in the panorama above is hidden by the car's dashboard. The Sentinel, however, has a full landscape view in all directions, even if the letterbox-style screen has a small field of view.</p>
 
+						<p>To convert angles to screen coordinates, we consider the origin to be in the centre of the screen, and then we simply move and scale the relevant angle. So, for example, in the x-axis, we take the yaw angle of the point we want to project and add the yaw angle offset of the middle of the screen to move it into the screen's yaw angle range (so that it's now relative to the left edge of the screen rather than the centre, to match the screen's coordinate system). We then multiply the result by 8 to convert the yaw angle into screen coordinates, by applying the equirectangular projection to the point. You can see this projection process in <a href="/source/main/subroutine/getpolygonlines_part_3_of_6.html">part 3</a> and <a href="/source/main/subroutine/getpolygonlines_part_4_of_6.html">part 4 of GetPolygonLines</a>, for example.</p>
 
+						<p>This means that the field of view from the player's perspective is from -10 to +10 units of yaw angle (i.e. -14.0625 to +14.0625 degrees, or 360 * 20 / 256, giving a total field of view arc of 28.125 degrees); everything else is either off-screen or behind us. It also means that we can think of the yaw angle as being equivalent to the projected x-coordinate, and the pitch angle as being equivalent to the projected y-coordinate.</p>
 
-						<p>To convert angles to screen coordinates, we consider the origin to be in the centre of the screen, and then simply scale the relevant angle. So, for example, in the x-axis, we take the yaw angle and multiply it by 4, and then we add 80 to move it into the screen's coordinate range (as the origin for the screen is in the bottom-left corner, and the screen is 160 pixels wide, so adding 80 converts to screen x-coordinates).</p>
-
-						<p>This means that the field of view from the player's perspective is from -20 to +20 units of yaw angle (i.e. -28.125 to +28.125 degrees, or 360 * 20 / 256, giving a total field of view arc of 56.25 degrees); everything else is either off-screen or behind us. It also means that we can think of yaw angle as being equivalent to the projected x-coordinate, and the pitch angle as being equivalent to the projected y-coordinate. Some variable names, like <a href="/source/main/variable/yvergeright.html">yVergeRight</a> or <a href="/source/main/variable/xvergerightlo.html">xVergeRightLo</a>, are actually angles, but because of their context it's easier to think of them as screen coordinates, so I've chosen more coordinate-friendly variable names.</p>
-
-						<p>Converting directly from pitch and yaw angle into screen coordinates is possible because the viewing strip in Revs is quite restricted. It adds a bit of a fisheye effect to the view, in that cars directly ahead of the player will be more spaced out, while those around the periphery will be slightly squashed together, but this isn't terribly noticeable, and if anything it adds a bit of a TV-camera lensing effect. What is does do, though, is provide us with a system that not only supports screen coordinates, but also collision detection and distance calculations, all in the same angle system.</p>
-
-
-
- is described in detail in the deep dive on <a href="panning_and_hardware_scrolling.html">panning and hardware scrolling</a>, but 
-
-
-<!--
-
-						<p>In terms of pitch and yaw angles, the landscape view is 20 yaw angles wide and 12 pitch angles tall, so we have the following equivalences between the screen and angles:</p>
+						<p>In terms of pitch and yaw angles, we have the following equivalences in the horizontal x-axis:</p>
 
 						<ul>
-							<li>The screen is 20 yaw angles wide.<li>
+							<li>The screen is 20 yaw angles wide.</li>
 
-							<li>The screen is 40 character columns wide, so we can double the yaw angle to get the column number.<li>
+							<li>The screen is 40 character columns wide, so we can double the yaw angle to get the column number.</li>
 
-							<li>The screen is 160 pixels wide, so we can multiply the yaw angle by 8 to get the pixel x-coordinate.<li>
+							<li>The screen is 160 pixels wide, so we can multiply the yaw angle by 8 to get the pixel x-coordinate.</li>
 
-							<li>20 yaw angles is 360 * 20 / 256 = 28.125 degrees, so the horizontal viewing angle of the screen is 28.125 degrees.<li>
+							<li>20 yaw angles is 360 * 20 / 256 = 28.125 degrees, so the horizontal viewing angle of the screen is 28.125 degrees.</li>
 						</ul>
+
+						<p>And here's the same for the vertical y-axis:</p>
 
 						<ul>
-							<li>The screen is 12 pitch angles tall.<li>
+							<li>The screen is 12 pitch angles tall.</li>
 
-							<li>The screen is 24 character rows tall, so we can double the pitch angle to get the row number.<li>
+							<li>The screen is 24 character rows tall, so we can double the pitch angle to get the row number.</li>
 
-							<li>The screen is 192 pixels tall, so we can multiply the pitch angle by 16 to get the pixel y-coordinate.<li>
+							<li>The screen is 192 pixels tall, so we can multiply the pitch angle by 16 to get the pixel y-coordinate.</li>
 
-							<li>12 pitch angles is 360 * 12 / 256 = 16.875 degrees, so the vertical viewing angle of the screen is 16.875 degrees.<li>
+							<li>12 pitch angles is 360 * 12 / 256 = 16.875 degrees, so the vertical viewing angle of the screen is 16.875 degrees.</li>
 						</ul>
 
+						<p>Converting directly from pitch and yaw angle into screen coordinates works because the in-game landscape view in The Sentinel is quite restricted. It adds a bit of a fisheye effect to the view, which is really obvious in the panorama above,  but this isn't terribly noticeable in the individual screen-sized rectangles.</p>
 
-
-
-
-
-
-Include panoramas for Revs and Sentinel
-
-https://en.wikipedia.org/wiki/Equirectangular_projection
-
-It is actually the plate carrée equirectangular projection, where phi-1 is zero (so cos phi-1 = 1)
-
-It is still a projection, just a simple one
-
-***
-
-Full landscape is 31x29 steps, according to how the game actually works
-
-YAW:
-
-Each yaw step moves right/left by 8 yaw angles, or 8 * 8 = 64 pixels per step
-Screen width = 2.5 steps = 64 * 2.5 = 160, so that's correct
-
-One full yaw rotation comprises 256 / 8 = 32 steps
-Each step is 160 / 2.5 = 64 pixels
-Full landscape width = 32 * 32 = 2048 pixels
-
-PITCH:
-
-Each pitch step moves up/down by 4 pitch angles, or 4 * 16 = 64 pixels per step
-Screen height = 3 steps = 64 * 3 = 192, so that's correct
-
-One full pitch rotation comprises 108 / 4 = 27 steps
-Each step is 192 / 3 = 64 pixels
-Screen shows one more rotation above the top and below the bottom, so 29
-Full landscape height = 29 * 64 = 1856 pixels
-
-***
-
-In panorama with grid, each block is a step
-
-Each step = 64 across, 64 high (looks like a rectangle because mode 5)
-
-So 2048 x 1856 in mode 5 is 32 x 29
-
-In GIMP, each step is 245.5 across, 128 high
-
-So for x-axis, 245.5 across = 64 in BBC
-
-So for y-axis, 128 high = 64 in BBC
-
-So:
-
-7856 x 3712 pixels in GIMP is the same as:
-
-7856 -> 7856 x 64 / 245.4 = 2048
-
-3712 -> 3712 * 64 / 128 = 1856
-
-***
-
-From Bluesky:
-
-I have an answer, in two parts.
-
-The game screen in the BBC Micro version of The Sentinel is 192 pixels high and 160 pixels wide.
-
-It's based on screen mode 5, so each pixel is effectively double-width (so the aspect ratio is more like 192x320 - it's weird, but that's how it works).
-
-(1/2)
-Mark Moxon
- @markmoxon.bsky.social
-· now
-In mode 5 pixels, the full landscape view is 1856 pixels high and 2048 pixels wide.
-
-The game screen shows shows 192 by 160 pixels, so that's 1/9.7 of the full height and 1/12.8 of the full width.
-
-The weird figures are because the screen is a different shape to the full view.
-
-There you go!
-
-(2/2)
-
-***
-
-For sights:
-highestPitchAngle = 53
-lowestPitchAngle = -51
-
-So that's a range of 108 pitch angles
-Plus 128 above and below (as you can't move sights all the way to the edges)
-which is one vertical step of 4 pitch angles, one up and one down
-= 108 + 8 = 116 pitch angles tall
-
-Full panorama image (NOT GAME PIXELS!) is 7856 x 3712 pixels
-Each tile (2x3 steps) = 491 x 384 = 163.66 x 128 per step
-
-Panorama height = 29 steps tall = 29 * 4 angles = 116 = correct
-Panorama width = 32 steps wide = 32 * 8 angles = 256 = correct
-
-Two pans sideways between images in panorama = 16 yaw angles for cropped panorama shots
-Three pans vertically between images
-
-
-
-
-						<p>All 3D games have some kind of projection system that takes coordinates from the 3D world and projects them onto the 2D screen. The most common approach in 8-bit games is the simple perspective projection, in which we convert 3D coordinates to 2D coordinates by simply dividing the x-coordinate (left-right) and y-coordinate (up-down) by the z-coordinate (into and out of the screen):</p>
-
-<pre class="articleIndented">  screen_x = x / z
-
-  screen_y = y / z
-</pre>
-
-						<p>This is the approach used in both Elite and Aviator: in Elite, the projection logic is in the <a href="https://elite.bbcelite.com/cassette/main/subroutine/proj.html">PROJ routine</a>, while in Aviator it's in the <a href="https://aviator.bbcelite.com/source/main/subroutine/projectpoint_part_1_of_3.html">ProjectPoint routine</a>. At the core of each routine is simple division by the z-coordinate, giving us a screen coordinate that we can scale appropriately to fit on-screen.  For more details of the maths behind this projection, plus lots of information about other types of projection, see the <a href="https://en.wikipedia.org/wiki/3D_projection#Perspective_projection">Wikipedia article on perspective projection</a>.</p>
-
-						<p>However, Revs doesn't use this simple perspective projection. Instead, the 3D world in Revs is projected into pitch and yaw angles, which then double up as screen coordinates; the technical name for this projection system is the <em>plate carr&eacute;e</em> equirectangular projection; see <a href="https://en.wikipedia.org/wiki/Equirectangular_projection">this Wikipedia entry</a> for more information.</p>
-
-						<p>In practice, because of the close relationship between the angles and screen coordinates, it's often easier just to think of them as equivalent terms, like this:
+						<p>Indeed, the fact that the game makes you step through this landscape view in tantalisingly small steps is all part of the psychology of the game. Let's look at the horizontal steps in a sideways pan:</p>
 
 						<ul>
-							<li>Yaw angle = azimuth angle = x-coordinate = distance across the screen = left (-ve) to right (+ve) coordinate</li>
+							<li>It takes 32 horizontal pans to rotate all the way around through 360 degrees.</li>
 
-							<li>Pitch angle = elevation angle = y-coordinate = distance up the screen = down (-ve) to up (+ve) coordinate</li>
+							<li>Each yaw step moves the view sideways by 8 yaw angles, or 8 * 8 = 64 pixels.</li>
+
+							<li>The screen itself is 2.5 steps wide. It is 160 pixels wide, and 160 = 2.5 * 64.</li>
+
+							<li>The full landscape width is therefore 32 * 64 = 2048 pixels wide.</li>
 						</ul>
 
-						<p>In reality things are a bit more subtle than this implies, but when trying to get your head around the coordinate system in Revs, it's a handy shortcut. Let's look at what's involved.</p>
+						<p>And now let's consider the vertical steps in an up or down pan:</p>
 
-						<h2 class="articleSubheader">Projection in Revs<br>
-													 ------------------</h2>
+						<ul>
+							<li>It takes 27 vertical pans to rotate all the way from the top view to the bottom.</li>
 
+							<li>When showing the top and bottom views, the screen shows one more pan height in each direction (though the sights can't move over these extra steps), so the height of the viewable landscape is 29 vertical pans.</li>
 
+							<li>Each pitch step moves the view up or down by 4 pitch angles, or 4 * 16 = 64 pixels.</li>
 
+							<li>The screen itself is 3 steps high. It is 192 pixels tall, as 192 = 3 * 64.</li>
 
-						<p>To convert angles to screen coordinates, we consider the origin to be in the centre of the screen, and then simply scale the relevant angle. So, for example, in the x-axis, we take the yaw angle and multiply it by 4, and then we add 80 to move it into the screen's coordinate range (as the origin for the screen is in the bottom-left corner, and the screen is 160 pixels wide, so adding 80 converts to screen x-coordinates).</p>
+							<li>The full landscape height is therefore 29 * 64 = 1856 pixels high, of which we can interact with 1728 pixels.</li>
 
-						<p>This means that the field of view from the player's perspective is from -20 to +20 units of yaw angle (i.e. -28.125 to +28.125 degrees, or 360 * 20 / 256, giving a total field of view arc of 56.25 degrees); everything else is either off-screen or behind us. It also means that we can think of yaw angle as being equivalent to the projected x-coordinate, and the pitch angle as being equivalent to the projected y-coordinate. Some variable names, like <a href="/source/main/variable/yvergeright.html">yVergeRight</a> or <a href="/source/main/variable/xvergerightlo.html">xVergeRightLo</a>, are actually angles, but because of their context it's easier to think of them as screen coordinates, so I've chosen more coordinate-friendly variable names.</p>
+							<li>The highest pitch angle that you can pan to is 53, which is set in the <a href="/source/main/variable/highestpitchangle.html">highestPitchAngle</a> variable. This equates to a pitch angle of 360 * 53 / 256 = +74.53125 degrees.</li>
 
-						<p>Converting directly from pitch and yaw angle into screen coordinates is possible because the viewing strip in Revs is quite restricted. It adds a bit of a fisheye effect to the view, in that cars directly ahead of the player will be more spaced out, while those around the periphery will be slightly squashed together, but this isn't terribly noticeable, and if anything it adds a bit of a TV-camera lensing effect. What is does do, though, is provide us with a system that not only supports screen coordinates, but also collision detection and distance calculations, all in the same angle system.</p>
+							<li>The lowest pitch angle that you can pan to is -51, which is set in the <a href="/source/main/variable/lowestpitchangle.html">lowestPitchAngle</a> variable. This equates to a pitch angle of 360 * -51 / 256 = -71.71875 degrees.</li>
+						</ul>
 
--->
+						<p>Here's the panorama with all the possible positions of the viewing screen marked as a grid:</p>
 
+						<a href="/images/panorama/the_sentinel_panorama_grid.png"><img class="titleImage lightBorder" style="width: 100%" src="/images/panorama/the_sentinel_panorama_grid.png" alt="A 360-degree panorama of landscape 0000 with a grid in the Sentinel on the BBC Micro"></a>
+
+						<p>And here's the same but with the possible positions shown by crosses, which may or may not be easier to see on your screen (these large panorama images can be a bit tricky to view):</p>
+
+						<a href="/images/panorama/the_sentinel_panorama_crosses.png"><img class="titleImage lightBorder" style="width: 100%" src="/images/panorama/the_sentinel_panorama_crosses.png" alt="A 360-degree panorama of landscape 0000 with crosses in the Sentinel on the BBC Micro"></a>
+
+						<p>Note that these panorama images for The Sentinel are intentionally at a higher resolution than the game itself, so I can overlay extra details such as the crosses and grids. I created them by using the b2 emulator's screenshot function and then stitching the results together in ImageMagick, which works well, but because b2 saves the screen out at a higher resolution than the game and with some scaling pre-applied, this means the panorama shots are 7856 x 3712 pixels in size, rather than the in-game resolution of 2048 x 1856 pixels. It also means there are some scaling artifacts in there too, just in case you zoom in that far...</p>
 					</div>
 				</div>
 
