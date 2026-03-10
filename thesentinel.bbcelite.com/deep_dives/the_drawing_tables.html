@@ -96,6 +96,43 @@ page_header("deep_dives", "the_drawing_tables.html", "The drawing tables", "The 
 							<li>For all the drawing tables, the <a href="/source/main/workspace/zero_page.html#drawingtableindex">drawingTableIndex</a> variable controls which corner or point within the drawing table we are accessing. When storing tile angles, the index runs from 0 to 31 and points to the location within the current offset, while for object points, drawingTableIndex starts at 64 and increments with each point that is added to the drawing table.</li>
 						</ul>
 
+						<p>This means that the layout of data in the drawing tables is always the same. Consider the tile layout that gives each tile its shape, as discussed in the deep dive on <a href="tile_shapes.html">tile shapes</a>:</p>
+
+<pre class="articleIndented">
+     ^           [T]  [U]
+     |
+     |           [S]  [V]
+  z-axis
+   into
+  screen      x-axis from left to right ---&gt;
+</pre>
+
+						<p>Now let's map the drawing table structure to the tile corners in the landscape. If the numbers in brackets denote the offset from the start of the drawing table, then when drawingTableOffset = 0, we store the front row that contains the tile anchor S at offset 0, like this:</p>
+
+<pre class="articleIndented">
+  Rear row:   [32] [33] [34]  ...  [T] [U]  ...  [61] [62] [63]
+
+  Front row:  [ 0] [ 1] [ 2]  ...  [S] [V]  ...  [29] [30] [31]
+</pre>
+
+						<p>And when drawingTableOffset = 32, the rows are swappoed around, so the front row containing S is now stored from offset 32:</p>
+
+<pre class="articleIndented">
+  Rear row:   [ 0] [ 1] [ 2]  ...  [T] [U]  ...  [29] [30] [31]
+
+  Front row:  [32] [33] [34]  ...  [S] [V]  ...  [61] [62] [63]
+</pre>
+
+                        <p>Given these layouts, we can move between the corners like this:</p>
+
+						<ul>
+							<li>We can move from left to right by adding 1 to the offset, and from right to left by subtracting 1.</li>
+
+							<li>We can move between the top and bottom rows by using EOR #32 on the offset, as this will flip between x and x + 32. We can do the same by adding 32 and applying an AND #63 instruction to apply mod 64 to the result.</li>
+						</ul>
+
+                        <p>We use these calculations to work out which points in the drawing table we should map to points 1 to 5 in polygonPoint for use in the polygon-drawing process (see the deep dive on <a href="drawing_filled_polygons.html">drawing filled polygons</a> for details).</p>
+
 						<p>In this way the drawing tables use minimal memory to store calculation results for the tile row that we are drawing, as well as the angles of the objects on that row. It doesn't speed things up as a full-landscape cache would, but when it comes to 8-bit computers, something has to give...</p>
 					</div>
 				</div>
