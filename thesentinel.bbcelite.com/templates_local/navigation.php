@@ -93,7 +93,7 @@
 									<li><a id="deep_dives_drawing_the_screen_colours_and_palettes" href="/deep_dives/colours_and_palettes.html"><span class="menuTitle">Colours and palettes</span> <span class="menuSummary">How the game manages different colour schemes and palettes</span></a></li>
 								</ul>
 							</li>
-							<li id="deep_dives_maths"><span class="menuTitle">Screen buffers</span> <span class="menuSummary menuSummarySubmenu">Smooth graphics with buffers and hardware scrolling</span>
+							<li id="deep_dives_maths"><span class="menuTitle">Screen buffers</span> <span class="menuSummary menuSummarySubmenu">Screen buffers, dithering and hardware scrolling</span>
 								<ul id="submenu_deep_dives_screen_buffers">
 									<li class="menuItemHeader">Screen buffers</li>
 									<li><a id="deep_dives_screen_buffers_screen_buffers" href="/deep_dives/screen_buffers.html"><span class="menuTitle">Screen buffers</span> <span class="menuSummary">Creating beautifully smooth and fully filled 3D graphics using buffers</span></a></li>
