@@ -11,31 +11,35 @@ page_header("deep_dives", "the_drawing_tables.html", "The drawing tables", "The 
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How the game stores projected 3D data without taking up too much memory</h2>
 
-						<p>If memory constraints weren't a problem, it would be pretty easy to make The Sentinel's landscape scroll in real time. You could, for example, simply draw the entire landscape panorama into a screen buffer and simply copy the relevant parts into screen memory when scrolling. Or you could cache all of the complex calculations that work out the screen coordinates for the tile corners and object points, so you'd only have to make the polygon-drawing routines fast enough to support smooth scrolling.</p>
+						<p>If memory constraints weren't a problem, it would be pretty easy to make The Sentinel's landscape scroll in real time. You could, for example, simply draw the entire landscape panorama into a screen buffer like this, and just copy the relevant parts into screen memory when scrolling:</p>
 
-						<p>Of course, memory constraints are a problem on the BBC Micro, with its 32K of RAM that gets split between the operating system, screen memory and the game itself. Storing the entire 2048x1856-pixel landscape view at four pixels per byte would require 928K of RAM, which is clearly not going to happen, but what about storing the results of the various calculations? Well, we don't have room to store everything, but there is room to cache some of the more important calculations, and that's where the drawing tables come in.</p>
+						<a href="/images/panorama/the_sentinel_panorama.png"><img class="titleImage lightBorder" style="width: 100%" src="/images/panorama/the_sentinel_panorama.png" alt="A 360-degree panorama of landscape 0000 in the Sentinel on the BBC Micro"></a>
+
+						<p>Or you could cache all of the complex calculations that work out the screen coordinates for the tile corners and object points, so you'd only have to make the polygon-drawing routines fast enough to support smooth scrolling.</p>
+
+						<p>Of course, memory constraints are a problem on the BBC Micro, with only 32K of RAM that gets shared between the operating system, screen memory and the game itself. Storing the entire 2048x1856-pixel landscape view at four pixels per byte would require 928K of RAM, which is clearly not going to happen, but what about storing the results of the various calculations? Well, we don't have room to store everything, but there is room to cache some of the more important calculations, and that's where the drawing tables come in.</p>
 
 						<p>Let's see what's involved.</p>
 
 						<h2 class="articleSubheader">Storing calculation results<br>
 													 ---------------------------</h2>
 
-						<p>The Sentinel is a bit of a tight fit on the unexpanded BBC Micro. The screen grabs 8K, the screen buffers take another 3.75K, the tile data table gobbles up 1K, and the remaining 19.25K has to be split between the needs of the operating system and the game's code and variables. That isn't a lot of spare room; see <a href="the_sentinel_memory_map.html">The Sentinel memory map</a> for details.</p>
+						<p>As mentioned above, The Sentinel is a bit of a tight fit on the unexpanded BBC Micro. The screen grabs 8K, the screen buffers take another 3.75K, the tile data table gobbles up 1K, and the remaining 19.25K has to be split between the needs of the operating system and the game's code and variables. That isn't a lot of spare room; see <a href="the_sentinel_memory_map.html">The Sentinel memory map</a> for details.</p>
 
-						<p>One of the biggest challenges is working with such a large landscape. The landscape is defined by tile corners, and with a 32x32 grid of corners, that's a total of 1024 tile corners. It's important that we draw the landscape as quickly as possible, because panning around the landscape is such a vital part of the gameplay, and one way of making things slightly quicker is to cache the results of difficult calculations. But with a small amount of memory, things can get out of hand.</p>
+						<p>One of the biggest challenges is working with such a large landscape. The landscape is defined by tile corners, and with a 32x32 grid of corners, that's a total of 1024 tile corners. It's important that we draw the landscape as quickly as possible, because panning around the landscape is such a vital part of the gameplay, and one way of making things slightly quicker is to cache the results of difficult calculations. But with a small amount of memory and such a large number of tile corners, things can quickly get out of hand.</p>
 
-						<p>For example, when we start a new landscape or the player moves to a new time, the game runs through every tile corner and works out whether that corner is potentially visible to the player. It stores the results using a single bit to denote whether a tile corner is visible or not visible, so for 1024 tile corners that's a total of 128 bytes, which are stored in the <a href="/source/main/variable/tilevisibility.html">tileVisibility</a> (you can read all about this process in the deep dive on <a href="the_visibility_table.html">the visibility table</a>).</p>
+						<p>For example, when we start a new landscape or the player moves to a new tile, the game runs through every tile corner and works out whether that corner is potentially visible to the player. It stores the results using a single bit to denote whether a tile corner is visible or not visible, so for 1024 tile corners that's a total of 128 bytes, which are stored in the <a href="/source/main/variable/tilevisibility.html">tileVisibility</a> table (you can read all about this process in the deep dive on <a href="the_visibility_table.html">the visibility table</a>).</p>
 
 						<p>128 bytes isn't too much to sacrifice if it means we don't have to repeat the visibility checks for each tile corner every time we draw a tile, but what if we want to store the pitch and yaw angles of each point, which we need to know before we can project the point onto the screen? That would speed things up quite a bit, so it's certainly worth considering.</p>
 
-						<p>If we wanted to store the fractional pitch and yaw angles for each point in the view that we're drawing, then that would take up four bytes for each tile corner, and that would require another 4K. Given that there are only 291 bytes free once The Sentinel is loaded, that's not very realistic. And this only covers the tile corners; we also need somewhere to store projected object coordinates while we're drawing the 3D objects, as we have to draw them at the same time as we draw the landscape, as objects can be obscured by landscape features between them and the viewer.</p>
+						<p>If we wanted to store the angles for every tile corner in the landscape, then that would take up four bytes for each tile corner, as each of the two fractional angles needs two bytes, so that would require a total of 4K. Given that there are only 291 bytes free once The Sentinel is loaded, that's not very realistic. And this only covers the tile corners; we also need somewhere to store projected object coordinates while we're drawing the 3D objects, as we have to draw them at the same time as we draw the landscape, as objects can be obscured by landscape features between them and the viewer.</p>
 
-						<p>Instead, The Sentinel contains compromise that caches calculations, but only for as long as they are needed. Let's see how it works.</p>
+						<p>Instead of storing data for all the tile corners, then, The Sentinel opts for a compromise that caches the calculations, but only for as long as they are needed. Let's see how it works.</p>
 
 						<h2 class="articleSubheader">The drawing tables<br>
 													 ------------------</h2>
 
-						<p>The solution to the caching problem is a set of "drawing tables". There are two main batches of drawing table, as follows:</p>
+						<p>The solution to the caching problem is a set of "drawing tables". There are a few collections of drawing table, as follows:</p>
 
 						<ul>
 							<li>Visibility calculations are stored in the drawing tables at <a href="/source/main/workspace/stack_variables.html#oddvisibility">oddVisibility</a> and <a href="/source/main/workspace/stack_variables.html#evenvisibility">evenVisibility</a>.</li>
@@ -49,7 +53,7 @@ page_header("deep_dives", "the_drawing_tables.html", "The drawing tables", "The 
 							<li>Object point angle calculations are stored in the drawing tables as two-byte values. These are stored after the pitch and yaw angles for the tile corners, at offset 64 within each table.</li>
 						</ul>
 
-						<p>Caching the results of the visibility and angle calculations makes a lot of sense, as they involve complex geometry, but the tile data is slightly less obvious. In this case it isn't speed that we are gaining, but the ability to overwrite the cached copy of the tile data; we can't update the tileData table without ruining the landscape model, but if we copy the data into a the drawing tables, we can alter it as much as we like (specifically, we zero it in <a href="/source/main/subroutine/gettileviewangles_part_3_of_4.html">part 3 of GetTileViewAngles</a> when a tile is not visible, to save us from having to repeatedly extract the individual bit from the <a href="/source/main/variable/tilevisibility.html">tileVisibility</a> table).</p>
+						<p>Caching the results of the visibility and angle calculations makes a lot of sense, as they involve complex geometry, but the reason for caching the tile data is slightly less obvious. In this case it isn't speed of calculation that we are saving, but speed of extraction, because extracting tile data from the tileData table requires a non-trivial calculation to find the correct index. Not only that, but if we make a copy of the tile data in the drawing table, we can also modify it, which we can't do in the original table without corrupting the landscape. So we can also combine the visibility data with the tile data by zeroing this value for hidden tiles, which means we don't need to extract the tile's individual bit from the <a href="/source/main/variable/tilevisibility.html">tileVisibility</a> table every time. You can see the visibility being applied to the tile data drawing table in <a href="/source/main/subroutine/gettileviewangles_part_3_of_4.html">part 3 of GetTileViewAngles</a>.</p>
 
 						<p>The clever part about the drawing tables is that they are small. The oddVisibility and evenVisibility tables take up just 32 bytes each, and the same part of memory is reused for the tileViewData table, which is 64 bytes long. And the four tables that store the drawViewPitch(Hi Lo) and drawViewYaw(Hi Lo) calculations are 64 bytes each, so that's a total of 256 bytes for the tile angles, and there's a further 128 bytes for storing the object points. That's a grand total of 448 bytes for all of the drawing tables, which is a much more realistic requirement when memory is tight.</p>
 
@@ -67,12 +71,12 @@ page_header("deep_dives", "the_drawing_tables.html", "The drawing tables", "The 
 
 							<li>The screen-relative pitch and yaw angles of the tile corners along the front of the tile row that we're drawing.</li>
 
-							<li>The screen-relative pitch and yaw angles of any 3D objects that we need to draw on this row.</li>
+							<li>The screen-relative pitch and yaw angles of any 3D objects that we need to draw on this row (which we can store for one object at a time, as we draw each one).</li>
 						</ul>
 
 						<p>Each of these three takes up a maximum of 32 bytes, as each tile row has no more than 32 tile corners along the back and front of the row, and each 3D object has no more than 32 object points (the biggest is The Sentinel object, which contains 30 points).</p>
 
-						<p>The pitch and yaw angles for the row that we are currently drawing are therefore stored in the following manner:</p>
+						<p>The pitch and yaw angles for the row that we are currently drawing can therefore be stored in the following manner:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Data</th><th>Table</th><th>Offset</th></tr>
@@ -84,14 +88,14 @@ page_header("deep_dives", "the_drawing_tables.html", "The drawing tables", "The 
 							<tr><td>Object row angles</td><td>drawViewPitch(Hi Lo)</td><td>64 to 95</td></tr>
 						</table>
 
-						<p>The two tile corner tables need some further explanation. When we are drawing a tile row in the landscape, we need to be able to store the pitch and yaw angles for both the tile corners along the back of the tile row and the tile corners along the front of the tile row, so we can fetch the four coordinates that make up each tile, to pass to the polygon-drawing routine. When we have finished drawing that tile row and we move on to the next row, the angles for the front row of tile corners for the row we just drew are now the angles for the rear row of tile corners on the new row we are drawing, so we still need them.</p>
+						<p>The two tile corner tables need some further explanation. When we are drawing a tile row in the landscape, we need to be able to store the pitch and yaw angles for both the tile corners along the back of the tile row and the tile corners along the front of the tile row, so we can fetch the four coordinates that make up each tile and pass them to the polygon-drawing routine. When we have finished drawing that tile row and we move on to the next row, the angles for the front row of tile corners for the row we just drew are now the angles for the rear row of tile corners on the new row we are drawing, so we still need them.</p>
 
-						<p>We could just copy the front corners into the drawing table for the back corners, but instead we flip between the two drawing tables, so for the furthest tile row we store the rear tile corners in row 1 and the front tile corners in row 2, and for the tile row in front of that we keep the data in row 2 to use as the angles for the rear tile corners and store the front tile corners in row 1... and so on.</p>
+						<p>We could just copy the front corners into the drawing table for the back corners, but instead we flip between the two drawing tables. So, for example, for the furthest tile row at the back, we store the rear tile corners in row 1 and the front tile corners in row 2, and when we move forwards to the tile row in front of that, we keep the data in row 2 to use as the angles for the rear tile corners and store the front tile corners for the new tile row in row 1 of the drawing table... and so on.</p>
 
 						<p>We keep track of the current drawing table configuration using two variables:</p>
 
 						<ul>
-							<li>When storing tile angles in the drawing tables, the <a href="/source/main/workspace/zero_page.html#drawingtableoffset">drawingTableOffset</a> variable is set to either 0 or 32, which controls whether we access tile corner row 1 or tile corner row 2. The drawingTableOffset can be flipped between the two rows by a simple EOR #32 instruction. This variable is ignored when storing object angles in the drawing tables.</li>
+							<li>When storing tile angles in the drawing tables, the <a href="/source/main/workspace/zero_page.html#drawingtableoffset">drawingTableOffset</a> variable is set to either 0 or 32, which controls whether we access tile corner row 1 or tile corner row 2. The drawingTableOffset can be flipped between the two rows using a simple EOR #32 instruction. This variable is ignored when storing object angles in the drawing tables.</li>
 
 							<li>For all the drawing tables, the <a href="/source/main/workspace/zero_page.html#drawingtableindex">drawingTableIndex</a> variable controls which corner or point within the drawing table we are accessing. When storing tile angles, the index runs from 0 to 31 and points to the location within the current offset, while for object points, drawingTableIndex starts at 64 and increments with each point that is added to the drawing table.</li>
 						</ul>
@@ -107,7 +111,7 @@ page_header("deep_dives", "the_drawing_tables.html", "The drawing tables", "The 
   screen      x-axis from left to right ---&gt;
 </pre>
 
-						<p>Now let's map the drawing table structure to the tile corners in the landscape. If the numbers in brackets denote the offset from the start of the drawing table, then when drawingTableOffset = 0, we store the front row that contains the tile anchor S at offset 0, like this:</p>
+						<p>Let's map the drawing table structure to the tile corners in the landscape. If the numbers in brackets denote the offset from the start of the drawing table, then when drawingTableOffset = 0, we store the front row that contains the tile anchor S at offset 0, like this:</p>
 
 <pre class="articleIndented">
   Rear row:   [32] [33] [34]  ...  [T] [U]  ...  [61] [62] [63]
@@ -115,7 +119,7 @@ page_header("deep_dives", "the_drawing_tables.html", "The drawing tables", "The 
   Front row:  [ 0] [ 1] [ 2]  ...  [S] [V]  ...  [29] [30] [31]
 </pre>
 
-						<p>And when drawingTableOffset = 32, the rows are swappoed around, so the front row containing S is now stored from offset 32:</p>
+						<p>And when drawingTableOffset = 32, the rows are swapped around, so the front row containing S is now stored from offset 32:</p>
 
 <pre class="articleIndented">
   Rear row:   [ 0] [ 1] [ 2]  ...  [T] [U]  ...  [29] [30] [31]
@@ -128,12 +132,12 @@ page_header("deep_dives", "the_drawing_tables.html", "The drawing tables", "The 
 						<ul>
 							<li>We can move from left to right by adding 1 to the offset, and from right to left by subtracting 1.</li>
 
-							<li>We can move between the top and bottom rows by using EOR #32 on the offset, as this will flip between x and x + 32. We can do the same by adding 32 and applying an AND #63 instruction to apply mod 64 to the result.</li>
+							<li>We can move between the top and bottom rows by using EOR #32 on the offset, as this will flip the offset between x and x + 32. We can do the same by adding 32 with an ADC #32 instruction and applying an AND #63 instruction to apply mod 64 to the result.</li>
 						</ul>
 
-                        <p>We use these calculations to work out which points in the drawing table we should map to points 1 to 5 in polygonPoint for use in the polygon-drawing process (see the deep dive on <a href="drawing_filled_polygons.html">drawing filled polygons</a> for details).</p>
+                        <p>As an example, we use these calculations to work out which points in the drawing table we should use in the polygon-drawing process. <a href="/source/main/subroutine/getpolygonlines_part_1_of_6.html">Part 1 of GetPolygonLines</a> uses the ADC/AND approach while <a href="/source/main/subroutine/getpolygonlines_part_2_of_6.html">part 2</a> uses the EOR approach, and both parts move left or right by incrementing or decrementing by 1. See the deep dive on <a href="drawing_filled_polygons.html">drawing filled polygons</a> for more details.</p>
 
-						<p>In this way the drawing tables use minimal memory to store calculation results for the tile row that we are drawing, as well as the angles of the objects on that row. It doesn't speed things up as a full-landscape cache would, but when it comes to 8-bit computers, something has to give...</p>
+						<p>In this way the drawing tables use minimal memory to store calculation results for the tile row that we are drawing, as well as the angles of the objects we need to draw on that row. It doesn't speed things up as much as a full landscape cache would, but when it comes to 8-bit computers, something has to give, and some caching is a lot better than no caching at all...</p>
 					</div>
 				</div>
 
