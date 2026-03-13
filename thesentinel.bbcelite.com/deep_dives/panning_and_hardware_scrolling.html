@@ -16,6 +16,94 @@ page_header("deep_dives", "panning_and_hardware_scrolling.html", "Panning and ha
 						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
 <!--
 
+
+ProcessGameplay exits with CLC if pan key is being pressed
+Main loop then jumps to game8 to process the pan
+
+This calls:
+
+
+ JSR PanLandscapeView   \ Draw the new part of the landscape view required for
+                        \ the screen pan, and if it completes (i.e. if the
+                        \ player hasn't released the pan key in the meantime)
+                        \ then initialise the interrupt-based scrolling process
+                        \ so the landscape view will scroll and perform the pan
+                        \ in the background
+
+PanLandscapeView
+----------------
+Sets up angles for drawing view
+
+then calls DrawLandscapeView
+
+which keeps checking if the pan key is still being held down (according to the value of keepCheckingPanKey) and aborts early if it isn't
+
+(keepCheckingPanKey lets us force a pan to completion for when the screen scrolls via the sights moving off-screen)
+
+If the pan key is  released, PanLandscapeView jumps to lpan2 to revert angles and return to main game loop
+
+Keeps going until either the landscape has been drawn and calls JSR StartScrollingView with 8 or 16 to set the value of numberOfScrolls and set screenBufferAddr(1 0) to the address where the interrupt handler should start fetching new content to scroll onto the screen, and then return
+
+On return we configure the interrupt-driven scrolling process and wait for it to finish (if numberOfScrolls is 0 because the scroll was aborted then no pan is started)
+
+ JSR PanLandscapeView   \ Draw the new part of the landscape view required for
+                        \ the screen pan, and if it completes (i.e. if the
+                        \ player keeps holding the pan key throughout the whole
+                        \ drawing process), then set up the following:
+                        \
+                        \   * Set numberOfScrolls to the correct number of
+                        \     scrolls required for the pan (8 or 16)
+                        \
+                        \   * Set screenBufferAddr(1 0) to the address where the
+                        \     interrupt handler should start fetching new
+                        \     content to scroll onto the screen
+                        \
+                        \ The scrolling won't start yet, but it will be done in
+                        \ the background during the loop at game10 below, after
+                        \ being triggered by setting scrollCounter to the
+                        \ non-zero value in numberOfScrolls
+                        \
+                        \ If the player releases the pan key before the drawing
+                        \ process has been finished, numberOfScrolls will be
+                        \ left at zero and the scrolling process will never be
+                        \ triggered
+
+ LSR keepCheckingPanKey \ Clear bit 7 of keepCheckingPanKey so DrawLandscapeView
+                        \ will keep drawing the landscape irrespective of the
+                        \ pan keys being held down (so this takes the routine
+                        \ back to its default behaviour)
+
+ JSR UpdateIconsScanner \ Update the icons in the top-left corner of the screen
+                        \ to show the player's current energy level and redraw
+                        \ the scanner box
+                        \
+                        \ We call this to ensure that the icon screen buffer is
+                        \ updated with the correct content for the top row, so
+                        \ it can be refreshed after every scrolling step in the
+                        \ interrupt routine
+
+ LDA numberOfScrolls    \ Set scrollCounter to the number of scrolls required,
+ STA scrollCounter      \ so the interrupt handler will scroll the screen by
+                        \ this many steps in the background
+
+.game10
+
+ LDA scrollCounter      \ Loop around until scrollCounter is zero, so this waits
+ BNE game10             \ until the interrupt handler has finished scrolling the
+                        \ landscape view, thus implementing the pan on-screen
+
+
+
+
+
+
+screenBufferAddr
+screenBufferHi
+screenBufferLo
+
+
+
+
 						<p>The best way to understand the screen buffer is to visualise it - quite literally. If we hack the game code to display the screen buffer on-screen instead of normal screen memory, then this is the kind of thing we might see:</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/column_buffer_5.png" alt="The column buffer in the BBC Micro version of The Sentinel">
