@@ -11,9 +11,67 @@ page_header("deep_dives", "panning_and_hardware_scrolling.html", "Panning and ha
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How the landscape view scrolls when the player pans around</h2>
 
-						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
+						<p>On the surface, the world of the Sentinel is a quiet place. Maybe a bit too quiet, in an eerie kind of way, but it's quiet nonetheless. It's particularly calm at the start of each landscape, when you get a chance to pan around the landscape and get your bearings without having to worry about the Sentinel tracking you down and sucking the life out of you.</p>
 
-						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
+						<p>But codewise, The Sentinel is the proverbial duck: calm on the surface, but paddling like crazy underneath, and the best example is when panning. The second that you press one of the pan keys, the code kicks up a gear, and although absolutely nothing happens on-screen and the game appears to sit there, pondering your key press, beneath the surface the code is frantically configuring screen buffers, drawing segments of landscape and getting ready to scroll the screen, all so that you can quietly pan around the landscape, blissfully unaware of the programming miracle that's happening beneath the lid of your BBC Micro.</p>
+
+						<p>In this article, we'll take a look underwater to see just how frantic this particular duck has to paddle.</p>
+
+						<h2 class="articleSubheader">Visualising a screen pan<br>
+													 ------------------------</h2>
+
+
+						<p>You can see that the buffered column is split into two parts, with the top part of the column on the left and the bottom part of the column on the right. In this example, this is what you would see if you panned left from this screen:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/landscape_0000_start_right.png" alt="The starting screen, panned right, for landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<p>to this screen:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/landscape_0000_start.png" alt="The starting screen, panned right, for landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<p>So the new part of the landscape is the strip down the left side of the screen, i.e. the part with the trees, so this is what we draw into the screen buffer:</p>
+
+						<img class="titleImage marginBorder" style="width: 160px" src="/images/screen_buffer/column_buffer_contents.png" alt="The contents of the column buffer in the BBC Micro version of The Sentinel">
+
+						<p>The best way to understand the screen buffer is to visualise it - quite literally. If we hack the game code to display the screen buffer on-screen instead of normal screen memory, then this is the kind of thing we might see:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/column_buffer_5.png" alt="The column buffer in the BBC Micro version of The Sentinel">
+
+						<p>We'll explain what's going on in a minute, but in this particular case we're looking at the screen buffer when it's configured as a column buffer for a left pan, which means the buffer contains the vertical strip of newly revealed landscape that gets scrolled into the left edge of the screen when the player is panning to the left.</p>
+
+						<p>If we slow down the drawing process, then you can see the buffer being populated with the left portion of the starting screen:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/column_buffer.gif" alt="The column buffer being drawn in the BBC Micro version of The Sentinel">
+
+						<p>This drawing happens behind closed doors, as the screen buffer is not normally visible to the player; it only becomes visible when the contents are copied into screen memory after the landscape has been drawn.</p>
+
+
+
+
+						<p>In this example, this is what you would see if you panned down from this screen:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/landscape_0000_start_right.png" alt="The starting screen, panned right, for landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<p>to this screen:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/landscape_0000_start_right_down.png" alt="The starting screen, panned right and down, for landscape 0000 in the BBC Micro version of The Sentinel">
+
+
+						<p>Contents:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/row_buffer_contents.png" alt="The contents of the row buffer in the BBC Micro version of The Sentinel">
+
+						<p>Buffer:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/row_buffer_3.png" alt="The row buffer in the BBC Micro version of The Sentinel">
+
+
+
+
+						<h2 class="articleSubheader">Scrolling the landscape view<br>
+													 ----------------------------</h2>
+
+
 <!--
 
 
@@ -103,30 +161,6 @@ screenBufferLo
 
 
 
-
-						<p>The best way to understand the screen buffer is to visualise it - quite literally. If we hack the game code to display the screen buffer on-screen instead of normal screen memory, then this is the kind of thing we might see:</p>
-
-						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/column_buffer_5.png" alt="The column buffer in the BBC Micro version of The Sentinel">
-
-						<p>We'll explain what's going on in a minute, but in this particular case we're looking at the screen buffer when it's configured as a column buffer for a left pan, which means the buffer contains the vertical strip of newly revealed landscape that gets scrolled into the left edge of the screen when the player is panning to the left.</p>
-
-						<p>You can see that the buffered column is split into two parts, with the top part of the column on the left and the bottom part of the column on the right. In this example, this is what you would see if you panned left from this screen:</p>
-
-						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/landscape_0000_start_right.png" alt="The starting screen, panned right, for landscape 0000 in the BBC Micro version of The Sentinel">
-
-						<p>to this screen:</p>
-
-						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/landscape_0000_start.png" alt="The starting screen, panned right, for landscape 0000 in the BBC Micro version of The Sentinel">
-
-						<p>So the new part of the landscape is the strip down the left side of the screen, i.e. the part with the trees. If we slow down the drawing process, then you can see the buffer being populated with the left portion of the starting screen:</p>
-
-						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/column_buffer.gif" alt="The column buffer being drawn in the BBC Micro version of The Sentinel">
-
-						<p>This drawing happens behind closed doors, as the screen buffer is not normally visible to the player; it only becomes visible when the contents are copied into screen memory after the landscape has been drawn.</p>
-
-						<p>Here's another example, but this time with a vertical pan:</p>
-
-						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/row_buffer_3.png" alt="The row buffer in the BBC Micro version of The Sentinel">
 
 
 
