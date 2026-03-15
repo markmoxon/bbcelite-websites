@@ -11,16 +11,160 @@ page_header("deep_dives", "dithering_to_the_screen.html", "Dithering to the scre
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Creating and absorbing objects on-screen with a dithered effect</h2>
 
-						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
+						<p>The landscape view in The Sentinel is made up entirely of polygons, and those polygons are typically drawn into the screen buffer; sometimes we draw them directly into screen memory, but that's only when we need to update the entire screen, such as during a U-turn. Most of the time, though, we draw into the screen buffer, and once the drawing process is completed, we copy the contents of the screen buffer into screen memory. In this way we can hide the drawing process from the player, so they see smooth graphics instead of an algorithm.</p>
 
-						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
+						<p>For example, when the player presses a pan key and the landscape view scrolls, the interrupt handler copies the new part of the landscape view into screen memory as part of the scrolling process, giving the game smooth scrolling of filled 3D graphics, which is pretty impressive for an 8-bit computer; see the deep dives on <a href="screen_buffers.html">screen buffers</a>, <a href="drawing_filled_polygons.html">drawing filled polygons</a> and <a href="panning_and_hardware_scrolling.html">panning and hardware scrolling</a> for details of how this all works.</p>
 
-<!--
-Does the C64 version also dither big objects in two halves?
+						<p>But there are two places when the screen buffer isn't copied straight into screen memory, and instead the graphics are dithered onto the screen, dot by dot. The first example is when the player creates or absorbs objects, such as this tree being created:</p>
 
-Yes, pretty much, but it's slightly different
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/dither/create_tree.mp4" type="video/mp4">
+						</video>
 
--->
+						<p>The dithering process can also be seen on the game over screen, when the victorious object hovers into view in a mess of dots. In this example, the Sentinel has won by draining all the energy from the player, so the screen dissolves and fades to black while the ghostly apparition of the victorious Sentinel dithers into view in a typically menacing fashion:</p>
+
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/dither/game_over.mp4" type="video/mp4">
+						</video>
+
+						<p>In this article we'll explore the dithering process, starting with the dithering of objects before moving on to the more complex two-phase dithering of the game over screen.</p>
+
+						<h2 class="articleSubheader">Dithering 3D objects<br>
+													 --------------------</h2>
+
+						<p>Objects can be created or removed fairly simply, by calling the routines described in the deep dive on <a href="object_management.html">object management</a>; for example, callings <a href="/source/main/subroutine/spawnobjectontile.html">SpawnObjectOnTile</a> will add a new object to a specific tile, while <a href="/source/main/subroutine/deleteobject.html">DeleteObject</a> with remove an object so its object number can be reused. You can also change object properties by updating an object's data; for example, you can change an object's type by updating the relevant entry in the <a href="/source/main/variable/objecttypes.html">objectTypes</a> table, or you can rotate an object left or right via the <a href="/source/main/variable/objectyawangle.html">objectYawAngle</a> table.</p>
+
+						<p>If an object's data is updated but it isn't currently being shown on-screen, then all we need to do is update the data and we're done. But if the object is on-screen in the landscape view, then we will also need to update that view, and that's where the <a href="/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> routine comes into play.</p>
+
+						<p>DrawUpdatedObject is used to draw an object into the screen buffer so that it's suitable for updating onto the screen. Sometimes we want to dither this process, but sometimes we don't. For example, if an enemy rotates while the player is looking at it, then we want that rotation to happen instantly, without any dithering. In this case the object is drawn into the screen buffer in its new position, and once that's done the entire contents of the screen buffer is copied into screen memory, thus updating the object on-screen.</p>
+
+						<p>For dithering, the object is still drawn into the screen buffer, but the copying process is done one pixel at a time, in a random fashion. As an example, let's imagine the player wants to create a tree in an empty part of the landscape, like this:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/tree_dither_0.png" alt="The landscape in the BBC Micro version of The Sentinel">
+
+						<p>As you can see, they have placed the crosshair sights over the destination tile, so now they can press "T" to create a tree there. The tree gets drawn into the screen buffer and then the contents of the buffer is copied onto the screen, dot by dot, like this:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/tree_dither_2.png" alt="Creating a tree in the BBC Micro version of The Sentinel">
+
+						<p>When we've done enough dithering (which in this case is a total of 6375 dots), the screen buffer is copied in its entirety onto the screen to fill in any uncopied pixels. This makes the tree pop into existence, thus completing the creation process:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/tree_dither_5.png" alt="Creating a tree in the BBC Micro version of The Sentinel">
+
+						<p>If we look at the process again, we can see that the new tree fits nicely into the landscape here:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/tree_dither_0_outline.png" alt="The destination for a new tree in the BBC Micro version of The Sentinel">
+
+						<p>To make this work, the screen buffer contains the exact same part of the landscape, just with a tree drawn on the tile, like this:</p>
+
+						<img class="titleImage marginBorder" style="width: 60px" src="/images/dither/tree_buffer.png" alt="The screen buffer contents when creating a tree in the BBC Micro version of The Sentinel">
+
+						<p>So copying the screen buffer to the screen dot by dot will make the tree materialise slowly in the landscape:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/tree_dither_2.png" alt="Creating a tree in the BBC Micro version of The Sentinel">
+
+						<p>And at the end we make sure to copy the whole buffer, like this:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/tree_dither_5_outline.png" alt="The destination for a new tree in the BBC Micro version of The Sentinel">
+
+						<p>This process is managed by the DrawUpdatedObject routine, so let's take a look at that now.</p>
+
+						<h2 class="articleSubheader">The DrawUpdatedObject routine<br>
+													 -----------------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> routine takes a few parameters to support this process in number of different cases:</p>
+
+						<ul>
+							<li>The number of the viewing object, so we can change the camera angle (for the landscape this is always the player, but for the game over screen it's the camera location for the victorious object's dithered apparition).</li>
+
+							<li>Whether or not to draw the landscape behind the object; for the landscape we want this enabled, but for the game over screen we don't.</li>
+
+							<li>Whether or not we remove the sights from the screen before dithering and put them back afterwards, which you can see being done for the tree example:
+
+								<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/tree_dither.gif" alt="Creating a tree in the BBC Micro version of The Sentinel">
+
+								Note that this image only shows a few stages from the process (the dithering process is a lot smoother in-game), but it's enough to see the dithering effect.
+							</li>
+
+							<li>The screen background to use when drawing the object, so that's either the blue/black sky (for dithering objects into the landscape), or solid black with 240 randomly positioned stars on the background (for the game over screen).</li>
+						</ul>
+
+						<p>The routine draws the required object into the screen buffer, using the smallest portion of the screen buffer into which the object will fit; the size of the required screen buffer is calculated by calling the <a href="/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> routine, which calculates whether any part of the object is visible on-screen, and if so, which character columns it spans on the screen. Given this information, the dimensions of the screen buffer are configured accordingly in the <a href="/source/main/subroutine/configureobjbuffer.html">ConfigureObjBuffer</a> routine, ready for the object to be drawn into the buffer.</p>
+
+						<p>It is possible that the object might be too wide to fit into the screen buffer; we always configure the buffer as a column buffer to make sure the entire visible part of the object fits into the buffer height-wise, and ConfigureObjBuffer ensures that the buffer contains as much of the visible part of the object as possible, but if the object is wider than the column buffer then we have a problem. The maximum width of the column buffer is half a screen width, or 80 pixels, so if our object is wider than half a screen, then the object is drawn and dithered in two parts, with the first part being 80 pixels wide, and the second part doing the rest.</p>
+
+						<p>For example, here's a close-by tree being absorbed in two stages:</p>
+
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/dither/absorb_wide_object.mp4" type="video/mp4">
+						</video>
+
+						<p>And here's a boulder being created on the same tile, again in two stages:</p>
+
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/dither/create_wide_object.mp4" type="video/mp4">
+						</video>
+
+						<p>Once the screen buffer is configured, the object is drawn into the buffer by calling either <a href="/source/main/subroutine/drawobject.html">DrawObject</a> (if we only want to draw the object) or <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView</a> (if we want to draw the landscape as well).</p>
+
+						<p>To ensure that the object is drawn with minimal wasted space around the object itself, the code calculates a yaw adjustment in yawAdjustment(Hi Lo) that effectively moves the object to the left edge of the screen buffer by adding the correct amount of yaw to the camera to move it to the right. Without any yaw adjustment, the object would be drawn into the buffer at its usual position on-screen, so the tree above would be drawn in the right half of the screen, but with the yaw adjustment applied the tree moves to the left edge of the screen buffer, so the screen buffer looks like this:</p>
+
+						<img class="titleImage marginBorder" style="width: 60px" src="/images/dither/tree_buffer.png" alt="Creating a tree in the BBC Micro version of The Sentinel">
+
+						<p>The drawing routines all incorporate this yaw adjustment, but it's normally zero and has no effect. Is it only non-zero when we're drawing objects to update onto the screen in this way.</p>
+
+						<p>Once the object has been drawn into the screen buffer, we then call the <a href="/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a> routine to dither the contents of the screen buffer onto the screen. We tell the routine how many inner loops of 255 pixels we want to run, and this is set to 25 for dithering objects into the landscape, so we dither a total of 25 * 255 = 6375 dots from the screen buffer to the screen before copying over the whole screen buffer to complete the picture.</p>
+
+						<p>We'll take a look at the dithering algorithm in a minute, but first let's talk about dithering on the game over screen, as it's a little more involved.</p>
+
+						<h2 class="articleSubheader">Dithering on the game over screen<br>
+													 ---------------------------------</h2>
+
+						<p>The dithering process is a key part of the game over screen, when the victorious object hovers into view in a mess of dots. There's a video of the process at the start of this article, and here's a slowed-down animation of the main steps involved, which makes it easier to see what's happening:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/game_over_dither.gif" alt="Dithering on the game over screen in the BBC Micro version of The Sentinel">
+
+						<p>This process is managed by the <a href="/source/main/subroutine/showgameoverscreen.html">ShowGameOverScreen</a> routine, which is described in the deep dive on <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a>. The game over routine can be called in two different ways: when the player tries to hyperspace but doesn't have enough energy (see the <a href="program_flow_of_the_main_game_loop.html">program flow of the main game loop</a>), or when the player has all their energy absorbed by an enemy (see the <a href="program_flow_of_the_gameplay_loop.html">program flow of the gameplay loop</a>).</p>
+
+						<p>In terms of dithering, there are a few stages that you can see in the above animation.</p>
+
+						<ul>
+							<li>First, the screen from the end of the game is decayed by calling <a href="/source/main/subroutine/decayscreentoblack.html">DecayScreenToBlack</a>. This decays the screen to black with a mass of randomly placed black dots, so this takes the screen from the end of the game and slowly obliterates it with black dots. The decaying is done by the <a href="/source/main/subroutine/drawblackdots.html">DrawBlackDots</a> routine and consists of 12,000 dots for when the player runs out of energy when trying to hyperspace, or 72,000 dots for when the player is absorbed by the Sentinel.</li>
+
+							<li>We then set bit 7 of drawLandscape. This makes the <a href="/source/main/subroutine/irqhandler.html#irqh7">interrupt handler</a> call the <a href="/source/main/subroutine/drawblackdots.html">DrawBlackDots</a> routine on each interrupt, so that it draws 80 random black dots on the screen in the background, while the rest of the game over process continues on in the foreground. This means that when we start dithering the victorious object onto the screen in the next step, we do it at the same time as the interrupt handler is randomly fading the screen to black. This creates the hypnotic effect of the winning entity fading in and out of the screen as the game ends.</li>
+
+							<li>Next, the victorious object (which is the Sentinel in our example) is dithered onto the screen by calling <a href="/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a>. The victor is drawn without the surrounding landscape and with a black starry background, so the culprit appears to hover into view at the same time as the player's view continues dissolve. We tell the routine how many inner loops of 255 pixels we want to run, and this is set to 40 for the game over screen, so we dither a total of 40 * 255 = 10,200 dots from the screen buffer to the screen. Also, because this is the game over screen, we do not copy the whole buffer onto the screen at the end of the process.</li>
+
+							<li>We finish off by calling <a href="/source/main/subroutine/decayscreentoblack.html">DecayScreenToBlack</a> again, this time drawing 72,000 dots, irrespective of how the player died.</li>
+						</ul>
+
+						<p>The clever part about this process is how the two concurrent decaying processes interact, with the interrupt process blanking pixels at the same time as the object is dithered onto the screen. It's a neat way of representing the player being absorbed by the pulsatingly hypnotic gaze of the Sentinel....</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/game_over_dither_09.png" alt="Dithering on the game over screen in the BBC Micro version of The Sentinel">
+
+						<p>Now that we've seen where the dithering process is used, let's see how it's implemented.</p>
+
+						<h2 class="articleSubheader">The dithering routine<br>
+													 ---------------------</h2>
+
+						<p>Dithering the screen is done in two places:</p>
+
+						<ul>
+							<li>The <a href="/source/main/subroutine/drawblackdots.html">DrawBlackDots</a> routine draws 80 randomly placed black dots to the screen, so the screen decays to black in a dithered manner.</li>
+
+							<li>The <a href="/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a> routine can optionally dither the contents of the screen buffer onto the screen, for a configurable number of dots.</li>
+						</ul>
+
+						<p>Both routines call the <a href="/source/main/subroutine/getrandomnumber.html">GetRandomNumber</a> routine to generate random numbers that can be used to determine the placement of the dithered pixels. This routine uses a different pseudo-random algorithm to the landscape seed generator; see the deep dive on <a href="random_number_generation.html">random number generation</a> for details.</p>
+
+						<p>The DrawBlackDots works by taking two pseudo-random numbers. We clear bits 6 and 7 in one of them (while keeping the original bits for later) and use this as the high byte in a two-byte value, with the other number as the low byte, so we get a random number in the range 0 to &amp;1FFF. If the result is greater than &amp;1DFF then two more numbers are chosen, until we have a random number in the range 0 to &amp;1DFF. We can then add this to the address of the start of screen memory in viewScreenAddr(1 0) to get the address of a random pixel byte within screen memory. Finally, we take bits 6 and 7 from the original random number that we used for the high byte above, and use these to choose which pixel within the pixel byte we should blacken.</p>
+
+						<p>The DitherScreenBuffer routine is a bit more complicated, because we need to cap the randomness to fit the size of the object that we've drawn into the screen buffer. The first step is to take the width of the object in character columns and create a bit mask that will let us convert random numbers into the correct column range, and then we take two random numbers and use them to calculate an offset into screen memory, incorporating the offset of the previous pixel byte that we dithered to make it unlikely that we will dither this pixel near to the previous one.</p>
+
+						<p>This is then fed into a convoluted algorithm that converts this random number into an offset within screen memory of the random pixel byte that we can use for dithering one pixel of the screen buffer to the screen, and the next step is to convert this offset into both a screen memory address and the corresponding screen buffer address, so we can copy the pixel from the screen buffer to the screen. The column buffer wraps around in memory, as described in the deep dive on <a href="screen_buffers.html">screen buffers</a>, so we need to cater for this as well.</p>
+
+						<p>As with DrawBlackDots, the above process leaves bits 6 and 7 unused from one of the random numbers, so we use these to choose which pixel within the pixel byte we should copy into screen memory, and then we copy that pixel to the screen. This is repeated 255 times for each inner loop, repeated via an outer loop of 25 or 40 as required.</p>
+
+						<p>And that's how the Sentinel gets dithered onto the screen when, for the umpteenth time, the player succumbs to the relentless scanning of the enemy.</p>
 					</div>
 				</div>
 
