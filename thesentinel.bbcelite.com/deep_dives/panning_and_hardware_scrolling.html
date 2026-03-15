@@ -13,163 +13,194 @@ page_header("deep_dives", "panning_and_hardware_scrolling.html", "Panning and ha
 
 						<p>On the surface, the world of the Sentinel is a quiet place. Maybe a bit too quiet, in an eerie kind of way, but it's quiet nonetheless. It's particularly calm at the start of each landscape, when you get a chance to pan around the landscape and get your bearings without having to worry about the Sentinel tracking you down and sucking the life out of you.</p>
 
-						<p>But codewise, The Sentinel is the proverbial duck: calm on the surface, but paddling like crazy underneath, and the best example is when panning. The second that you press one of the pan keys, the code kicks up a gear, and although absolutely nothing happens on-screen and the game appears to sit there, pondering your key press, beneath the surface the code is frantically configuring screen buffers, drawing segments of landscape and getting ready to scroll the screen, all so that you can quietly pan around the landscape, blissfully unaware of the programming miracle that's happening beneath the lid of your BBC Micro.</p>
+						<p>But code-wise, The Sentinel is the proverbial duck: calm on the surface, but paddling like crazy underneath, and the best example is when panning. The second that you press one of the pan keys, the code kicks up a gear, and although absolutely nothing happens on-screen and the game appears to sit there, pondering your key press, beneath the surface the code is frantically configuring screen buffers, drawing segments of landscape and getting ready to scroll the screen, all so that you can quietly pan around the landscape, blissfully unaware of the programming miracle that's happening beneath the lid of your BBC Micro.</p>
 
-						<p>In this article, we'll take a look underwater to see just how frantic this particular duck has to paddle.</p>
+						<p>In this article, we'll take a look underwater to see just how frantically this particular duck has to paddle.</p>
 
 						<h2 class="articleSubheader">Visualising a screen pan<br>
 													 ------------------------</h2>
 
+						<p>The screen panning process can be split into these top-level stages:</p>
 
-						<p>You can see that the buffered column is split into two parts, with the top part of the column on the left and the bottom part of the column on the right. In this example, this is what you would see if you panned left from this screen:</p>
+						<ol>
+							<li>Detecting a screen pan: When a pan key press is detected in the main gameplay loop ("S", "D", "L" or ","), it returns control to the main game loop to process the pan.</li>
 
-						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/landscape_0000_start_right.png" alt="The starting screen, panned right, for landscape 0000 in the BBC Micro version of The Sentinel">
+							<li>Processing the screen pan: The main game loop configures the screen buffer to the correct type for the pan (i.e. a column buffer for a horizontal pan or a row buffer for a vertical pan) and then calls PanLandscapeView to draw the new strip of landscape into the buffer.</li>
 
-						<p>to this screen:</p>
+							<li>Scrolling the landscape view: The interrupt handler is configured to scroll the screen and copy the contents of the screen buffer onto the screen, to perform the actual pan.</li>
+
+							<li>The main game loop waits until the pan has been fully drawn and passes control back to the main gameplay loop so the game continues.</li>
+						</ol>
+
+						<p>We'll look at these three steps in more detail below, but first let's see a pan in action, as that might make it easier to follow the process.</li>
+
+						<p>Let's examine a left pan, which the player can initiate by pressing and holding "S". In our example, let's pan left from this position:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/panning/left_pan_00.png" alt="A landscape view in the BBC Micro version of The Sentinel">
+
+						<p>After a short pause, during which nothing appears to happen (but which has actually triggered a hive of activity within the game code), the landscape view scrolls sideways. If we mark the starting point with a vertical red line (which doesn't appear in-game), then you can see the process pretty clearly:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/panning/left_pan.gif" alt="A left pan in the BBC Micro version of The Sentinel">
+
+						<p>The result is this landscape view, which just happens to be the starting point on landscape 0000, in case you recognise it:</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/landscape_0000_start.png" alt="The starting screen, panned right, for landscape 0000 in the BBC Micro version of The Sentinel">
 
-						<p>So the new part of the landscape is the strip down the left side of the screen, i.e. the part with the trees, so this is what we draw into the screen buffer:</p>
+						<p>You can see that to get from one view to the next, we have to scroll a wide column of new landscape content into the screen from the left. This is what the new content looks like:</p>
 
-						<img class="titleImage marginBorder" style="width: 160px" src="/images/screen_buffer/column_buffer_contents.png" alt="The contents of the column buffer in the BBC Micro version of The Sentinel">
+						<img class="titleImage marginBorder" style="width: 128px" src="/images/panning/left_pan_buffer_contents.png" alt="The contents of the column buffer in the BBC Micro version of The Sentinel">
 
-						<p>The best way to understand the screen buffer is to visualise it - quite literally. If we hack the game code to display the screen buffer on-screen instead of normal screen memory, then this is the kind of thing we might see:</p>
+						<p>The new content is 64 pixels wide and 192 pixels high; the landscape view is 160 pixels wide and 192 pixels high, so the new content is 40% of a screen width (so each screen is 2.5 pans wide).</p>
+
+						<p>Let's have a look at how this new content gets drawn into the screen buffer. The structure of the screen buffer is described in the deep dive on <a href="screen_buffers.html">screen buffers</a>, where you can read about what the following screenshots represent, but this is what the screen buffer looks like in memory once the new content is drawn:</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/column_buffer_5.png" alt="The column buffer in the BBC Micro version of The Sentinel">
 
-						<p>We'll explain what's going on in a minute, but in this particular case we're looking at the screen buffer when it's configured as a column buffer for a left pan, which means the buffer contains the vertical strip of newly revealed landscape that gets scrolled into the left edge of the screen when the player is panning to the left.</p>
+						<p>The column buffer is split in two, and looks like this when those two parts are combined:</p>
 
-						<p>If we slow down the drawing process, then you can see the buffer being populated with the left portion of the starting screen:</p>
+						<img class="titleImage marginBorder" style="width: 160px" src="/images/screen_buffer/column_buffer_contents.png" alt="The contents of the column buffer in the BBC Micro version of The Sentinel">
+
+						<p>In the case of a screen pan, we don't need to use the width of the entire column buffer, which is why the right portion of the buffer is full of random content that we can ignore (the column buffer is 80 pixels wide, but we only need 64 pixels for a pan; we only use the full width of the column buffer when updating individual 3D objects on-screen).</p>
+
+						<p>Here's the new content being drawn into the screen buffer:</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/column_buffer.gif" alt="The column buffer being drawn in the BBC Micro version of The Sentinel">
 
-						<p>This drawing happens behind closed doors, as the screen buffer is not normally visible to the player; it only becomes visible when the contents are copied into screen memory after the landscape has been drawn.</p>
+						<p>This drawing process starts as soon as the player presses a pan key, and it continues until either the drawing process has finished (in which case we move on to the screen-scrolling process), or the player releases the pan key (in which case the whole process is aborted and we go back to the gameplay loop).</p>
 
+						<p>If we slow down the drawing process, then you can see just how involved it is. It starts by drawing the far tile row from near to far, then it moves on to the two tree objects, again drawing the furthest one first, and finally it moves on to the tile row in front, drawing over a lot of the work that's gone into the previous steps:</p>
 
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/column_buffer_slow.gif" alt="The column buffer being drawn in the BBC Micro version of The Sentinel">
 
+						<p>Once the new bit of landscape has been drawn into the screen buffer, the scrolling process can start. As we saw above, the new content is scrolled onto the screen from the left, while the rest of the screen content is scrolled to the right.</p>
 
-						<p>In this example, this is what you would see if you panned down from this screen:</p>
+						<p>This scrolling process is performed by the interrupt handler using hardware scrolling, and because the interrupt routine is called 50 times a second, the scrolling is pretty smooth. If we slow down this process, you can see that the new content is introduced onto the screen in a number of small steps:</p>
 
-						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/landscape_0000_start_right.png" alt="The starting screen, panned right, for landscape 0000 in the BBC Micro version of The Sentinel">
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/panning/left_pan_slow.gif" alt="A slow left pan in the BBC Micro version of The Sentinel">
 
-						<p>to this screen:</p>
+						<p>Each step scrolls the screen to the right by one character block (i.e. one byte in screen memory), which equates to four pixels in screen mode 5. So the new content, with its width of 64 pixels, is scrolled onto the screen in 64 / 4 = 16 steps.</p>
 
-						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/landscape_0000_start_right_down.png" alt="The starting screen, panned right and down, for landscape 0000 in the BBC Micro version of The Sentinel">
+						<p>For a vertical pan, the same approach applies, except we configure the screen buffer as a row buffer and scroll the new content in from above or below, depending on the direction of the pan. For example, if we scroll down from the same screen as before, rather than left, we get this pan:</p>
 
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/panning/down_pan.gif" alt="A downwards pan in the BBC Micro version of The Sentinel">
 
-						<p>Contents:</p>
+						<p>This scrolls the following new bit of landscape onto the screen from below, and the new part is 160 pixels wide and 64 pixels high:</p>
 
-						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/row_buffer_contents.png" alt="The contents of the row buffer in the BBC Micro version of The Sentinel">
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/panning/down_panbuffer_contents.png" alt="The contents of the row buffer in the BBC Micro version of The Sentinel">
 
-						<p>Buffer:</p>
+						<p>This gets drawn into the screen buffer like this, where it takes up the row buffer along the top of the screenshot (the bottom-left part of the screen buffer still contains remnants of the column buffer from the previous pan, but we ignore this):</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/screen_buffer/row_buffer_3.png" alt="The row buffer in the BBC Micro version of The Sentinel">
 
+						<p>Once it's drawn, the new content gets scrolled onto the screen in eight steps of eight pixels each (as the screen is scrolled upwards by one character block at a time, and each character block is eight pixels tall). It looks like this when it's slowed down:</p>
 
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/panning/down_pan_slow.gif" alt="A slow downwards pan in the BBC Micro version of The Sentinel">
 
+						<p>The scrolling isn't quite as smooth as for the sideways pan, as each step is eight pixels rather than four, but mode 5 doesn't have square pixels and vertical pans scroll in half the number of steps (with eight steps for vertical pans, 16 steps for horizontal pans), so it isn't terribly obvious.</p>
+
+						<p>Now that we know what a screen pan looks like, let's look at the various stages in more detail.</p>
+
+						<h2 class="articleSubheader">Detecting a screen pan<br>
+													 ----------------------</h2>
+
+						<p>During normal gameplay, when the landscape is visible and the player can pan around and interact with tiles, the code spends most of its time looping around at the start of the <a href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a> routine, waiting for a key to be pressed (see the deep dive on <a href="program_flow_of_the_gameplay_loop.html">program flow of the gameplay loop</a> for details).</p>
+
+						<p>The keyboard checks are performed in the background in the interrupt handler, and if an action key is pressed (which includes the pan keys) then bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#focusonkeyaction">focusOnKeyAction</a> gets set (see the deep dives on <a href="the_interrupt_handler.html">the interrupt handler</a> for details and <a href="the_key_logger.html">the key logger</a> for details).</p>
+
+						<p>Another way in which a pan key may be "pressed" is when the player has the crosshair sights on-screen, and moves them off the side of the screen. If this happens, then the code simulates a pan key being pressed by setting the panKeyBeingPressed variable, so that a pan will be triggered in the same way.</p>
+
+						<p>The gameplay loop continues to loop around, doing things like applying enemy tactics and processing non-action key presses such as the pause button, but as soon as an action key is pressed (either by the player or by the sights routine) and bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#focusonkeyaction">focusOnKeyAction</a> is set, the loop terminates so the game can focus its attention on the key press. The very next check is whether this is a pan key being pressed, and if it is, ProcessGameplay returns control back to the main game loop to process the pan, making sure to clear the C flag as it does so. (If this isn't a pan key press, then it gets processed in the ProcessGameplay routine.)</p>
+
+						<p>On returning to the main game loop, the code in <a href="/source/main/subroutine/maingameloop_part_1_of_2.html">part 2 of MainGameLoop</a> checks to see if the C flag is clear, and if it is then we know that control has returned because of a pan key press. There are other reasons to return to the main game loop - if the Sentinel has won, if the player has pressed the quit key, or if the player has performed a U-turn or changed tile - but these all return with the C flag set, so we can filter them out.</p>
+
+						<p>If the C flag is clear, then we jump to <a href="/source/main/subroutine/maingameloop_part_2_of_2.html#game8">label game8 in MainGameLoop</a> to process the pan. Throughout the rest of the process, we can find out  which type of pan is in progress by looking at the <a href="/source/main/workspace/zero_page.html#lastpankeypressed">lastPanKeyPressed</a> variable, which contains the following values:
+
+						<ul>
+							<li>0 = pan right</li>
+
+							<li>1 = pan left</li>
+
+							<li>2 = pan up</li>
+
+							<li>3 = pan down</li>
+						</ul>
+
+						<p>Given this information, let's look at how the pan is processed.</p>
+
+						<h2 class="articleSubheader">Processing the screen pan<br>
+													 -------------------------</h2>
+
+						<p>On returning to the main game loop after identifying that a pan has been initiated, we initialise a few variables and check whether the crosshair sights are visible. If they are visible, then we know that the pan has actually been triggered by the player moving the sights off-screen rather than them pressing a pan key, so we flag this in bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#keepcheckingpankey">keepCheckingPanKey</a> (a clear bit indicates a crosshair-related pan, a set bit indicates a normal player-initiated pan). This controls whether or not we check for the player releasing the pan key in the call to DrawLandscapeView below (if the crosshairs are present, then we don't check for the pan key release, so we never abort the pan).</p>
+
+						<p>After these initial checks, we call the <a href="/source/main/subroutine/panlandscapeview.html">PanLandscapeView</a> routine to draw the new part of the landscape for the pan. This is what it does:</p>
+
+						<ul>
+							<li>Rotate the camera to the correct angle for the new part of the landscape (by pitching or yawing the player's gaze).</li>
+
+							<li>Call <a href="/source/main/subroutine/fillscreen.html">FillScreen</a> to fill the screen buffer with alternating colour 0/1 (blue/black) pixel rows, for the sky.</li>
+
+							<li>Call <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView</a> to draw the new part of the landscape into the screen buffer.
+
+								<ul>
+									<li>If, during the drawing process, the player releases the pan key before the drawing has finished, the drawing routine will abort the drawing process and return early, with the C flag set. Note that this test is not applied if we are panning the screen because the crosshairs have moved off the side of the screen, as in this case we need to complete the pan regardless (so we only  apply this test if bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#keepcheckingpankey">keepCheckingPanKey</a> is set).
+
+									<li>If the drawing process completes, the routine will return with the C flag clear.</li>
+								</ul>
+							</li>
+
+							<li>Check the C flag, and if it is set then the pan has been aborted by the player, so revert any camera rotation and return back to the main game loop.</li>
+
+							<li>If we get here then the landscape has been drawn successfully, so update the player's rotation to the correct value following the pan (so the player object rotates).</li>
+
+							<li>Call the <a href="/source/main/subroutine/startscrollingview.html">StartScrollingView</a> routine with 8 (vertical pan) or 16 (horizontal pan) to set the value of <a href="/source/main/workspace/main_variable_workspace.html#numberofscrolls">numberOfScrolls</a> to this value, and set <a href="/source/main/variable/screenbufferaddr.html">screenBufferAddr(1 0)</a> to the address where the interrupt handler should start fetching new content to scroll onto the screen.</li>
+						</ul>
+
+						<p>So the new part of the landscape is now in the screen buffer and the scrolling process has been configured, so now we draw the results of the pan on-screen.</p>
 
 						<h2 class="articleSubheader">Scrolling the landscape view<br>
 													 ----------------------------</h2>
 
+						<p>The final step in this burst of activity is to scroll the screen itself. This is the first time the player sees the results of all this work; if they release the pan key before this point, then everything gets aborted and they are none the wiser.</p>
 
-<!--
+						<p>Assuming the pan key is still being held down (or if this is a crosshair-related pan), the scrolling process is initiated once we have returned back to the main game loop following the call to PanLandscapeView. The latter sets the <a href="/source/main/workspace/main_variable_workspace.html#numberofscrolls">numberOfScrolls</a> variable to the number of scroll steps to perform, as follows:</p>
 
+						<ul>
+							<li>8 for a vertical pan</li>
 
-ProcessGameplay exits with CLC if pan key is being pressed
-Main loop then jumps to game8 to process the pan
+							<li>16 for a horizontal pan</li>
 
-This calls:
+							<li>0 if the pan has been aborted</li>
+						</ul>
 
+						<p>Back in the main game loop, we first call <a href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a> to update the icons in the top-left corner of the screen to show the player's current energy level and redraw the scanner box. We do this to ensure that the icon screen buffer is updated with the correct content for the top row, so it can be refreshed after every scrolling step in the interrupt routine (as otherwise the top row would scroll along with the rest of the screen contents, and we don't want that).</p>
 
- JSR PanLandscapeView   \ Draw the new part of the landscape view required for
-                        \ the screen pan, and if it completes (i.e. if the
-                        \ player hasn't released the pan key in the meantime)
-                        \ then initialise the interrupt-based scrolling process
-                        \ so the landscape view will scroll and perform the pan
-                        \ in the background
+						<p>Finally, the scrolling process is triggered by the simple act of setting the <a href="/source/main/workspace/main_variable_workspace.html#scrollcounter">scrollCounter</a> variable to the number of scroll steps to perform, i.e. to the number of steps in numberOfScrolls. This variable is checked by the interrupt handler on each call, and if it is non-zero then the screen is scrolled by one step and the value of scrollCounter is decremented, so simply setting this variable to a non-zero value will trigger the screen-scrolling process in the interrupt handler.</p>
 
-PanLandscapeView
-----------------
-Sets up angles for drawing view
+						<p>The main game loop therefore just sets the value of scrollCounter, and then enters a loop that waits for scrollCounter to count down to zero. If the pan was aborted and numberOfScrolls was set to zero by PanLandscapeView, then none of this has any effect and no scrolling occurs, but if numberOfScrolls is set to 8 or 16, then that's the number of scroll steps that will be applied. The main game loop therefore waits until the pan has been fully drawn by the interrupt handler, and then passes control back to the main gameplay loop so the game continues.</p>
 
-then calls DrawLandscapeView
+						<p>The deep dive on <a href="the_interrupt_handler.html">the interrupt handler</a> describes the handler in more detail, but here's the relevant part for the pan. If scrollCounter is non-zero, then we do the following:
 
-which keeps checking if the pan key is still being held down (according to the value of keepCheckingPanKey) and aborts early if it isn't
+						<ul>
+							<li>Call <a href="/source/main/subroutine/scrollplayerview.html">ScrollPlayerView</a> to scroll the screen (using a hardware scroll) and copy data from the screen buffer into screen memory to implement the player's scrolling landscape view. This also decrements <a href="/source/main/workspace/main_variable_workspace.html#scrollcounter">scrollCounter</a>, so ScrollPlayerView will end up being called the correct number of times for the landscape pan.</li>
 
-(keepCheckingPanKey lets us force a pan to completion for when the screen scrolls via the sights moving off-screen)
+							<li>Call <a href="/source/main/subroutine/showiconbuffer.html">ShowIconBuffer</a> to display the contents of the icon screen buffer by copying it into screen memory, as the scrolling process will have scrolled this part of the screen, so we need to redraw it to prevent the energy icons and scanner from moving.</li>
+						</ul>
 
-If the pan key is  released, PanLandscapeView jumps to lpan2 to revert angles and return to main game loop
+						<p>The important part is the ScrollPlayerView routine, which scrolls the screen and copies the new landscape content into screen memory, as follows:</p>
 
-Keeps going until either the landscape has been drawn and calls JSR StartScrollingView with 8 or 16 to set the value of numberOfScrolls and set screenBufferAddr(1 0) to the address where the interrupt handler should start fetching new content to scroll onto the screen, and then return
+						<ul>
+							<li>Update <a href="/source/main/workspace/main_variable_workspace.html#viewscreenaddr">viewScreenAddr(1 0)</a> to the new address of the player's scrolling landscape. The amount of change that we need to apply to viewScreenAddr(1 0) for each of the four directions is given in the tables <a href="/source/main/variable/scrollscreenhi.html">scrollScreenHi</a> and <a href="/source/main/variable/scrollscreenlo.html">scrollScreenLo</a>, as 16-bit signed values, so we just need to look up the correct value and apply it to viewScreenAddr(1 0).</li>
+                        
+							<li>Reprogram the 6845 CRTC chip to scroll the screen in hardware (so-called "hardware scrolling") by setting 6845 registers R12 and R13 to the new address for the start of screen memory. This is the step that actually scrolls the screen, though it doesn't incorporate the new content at this point, it just wraps the screen content around.</li>
 
-On return we configure the interrupt-driven scrolling process and wait for it to finish (if numberOfScrolls is 0 because the scroll was aborted then no pan is started)
+							<li>Decrement the counter in scrollCounter.</li>
+                        
+							<li>Set toAddr(1 0) to the address of the area in screen memory that we now need to update with the new content.</li>
 
- JSR PanLandscapeView   \ Draw the new part of the landscape view required for
-                        \ the screen pan, and if it completes (i.e. if the
-                        \ player keeps holding the pan key throughout the whole
-                        \ drawing process), then set up the following:
-                        \
-                        \   * Set numberOfScrolls to the correct number of
-                        \     scrolls required for the pan (8 or 16)
-                        \
-                        \   * Set screenBufferAddr(1 0) to the address where the
-                        \     interrupt handler should start fetching new
-                        \     content to scroll onto the screen
-                        \
-                        \ The scrolling won't start yet, but it will be done in
-                        \ the background during the loop at game10 below, after
-                        \ being triggered by setting scrollCounter to the
-                        \ non-zero value in numberOfScrolls
-                        \
-                        \ If the player releases the pan key before the drawing
-                        \ process has been finished, numberOfScrolls will be
-                        \ left at zero and the scrolling process will never be
-                        \ triggered
+							<li>Fall through into the <a href="/source/main/subroutine/showscreenbuffer.html">ShowScreenBuffer</a> routine to calculate the correct address in screen memory for the new content, and then call either <a href="/source/main/subroutine/showbufferrow.html">ShowBufferRow</a> or <a href="/source/main/subroutine/showbuffercolumn.html">ShowBufferColumn</a> to copy the contents of the screen buffer into the area we need to update, so that the scroll reveals a strip of the new content.</p>
+                        </ul>
 
- LSR keepCheckingPanKey \ Clear bit 7 of keepCheckingPanKey so DrawLandscapeView
-                        \ will keep drawing the landscape irrespective of the
-                        \ pan keys being held down (so this takes the routine
-                        \ back to its default behaviour)
-
- JSR UpdateIconsScanner \ Update the icons in the top-left corner of the screen
-                        \ to show the player's current energy level and redraw
-                        \ the scanner box
-                        \
-                        \ We call this to ensure that the icon screen buffer is
-                        \ updated with the correct content for the top row, so
-                        \ it can be refreshed after every scrolling step in the
-                        \ interrupt routine
-
- LDA numberOfScrolls    \ Set scrollCounter to the number of scrolls required,
- STA scrollCounter      \ so the interrupt handler will scroll the screen by
-                        \ this many steps in the background
-
-.game10
-
- LDA scrollCounter      \ Loop around until scrollCounter is zero, so this waits
- BNE game10             \ until the interrupt handler has finished scrolling the
-                        \ landscape view, thus implementing the pan on-screen
-
-
-
-
-
-
-screenBufferAddr
-screenBufferHi
-screenBufferLo
-
-
-
-
-
-
-
-You know those dreams where you're desperate to run away but your feet are stuck to the floor? And when you do manage to get unstuck, every movement feels like you're wading through jelly? That's The Sentinel.
-
-Include screen buffers being drawn video?
--->
-
+						<p>Once the landscape has been fully scrolled by multiple calls to the interrupt handler, the main game loop stops looping (because scrollCounter is now zero), and it passes control back to the main gameplay loop so the game can continue.</p>
 					</div>
 				</div>
 
