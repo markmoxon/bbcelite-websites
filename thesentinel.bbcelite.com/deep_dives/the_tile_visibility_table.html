@@ -1,0 +1,149 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "the_tile_visibility_table.html", "The tile visibility table", "The tile visibility table", "A deep dive into the tile visibility table in The Sentinel on the BBC Micro", "the_sentinel", "deep_dives_drawing_the_landscape", "the_tile_visibility_table");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="dithering_to_the_screen.html">Dithering to the screen</a><a class="next" rel="next" title="Next deep dive" href="calculating_angles_for_the_landscape_view.html">Calculating angles for the landscape view</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The pre-populated tile visibility table that helps speed up landscape drawing</h2>
+
+						<p>Drawing the landscape in The Sentinel is a big effort; there's an awful lot of complicated maths involved, and if there's one thing that's difficult on an 8-bit computer, it's complicated maths.</p>
+
+						<p>One way of speeding things up is to do as much maths as you can in advance, and then cache the results so you don't have to repeat those calculations. The problem is that the BBC Micro only has 32K of memory, so there isn't a lot of space for caching large amounts of data, a problem that the game tries to address by implementing drawing tables to store just the results that we need for the task currently at hand, and no longer (see the deep dive on <a href="the_drawing_tables.html">the drawing tables</a> for details).</p>
+
+						<p>There is one proper, old-fashioned cache table in The Sentinel, though, and that's the tile visibility table, which we'll look at here.</p>
+
+						<h2 class="articleSubheader">Tile visibility<br>
+													 ---------------</h2>
+
+						<p>When a new landscape is generated and the player and other objects are placed in their starting positions, the game calculates the visibility of every tile in the landscape, from the perspective of the player. The idea is that this will save time when we have to draw the landscape, which we need to do when panning the screen; if we know that part of the landscape isn't visible, then we don't have to draw it.</p>
+
+						<p>Specifically, the <a href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a> routine populates the <a href="/source/main/variable/tilevisibility.html">tileVisibility</a> table with one bit for each tile, storing a 1 if the tile is visible from the player's point of view, or a 0 if the tile is not visible. When we come to draw the landscape tile by tile, <a href="/source/main/subroutine/gettileviewangles_part_3_of_4.html">part 3 of GetTileViewAngles</a> takes this visibility value and applies it to the tileViewData drawing table by zeroing the entry when a tile is not visible, and this then determines whether the DrawTileAndObjects</a> routine draws the tile or not. In this way, tiles that the player can't see don't get drawn.</p>
+
+						<p>When populating the tileVisibility table, the GetTileVisibility routine makes use of the two transitory drawing tables at <a href="/source/main/workspace/stack_variables.html#oddvisibility">oddVisibility</a> and <a href="/source/main/workspace/stack_variables.html#evenvisibility">evenVisibility</a>. These store the visibility of individual tile corners in the most recently processed odd and even rows, and they use the <a href="/source/main/workspace/zero_page.html#drawingtableoffset">drawingTableOffset</a> and <a href="/source/main/workspace/zero_page.html#drawingtableindex">drawingTableIndex</a> variables to manage access to the cached data, just as with the other drawing tables. For a full description of how the drawing tables work, check out the deep dive on <a href="the_drawing_tables.html">the drawing tables</a>.</p>
+
+						<p>The top-level process for populating the tileVisibility table in the <a href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a> routine is as follows:</p>
+
+						<ul>
+							<li>Set drawingTableOffset = 0 so the call to first call to GetRowVisibility (for tile row 31) will populate the table at oddVisibility with the tile visibilities of the row being analysed.</li>
+
+							<li>Zero all 128 bytes of the tileVisibility table, so by default all tile corners are marked as hidden.</li>
+
+							<li>Call <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> to calculate tile corner altitudes and maximum tile corner altitudes for each tile in the landscape.</li>
+
+							<li>Set zTileRow = 31 and call <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> to calculate whether each tile corner in the rearmost row is obscured from the player by any intervening landscape, putting the results into 32 entries in the table at oddVisibility (as drawingTableOffset = 0) as follows:
+
+								<ul>
+									<li>%00000000 if the tile corner is not visible from the player's position.</li>
+
+									<li>%11111111 if the tile corner is visible from the player's position.</li>
+								</ul>
+							</li>
+
+							<li>Loop through each tile row, stepping forwards from the rear row to the front row and doing the following for each row:
+
+								<ul>
+									<li>Decrement zTileRow to move forwards by one row (so we start this loop with zTileRow = 30, for the rear tile row).</li>
+
+									<li>Flip the value of drawingTableOffset between 0 and 32 with an EOR #32 instruction, so that it points to evenVisibility (if the previous row's results were stored in oddVisibility) or oddVisibility (if the previous row's results were stored in evenVisibility). This means the current row will be stored in the different drawing table to the previous row, and we flip between the two as we work through the rows.</li>
+
+									<li>Call <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> to calculate whether each tile corner in the current row is obscured from the player by any intervening landscape, putting the results into 32 entries in the table at drawingTableOffset, with %00000000 for not visible and %11111111 for visible.</li>
+
+									<li>Work through the 31 tiles on this row from right to left, and do the following:
+
+										<ul>
+											<li>If this tile is flat and at a higher altitude than the player, then this tile is not visible to the player, so store this in the table by clearing the tile's bit in the tileVisibility table.</li>
+
+											<li>Otherwise mark this tile as being visible (i.e. a set bit in tileVisibility) if any of the tile corners in this tile are visible, or mark this tile as being not visible (i.e. a clear bit in tileVisibility) if none of the corners are visible.</li>
+										</ul>
+									</li>
+
+									<li>Loop back to process the next row forward until we have processed all tiles in the landscape.</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>The two key parts of this process are the <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> and <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> routines, which fetch tile data and calculate tile visibility respectively. We'll look at both of these below, but first a quick note on the structure of the tileVisibility table.</p>
+
+						<p>The position of a tile's bit within the tileVisibility table is calculated in a rather complicated manner, presumably to make it harder to follow what's going on. We take the tile's column and row numbers, each of which are in the range 0 to 30, and we calculate both the index of the relevant byte within the table, and the index of the relevant bit within that byte.</p>
+
+						<p>The calculation is as follows. The index of the relevant byte within tileVisibility for a specific tile is given by a number in the range 0 to 127 where:</p>
+
+						<ul>
+							<li>Bit 7 is clear.</li>
+                        
+							<li>Bits 4-6 contain bits 2-4 of the column number.</li>
+                        
+							<li>Bits 0-3 contain bits 1-4 of the row number.</li>
+						</ul>
+
+						<p>Then the index of the bit within that byte is given by a number in the range 0 to 7 where:</p>
+
+						<ul>
+							<li>Bit 0 contains bit 0 of the of the tile row (via the C flag from above).</li>
+                                                
+							<li>Bits 1-2 contain bits 0-1 of the column number.</li>
+						</ul>
+
+						<p>There could be a method to this madness, but if there is, I haven't worked out what it is!</p>
+
+						<h2 class="articleSubheader">Calculating tile altitudes and shapes<br>
+													 -------------------------------------</h2>
+
+<a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a>
+
+						<ul>
+
+							<li>Call <a href=""></a> to </li>
+
+							<li>Call <a href=""></a> to </li>
+
+							<li>Call <a href=""></a> to </li>
+
+							<li>Call <a href=""></a> to </li>
+						</ul>
+
+
+						<h2 class="articleSubheader">Calculating tile visibility by row<br>
+													 ----------------------------------</h2>
+
+
+<a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a>
+
+						<ul>
+
+							<li>Call <a href=""></a> to </li>
+
+							<li>Call <a href=""></a> to </li>
+
+							<li>Call <a href=""></a> to </li>
+
+							<li>Call <a href=""></a> to </li>
+						</ul>
+
+
+
+
+
+
+
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="dithering_to_the_screen.html">Dithering to the screen</a><a class="next" rel="next" title="Next deep dive" href="calculating_angles_for_the_landscape_view.html">Calculating angles for the landscape view</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>
