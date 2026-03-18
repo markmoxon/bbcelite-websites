@@ -64,7 +64,7 @@
 									<li><a id="deep_dives_dashboard_hard-coded_division_in_the_dashboard_routines" href="/deep_dives/hard-coded_division_in_the_dashboard_routines.html"><span class="menuTitle">Hard-coded division in the dashboard routines</span> <span class="menuSummary">Using hand-tailored division code for fast calculations</span></a></li>
 								</ul>
 							</li>
-							<li id="deep_dives_the_theme"><span class="menuTitle">The Theme</span> <span class="menuSummary menuSummarySubmenu">Aliens, bullets and everything inbetween</span>
+							<li id="deep_dives_the_theme"><span class="menuTitle">The Theme</span> <span class="menuSummary menuSummarySubmenu">Aliens, bullets and everything in-between</span>
 								<ul id="submenu_deep_dives_the_theme">
 									<li class="menuItemHeader">The Theme</li>
 									<li><a id="deep_dives_the_theme_alien_feeding_and_growth_patterns" href="/deep_dives/alien_feeding_and_growth_patterns.html"><span class="menuTitle">Alien feeding and growth patterns</span> <span class="menuSummary">The many stages of the alien life cycle</span></a></li>
