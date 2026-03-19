@@ -105,7 +105,7 @@
 								<ul id="submenu_deep_dives_drawing_the_landscape">
 									<li class="menuItemHeader">Drawing the landscape</li>
 									<li><a id="deep_dives_drawing_the_landscape_the_tile_visibility_table" href="/deep_dives/the_tile_visibility_table.html"><span class="menuTitle">The tile visibility table</span> <span class="menuSummary">The pre-populated tile visibility table that helps speed up landscape drawing</span></a></li>
-									<li><a id="deep_dives_drawing_the_landscape_calculating_angles_for_the_landscape_view" href="/deep_dives/calculating_angles_for_the_landscape_view.html"><span class="menuTitle">Calculating angles for the landscape view</span> <span class="menuSummary">The trigonometry that converts the landscape into a landscape view</span></a></li>
+									<li><a id="deep_dives_drawing_the_landscape_calculating_quadrants_for_the_landscape_view" href="/deep_dives/calculating_quadrants_for_the_landscape_view.html"><span class="menuTitle">Calculating quadrants for the landscape view</span> <span class="menuSummary">How the drawing routines take a different perspective of the landscape view</span></a></li>
 									<li><a id="deep_dives_drawing_the_landscape_drawing_the_landscape_view" href="/deep_dives/drawing_the_landscape_view.html"><span class="menuTitle">Drawing the landscape view</span> <span class="menuSummary">Drawing a partial view of the landscape from back to front</span></a></li>
 									<li><a id="deep_dives_drawing_the_landscape_drawing_the_landscape_preview" href="/deep_dives/drawing_the_landscape_preview.html"><span class="menuTitle">Drawing the landscape preview</span> <span class="menuSummary">How the landscape preview is created at the start of each level</span></a></li>
 								</ul>

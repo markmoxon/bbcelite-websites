@@ -4,18 +4,76 @@ page_header("deep_dives", "drawing_the_landscape_view.html", "Drawing the landsc
 ?>
 
 				<div class="codeBlockWrapper nav">
-					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="calculating_angles_for_the_landscape_view.html">Calculating angles for the landscape view</a><a class="next" rel="next" title="Next deep dive" href="drawing_the_landscape_preview.html">Drawing the landscape preview</a></nav>
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="calculating_quadrants_for_the_landscape_view.html">Calculating quadrants for the landscape</a><a class="next" rel="next" title="Next deep dive" href="drawing_the_landscape_preview.html">Drawing the landscape preview</a></nav>
 				</div>
 
 				<div class="codeBlockWrapper">
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Drawing a partial view of the landscape from back to front</h2>
 
-						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
+						<p>The landscape in The Sentinel is a thing of beauty, and drawing it is a complicated process. The drawing isn't done in real-time; a complicated landscape may take a couple of seconds to render, as in this example:</p>
 
-						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/draw_landscape/view_5.mp4" type="video/mp4">
+						</video>
+
+						<p>In this example the player has just performed a U-turn, so the game redraws the entire landscape view. The player doesn't see the landscape being drawn in-game, however; normally the the colours are set to an all-blue palette for the drawing process, so the player just sees a blank blue screen while the game code draws the landscape, before the code changes the palette back to the correct colour scheme for the landscape and the updated scene is revealed.</p>
+
+						<p>If we disable this all-blue palette change to reveal what's going on behind the curtain, then we can see the landscape being drawn. Let's slow it down a bit so we can see it a bit more detail:</p>
+
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/draw_landscape/view_5_slow.mp4" type="video/mp4">
+						</video>
+
+						<p>You can see that the tiles are drawn from back to front, so landscape at the front obscures landscape at the back. Objects are drawn at the same time as the tiles they appear on, and object stacks are drawn in the correct order; in the case of the Sentinel and its tower, the Sentinel is slightly higher than the player, so the Sentinel gets drawn first and then the tower.</p>
+
+						<p>In this deep dive we'll take a look at this drawing process in detail.</p>
+
+						<h2 class="articleSubheader">A top-level view of the drawing process<br>
+													 ---------------------------------------</h2>
+
+						<p>The landscape is drawn by calling the <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView</a> routine. There's a lot going on in this three-part routine, so let's break down the top-level stages.</p>
+
+						<ul>
+							<li><a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">Part 1 of DrawLandscapeView</a> defines a lot of variables, works out which quadrant the player is looking at and calculates the tile coordinate of the viewer, but with the axes rotated to match the orientation of the viewer, so the x- and z-coordinate axes are from the perspective of the viewer rather than of the 3D world.</li>
+
+							<li><a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html">Part 2 of DrawLandscapeView</a> works through the landscape in the quadrant that the viewer is looking at, drawing one row of tiles and objects at a time, starting from the back row (from the perspective of the viewer) to the row just in front of the viewer. It calls a number of routines to do this, including:
+
+								<ul>
+									<li><a href="/source/main/subroutine/gettileviewedges.html">GetTileViewEdges</a> works out the extent of each row of tiles that we need to draw, by working out which tiles are at the edges of the visible part of the row.</li>
+
+									<li><a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles</a> calculates the pitch and yaw angles for each tile corner in the row, relative to the viewer, and whether the corners are on-screen.</li>
+
+									<li><a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a> draws a row of tiles between the left visible edge and the right visible edge, in two parts towards each side of the viewer. It draws each tile (and any objects on the tile) by calling <a href="/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a>, which in turn calls the following as required:
+
+										<ul>
+											<li><a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a> to draw a flat tile</li>
+											<li><a href="/source/main/subroutine/drawslopingtile.html">DrawSlopingTile</a> to draw a sloping tile</li>
+											<li><a href="/source/main/subroutine/drawtwofacetile.html">DrawTwoFaceTile</a> to draw a tile with a two-faced gully or ridge</li>
+											<li><a href="/source/main/subroutine/drawobject.html">DrawObject</a> to draw a single 3D object on a tile</li>
+											<li><a href="/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a> to draw a stack of 3D objects</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+
+							<li><a href="/source/main/subroutine/drawlandscapeview_part_3_of_3.html">Part 3 of DrawLandscapeView</a> draws the tile row beneath the viewer, again using the <a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles</a> and <a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a> routines from the previous step. The viewer can only see one half of the row, because they are standing on it, so we need to work out which half this is (if they can see any of the row at all) and then draw it. We then draw the tile directly beneath the viewer with a call to <a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a>, and then we are done.</li>
+						</ul>
+
+						<p>Part 1 is explained in detail in the deep dive on <a href="calculating_quadrants_for_the_landscape_view.html">calculating quadrants for the landscape view</a>. For the purposes of this article, I'm going to explain the drawing process for when the viewer is looking towards the back of the landscape in the preview, in which case we don't need to apply any quadrant corrections to the code; this will make it a lot easier to explain what's going on, and you can refer to the quadrant deep dive for an explanation of how the other three viewing directions work.</p>
+
+						<p>So let's assume that the variables in part 1 are all set up correctly, and look at the actual drawing process in parts 2 and 3.</p>
+
+						<h2 class="articleSubheader">Drawing landscape rows<br>
+													 ----------------------</h2>
+
 
 <!--
+
+edge calcs (could also extract?)
+angle calcs (mainly in existing calculations dive)
+drawing tile shapes
+
 
 You know those dreams where you're desperate to run away but your feet are stuck to the floor? And when you do manage to get unstuck, every movement feels like you're wading through jelly? That's The Sentinel.
 
@@ -27,11 +85,13 @@ From palettes:
 
 -->
 
+
+
 					</div>
 				</div>
 
 				<div class="codeBlockWrapper nav">
-					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="calculating_angles_for_the_landscape_view.html">Calculating angles for the landscape view</a><a class="next" rel="next" title="Next deep dive" href="drawing_the_landscape_preview.html">Drawing the landscape preview</a></nav>
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="calculating_quadrants_for_the_landscape_view.html">Calculating quadrants for the landscape</a><a class="next" rel="next" title="Next deep dive" href="drawing_the_landscape_preview.html">Drawing the landscape preview</a></nav>
 				</div>
 
 			</article>
