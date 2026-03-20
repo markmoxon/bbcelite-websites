@@ -11,25 +11,27 @@ page_header("deep_dives", "calculating_quadrants_for_the_landscape_view.html", "
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How the drawing routines take a different perspective of the landscape view</h2>
 
-						<p>If you want to understand how the landscape is drawn in the Sentinel, then you can make it a lot easier to follow if you just think about the lanscape like this:</p>
+						<p>If you want to understand how the landscape is drawn in the Sentinel, then you can make things a lot easier to follow if you just think about the landscape with an orientation like this:</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/landscape/landscape_0000_preview.png" alt="The landscape preview screen for landscape 0000 in the BBC Micro version of The Sentinel">
 
-						<p>This is the landscape preview, and it's nice and easy to talk about. There are tile rows from left to right and tile columns from front to back, and tile coordinates follow along in a sensible manner: the x-coordinates go from 0 to 31 from left to right, while the z-coordinates go from 0 to 31 from front to back. Meanwhile, the y-coordinates determine altitude, with higher altitudes being higher up the screen. It's all very logical, and you can find out more in the deep dive on <a href="cartesian_coordinates.html">Cartesian coordinates</a>.</p>
+						<p>This is the landscape preview, and it makes the landscape layout nice and easy to talk about. There are tile rows that run from left to right and tile columns that run from front to back, and tile coordinates follow along in a sensible manner: the x-coordinates go from 0 to 31 when going along the x-axis from left to right, while the z-coordinates go from 0 to 31 when going along the z-axis from front to back. Meanwhile, the y-coordinates determine altitude, with higher altitudes being higher up the screen. It's all very logical, and you can find out more in the deep dive on <a href="cartesian_coordinates.html">Cartesian coordinates</a>.</p>
 
-						<p>This model feeds nicely into the drawing routines, which draw the landscape from back to front, so that near parts of the landscape can obscure further parts of the landscape (this is the so-called "painter's algorithm", because that's the order in which you would apply paint to a canvas to get a 3D effect). If we look at how the landscape preview is drawn, then we can see this in action:</p>
+						<p>This model also makes it easier to talk about the landscape view routines, which draw the landscape from back to front, so that nearer parts of the landscape can correctly obscure more distant parts of the landscape (this is the so-called "painter's algorithm", because that's the order in which you would apply paint to a canvas to get the same effect).</p>
+
+						<p>If we look at how the landscape preview is drawn behind the scenes, then we can see this algorithm in action:</p>
 
 						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
 							<source src="/media/draw_landscape/landscape_preview.mp4" type="video/mp4">
 						</video>
 
-						<p>You can see that in this case the landscape is drawn from the back row to the front, as that enables landscape in the front to appear in front of the landscape at the back.</p>
+						<p>It's easy and it's logical, and that's why I've used this orientation of the landscape when trying to explain the drawing routines in the deep dive on <a href="drawing_the_landscape_view.html">drawing the landscape view</a>.</p>
 
-						<p>But what happens if the camera is looking in a different direction? During gameplay the player can rotate left and right through 360 degrees, so what does this mean for concepts such as the "back row" and "moving forwards"?</p>
+						<p>But The Sentinel is a game of immersion and rotation, and during gameplay the player can rotate left and right through 360 degrees, so what does this mean for concepts such as the "back row" and "moving forwards"? In other words, what happens if the camera is looking in a different direction to our conveniently aligned example in the landscape preview?</p>
 
-						<p>The Sentinel addresses these concerns by defining quadrants and applying those to the algorithm in a number of places. To keep the deep dive on <a href="drawing_the_landscape_view.html">drawing the landscape view</a> mamnageable, I've tried to explain the drawing process for the easy-to-grasp layout of the landscape preview, and I've extracted all the complicated quadrant logic into this article.</p>
+						<p>The Sentinel addresses these concerns by categorising the full range of viewing angles by quadrant, and then applying this quadrant to the drawing algorithm in a number of key places. As mentioned above, I've kept all of this out of the main article on <a href="drawing_the_landscape_view.html">drawing the landscape view</a>, and instead I've extracted all the complicated quadrant logic into this article.</p>
 
-						<p>Let's start by talking about quadrants, and then we can look at how they affect the drawing algorithm.</p>
+						<p>So let's start by defining these quadrants, and then we can take a look at how they affect the drawing algorithm.</p>
 
 						<h2 class="articleSubheader">Calculating the quadrant<br>
 													 ------------------------</h2>
@@ -154,7 +156,28 @@ page_header("deep_dives", "calculating_quadrants_for_the_landscape_view.html", "
 							<li>viewingArcRightYaw has bit 6 = 1, bit 7 = 1, quadrant is 7.30 to 10.30</li>
 						</ul>
 
-						<p>If you're having trouble visualising this, then imagine a dog on the landscape. And now imagine that this dog has been to the vert after a tumble, and is having to wear one of those Elizabethan collars to stop her licking her wounds while they heal (see <a href="https://en.wikipedia.org/wiki/Elizabethan_collar">this entry on Wikipedia</a> if you don't know what I mean). Finally, let's say that the the viewing arc for our poor injured pup is exactly 90 degrees from the left to the right side of her view.</p>
+						<p>The values of bit 6 and 7 also give us a way of referring to each quadrant by a number from 0 to 3, as follows:</p>
+
+<pre class="articleIndented">
+                %00 = 0
+
+           10.30        1.30
+                \     /
+                 \   /
+                  \ /
+  %11 = 3          +         %01 = 1
+                  / \
+                 /   \
+                /     \
+            7.30       4.30
+
+                %10 = 2
+
+</pre>
+
+						<p>So the standard landscape preview is drawn when the viewer is looking at quadrant 0, between 10.30 and 1.30.</p>
+
+						<p>If you're having trouble visualising this, then imagine a dog on the landscape. And now imagine that this dog has been to the vert after a tumble, and is having to wear one of those Elizabethan collars to stop her licking her wounds while they heal (see <a href="https://en.wikipedia.org/wiki/Elizabethan_collar">this entry on Wikipedia</a> if you don't know what I mean). Finally, let's say that the viewing arc for our poor injured pup is exactly 90 degrees from the left to the right side of her view.</p>
 
 						<p>If we take the angle in which the dog is looking - the dog's yaw angle - and add 45 degrees, then we get the yaw angle along the right edge of the dog's cone. This angle is what we stored in the <a href="/source/main/workspace/zero_page.html#viewingarcrightyaw">viewingArcRightYaw</a> variable above (hence the variable name).</p>
 
@@ -188,42 +211,58 @@ page_header("deep_dives", "calculating_quadrants_for_the_landscape_view.html", "
 							<li>viewingArcRightYaw has bit 6 = 1, bit 7 = 1, quadrant is 7.30 to 10.30</li>
 						</ul>
 
-						<p>This gives us the quadrant in which the player is looking, so let's see what we can do with this information.</p>
+						<p>This gives us the quadrant number in which the player is looking, so let's see what we can do with this information.</p>
 
 						<h2 class="articleSubheader">Using the quadrant<br>
 													 ------------------</h2>
 
-						<p><a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">Part 1 of DrawLandscapeView</a> sets up a collection of variables that record the quadrant in a variety of ways, and these variables influence the way in which the landscape is drawn. It also calculates the tile coordinate of the viewer, but with the axes rotated to match the orientation of the viewer, so the x- and z-coordinate axes are from the perspective of the viewer rather than of the 3D world.</p>
+						<p>As the first step in the landscape-drawing routine, <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">part 1 of DrawLandscapeView</a> calculates a whole collection of variables that record the quadrant in a variety of ways. These variables then influence the algorithms that draw the landscape so that they work with all four orientations and with minimal changes.</p>
 
-						<p>The quadrant variables are as follows:</p>
+						<p>In a broad sense, applying these variables changes the process so that instead of drawing the landscape in the orientation of the landscape preview, we draw the landscape in a quadrant-relative manner. For quadrant 0, these two things are the same, but for the other three quadrants, the quadrant-relative view (which we draw on-screen) has to think of the landscape layout in a different manner to the landscape preview. </p>
+
+						<p>We'll talk more about that in a moment, but first let's take a look at the quadrant variables and where they are used:</p>
 
 						<ul>
-							<li><a href="/source/main/workspace/zero_page.html#viewingarcrightyaw">viewingArcRightYaw</a> is the variable we described above, which contains the player's yaw angle plus 45 degrees to give the right edge of the 90-degree viewing arc with the player's gaze at the centre.</li>
+							<li><a href="/source/main/workspace/zero_page.html#viewingarcrightyaw">viewingArcRightYaw</a> is the variable we described above, which contains the player's yaw angle plus 45 degrees to give the right edge of the 90-degree viewing arc with the player's gaze at the centre.<br><br>
 
-							<li><a href="/source/main/workspace/zero_page.html#quadrantoffset">quadrantOffset</a> is set to the offset that we need to add to a point index within the drawing tables if we want to move by one corner in the direction of the quadrant's gaze.</li>
+							It is used to convert tile coordinates between the standard layout that's used by the preview and tables like tileData, and the quadrant-relative tile coordinates that are used to iterate through the landscape when drawing each row. For the conversion from the standard model to the quadrant-relative model, see <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">part 1 of DrawLandscapeView</a> (and there are more details below); for the conversion from quadrant-relative coordinates back to standard coordinates, which enables tile data to be extracted from tileData for the tile we are drawing, see <a href="/source/main/subroutine/gettileviewangles_part_2_of_4.html">part 2 of GetTileViewAngles</a>.</li>
 
-							<li><a href="/source/main/workspace/zero_page.html#viewingquadrantx4">viewingQuadrantx4</a> is set to the quadrant number but multiplied by 4, for use when calculating the number of faces in a tile in DrawSlopingTile.</li>
+							<li><a href="/source/main/workspace/zero_page.html#quadrantoffset">quadrantOffset</a> is set to the offset that we need to add to a point index within the drawing tables if we want to move by one corner in the direction of the quadrant's gaze.<br><br>
 
-							<li><a href="/source/main/workspace/zero_page.html#viewingquadrantopp">viewingQuadrantOpp</a> is set to the opposite quadrant number to that containing the player's gaze.</li>
+							It is used in <a href="/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a> when fetching angles for the tile to draw from the drawing tables.</li>
 
-							<li><a href="/source/main/workspace/zero_page.html#screenleftyawhi">screenLeftYawHi</a> is set to the yaw angle of the gaze in the centre of the viewing arc, less 14.0625 degrees (i.e. 360 * 10 / 256). The screen is 20 yaw angle units across, so this sets screenLeftYawHi to the high byte of the yaw angle of the left edge of the screen, reduced into the range of a single 90-degree quadrant (so it's relative to the 90-degree viewing arc).</li>
+							<li><a href="/source/main/workspace/zero_page.html#viewingquadrantx4">viewingQuadrantx4</a> is set to the quadrant number but multiplied by 4, for use when calculating the number of faces in a tile in DrawSlopingTile.<br><br>
+
+							It is used in <a href="/source/main/subroutine/drawslopingtile.html">DrawSlopingTile</a> to choose shape numbers that are relative to the viewer's orientation.</li>
+
+							<li><a href="/source/main/workspace/zero_page.html#viewingquadrantopp">viewingQuadrantOpp</a> is set to the opposite quadrant number to that containing the player's gaze.<br><br>
+
+							It is used in <a href="/source/main/subroutine/drawslopingtile.html">DrawSlopingTile</a> to set the correct tile shape colour according to the orientation, and <a href="/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a> to set the correct starting point number for the triangles when drawing tile shape 4 or 12.</li>
+
+							<li><a href="/source/main/workspace/zero_page.html#screenleftyawhi">screenLeftYawHi</a> is set to the yaw angle of the gaze in the centre of the viewing arc, less 14.0625 degrees (i.e. 360 * 10 / 256). The screen is 20 yaw angle units across, so this sets screenLeftYawHi to the high byte of the yaw angle of the left edge of the screen, reduced into the range of a single 90-degree quadrant (so it's relative to the 90-degree viewing arc).<br><br>
+
+							It is used in <a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">part 1 of GetTileViewAngles</a> to convert a tile corner's yaw angle into a relative yaw angle from the left edge of the screen.</li>
 						</ul>
 
-						<p>Don't worry if these don't make sense - the main takeway is that there's a bunch of variables that capture the direction of the player's gaze. And the clever bit is this: these variables effectively rotate the landscape through the correct multiple of 90 degrees such that we always draw the landscape from the back row to the front row.</p>
+						<p>Don't worry if these don't all make sense - the main takeaway is that there's a bunch of variables that capture the direction of the player's gaze, and these are used by the drawing routines to implement the correct drawing of different quadrants. In a sense, these variables conceptually rotate the landscape through the correct multiple of 90 degrees such that we always draw the landscape from the back row to the front row, as if we were drawing the landscape preview.</p>
 
-						<p>To see what I mean, take the landscape preview and put it on one of those rotating cake stands:</p>
+						<p>To see what I mean, take the landscape preview and imagine putting it on one of those rotating cake stands:</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/landscape/landscape_0000_preview.png" alt="The landscape preview screen for landscape 0000 in the BBC Micro version of The Sentinel">
 
-						<p>If the player is looking at the 10.30 to 1.30 quadrant, then we draw the landscape from the back row to the front row, just like in the clip above.</p>
+						<p>Now let's consider how we would draw it from the point of view of the player in various rotations:</p>
 
-						<p>If the player is looking at the 1.30 to 4.30 quadrant, i.e. to the right in the above screenshot, then we can rotate the preview anticlockwise by 90 degrees so that the rightmost tile column moves around to become the row of tiles at the back. And then we can draw the landscape from the back row to the front row, which will actually draw the landscape from the rightmost column to the leftmost column.</p>
+						<ul>
+							<li>If the player is looking at the 10.30 to 1.30 quadrant, then we draw the landscape from the back row to the front row, just like in the clip above.</li>
 
-						<p>If the player is looking at the 4.30 to 7.30 quadrant, i.e. staight into the camera in the above screenshot, then we can rotate the preview by 180 degrees so that the front row moves to the back. And then we can draw the landscape from the back row to the front row, which from the perspective of the player will from the furthest row to the nearest.</p>
+							<li>If the player is looking at the 1.30 to 4.30 quadrant, i.e. to the right in the above screenshot, then we can rotate the preview anticlockwise by 90 degrees so that the rightmost tile column moves around to become the row of tiles at the back. This also rotates the player so they are looking away from us, so then we can draw the landscape from the back row to the front row, which will actually draw the landscape from the rightmost column to the leftmost column.</li>
 
-						<p>And finally, if the player is looking at the 7.30 to 10.30 quadrant, i.e. to the left in the above screenshot, then we can rotate the preview clockwise by 90 degrees so that the leftmost tile column moves to the back, so when we can draw the landscape from the back row to the front row, which will actually draw the landscape from the left column to the right.</p>
+							<li>If the player is looking at the 4.30 to 7.30 quadrant, i.e. straight into the camera in the above screenshot, then we can rotate the preview by 180 degrees so that the front row moves to the back. This also rotates the player so they are looking away from us, so then we can draw the landscape from the back row to the front row, which from the perspective of the player will from the furthest row to the nearest.</li>
 
-						<p>There is another thing we need to do before we can move on to the drawing routines, and that's to work out the tile coordinates of the player, but within the rotated landscape that we're going to be working with. If we don't need to rotate the landscape via our quadrant variables (when the player is looking between 10.30 and 1.30), then the player's tile coordinate is fine as it is. But if we are going to be drawing the landscape in a different direction, we need to convert the player's tile coordinates as follows:</p>
+							<li>And finally, if the player is looking at the 7.30 to 10.30 quadrant, i.e. to the left in the above screenshot, then we can rotate the preview clockwise by 90 degrees so that the leftmost tile column moves to the back. This also rotates the player so they are looking away from us, so then we can draw the landscape from the back row to the front row, which will actually draw the landscape from the left column to the right.</li>
+						</ul>
+
+						<p>A good example of this is the conversion between standard and quadrant-relative tile coordinates, which is powered by the <a href="/source/main/workspace/zero_page.html#viewingarcrightyaw">viewingArcRightYaw</a> variable. We do this in <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">part 1 of DrawLandscapeView</a>, where we work out the tile coordinates of the player, but within the rotated landscape that we're going to be working with. If we don't need to rotate the landscape via our quadrant variables (when the player is looking between 10.30 and 1.30), then the player's tile coordinate is fine as it is. But if we are going to be drawing the landscape in a different direction, we need to convert the player's tile coordinates as follows:</p>
 
 						<ul>
 							<li>If the viewer has not turned: (x, z) maps to (x, z)</li>
@@ -251,11 +290,11 @@ page_header("deep_dives", "calculating_quadrants_for_the_landscape_view.html", "
 							<li>The z-axis is the 3D world x-axis, which is x.</li>
                         </ul>
 
-                        <p>So that's what we calculate for the player's tile coordinate relative to the orientation, putting the resulting coordinate into the varables xTileViewer and zTileViewer, and we use a similar calculation for the other two quadrants.</p>
+                        <p>So that's what we calculate for the player's tile coordinate relative to the orientation, putting the resulting coordinate into the variables xTileViewer and zTileViewer, and we use a similar calculation for the other two quadrants.</p>
 
-						<p>Throughout the drawing routines, the assumption is that we have set up all these variables so that the landscape is effectively around to the correct orientation to be drawing the row at the back and moving forwards, even if, in the original landscape, that row is a column. Sometimes this can give us a challenge, as in <a href="/source/main/subroutine/gettileviewangles_part_2_of_4.html">part 2 of GetTileViewAngles</a>, where we have a viewer-relative tile coordinate for which we need to fetch the tile data. The <a href="/source/main/variable/tiledata.html">tileData</a> table stores tiles in the same way as the landscape preview, so before we can fetch the data we need to convert the viewer-relative tile coordinate into a coordinate that is suitable for looking up tile data. But for most of the drawing, we can imagine that we are drawing distant rows first and moving forwards, even if that isn't strictly true.</p>
+						<p>Throughout the drawing routines, the assumption is that we have set up all these variables so that the landscape is effectively around to the correct orientation to be drawing the row at the back and moving forwards, even if, in the original landscape, that row is a column. Sometimes this can give us a challenge, as in <a href="/source/main/subroutine/gettileviewangles_part_2_of_4.html">part 2 of GetTileViewAngles</a>, where we have a quadrant-relative tile coordinate for which we need to fetch the tile data. The <a href="/source/main/variable/tiledata.html">tileData</a> table stores tiles in the same way as the landscape preview, so before we can fetch the data we need to convert the quadrant-relative tile coordinate into a coordinate that is suitable for looking up tile data. But for most of the drawing, we can imagine that we are drawing distant rows first and moving forwards, even if that isn't strictly true.</p>
 
-						<p>That's quite enough on quadrants and orientation, so let's move on to the drawing process itself.</p>
+						<p>But that's quite enough on quadrants and orientation; this can be pretty mind-bending stuff, but hopefully extracting all this away from the deep dive on <a href="drawing_the_landscape_view.html">drawing the landscape view</a> makes the latter a little easier to follow...</p>
 					</div>
 				</div>
 
