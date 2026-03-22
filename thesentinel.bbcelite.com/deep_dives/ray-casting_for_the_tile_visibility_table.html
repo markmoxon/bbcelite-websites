@@ -1,0 +1,307 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "ray-casting_for_the_tile_visibility_table.html", "Ray-casting for the tile visibility table", "Ray-casting for the tile visibility table", "A deep dive into ray-casting for the tile visibility table in The Sentinel on the BBC Micro", "the_sentinel", "deep_dives_drawing_the_landscape", "ray-casting_for_the_tile_visibility_table");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="dithering_to_the_screen.html">Dithering to the screen</a><a class="next" rel="next" title="Next deep dive" href="calculating_quadrants_for_the_landscape_view.html">Calculating quadrants for the landscape view</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">The pre-populated tile visibility table that helps speed up landscape drawing</h2>
+
+						<p>Drawing the landscape in The Sentinel is a big effort; there's an awful lot of complicated maths involved, and if there's one thing that's time-consuming on an 8-bit computer, it's complicated maths.</p>
+
+						<p>One way of speeding things up is to do as much maths as you can in advance, and then cache the results so you don't have to continually repeat those calculations. The problem is that the BBC Micro only has 32K of memory, so there isn't a lot of space for caching large amounts of data. The game tries to address this problem by implementing a set of drawing tables to store just the more recent results that we need for the task currently at hand, and then discarding those results when they are no longer needed (see the deep dive on <a href="the_drawing_tables.html">the drawing tables</a> for details).</p>
+
+						<p>There is one proper, old-fashioned cache table in The Sentinel, though, and that's the tile visibility table. We'll take a detailed look at the table in a moment, but let's start with some visualisations that should make things a bit easier to understand.</p>
+
+						<h2 class="articleSubheader">Visualising tile visibility<br>
+													 ---------------------------</h2>
+
+						<p>I love it when code mirrors reality, and the tile visibility table is a great example. To show you what I mean, look at this heatmap of the BBC Micro's memory when the game is drawing landscape 0000 for the first time:</p>
+
+						<img class="titleImage marginBorder" style="width: 252px" src="/images/tile_visibility/all_memory.gif" alt="A full memory heatmap in the BBC Micro version of The Sentinel">
+
+						<p>This is a memory heatmap, and it shows the entire computer's memory, from &amp;0000 at the top to &amp;FFFF at the bottom, with one pixel per byte. The colours indicate recent activity: red indicates a data byte being written, green indicates a data byte being read, blue indicates an instruction byte being read, and black indicates no recent activity. Combinations of these colours show two operations happening close together in time, so, for example, yellow indicates a data read and a data write happening in quick succession (as yellow is red and green combined).</p>
+
+						<p>I'll explain exactly what's going on here at the end of the article, once we've analysed the algorithm, but for now just take a look at the left-hand side, about halfway down, where you can see this strange burst of activity:</p>
+
+						<img class="titleImage marginBorder" style="width: 268px" src="/images/tile_visibility/scan_0000.gif" alt="A memory heatmap when raytracing landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<p>On the right, you can clearly see something that looks like a kind of radar screen, almost as if a lighthouse is casting a beam of light across a landscape of some kind. Which, of course, is no coincidence...</p>
+
+						<p>As we'll discover in this article, the tile visibility table records which tiles are visible from the player's position, and we calculate this using a technique called "ray-casting" or "ray-tracing". In a sense, we actually do turn the player into a lighthouse that casts its light over the landscape; we want to work out which parts of the landscape it lights up, and which parts are in darkness, as that will tell us which tiles are visible to the player and which are hidden.</p>
+
+						<p>Astonishingly, we can actually see this algorithm working in the above animation - the right-hand part literally shows the beams of light as they sweep around the landscape.</p>
+
+						<p>To explore this further, let's have a deeper look at the visualisation and see if we can tie it to the actual shape of the landscape. To make this work, we need to flip the image vertically, like this:</p>
+
+						<img class="titleImage marginBorder" style="width: 268px" src="/images/tile_visibility/flip_0000.gif" alt="A memory heatmap when raytracing landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<p>This produces a layout that matches the landscape orientation that we normally see in the landscape preview, with row 0 at the front (i.e. the bottom of the heatmap image) and row 31 at the back (i.e. at the top of the heatmap image).</p>
+
+						<p>As a further enhancement, let's reduce the heatmap to just the green component, as it's a bit intense with the red and yellow flashes, and let's slow down the ray-casting process a bit. We can then compare the algorithm's in-memory activity with the layout of the landscape.</p>
+
+						<p>Here are a couple of contour maps of landscape 0000, along with the heatmap; the blue colours in the contour maps indicate lower altitudes while the brown colours indicate higher ground. The player's position is shown in red, and if you look at the slowed-down heatmap, you can see that it shows beams being shot out from the player's location as the algorithm "feels" the shape of the landscape. Each beam is traced from the player towards the tile being processed, and the progress in the left part of the heatmap shows the algorithm working through the landscape, row by row and from top to bottom, tracing the beam from the player's position to each tile in turn.</p>
+
+						<a href="/images/landscape/landscape_contours_0000_tilt_light.png"><img class="titleImage themeLight" style="width: 338px" src="/images/landscape/landscape_contours_0000_tilt_light.png" alt="Contours in landscape 0000 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_0000_tilt_dark.png"><img class="titleImage themeDark lightBorder" style="width: 338px" src="/images/landscape/landscape_contours_0000_tilt_dark.png" alt="Contours in landscape 0000 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_0000_tilt_dark.png"><img class="titleImage themeElite lightBorder" style="width: 338px" src="/images/landscape/landscape_contours_0000_tilt_dark.png" alt="Contours in landscape 0000 in the Sentinel on the BBC Micro"></a>
+
+						<img class="titleImage marginBorder" style="width: 268px" src="/images/tile_visibility/flip_0000_green.gif" alt="A memory heatmap when raytracing landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<a href="/images/landscape/landscape_contours_0000_light.png"><img class="titleImage themeLight" style="width: 274px" src="/images/landscape/landscape_contours_0000_light.png" alt="Contours in landscape 0000 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_0000_dark.png"><img class="titleImage themeDark lightBorder" style="width: 274px" src="/images/landscape/landscape_contours_0000_dark.png" alt="Contours in landscape 0000 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_0000_dark.png"><img class="titleImage themeElite lightBorder" style="width: 274px" src="/images/landscape/landscape_contours_0000_dark.png" alt="Contours in landscape 0000 in the Sentinel on the BBC Micro"></a>
+
+						<p>Here are the contour maps and heatmap for landscape 0278, which is a pretty flat landscape so the radar sweep does detect quite a number of tiles, though the hill to the left of the player blocks quite a lot of the bottom-left quarter from view:</p>
+
+						<a href="/images/landscape/landscape_contours_0278_tilt_light.png"><img class="titleImage themeLight" style="width: 338px" src="/images/landscape/landscape_contours_0278_tilt_light.png" alt="Contours in landscape 0278 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_0278_tilt_dark.png"><img class="titleImage themeDark lightBorder" style="width: 338px" src="/images/landscape/landscape_contours_0278_tilt_dark.png" alt="Contours in landscape 0278 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_0278_tilt_dark.png"><img class="titleImage themeElite lightBorder" style="width: 338px" src="/images/landscape/landscape_contours_0278_tilt_dark.png" alt="Contours in landscape 0278 in the Sentinel on the BBC Micro"></a>
+
+						<img class="titleImage marginBorder" style="width: 268px" src="/images/tile_visibility/flip_0278_green.gif" alt="A memory heatmap when raytracing landscape 0278 in the BBC Micro version of The Sentinel">
+
+						<a href="/images/landscape/landscape_contours_0278_light.png"><img class="titleImage themeLight" style="width: 274px" src="/images/landscape/landscape_contours_0278_light.png" alt="Contours in landscape 0278 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_0278_dark.png"><img class="titleImage themeDark lightBorder" style="width: 274px" src="/images/landscape/landscape_contours_0278_dark.png" alt="Contours in landscape 0278 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_0278_dark.png"><img class="titleImage themeElite lightBorder" style="width: 274px" src="/images/landscape/landscape_contours_0278_dark.png" alt="Contours in landscape 0278 in the Sentinel on the BBC Micro"></a>
+
+						<p>Here are the contour maps and heatmap for landscape 1122, where the player's starting position is in a deep valley with a really restricted view of the landscape (almost all of which is looking upwards, out of the hole):</p>
+
+						<a href="/images/landscape/landscape_contours_1122_tilt_light.png"><img class="titleImage themeLight" style="width: 338px" src="/images/landscape/landscape_contours_1122_tilt_light.png" alt="Contours in landscape 1122 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_1122_tilt_dark.png"><img class="titleImage themeDark lightBorder" style="width: 338px" src="/images/landscape/landscape_contours_1122_tilt_dark.png" alt="Contours in landscape 1122 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_1122_tilt_dark.png"><img class="titleImage themeElite lightBorder" style="width: 338px" src="/images/landscape/landscape_contours_1122_tilt_dark.png" alt="Contours in landscape 1122 in the Sentinel on the BBC Micro"></a>
+
+						<img class="titleImage marginBorder" style="width: 268px" src="/images/tile_visibility/flip_1122_green.gif" alt="A memory heatmap when raytracing landscape 1122 in the BBC Micro version of The Sentinel">
+
+						<a href="/images/landscape/landscape_contours_1122_light.png"><img class="titleImage themeLight" style="width: 274px" src="/images/landscape/landscape_contours_1122_light.png" alt="Contours in landscape 1122 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_1122_dark.png"><img class="titleImage themeDark lightBorder" style="width: 274px" src="/images/landscape/landscape_contours_1122_dark.png" alt="Contours in landscape 1122 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_1122_dark.png"><img class="titleImage themeElite lightBorder" style="width: 274px" src="/images/landscape/landscape_contours_1122_dark.png" alt="Contours in landscape 1122 in the Sentinel on the BBC Micro"></a>
+
+						<p>Here are the contour maps and heatmap for landscape 3073, where the player is at the back of the landscape and can only see tiles along the rear strip of landscape and in a vertical line towards the front row of tiles:</p>
+
+						<a href="/images/landscape/landscape_contours_3073_tilt_light.png"><img class="titleImage themeLight" style="width: 338px" src="/images/landscape/landscape_contours_3073_tilt_light.png" alt="Contours in landscape 3073 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_3073_tilt_dark.png"><img class="titleImage themeDark lightBorder" style="width: 338px" src="/images/landscape/landscape_contours_3073_tilt_dark.png" alt="Contours in landscape 3073 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_3073_tilt_dark.png"><img class="titleImage themeElite lightBorder" style="width: 338px" src="/images/landscape/landscape_contours_3073_tilt_dark.png" alt="Contours in landscape 3073 in the Sentinel on the BBC Micro"></a>
+
+						<img class="titleImage marginBorder" style="width: 268px" src="/images/tile_visibility/flip_3073_green.gif" alt="A memory heatmap when raytracing landscape 3073 in the BBC Micro version of The Sentinel">
+
+						<a href="/images/landscape/landscape_contours_3073_light.png"><img class="titleImage themeLight" style="width: 274px" src="/images/landscape/landscape_contours_3073_light.png" alt="Contours in landscape 3073 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_3073_dark.png"><img class="titleImage themeDark lightBorder" style="width: 274px" src="/images/landscape/landscape_contours_3073_dark.png" alt="Contours in landscape 3073 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_3073_dark.png"><img class="titleImage themeElite lightBorder" style="width: 274px" src="/images/landscape/landscape_contours_3073_dark.png" alt="Contours in landscape 3073 in the Sentinel on the BBC Micro"></a>
+
+						<p>And finally, here are the contour maps and heatmap for landscape 9999, which has some interesting diagonal view lines from the player in the bottom-left corner of the landscape, all the way to the top-right:</p>
+
+						<a href="/images/landscape/landscape_contours_9999_tilt_light.png"><img class="titleImage themeLight" style="width: 338px" src="/images/landscape/landscape_contours_9999_tilt_light.png" alt="Contours in landscape 9999 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_9999_tilt_dark.png"><img class="titleImage themeDark lightBorder" style="width: 338px" src="/images/landscape/landscape_contours_9999_tilt_dark.png" alt="Contours in landscape 9999 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_9999_tilt_dark.png"><img class="titleImage themeElite lightBorder" style="width: 338px" src="/images/landscape/landscape_contours_9999_tilt_dark.png" alt="Contours in landscape 9999 in the Sentinel on the BBC Micro"></a>
+
+						<img class="titleImage marginBorder" style="width: 268px" src="/images/tile_visibility/flip_9999_green.gif" alt="A memory heatmap when raytracing landscape 9999 in the BBC Micro version of The Sentinel">
+
+						<a href="/images/landscape/landscape_contours_9999_light.png"><img class="titleImage themeLight" style="width: 274px" src="/images/landscape/landscape_contours_9999_light.png" alt="Contours in landscape 9999 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_9999_dark.png"><img class="titleImage themeDark lightBorder" style="width: 274px" src="/images/landscape/landscape_contours_9999_dark.png" alt="Contours in landscape 9999 in the Sentinel on the BBC Micro"></a><a href="/images/landscape/landscape_contours_9999_dark.png"><img class="titleImage themeElite lightBorder" style="width: 274px" src="/images/landscape/landscape_contours_9999_dark.png" alt="Contours in landscape 9999 in the Sentinel on the BBC Micro"></a>
+
+						<p>We'll come back to these visualisations at the end of this article, and will look at exactly how the algorithm relates to the heatmap and how it is that we can visualise the algorithm in memory in the first place. But before we can do that, we need to explore the algorithm itself, so let's do that next.</p>
+
+						<h2 class="articleSubheader">The tile visibility algorithm<br>
+													 -----------------------------</h2>
+
+						<p>As we've discussed above, the game calculates the visibility of every tile in the landscape, from the perspective of the player, and stores this in the tile visibility table. The idea is that this will save time when we have to draw the landscape, which we need to do when panning the screen or performing a U-turn. If we know in advance that a part of the landscape isn't visible to the player and never gets seen by them, then we know we don't have to draw it, and that saves a lot of time.</p>
+
+						<p>Specifically, the <a href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a> routine populates the <a href="/source/main/variable/tilevisibility.html">tileVisibility</a> table with one bit for each tile, storing a 1 if the tile is visible from the player's point of view, or a 0 if the tile is not visible. When we come to draw the landscape tile by tile, <a href="/source/main/subroutine/gettileviewangles_part_3_of_4.html">part 3 of GetTileViewAngles</a> takes this visibility value and applies it to the <a href="/source/main/workspace/stack_variables.html#tileviewdata">tileViewData</a> drawing table by zeroing the entry when a tile is not visible, and this then determines whether the <a href="/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a> routine draws the tile or not. In this way, tiles that the player can't see don't get drawn.</p>
+
+						<p>When populating the tileVisibility table, the GetTileVisibility routine makes use of the two transitory drawing tables at <a href="/source/main/workspace/stack_variables.html#oddvisibility">oddVisibility</a> and <a href="/source/main/workspace/stack_variables.html#evenvisibility">evenVisibility</a>. These store the visibility of individual tile corners in the most recently processed odd and even tile corner rows, and they use the <a href="/source/main/workspace/zero_page.html#drawingtableoffset">drawingTableOffset</a> and <a href="/source/main/workspace/zero_page.html#drawingtableindex">drawingTableIndex</a> variables to manage access to the cached data, just as with the other drawing tables. For a full description of how the drawing tables work, check out the deep dive on <a href="the_drawing_tables.html">the drawing tables</a>.</p>
+
+						<p>So it's the <a href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a> routine that populates the tileVisibility table and produces the heatmaps we looked at above, so let's dive in further. Here's a top-level summary of this routine, which we will explain in detail below:</p>
+
+						<ul>
+							<li>Set drawingTableOffset = 0 so the call to first call to GetRowVisibility (for tile row 31) will populate the table at oddVisibility with the tile visibilities of the row being analysed.</li>
+
+							<li>Zero all 128 bytes of the tileVisibility table, so by default all tile corners are marked as hidden.</li>
+
+							<li>Call <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> to calculate tile corner altitudes and maximum tile corner altitudes for each tile in the landscape.</li>
+
+							<li>Set zTileRow = 31 and call <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> to calculate whether each tile corner in the rearmost row is obscured from the player by any intervening landscape, putting the results into 32 entries in the drawing table at oddVisibility (as drawingTableOffset = 0) as follows:
+
+								<ul>
+									<li>Store %00000000 if the tile corner is not visible from the player's position.</li>
+
+									<li>Store %11111111 if the tile corner is visible from the player's position.</li>
+								</ul>
+							</li>
+
+							<li>Loop through each tile row, stepping forwards from the rear row to the front row and doing the following for each row:
+
+								<ul>
+									<li>Decrement zTileRow to move forwards by one row (so we start this loop with zTileRow = 30, for the rear tile row).</li>
+
+									<li>Flip the value of drawingTableOffset between 0 and 32 with an EOR #32 instruction, so that it points to evenVisibility (if the previous row's results were stored in oddVisibility) or oddVisibility (if the previous row's results were stored in evenVisibility). This means the current row will be stored in the different drawing table to the previous row, and we flip between the two as we work through the rows.</li>
+
+									<li>Call <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> to calculate whether each tile corner in the current row is obscured from the player by any intervening landscape, putting the results into 32 entries in the drawing table pointed to by drawingTableOffset, storing %00000000 for not visible and %11111111 for visible.</li>
+
+									<li>Work through the 31 tiles on this row from right to left, and do the following:
+
+										<ul>
+											<li>If this tile is flat and at a higher altitude than the player, then this tile is not visible to the player, so capture this in the table by clearing the tile's bit in the tileVisibility table.</li>
+
+											<li>Otherwise mark this tile as being visible (i.e. a set bit in tileVisibility) if any of the tile corners in this tile are visible, or mark this tile as being not visible (i.e. a clear bit in tileVisibility) if none of the corners are visible.</li>
+										</ul>
+									</li>
+
+									<li>Loop back to process the next row forward until we have processed all tiles in the landscape.</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>Once we populate the tile visibility table, it will be usable whenever we have to draw the landscape, and its contents will remain valid until the player moves to another tile. If the player performs a U-turn, then we don't have to recalculate the tile visibility settings, as the player hasn't moved to a new tile, they've just turned around, and that doesn't affect tile visibility from the point of view of the player, as the player is still in the same place; this is why performing a U-turn is a quicker process than transferring to a new tile, as the latter process needs to repopulate the entire tile visibility table from scratch.</p>
+
+						<p>The two key parts of this process are the routines at <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> (which fetches tile altitude data) and <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> (which calculates tile corner visibility). We'll look at both of the main routines next, but first a quick note on the structure of the tileVisibility table.</p>
+
+						<h2 class="articleSubheader">Structure of the tileVisibility table<br>
+													 -------------------------------------</h2>
+
+						<p>The position of a tile's bit within the <a href="/source/main/variable/tilevisibility.html">tileVisibility</a> table is calculated in a rather complicated manner, presumably to make it harder to follow what's going on (there's quite a bit of this kind of thing in The Sentinel - see the deep dive on <a href="anti-cracker_checks.html">anti-cracker checks</a> for more of them).</p>
+
+						<p>To get the position of a tile's individual visibility bit within the table, we take the tile's column and row numbers, each of which are in the range 0 to 30, and we calculate both the index of the relevant byte within the table (in the range 0 to 127), and the index of the relevant bit within that byte (in the range 0 to 7).</p>
+
+						<p>The calculation is as follows. We get the index of the relevant byte for a specific tile within the tileVisibility table by constructing a number in the range 0 to 127 where:</p>
+
+						<ul>
+							<li>Bit 7 is clear.</li>
+                        
+							<li>Bits 4-6 contain bits 2-4 of the column number.</li>
+                        
+							<li>Bits 0-3 contain bits 1-4 of the row number.</li>
+						</ul>
+
+						<p>Then the index of the bit within that byte is given by a number in the range 0 to 7 where:</p>
+
+						<ul>
+							<li>Bit 0 contains bit 0 of the of the tile row (via the C flag from above).</li>
+                                                
+							<li>Bits 1-2 contain bits 0-1 of the column number.</li>
+						</ul>
+
+						<p>There could be a method to this madness, but if there is, I haven't worked out what it is!</p>
+
+						<h2 class="articleSubheader">Calculating tile altitudes and shapes<br>
+													 -------------------------------------</h2>
+
+						<p>The first major stage in the tile visibility analysis is to call the <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> routine to calculate tile corner altitudes and maximum tile corner altitudes for each tile in the landscape. The results are stored in screen memory from &amp;6000 onwards, which has no effect as at this point in proceeding the screen has an all-blue palette so whatever we poke into screen memory will appear as blue and the player won't see a thing (see the deep dive on <a href="colours_and_palettes.html">colours and palettes</a> for more about palettes).</p>
+
+						<p>The first thing that's extracted is the altitude for each tile corner in the 32x32-corner landscape, as well as a single bit that records whether or not the tile anchored by the corner is flat (though this latter value is ignored for corners along the rear and right edges of the landscape). This data is calculated by the <a href="/source/main/subroutine/gettilealtitude.html">GetTileAltitude</a> routine, which we call with bit 7 of <a href="/source/main/workspace/zero_page.html#considerobjects">considerObjects</a> clear so the calculation ignores any objects on the tiles.</p>
+
+						<p>This data is then encoded into a single byte, one for each tile corner, like this:</p>
+
+						<ul>
+							<li>Bit 0 = clear if the tile anchored by this corner is flat, set if it isn't</li>
+
+							<li>Bits 1-4 = the tile corner's altitude (1 to 11)</li>
+						</ul>
+
+						<p>This is then stored in screen memory from &amp;6000 onwards, like this, starting with the front row (when zTile = 0) and working backwards as we progress through memory:</p>
+
+						<ul>
+							<li>&amp;6000 to &amp;601F for tile corner row zTile = 0</li>
+
+							<li>&amp;6100 to &amp;611F for tile corner row zTile = 1<br><br>...</li>
+
+							<li>&amp;7E00 to &amp;7E1F for tile corner row zTile = 30</li>
+
+							<li>&amp;7F00 to &amp;7F1F for tile corner row zTile = 31</li>
+						</ul>
+
+						<p>The next step in the GetTileAltitudes routine is to use the tile altitudes in the drawing tables calculate a maximum altitude for each tile, which is just the altitude of the highest corner in each tile. We work this out by simply working through the altitudes that we just stored, checking all four corners in each tile to extract the maximum altitude. This is then stored alongside the altitude data, interleaved with one byte for each tile in the 31x31-tile landscape as follows:</li>
+
+						<ul>
+							<li>&amp;6020 to &amp;603E for tile row anchored by zTile = 0</li>
+
+							<li>&amp;6120 to &amp;613E for tile row anchored by zTile = 1<br><br>...</li>
+
+							<li>&amp;7D20 to &amp;7E3E for tile row anchored by zTile = 29</li>
+
+							<li>&amp;7E20 to &amp;7F3E for tile row anchored by zTile = 30</li>
+						</ul>
+
+						<p>This also leaves the following variables set to point to the two sets of altitude data, which we can use in the next step to calculate the tile visibility:</p>
+
+						<ul>
+							<li>(Q P) = &amp;6000, which points to the altitude and shape data</li>
+
+							<li>(S R) = &amp;6020, which points to the maximum altitude data</li>
+						</ul>
+
+						<p>Having extracted the altitude, we move on to the visibility calculation itself, so let's look at that next.</p>
+
+						<h2 class="articleSubheader">Calculating tile visibility by row<br>
+													 ----------------------------------</h2>
+
+						<p>The second major stage in the tile visibility analysis is to call the <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> routine to calculate the visibility of all the tile corners in a tile row, which we can then convert into a tile visibility when we return back to the <a href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a> routine, as described above.</p>
+
+						<p>The GetRowVisibility routine loops through each tile corner in the row, from right to left, in a loop that's split over <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">part 1</a> and <a href="/source/main/subroutine/getrowvisibility_part_2_of_2.html">part 2</a> of the routine (and which has an anti-cracker interlude in the middle that has nothing to do with the visibility checks). The end result of this routine is to populate the 32 entries in the drawing table at drawingTableOffset (i.e. oddVisibility or evenVisibility), storing %00000000 if the tile corner is not visible from the player's position and %11111111 if it is visible from the player's position.</p>
+
+						<p>The process of working out whether a tile corner is visible is pretty involved, but essentially we take the vector from the player to the tile corner and follow it from the player's eyes to the tile corner, checking as we go whether the vector hits any landscape. This technique is called "ray-casting" or "ray-tracing" because it's typically used to trace rays of light as they are cast between light sources and the eye, so a picture of a 3D scene can be built up one light ray at a time.</p>
+
+						<p>In our case we're not building up a picture from light rays, but we're effectively tracing the path of a straight line gaze from the player's eye to the tile corner, to see if that gaze hits any landscape in the process. You can think of it as shining a torch from the player towards the tile corner: if the light reaches the tile corner without hitting anything in-between, then the player can see the corner and we mark it as visible, but if the light hits a part of the landscape then the player's view of that corner is blocked, and we mark it as not visible.</p>
+
+						<p>Here's a breakdown of the most important steps in this process in the GetRowVisibility routine:</p>
+
+						<ul>
+							<li>Set traceStepCounter = 255 to record the number of steps we perform as we work along the gaze vector (though we may change this below).</p>
+
+							<li>Call <a href="/source/main/subroutine/getobjectcoords.html">GetObjectCoords</a> to fetch the Cartesian coordinates of the player object.</li>
+
+							<li>Work through all three axes in turn (i.e. z-axis, y-axis and x-axis) and calculate the distance along each axis from the player to the tile corner, divided by 256. This gives us the 3D vector from the player to the tile corner, divided by 256.</li>
+
+							<li>If the tile corner is within 1.5 tile distances of the player along the longest axis, then we automatically mark this tile corner as visible and move on to the next tile corner (so close-by tiles are always considered potentially visible).</li>
+						</ul>
+
+						<p>We now do an optimisation step. We could trace along the vector from the player to the tile corner in steps of 256 by starting at the player's eyes and adding the 3D vector we calculated above, which would step us along the gaze vector in 256 steps, so each step would be 1/256 of the whole vector from the player to the tile corner. If, at each step, we check whether we have hit any landscape, then this process will work.</p>
+
+						<p> But given that the landscape is only 32 tile corners across in each direction, this would mean that most of the time we would be stepping along the vector while staying above the same tile. Instead we can scale up the size of our steps and do fewer of them, and as long as each individual step is smaller than a tile width, we can still check every landscape tile along the line of sight.</p>
+
+                        <p>We therefore increase the size our 1/256 vector, doubling it as many times as we can so that it's as big as possible while still fitting into one byte (where one byte represents a fraction of a tile width). At the same time as we double the length of the vector, we halve the step count in traceStepCounter. This reduces the number of steps in the ray-casting process as far as possible while keeping the size of each step to less than one tile (so that the tracing process still steps through each tile en route).</p>
+
+                        <p>So, to recap, we have taken the "gaze vector" from the player to the tile corner, divided it by 256 and scaled it up as far as possible while still keeping the vector within the dimensions of a tile, and traceStepCounter contains the number of times this "step vector" fits into the original vector from the player to the tile corner. We can therefore trace the gaze vector from the player to the tile corner by taking the player's coordinates and adding the scaled step vector traceStepCounter times, knowing that together, these steps will stop over every tile between the player and the tile corner in the process. We may stop over some tiles more than once, but that's OK.</p>
+
+						<p>We do this process one axis at a time, starting at the player's coordinate and adding the scaled step vector to step along the gaze vector from the player to the tile corner (note that the accuracy when stepping along the x- and z-axes is 16-bit, with one fractional byte, but the accuracy for the y-axis is 24-bit, with two fractional bytes).</p>
+
+						<p>At each step we fetch the maximum altitude for the tile that we are currently passing over in our gaze-tracing process, and then check it against the altitude of our current position along the gaze vector.</p>
+
+						<p>If the altitude of our current position along the gaze vector is lower than the altitude of the highest point of the landscape on the tile over which we are passing, this means the gaze vector has hit the landscape before reaching the end, so we mark the tile corner as not visible, stop tracing the beam and move on to the next tile corner.</p>
+
+						<p>If the altitude of our current position along the gaze vector is equal to or higher than the altitude of the highest point of the landscape on the tile over which we are passing, then the gaze vector is passing over the current part of the landscape, so we keep stepping along the gaze vector until we either hit the landscape or reach the tile corner.</p>
+
+						<p>If we repeat this process for all the tile corners in the specified row and store the results in the relevant oddVisibility or evenVisibility drawing table, then we can return to the GetTileVisibility routine to calculate the final visibility for each tile in the row, and then the tile visibility table will be populated and usable whenever we have to draw the landscape.</p>
+
+						<p>This ray-casting approach is also used in-game when working out whether the player and enemies can see specific tiles, but that's an even more sophisticated algorithm, as it has to work out whether individual tile shapes or objects are getting in the way of the crosshair sights. See the deep dive on <a href="calculating_gaze.html">calculating gaze</a> for details.</p>
+
+						<h2 class="articleSubheader">Tying the algorithm to the heatmap<br>
+													 ----------------------------------</h2>
+
+						<p>Let's take another look at the heatmap we saw earlier and see if we can tie it in to the algorithm:</p>
+
+						<img class="titleImage marginBorder" style="width: 268px" src="/images/tile_visibility/scan_0000.gif" alt="A memory heatmap when raytracing landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<p>This particular heatmap is showing two tables: the one on the left is at address &amp;6000 and contains altitude and shape data for all the tiles in the landscape, and the one on the right is at address &amp;6200 and contains maximum altitude data for each tile. We'll look at these tables in detail in the "Calculating tile altitudes and shapes" section below, but for now you just need to know that each of these tables records data about the tiles on the landscape.</p>
+
+						<p>I've used the b-em emulator to capture these heatmaps, and luckily the default heatmap in b-em shows the computer's memory in a grid, showing one pixel per byte in 256 rows of 256 bytes per row. This means that each row starts at &amp;xx00 in memory, so it just happens to show each table row on a new pixel line, so the tables appear in the same shape as the landscape itself.</p>
+
+						<p>The heatmap starts with both tables being populated by the <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a>, giving us a flash of red, and then the algorithm works through the landscape, one tile at a time, and calculates that tile's visibility. This is done by the <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> routine, which works along each tile row in the landscape from right to left, calculating visibility. We call this routine for each row, stepping through the rows from the back row to the front, and then we're done.</p>
+
+						<p>The amazing thing is that you can literally see the ray-casting process happen in the heatmap. As the algorithm works through the landscape, testing each tile's visibility in turn, it does two things when processing each tile:</p>
+
+						<ul>
+							<li>It reads the altitude of the tile from the left table, which lights up the individual tile we are processing.</p>
+
+							<li>It traces a light beam from the player to the tile that we are processing, and as that light beam passes over a tile, it fetches the maximum altitude of that tile from the right table, to see whether the light beam is hitting the landscape or passing overhead. So as we trace the beam, the heatmap will light up for each tile beneath the beam, until we either reach the tile we are processing or the beam hits the landscape.</li>
+						</ul>
+
+						<p>So over the course of the entire algorithm, we get the following:</p>
+
+						<ul>
+							<li>The left table lights up the relevant tile entry as each tile is processed, and because we work through the landscape row by row, this gives us the sweeping effect we can see in the heatmap.</p>
+
+							<li>For each tile that is processed, the right table in the heatmap traces out the light beam from the player to the tile, so over the course of the whole algorithm, we get a sweeping lighthouse radar effect that literally maps each of the traced lines from the player to every tile on the landscape.</li>
+						</ul>
+
+						<p>And that's why we can visualise the tile visibility ray-casting algorithm using a memory heatmap. It's a fascinating glimpse into the way The Sentinel works under the hood...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="dithering_to_the_screen.html">Dithering to the screen</a><a class="next" rel="next" title="Next deep dive" href="calculating_quadrants_for_the_landscape_view.html">Calculating quadrants for the landscape view</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>
