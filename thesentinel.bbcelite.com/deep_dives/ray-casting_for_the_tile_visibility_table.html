@@ -147,7 +147,7 @@ page_header("deep_dives", "ray-casting_for_the_tile_visibility_table.html", "Ray
 
 						<p>To get the position of a tile's individual visibility bit within the table, we take the tile's column and row numbers, each of which are in the range 0 to 30, and we calculate both the index of the relevant byte within the table (in the range 0 to 127), and the index of the relevant bit within that byte (in the range 0 to 7).</p>
 
-						<p>The calculation is as follows. We get the index of the relevant byte for a specific tile within the tileVisibility table by constructing a number in the range 0 to 127 where:</p>
+						<p>The calculation is as follows. We get the index of the byte within the tileVisibility table by constructing a number in the range 0 to 127 where:</p>
 
 						<ul>
 							<li>Bit 7 is clear.</li>
@@ -160,19 +160,19 @@ page_header("deep_dives", "ray-casting_for_the_tile_visibility_table.html", "Ray
 						<p>Then the index of the bit within that byte is given by a number in the range 0 to 7 where:</p>
 
 						<ul>
-							<li>Bit 0 contains bit 0 of the of the tile row (via the C flag from above).</li>
+							<li>Bit 0 contains bit 0 of the of the tile row.</li>
                                                 
 							<li>Bits 1-2 contain bits 0-1 of the column number.</li>
 						</ul>
 
-						<p>There could be a method to this madness, but if there is, I haven't worked out what it is!</p>
+						<p>There could be a method to this madness, but if there is, I haven't worked out what it is! But what is does mean is that every time we want to read or write a visibility bit in the table, we have to calculate the byte and bit indexes from the tile coordinates in this manner.</p>
 
 						<h2 class="articleSubheader">Calculating tile altitudes and shapes<br>
 													 -------------------------------------</h2>
 
-						<p>The first major stage in the tile visibility analysis is to call the <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> routine to calculate tile corner altitudes and maximum tile corner altitudes for each tile in the landscape. The results are stored in screen memory from &amp;6000 onwards, which has no effect as at this point in proceeding the screen has an all-blue palette so whatever we poke into screen memory will appear as blue and the player won't see a thing (see the deep dive on <a href="colours_and_palettes.html">colours and palettes</a> for more about palettes).</p>
+						<p>The first major stage in the GetTileVisibility process is to fetch tile altitude data by calling the <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> routine, which we'll look at here. This routine calculates the altitude for each tile corner in the landscape, and the maximum tile corner altitudes within each tile in the landscape. The results are stored in screen memory from &amp;6000 onwards, though this is hidden from the player because at this point the screen has an all-blue palette, so anything we poke into screen memory will appear as blue and the player won't see a thing (see the deep dive on <a href="colours_and_palettes.html">colours and palettes</a> for more about palettes).</p>
 
-						<p>The first thing that's extracted is the altitude for each tile corner in the 32x32-corner landscape, as well as a single bit that records whether or not the tile anchored by the corner is flat (though this latter value is ignored for corners along the rear and right edges of the landscape). This data is calculated by the <a href="/source/main/subroutine/gettilealtitude.html">GetTileAltitude</a> routine, which we call with bit 7 of <a href="/source/main/workspace/zero_page.html#considerobjects">considerObjects</a> clear so the calculation ignores any objects on the tiles.</p>
+						<p>The first thing that's extracted is the altitude for each tile corner in the 32x32-corner landscape, as well as a single bit that records whether or not the tile anchored by the corner is flat (though this latter value is ignored for corners along the rear and right edges of the landscape, as those corners don't anchor any tiles). This data is calculated for each corner by the <a href="/source/main/subroutine/gettilealtitude.html">GetTileAltitude</a> routine, which we call with bit 7 of <a href="/source/main/workspace/zero_page.html#considerobjects">considerObjects</a> clear so the calculation ignores any objects on the tiles.</p>
 
 						<p>This data is then encoded into a single byte, one for each tile corner, like this:</p>
 
@@ -182,7 +182,7 @@ page_header("deep_dives", "ray-casting_for_the_tile_visibility_table.html", "Ray
 							<li>Bits 1-4 = the tile corner's altitude (1 to 11)</li>
 						</ul>
 
-						<p>This is then stored in screen memory from &amp;6000 onwards, like this, starting with the front row (when zTile = 0) and working backwards as we progress through memory:</p>
+						<p>This is then stored in screen memory from &amp;6000 onwards, as follows, starting with the front row (when zTile = 0) and working towards the back row as we progress forwards through memory:</p>
 
 						<ul>
 							<li>&amp;6000 to &amp;601F for tile corner row zTile = 0</li>
@@ -194,7 +194,7 @@ page_header("deep_dives", "ray-casting_for_the_tile_visibility_table.html", "Ray
 							<li>&amp;7F00 to &amp;7F1F for tile corner row zTile = 31</li>
 						</ul>
 
-						<p>The next step in the GetTileAltitudes routine is to use the tile altitudes in the drawing tables calculate a maximum altitude for each tile, which is just the altitude of the highest corner in each tile. We work this out by simply working through the altitudes that we just stored, checking all four corners in each tile to extract the maximum altitude. This is then stored alongside the altitude data, interleaved with one byte for each tile in the 31x31-tile landscape as follows:</li>
+						<p>The next step is to use these tile altitudes to calculate a maximum altitude for each tile, which is just the altitude of the highest corner in each tile. We work this out by simply working through the altitudes that we just stored, checking all four corners in each tile to extract the maximum altitude. This is then stored alongside the altitude data, interleaved as follows, with one byte for each tile in the 31x31-tile landscape:</li>
 
 						<ul>
 							<li>&amp;6020 to &amp;603E for tile row anchored by zTile = 0</li>
@@ -206,7 +206,7 @@ page_header("deep_dives", "ray-casting_for_the_tile_visibility_table.html", "Ray
 							<li>&amp;7E20 to &amp;7F3E for tile row anchored by zTile = 30</li>
 						</ul>
 
-						<p>This also leaves the following variables set to point to the two sets of altitude data, which we can use in the next step to calculate the tile visibility:</p>
+						<p>This also leaves the following variables set to point to the two sets of altitude data, which we can use in the next step to fetch the correct values for calculating the tile visibility:</p>
 
 						<ul>
 							<li>(Q P) = &amp;6000, which points to the altitude and shape data</li>
@@ -214,70 +214,72 @@ page_header("deep_dives", "ray-casting_for_the_tile_visibility_table.html", "Ray
 							<li>(S R) = &amp;6020, which points to the maximum altitude data</li>
 						</ul>
 
-						<p>Having extracted the altitude, we move on to the visibility calculation itself, so let's look at that next.</p>
+						<p>Having extracted the altitude data, we move on to the visibility calculation itself, so let's look at that next.</p>
 
 						<h2 class="articleSubheader">Calculating tile visibility by row<br>
 													 ----------------------------------</h2>
 
-						<p>The second major stage in the tile visibility analysis is to call the <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> routine to calculate the visibility of all the tile corners in a tile row, which we can then convert into a tile visibility when we return back to the <a href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a> routine, as described above.</p>
+						<p>The second major stage in the GetTileVisibility process is to calculate the visibility of all the tile corners in a row by calling the <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> routine. We can then convert the results into a sequence of tile visibility bits to store in the tileVisibility table once we return back to the <a href="/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a> routine, using the encoding technique described above.</p>
 
-						<p>The GetRowVisibility routine loops through each tile corner in the row, from right to left, in a loop that's split over <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">part 1</a> and <a href="/source/main/subroutine/getrowvisibility_part_2_of_2.html">part 2</a> of the routine (and which has an anti-cracker interlude in the middle that has nothing to do with the visibility checks). The end result of this routine is to populate the 32 entries in the drawing table at drawingTableOffset (i.e. oddVisibility or evenVisibility), storing %00000000 if the tile corner is not visible from the player's position and %11111111 if it is visible from the player's position.</p>
+						<p>The GetRowVisibility routine loops through each tile corner in the row, from right to left, in a loop that's split over <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">part 1</a> and <a href="/source/main/subroutine/getrowvisibility_part_2_of_2.html">part 2</a> of the routine (there's an anti-cracker interlude in the middle that has nothing to do with the visibility checks, which is the only reason for there being two parts). The end result of this routine is to populate the 32 entries in the drawing table at drawingTableOffset (i.e. oddVisibility or evenVisibility), storing %00000000 if the tile corner is not visible from the player's position and %11111111 if it is visible from the player's position.</p>
 
-						<p>The process of working out whether a tile corner is visible is pretty involved, but essentially we take the vector from the player to the tile corner and follow it from the player's eyes to the tile corner, checking as we go whether the vector hits any landscape. This technique is called "ray-casting" or "ray-tracing" because it's typically used to trace rays of light as they are cast between light sources and the eye, so a picture of a 3D scene can be built up one light ray at a time.</p>
+						<p>The process of working out whether a tile corner is visible is pretty involved, but essentially we take the vector from the player's eyes to the tile corner and step along it all the way from the player to the corner, checking as we go whether the vector hits any landscape. This technique is called "ray-casting" or "ray-tracing" because it's typically used to trace rays of light as they are cast between light sources and the eye, so a picture of a 3D scene can be built up one light ray at a time.</p>
 
-						<p>In our case we're not building up a picture from light rays, but we're effectively tracing the path of a straight line gaze from the player's eye to the tile corner, to see if that gaze hits any landscape in the process. You can think of it as shining a torch from the player towards the tile corner: if the light reaches the tile corner without hitting anything in-between, then the player can see the corner and we mark it as visible, but if the light hits a part of the landscape then the player's view of that corner is blocked, and we mark it as not visible.</p>
+						<p>In our case we're not building up a picture from light rays, but we're effectively tracing the path of a straight line gaze from the player's eye to the tile corner, to see if that gaze hits any landscape in the process. You can think of it as shining a torch from the player towards the tile corner: if the light reaches the tile corner without hitting anything in-between, then the player can see the corner and we mark it as visible, but if the light hits a part of the landscape instead, then the player's view of that corner is blocked and we mark it as not visible.</p>
 
-						<p>Here's a breakdown of the most important steps in this process in the GetRowVisibility routine:</p>
+						<p>Here's a breakdown of the most important steps in this process in the <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> routine, starting with a few initialisation tasks:</p>
 
 						<ul>
 							<li>Set traceStepCounter = 255 to record the number of steps we perform as we work along the gaze vector (though we may change this below).</p>
 
 							<li>Call <a href="/source/main/subroutine/getobjectcoords.html">GetObjectCoords</a> to fetch the Cartesian coordinates of the player object.</li>
 
-							<li>Work through all three axes in turn (i.e. z-axis, y-axis and x-axis) and calculate the distance along each axis from the player to the tile corner, divided by 256. This gives us the 3D vector from the player to the tile corner, divided by 256.</li>
+							<li>Work through all three axes in turn (i.e. z-axis, y-axis and x-axis) and calculate the distance along each axis from the player to the tile corner, and then divide this by 256. This gives us 1/256 of the 3D vector from the player to the tile corner, which is effectively the vector of a small step along the full vector (so starting at the player's eyes and performing 256 of these steps would trace along the full vector).</li>
 
 							<li>If the tile corner is within 1.5 tile distances of the player along the longest axis, then we automatically mark this tile corner as visible and move on to the next tile corner (so close-by tiles are always considered potentially visible).</li>
 						</ul>
 
-						<p>We now do an optimisation step. We could trace along the vector from the player to the tile corner in steps of 256 by starting at the player's eyes and adding the 3D vector we calculated above, which would step us along the gaze vector in 256 steps, so each step would be 1/256 of the whole vector from the player to the tile corner. If, at each step, we check whether we have hit any landscape, then this process will work.</p>
+						<p>We now do an optimisation step. We could trace along the vector from the player to the tile corner in 256 steps by starting at the player's eyes and adding the 3D vector we calculated above, which would step us along the gaze vector in 256 steps, so each step would be 1/256 of the whole vector from the player to the tile corner. If, at each step, we check whether we have hit any landscape, then this process will work.</p>
 
 						<p> But given that the landscape is only 32 tile corners across in each direction, this would mean that most of the time we would be stepping along the vector while staying above the same tile. Instead we can scale up the size of our steps and do fewer of them, and as long as each individual step is smaller than a tile width, we can still check every landscape tile along the line of sight.</p>
 
-                        <p>We therefore increase the size our 1/256 vector, doubling it as many times as we can so that it's as big as possible while still fitting into one byte (where one byte represents a fraction of a tile width). At the same time as we double the length of the vector, we halve the step count in traceStepCounter. This reduces the number of steps in the ray-casting process as far as possible while keeping the size of each step to less than one tile (so that the tracing process still steps through each tile en route).</p>
+                        <p>We therefore increase the size our 1/256 vector, doubling it as many times as we can so that it's as big as possible while still fitting into one byte (where one byte represents a fraction of a tile width). At the same time as we double the length of the vector, we halve the step count in traceStepCounter. This reduces the number of steps in the ray-casting process as far as possible while keeping the size of each step to less than one tile (so that the tracing process still steps through each tile <i>en route</i>).</p>
 
                         <p>So, to recap, we have taken the "gaze vector" from the player to the tile corner, divided it by 256 and scaled it up as far as possible while still keeping the vector within the dimensions of a tile, and traceStepCounter contains the number of times this "step vector" fits into the original vector from the player to the tile corner. We can therefore trace the gaze vector from the player to the tile corner by taking the player's coordinates and adding the scaled step vector traceStepCounter times, knowing that together, these steps will stop over every tile between the player and the tile corner in the process. We may stop over some tiles more than once, but that's OK.</p>
 
-						<p>We do this process one axis at a time, starting at the player's coordinate and adding the scaled step vector to step along the gaze vector from the player to the tile corner (note that the accuracy when stepping along the x- and z-axes is 16-bit, with one fractional byte, but the accuracy for the y-axis is 24-bit, with two fractional bytes).</p>
+						<p>We do this process one axis at a time, starting at the player's coordinate and adding the scaled step vector to step along the gaze vector from the player to the tile corner. (It's worth noting that the accuracy when stepping along the x- and z-axes is 16-bit, with one fractional byte, but the accuracy for the y-axis is 24-bit, with two fractional bytes).</p>
 
 						<p>At each step we fetch the maximum altitude for the tile that we are currently passing over in our gaze-tracing process, and then check it against the altitude of our current position along the gaze vector.</p>
 
 						<p>If the altitude of our current position along the gaze vector is lower than the altitude of the highest point of the landscape on the tile over which we are passing, this means the gaze vector has hit the landscape before reaching the end, so we mark the tile corner as not visible, stop tracing the beam and move on to the next tile corner.</p>
 
-						<p>If the altitude of our current position along the gaze vector is equal to or higher than the altitude of the highest point of the landscape on the tile over which we are passing, then the gaze vector is passing over the current part of the landscape, so we keep stepping along the gaze vector until we either hit the landscape or reach the tile corner.</p>
+						<p>If the altitude of our current position along the gaze vector is equal to or higher than the altitude of the highest point of the landscape on the tile over which we are passing, then the gaze vector is passing over the current part of the landscape, so we keep stepping along the gaze vector until we either hit the landscape or reach the tile corner at the end of the full vector (in which case the tile corner is deemed to be visible).</p>
 
 						<p>If we repeat this process for all the tile corners in the specified row and store the results in the relevant oddVisibility or evenVisibility drawing table, then we can return to the GetTileVisibility routine to calculate the final visibility for each tile in the row, and then the tile visibility table will be populated and usable whenever we have to draw the landscape.</p>
 
-						<p>This ray-casting approach is also used in-game when working out whether the player and enemies can see specific tiles, but that's an even more sophisticated algorithm, as it has to work out whether individual tile shapes or objects are getting in the way of the crosshair sights. See the deep dive on <a href="calculating_gaze.html">calculating gaze</a> for details.</p>
+						<p>This ray-casting approach is also used in-game when working out whether the player and enemies can see specific tiles, but that's implemented using an even more sophisticated algorithm, as it has to work out whether individual tile shapes or objects are getting in the way of the crosshair sights. See the deep dive on <a href="calculating_gaze.html">calculating gaze</a> for details.</p>
 
 						<h2 class="articleSubheader">Tying the algorithm to the heatmap<br>
 													 ----------------------------------</h2>
 
-						<p>Let's take another look at the heatmap we saw earlier and see if we can tie it in to the algorithm:</p>
+						<p>Now that we know how the tile visibility table gets populated, let's take another look at the heatmap we saw earlier and see if we can tie its features into the algorithm:</p>
 
 						<img class="titleImage marginBorder" style="width: 268px" src="/images/tile_visibility/scan_0000.gif" alt="A memory heatmap when raytracing landscape 0000 in the BBC Micro version of The Sentinel">
 
-						<p>This particular heatmap is showing two tables: the one on the left is at address &amp;6000 and contains altitude and shape data for all the tiles in the landscape, and the one on the right is at address &amp;6200 and contains maximum altitude data for each tile. We'll look at these tables in detail in the "Calculating tile altitudes and shapes" section below, but for now you just need to know that each of these tables records data about the tiles on the landscape.</p>
-
 						<p>I've used the b-em emulator to capture these heatmaps, and luckily the default heatmap in b-em shows the computer's memory in a grid, showing one pixel per byte in 256 rows of 256 bytes per row. This means that each row starts at &amp;xx00 in memory, so it just happens to show each table row on a new pixel line, so the tables appear in the same shape as the landscape itself.</p>
 
-						<p>The heatmap starts with both tables being populated by the <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a>, giving us a flash of red, and then the algorithm works through the landscape, one tile at a time, and calculates that tile's visibility. This is done by the <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> routine, which works along each tile row in the landscape from right to left, calculating visibility. We call this routine for each row, stepping through the rows from the back row to the front, and then we're done.</p>
+						<p>The heatmap is showing two tables in memory: the one on the left is at address &amp;6000 and contains the altitude and shape data for all the tiles in the landscape, and the one on the right is at address &amp;6200 and contains maximum altitude data for each tile. Both these tables are populated by the <a href="/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> routine that we analysed above.</p>
 
-						<p>The amazing thing is that you can literally see the ray-casting process happen in the heatmap. As the algorithm works through the landscape, testing each tile's visibility in turn, it does two things when processing each tile:</p>
+						<p>So the heatmap starts with both tables flashing red as they are zeroed with a write (as red = write, green = read). Then the left table is populated with the tile altitudes and flatness bit, which keeps the table red, and then the right table is populated with the maximum altitudes by reading the altitudes from the left table, so the right table flashes red at the same time as the left table is read, so the left table turns yellow as red + green = yellow in the heatmap.</p>
+
+						<p>Next up, the algorithm works through the landscape, one tile at a time, and calculates that tile's visibility. This is done by the <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a> routine, and as we discussed above, it works along each tile row in the landscape from right to left, calculating each tile's visibility as it goes. We call this routine for each row, stepping through the rows from the back row to the front, and then we're done.</p>
+
+						<p>The amazing thing is that you can literally see GetRowVisibility's ray-casting process in the heatmap. As the routine works through the landscape, calculating each tile corner's visibility in turn, it does two things:</p>
 
 						<ul>
-							<li>It reads the altitude of the tile from the left table, which lights up the individual tile we are processing.</p>
+							<li>It reads the altitude of the tile from the left table, which lights up the individual tile we are processing in green.</p>
 
-							<li>It traces a light beam from the player to the tile that we are processing, and as that light beam passes over a tile, it fetches the maximum altitude of that tile from the right table, to see whether the light beam is hitting the landscape or passing overhead. So as we trace the beam, the heatmap will light up for each tile beneath the beam, until we either reach the tile we are processing or the beam hits the landscape.</li>
+							<li>It traces the gaze vector from the player to the tile corner that we are processing, and as the vector passes over each tile, the algorithm fetches the maximum altitude of that tile from the table on the right, to see whether the vector is hitting the landscape or passing overhead. So as we trace the vector, the heatmap lights up for each tile beneath the vector, until we either reach the tile we are processing or the vector hits the landscape.</li>
 						</ul>
 
 						<p>So over the course of the entire algorithm, we get the following:</p>
@@ -285,7 +287,7 @@ page_header("deep_dives", "ray-casting_for_the_tile_visibility_table.html", "Ray
 						<ul>
 							<li>The left table lights up the relevant tile entry as each tile is processed, and because we work through the landscape row by row, this gives us the sweeping effect we can see in the heatmap.</p>
 
-							<li>For each tile that is processed, the right table in the heatmap traces out the light beam from the player to the tile, so over the course of the whole algorithm, we get a sweeping lighthouse radar effect that literally maps each of the traced lines from the player to every tile on the landscape.</li>
+							<li>For each tile that is processed, the right table in the heatmap traces out the gaze vector from the player to the tile, so over the course of the whole algorithm, we get a sweeping lighthouse radar effect that literally maps each of the traced lines from the player to every tile corner on the landscape.</li>
 						</ul>
 
 						<p>And that's why we can visualise the tile visibility ray-casting algorithm using a memory heatmap. It's a fascinating glimpse into the way The Sentinel works under the hood...</p>
