@@ -11,46 +11,53 @@ page_header("deep_dives", "drawing_the_landscape_view.html", "Drawing the landsc
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Drawing a partial view of the landscape from back to front</h2>
 
-						<p>The landscape in The Sentinel is a thing of beauty, and drawing it is a complicated process. The drawing isn't done in real-time; a complicated landscape may take a couple of seconds to render, as in this example:</p>
+						<p>The landscape in The Sentinel is a thing of beauty, and drawing it is a pretty complicated process. Because of this, the drawing isn't done in real-time; a busy landscape may take a couple of seconds to render, as in this example:</p>
 
 						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
 							<source src="/media/draw_landscape/view_5.mp4" type="video/mp4">
 						</video>
 
-						<p>In this example the player has just performed a U-turn, so the game redraws the entire landscape view. The player doesn't see the landscape being drawn in-game, however; normally the colours are set to an all-blue palette for the drawing process, so the player just sees a blank blue screen while the game code draws the landscape, before the code changes the palette back to the correct colour scheme for the landscape and the updated scene is revealed.</p>
+						<p>In this example the player has just performed a U-turn, so the game redraws the entire landscape view. The player doesn't see the landscape being drawn in-game, however; normally the colours are set to an all-blue palette for the drawing process, so the player just sees a blank blue screen while the game code draws the landscape, and when it's finished the code changes the palette back to the correct colour scheme for the landscape and the updated scene is magically revealed.</p>
 
-						<p>If we disable this all-blue palette change to reveal what's going on behind the curtain, then we can see the landscape being drawn. Let's slow it down a bit so we can see it a bit more detail:</p>
+						<p>If we disable this all-blue palette change to reveal what's going on behind the curtain, then we can see the landscape being drawn, as above. Let's slow it down a bit so we can see it a bit more detail:</p>
 
 						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
 							<source src="/media/draw_landscape/view_5_slow.mp4" type="video/mp4">
 						</video>
 
-						<p>You can see that the tiles are drawn from back to front, so landscape at the front obscures landscape at the back. Objects are drawn at the same time as the tiles they appear on, and object stacks are drawn in the correct order; in the case of the Sentinel and its tower, the Sentinel is slightly higher than the player, so the Sentinel gets drawn first and then the tower.</p>
+						<p>You can see that the tiles are drawn from back to front, so the landscape at the front obscures the landscape at the back. Objects are drawn at the same time as the tiles they appear on, and object stacks are drawn in the correct order; in the case of the Sentinel and its tower, the Sentinel is slightly higher than the viewer, so the Sentinel gets drawn first and then the tower.</p>
 
 						<p>In this deep dive we'll take a look at this drawing process in detail.
+
+						<h2 class="articleSubheader">Quadrants and the drawing process<br>
+													 ---------------------------------</h2>
+
+						<p>Before we start, here's a quick note about quadrants. To keep things as simple as possible in this article, I'll only be talking about drawing the landscape in the standard orientation, as shown in the landscape preview:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/landscape/landscape_0000_preview.png" alt="The landscape preview screen for landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<p>In other words, I'll talk about drawing the view when the viewer is looking towards the back row in this layout (i.e. towards the rear tile row with z-coordinate 30). When viewed in other orientations, the game draws the landscape by applying quadrant corrections to the drawing code, and I've extracted that discussion into its own deep dive on <a href="calculating_quadrants_for_the_landscape_view.html">calculating quadrants for the landscape view</a>.</p>
+
+						<p>For the purposes of this article, then, we don't need to apply any quadrant corrections to the code, as the landscape preview uses the default quadrant. This means that when I'm talking about the "back row" or "right" and "left", I'm talking about the orientation in the above screenshot. This should keep things nice and simple; they can get a lot more confusing when you have to worry about whether rows are actually columns, and whether the back of the landscape is actually the one on the right...</p>
+
+						<p>Note also that the landscape is drawn from the perspective of a specific viewing object (the "viewer"), and this can be set to any 3D object. During gameplay the viewer is always the player, but for the landscape preview we define a completely different camera position by creating an object in space that gazes down on the entire world from a distance, so the whole landscape fits on-screen. See the deep dive on <a href="drawing_the_landscape_preview.html">drawing the landscape preview</a> for more details.</p>
 
 						<h2 class="articleSubheader">A top-level view of the drawing process<br>
 													 ---------------------------------------</h2>
 
-						<p>Before we start, a quick note about quadrants. To keep things simple in this article, I'll only be talking about drawing the landscape in the standard orientation, as shown in the landscape preview:</p>
-
-						<img class="titleImage marginBorder" style="width: 320px" src="/images/landscape/landscape_0000_preview.png" alt="The landscape preview screen for landscape 0000 in the BBC Micro version of The Sentinel">
-
-						<p>In other words, I'll talk about drawing the view when the player is looking towards the back row in this layout (i.e. towards the rear tile row with z-coordinate 30). When viewed in other orientations, the game draws the landscape by applying quadrant corrections to the drawing code, and I've extracted that discussion into its own deep dive on <a href="calculating_quadrants_for_the_landscape_view.html">calculating quadrants for the landscape view</a>. For the purposes of this article, we don't need to apply any quadrant corrections to the code, as the landscape preview uses the default quadrant. This means that when I'm talking about the "back row" or "right" and "left", I'm talking about the orientation in the above screenshot, which is nice and simple; things can get a lot more confusing when rotations kick in and rows become columns, and the back of the landscape is actually to the right...</p>
-
 						<p>The landscape is drawn by calling the <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView</a> routine. There's a lot going on in this three-part routine, so let's break down the top-level stages, which we'll look at in more detail below.</p>
 
 						<ul>
-							<li><a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">Part 1 of DrawLandscapeView</a> sets up the quadrant variables. Specifically it works out which quadrant the player is looking at and calculates the tile coordinate of the viewer, but with the axes rotated to match the orientation of the viewer, so the x- and z-coordinate axes are from the perspective of the viewer rather than of the 3D world. See the deep dive on <a href="calculating_quadrants_for_the_landscape_view.html">calculating quadrants for the landscape view</a> for details.</li>
+							<li><a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">Part 1 of DrawLandscapeView</a> sets up the quadrant variables and calculates the quadrant-relative tile coordinates of the viewer; see the deep dive on <a href="calculating_quadrants_for_the_landscape_view.html">calculating quadrants for the landscape view</a> for details.</li>
 
-							<li><a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html">Part 2 of DrawLandscapeView</a> works through the landscape in the quadrant that the viewer is looking at, drawing one row of tiles and objects at a time, starting from the back row (from the perspective of the viewer) to the row just in front of the viewer. It calls a number of routines to do this, including:
+							<li><a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html">Part 2 of DrawLandscapeView</a> works through the landscape and draws one row of tiles and objects at a time, starting from the furthest row (from the perspective of the viewer) to the row just in front of the viewer. It calls a number of routines to do this, including these ones:
 
 								<ul>
-									<li><a href="/source/main/subroutine/gettileviewedges.html">GetTileViewEdges</a> works out the extent of each row of tiles that we need to draw, by working out which tiles are at the edges of the visible part of the row.</li>
+									<li><a href="/source/main/subroutine/gettileviewedges.html">GetTileViewEdges</a> works out the extent of each row of tiles that we need to draw, by working out which tiles are at the right and left edges of the visible part of the row.</li>
 
 									<li><a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles</a> calculates the pitch and yaw angles for each tile corner in the row, relative to the viewer, and whether the corners are on-screen. The angle calculations are explained in the deep dive on <a href="converting_coordinates_to_angles.html">converting coordinates to angles</a>.</li>
 
-									<li><a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a> draws a row of tiles between the left visible edge and the right visible edge, in two parts towards each side of the viewer. It draws each tile (and any objects on the tile) by calling <a href="/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a>, which in turn calls the following as required:
+									<li><a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a> draws a row of tiles between the left visible edge and the right visible edge, drawing it in two parts, one from the left edge towards the viewer and the other from the right edge. It draws each tile (and any objects on the tile) by calling <a href="/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a>, which in turn calls the following as required:
 
 										<ul>
 											<li><a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a> to draw a flat tile</li>
@@ -61,16 +68,16 @@ page_header("deep_dives", "drawing_the_landscape_view.html", "Drawing the landsc
 
 											<li><a href="/source/main/subroutine/drawobject.html">DrawObject</a> to draw a single 3D object on a tile</li>
 
-											<li><a href="/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a> to draw a stack of 3D objects</li>
+											<li><a href="/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a> to draw a stack of 3D objects on a tile</li>
 										</ul>
 									</li>
 								</ul>
 							</li>
 
-							<li><a href="/source/main/subroutine/drawlandscapeview_part_3_of_3.html">Part 3 of DrawLandscapeView</a> draws the tile row beneath the viewer, again using the <a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles</a> and <a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a> routines from the previous step. The viewer can only see one half of the row, because they are standing on it, so we need to work out which half this is (if they can see any of the row at all) and then draw it. We then draw the tile directly beneath the viewer with a call to <a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a>, and then we are done.</li>
+							<li><a href="/source/main/subroutine/drawlandscapeview_part_3_of_3.html">Part 3 of DrawLandscapeView</a> draws the tile row beneath the viewer, again using the same <a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles</a> and <a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a> routines as the previous step. The viewer can only see one half of the row, because they are standing on it, so we need to work out which half this is (if they can see any of the row at all) and then draw it. We then draw the tile directly beneath the viewer with a call to <a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a>, and we are done.</li>
 						</ul>
 
-						<p>For the rest of this article, we're going to take a look at look at the drawing process in parts 2 and 3</p>
+						<p>For the rest of this article, we're going to take a look at look at the drawing process in parts 2 and 3.</p>
 
 						<h2 class="articleSubheader">Drawing landscape rows<br>
 													 ----------------------</h2>
@@ -85,11 +92,11 @@ page_header("deep_dives", "drawing_the_landscape_view.html", "Drawing the landsc
 							<li>Draw each tile (and any associated 3D objects) in <a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a>.</li>
 						</ol>
 
-						<p>This process is repeated in <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html">Part 2 of DrawLandscapeView</a> to draw each row in front of the player, from the furthest row (from the perspective of the viewer) to the nearest, and then we jump to <a href="/source/main/subroutine/drawlandscapeview_part_3_of_3.html">part 3</a> to draw the player's row and we're done.</p>
+						<p>This process is repeated in <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html">part 2 of DrawLandscapeView</a> for each row in front of the viewer, from the furthest row (from the perspective of the viewer) to the nearest, and then we jump to <a href="/source/main/subroutine/drawlandscapeview_part_3_of_3.html">part 3</a> to draw the viewer's row and we're done.</p>
 
-						<p>Let's start by looking at the calculation of the row's angles and edges in <a href="/source/main/subroutine/gettileviewedges.html">GetTileViewEdges</a>. This routine keeps track of a pair of tile numbers in <a href="/source/main/workspace/zero_page.html#xtileviewleft">xTileViewLeft</a> and <a href="/source/main/workspace/zero_page.html#xtileviewright">xTileViewRight</a>, which between them contain the numbers of the tile columns that appear at the left and right edges of the screen on the row that we are drawing. For each new row that we draw, the routine takes these left and right column numbers from the previous row and works out whether to extend or reduce the left and right extents of the row edges, depending on whether individual tile corners are on-screen. In this way we can reduce the number of angles that we need to calculate to just those that we need for drawing the current row, and no more, which saves time as the angle calculations are relatively complicated and slow.</p>
+						<p>Let's start by looking at the calculation of the row's angles and edges in <a href="/source/main/subroutine/gettileviewedges.html">GetTileViewEdges</a>. This routine keeps track of a pair of tile numbers in <a href="/source/main/workspace/zero_page.html#xtileviewleft">xTileViewLeft</a> and <a href="/source/main/workspace/zero_page.html#xtileviewright">xTileViewRight</a>, which between them contain the numbers of the tile columns that appear at the left and right edges of the screen on the row that we are drawing. For each new row that we draw, the routine takes these left and right column numbers from the previous row and works out whether to extend or reduce the left and right extents of the row edges, depending on whether individual tile corners are on-screen. In this way we can reduce the number of angles that we need to calculate to just those that we need for drawing the visible part of the current row, which saves time as the angle calculations are relatively complicated and slow.</p>
 
-						<p>So the first thing we do in this routine is call <a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles</a> to calculate the pitch and yaw angle for the tile corner at the left edge of the row we are analysing, i.e. the tile corner at position xTileViewLeft. This routine calculates the following results and stores them in the drawing tables and one variable:</p>
+						<p>So the first thing we do in GetTileViewEdges is to call <a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles</a> to calculate the pitch and yaw angle for the tile corner at the left visible edge of the row we are analysing, i.e. the tile corner at position xTileViewLeft. This routine calculates the following results and stores them in three drawing tables and one variable:</p>
 
 						<ul>
 							<li>drawViewYaw(Hi Lo) is the tile corner's yaw angle, stored in the relevant entry in the drawing tables for this tile corner.</li>
@@ -98,29 +105,27 @@ page_header("deep_dives", "drawing_the_landscape_view.html", "Drawing the landsc
 
 							<li>tileViewData is the tile data for this tile corner, stored in the relevant entry in the drawing tables for this tile corner.</li>
 
-							<li>tileIsOnScreen is a variable that determines whether the tile anchored by this tile corner is off-screen, fully on-screen, or partially on-screen and clipped to the right.</li>
+							<li>tileIsOnScreen is a variable that records whether the tile anchored by this tile corner is off-screen, fully on-screen, or partially on-screen.</li>
 						</ul>
 
-						<p>The angle calculations are explained in the deep dive on <a href="converting_coordinates_to_angles.html">converting coordinates to angles</a>.</p>
+						<p>The pitch and yaw angle calculations are explained in the deep dive on <a href="converting_coordinates_to_angles.html">converting coordinates to angles</a>, and the system of drawing tables is described in the deep dive on <a href="the_drawing_tables.html">the drawing tables</a>.</p>
 
-						<p>The tile data is extracted from the tileData table in <a href="/source/main/subroutine/gettileviewangles_part_3_of_4.html">part 3 of GetTileViewAngles</a>. If the tile is empty and is marked as not being visible in the tile visibility table, then the tile data is zeroed before being stored in tileViewData; if the tile contains any objects or is marked as being visible, then the tile data is left alone. This value is checked in the drawing process described in the next section.</p>
+						<p>The tile data is extracted by <a href="/source/main/subroutine/gettileviewangles_part_3_of_4.html">part 3 of GetTileViewAngles</a> from the tileData table. If the tile is empty and is marked as not being visible in the tile visibility table, then the tile data byte is zeroed before being stored in tileViewData; if the tile contains any objects or is marked as being visible, then the tile data is left alone. This value is used in the drawing process described in the next section, so we don't waste time drawing tiles that can't be seen.</p>
 
-						<p>The value of tileIsOnScreen is calculated in <a href="/source/main/subroutine/gettileviewangles_part_4_of_4.html">part 4 of GetTileViewAngles</a>, but be warned: my analysis of this value seems to be incorrect, and I haven't managed to work out why, so this is on the <a href="/about_site/to-do_list.html">to-do list</a> to clarify. It shouldn't affect understanding of this process, but it does mean I'm going wave my hands about a bit and pretend that this all makes perfect sense, when the details are still a little in flux.</p>
+						<p>The value of tileIsOnScreen is calculated in <a href="/source/main/subroutine/gettileviewangles_part_4_of_4.html">part 4 of GetTileViewAngles</a>, but be warned: my analysis of this value seems to be incorrect, and I haven't managed to work out why, so this is on the <a href="/about_site/to-do_list.html">to-do list</a> to clarify. It shouldn't affect understanding of this process, but it does mean I'm going wave my hands about a bit and pretend that this all makes perfect sense, while some of the specific implementation details are a little bit in flux.</p>
 
-						<p>Given the angles, tile data and on-screen for the current tile corner, the GetTileViewEdges routine now "feels" its way left or right along the row, and each time it moves along the line, it calls GetTileViewAngles again to fetch the angles, tile data and on-screen data for that corner. It then uses this information to continue moving along the row, updating xTileViewLeft or xTileViewRight as required. I confess that I don't fully understand this algorithm, but that's probably because I've got the values of tileIsOnScreen wrong; but the idea is to find the left and right extents of the on-screen portion of the row in a manner that calculates the angles for all the visible tile corners, at the same time as minimising the number of angles that we need to calculate.</p>
+						<p>Now that we have calculated the angles, tile data and on-screen status for the current tile corner, the GetTileViewEdges routine effectively "feels" its way left and right along the row, and each time it moves along the line, it calls GetTileViewAngles again to fetch the angles, tile data and on-screen data for that corner. It then uses this information to continue moving along the row, updating xTileViewLeft or xTileViewRight as required. I confess that I don't fully understand this algorithm, but that's probably because I've got the values of tileIsOnScreen wrong; but the idea is to find the left and right extents of the on-screen portion of the row in a manner that calculates the angles for all the visible tile corners, at the same time as minimising the number of angles that we need to calculate.</p>
 
-						<p>On returning from the GetTileViewEdges routine back to <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html">part 2 of DrawLandscapeView</a>, we check the calculated left and right extents of the visible part of the row that we just calculated, to make sure that we have four calculated sets of angles for each of the tiles that we need to draw. This process starts at <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html#dlan7">dlan7</a>.</p>
-
-						<p>We do this because as we move forwards through the landscape, the new row of corners might have a wider extent than the previous row, which would mean the tiles at the edges might not have both of the tile's far corners stashed in the drawing tables from the previous row's calculations, which would mean we couldn't draw those tiles. So we check the left and right extents at <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html#dlan9">dlan9</a> and <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html#dlan13">dlan13</a> to ensure that the tiles at each end have all four angles cached, and then we are finally ready to move on to the actual drawing process at <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html#dlan15">dlan15</a>.</p>
+						<p>On returning back to <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html">part 2 of DrawLandscapeView</a> from the GetTileViewEdges routine, we check the calculated left and right extents of the visible part of the row that we just calculated, to make sure that we have four calculated sets of angles for each of the tiles that we need to draw. This process starts at <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html#dlan7">dlan7</a>. We do this because as we move forwards through the landscape, the new row of corners might have a wider extent than the previous row, which would mean the tiles at the edges might not have both of the tile's far corners stashed in the drawing tables from the previous row's calculations, and this would mean we couldn't draw those tiles. So we check the left and right extents at <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html#dlan9">dlan9</a> and <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html#dlan13">dlan13</a> to ensure that the tiles at each end have all four angles cached, and then we are finally ready to move on to the actual drawing process at <a href="/source/main/subroutine/drawlandscapeview_part_2_of_3.html#dlan15">dlan15</a>.</p>
 
 						<h2 class="articleSubheader">Drawing tiles<br>
 													 -------------</h2>
 
-						<p>Once all the angles have been calculated and all the tile data extracted for each tile corner in the visible part of the current row, we can actually draw the row on-screen by calling the <a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a>. This simple routine draws a row of tiles between the left visible edge and the right visible edge, drawing it in two parts, one from the left edge towards the left side of the viewer, and the other from the right edge towards the right edge of the viewer. This ensures that more distant tiles are drawn before nearer ones, from the perspective of the viewer.</p>
+						<p>Once all the angles have been calculated and all the tile data extracted for each tile corner in the visible part of the current row, we can actually draw the row on-screen by calling <a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a>. This simple routine draws a row of tiles between the left visible edge and the right visible edge, drawing it in two parts, one from the left edge towards the left side of the viewer, and the other from the right edge towards the right side of the viewer. This ensures that more distant tiles are drawn before nearer ones, all from the perspective of the viewer.</p>
 
-						<p>Each tile is drawn by calling the <a href="/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a> routine. This starts by checking the relevant tile data from the tileViewData drawing table, which will be zero if this tile is empty and is not visible (in which case we abort the drawing process). We can then extract the tile shape from the tile data and decide how to draw the tile.</p>
+						<p>Each individual tile is drawn by calling the <a href="/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a> routine. This starts by checking the relevant tile data from the tileViewData drawing table, which will be zero if this tile is empty and is not visible (in which case we abort the drawing process). If it is non-zero then we can then extract the tile shape from the tile data and decide how to draw the tile.</p>
 
-						<p>If the tile contains any objects, then we draw both the tile and the object stack as well by calling <a href="/source/main/subroutine/drawobject.html">DrawObject</a> or <a href="/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a>. The drawing process for object stacks is described in the deep dive on <a href="stacking_objects.html">stacking objects</a>; essentially, the object stack is drawn in a similar manner, with more distant objects being drawn before nearer objects, with the tile being drawn at the correct point as well.</p>
+						<p>If the tile contains any objects, then we draw both the tile and the object stack by calling <a href="/source/main/subroutine/drawobject.html">DrawObject</a> or <a href="/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a>. The drawing process for object stacks is described in the deep dive on <a href="stacking_objects.html">stacking objects</a>, but essentially the object stack is drawn in a similar manner to the landscape, with more distant objects being drawn before nearer objects, and with the tile being drawn at the correct point as well.</p>
 
 						<p>One thing that is worth noting is that tiles containing objects ignore the tile's setting in the tile visibility table, so we always draw tiles with objects on them, even if those tiles are not visible. This is because object stacks can be really high, so even if the tile is hidden, the top of the object stack may be visible for miles around, so we always draw the stack. Here's an example with a tree just poking above the furthest part of the landscape:</p>
 
@@ -134,7 +139,7 @@ page_header("deep_dives", "drawing_the_landscape_view.html", "Drawing the landsc
 							<source src="/media/draw_landscape/view_2.mp4" type="video/mp4">
 						</video>
 
-						<p>And here's an example of a tree being drawn and then being completely obscured:</p>
+						<p>And as an extreme example, here's a tree being drawn and then being completely obscured:</p>
 
 						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
 							<source src="/media/draw_landscape/view_4.mp4" type="video/mp4">
@@ -146,36 +151,36 @@ page_header("deep_dives", "drawing_the_landscape_view.html", "Drawing the landsc
 							<source src="/media/draw_landscape/view_4_slow.mp4" type="video/mp4">
 						</video>
 
-						<p>For empty tiles, we now choose the correct routine to draw the specific tile shape, as follows:
+						<p>That's what happens for tiles containing objects, but for empty tiles, we choose the correct routine to draw the specific tile shape, as follows:
 
 						<ul>
-							<li><a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a> draws a flat tile by calling <a href="/source/main/subroutine/drawonefacetile.html">DrawOneFaceTile</a></li>
+							<li><a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a> draws a flat tile by calling <a href="/source/main/subroutine/drawonefacetile.html">DrawOneFaceTile</a>.</li>
 
 							<li><a href="/source/main/subroutine/drawslopingtile.html">DrawSlopingTile</a> draws a sloping tile, which can have either one or two faces. If the tile shape has one face, then this is drawn by calling <a href="/source/main/subroutine/drawonefacetile.html">DrawOneFaceTile</a>, and if it has two then we call <a href="/source/main/subroutine/drawtwofacetile.html">DrawTwoFaceTile</a>.</li>
 						</ul>
 
-						<p>Each of these routines ends up drawing the tile faces by calling the <a href="/source/main/subroutine/drawpolygon.html">DrawPolygon</a> routine to draw the face as a polygon using the angles in the drawing tables; see the deep dive on <a href="drawing_filled_polygons.html">drawing filled polygons</a> for details. The  number of sides in the polygon is passed via the <a href="/source/main/workspace/zero_page.html#polygontype">polygonType</a> parameter, while the polygon's colours are passed to the routine via the <a href="/source/main/workspace/zero_page.html#polygoncolours">polygonColours</a> parameter.</p>
+						<p>These routines draw each individual tile face by calling the <a href="/source/main/subroutine/drawpolygon.html">DrawPolygon</a> routine, which draws the polygons for the faces using the angles of the relevant tile corners from the drawing tables; see the deep dive on <a href="drawing_filled_polygons.html">drawing filled polygons</a> for details. The  number of sides in the polygon is passed via the <a href="/source/main/workspace/zero_page.html#polygontype">polygonType</a> parameter, while the polygon's colours are passed to the routine via the <a href="/source/main/workspace/zero_page.html#polygoncolours">polygonColours</a> parameter.</p>
 
-						<p>The number of sides is easy to work out from the tile shape: flat and one-face sloping tiles have one slope with four sides, while all other shapes have two triangles (see the deep dive on <a href="tile_shapes.html">tile shapes</a> for details). Most of the work in the above routines therefore goes into calculating the correct colours for the polygons, and the correct starting points for the various triangles.</p>
+						<p>The number of sides is easy to work out from the tile shape: flat and one-face sloping tiles have one slope with four sides, while all other shapes consist of two triangles (see the deep dive on <a href="tile_shapes.html">tile shapes</a> for details). Most of the work in the above routines therefore goes into calculating the correct colours for the polygons, and the correct starting points for the various triangles.</p>
 
-						<p>The simplest option is for flat tiles, where we set the tile's colour depending on where it is in the chess board pattern. If both of the tile's x- and z-coordinates are even or odd, then the tile is drawn in colour 3 (white in the examples here), otherwise the tile is drawn in blue.</p>
+						<p>The simplest option is for flat tiles, where we set a tile's colour according to where it is in the chess board pattern. If both of the tile's x- and z-coordinates are even or odd, then the tile is drawn in colour 3 (which is white in the examples shown here), otherwise the tile is drawn in blue.</p>
 
-						<p>Things are rather more complicated for other shapes. The colours of the individual faces in a tiles shape are defined in the <a href="/source/main/variable/tileshapecolour.html">tileShapeColour</a> table, which defines two colours for each shape. For one-sided shapes only the first colour is used, but for two-face shapes the colours are chosen according to the tile shape and the direction in which the player is looking. This ensures that sloping faces get drawn in consistent colours, so in the following example, faces that look to the right are drawn in black, while faces that look to the left are drawn in white:</p>
+						<p>Things are rather more complicated for other shapes. The colours of the individual faces in each tile shape are defined in the <a href="/source/main/variable/tileshapecolour.html">tileShapeColour</a> table, which defines two colours for each shape. For one-sided shapes only one colour is used, and for all shapes the colours are chosen according to the direction in which the viewer is looking. This ensures that sloping faces get drawn in consistent colours, so in the following example, faces that look to the right are always drawn in black, while faces that look to the left are always drawn in white:</p>
 
 						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
 							<source src="/media/draw_landscape/view_3.mp4" type="video/mp4">
 						</video>
 
-						<p>The logic for choosing the correct colours depending on the viewing direction can be found in the latter part of the <a href="/source/main/subroutine/drawslopingtile.html">DrawSlopingTile</a> routine, and <a href="/source/main/subroutine/drawtwofacetile.html">DrawTwoFaceTile</a> then draws the first polygon in the specified colour from tileShapeColour, and draws the second polygon in the other colour from tileShapeColour. Again, this logic is documented but it doesn't really explain why the algorithm works, so this is another item on the <a href="/about_site/to-do_list.html">to-do list</a>.</p>
+						<p>The logic for choosing the correct colours depending on the viewing direction can be found in the latter part of the <a href="/source/main/subroutine/drawslopingtile.html">DrawSlopingTile</a> routine, after which <a href="/source/main/subroutine/drawtwofacetile.html">DrawTwoFaceTile</a> draws the first polygon in the specified colour from tileShapeColour, followed by the second polygon in the other colour from tileShapeColour. This logic is documented but it doesn't really explain why the algorithm works, so this is another item on the <a href="/about_site/to-do_list.html">to-do list</a> to improve.</p>
 
-						<h2 class="articleSubheader">Drawing the row beneath the player<br>
+						<h2 class="articleSubheader">Drawing the row beneath the viewer<br>
 													 ----------------------------------</h2>
 
-						<p>The final part of the process is to draw the row beneath the player, which we do in <a href="/source/main/subroutine/drawlandscapeview_part_3_of_3.html">Part 3 of DrawLandscapeView</a>. We only jump here when we reach the row containing the viewer - all the rows in front of the viewer are drawn in part 2 by this point.</p>
+						<p>The final part of the process is to draw the row beneath the viewer, which we do in <a href="/source/main/subroutine/drawlandscapeview_part_3_of_3.html">Part 3 of DrawLandscapeView</a>. We only jump here if we reach the row containing the viewer, by which point all the rows in front of the viewer will have been drawn in part 2. We may never reach the viewer's row - as in the landscape preview, for example - in which case we simply iterate through all 31 rows in part 2 before terminating there.</p>
 
-						<p>The viewer can only see one half of the row, because they are standing on it and can't look along it in both directions at once, so first we need to work out which half this is (if they can see any of the row at all) and then draw it (or skip to the next stage if it isn't visible). We can do this fairly quickly by comparing the player's tile coordinates with the left/right extents of the tile row to see if the visible part of the row extends beyond the player's tile.</p>
+						<p>The viewer can only see one half of the row, because they are standing on it and can't look along it in both directions at once, so first we need to work out which half this is (if they can see any of the row at all) and then draw it (or skip to the next stage if it isn't visible). We can do this fairly quickly by comparing the viewer's tile coordinates with the left and right extents of the tile row to see if the visible part of the row extends beyond the viewer's tile.</p>
 
-						<p>Once the row has been drawn, we next ensure that we have all the angles that we need for both ends of this half tile row, by calling <a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles</a> for each edge, and we draw the row with a call to <a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a>.</p>
+						<p>Once the row has been analysed, we next ensure that we have all the angles that we need for both ends of this half tile row, by calling <a href="/source/main/subroutine/gettileviewangles_part_1_of_4.html">GetTileViewAngles</a> for each edge. We then draw the row with a call to <a href="/source/main/subroutine/drawlandscaperow.html">DrawLandscapeRow</a>.</p>
 
 						<p>All that remains now is to draw the tile beneath the viewer, so first we make sure we have the angles for the two tile corners in front of the viewer, so by this point we have the following:</p>
 
@@ -199,7 +204,9 @@ page_header("deep_dives", "drawing_the_landscape_view.html", "Drawing the landsc
 
                         <p>We now set up these angles for the tile to ensure that it looks correct, by straightening out the two front corners of the tile so that they are horizontally level, and we position the corners of the viewer's tile so it spreads to the left and right screen edges and appears to dip down behind the viewer (so it spreads down to the bottom of the screen as well).</p>
 
-						<p>And as the very last step in drawing the landscape, we draw the tile under the viewer with a call to <a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a>, and we are done.</p>
+						<p>As the very last step in drawing the landscape, we draw the tile under the viewer with a call to <a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a>, and we are finally done.</p>
+
+						<p>And that's why it takes more than a blink of an eye to draw the landscape view; it's complicated stuff!</p>
 					</div>
 				</div>
 
