@@ -11,9 +11,59 @@ page_header("deep_dives", "drawing_the_landscape_preview.html", "Drawing the lan
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How the landscape preview is created at the start of each level</h2>
 
-						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
+						<p>Before starting each new landscape, the game displays a preview of that landscape, like this:</p>
 
-						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/landscape/landscape_9153_preview.png" alt="The landscape preview screen for landscape 9153 in the BBC Micro version of The Sentinel">
+
+						<p>You can see lots more examples of the landscape preview in the deep dive on <a href="colours_and_palettes.html">colours and palettes</a>, but they all share the same layout: there's the full landscape in front of us, with the Sentinel and sentries perched on top of its tower, ready for battle.</p>
+
+						<p>It turns out that there isn't much to say about the landscape preview, but that's the point: like the title screens, the preview uses the exact same graphics engine as the game to display the landscape, with no hacks or changes, and that in itself is worthy of its own article, even if that article doesn't say a great deal.</p>
+
+						<p>Let's see how it works, anyway.</p>
+
+						<h2 class="articleSubheader">Drawing the preview<br>
+													 -------------------</h2>
+
+						<p>The landscape preview is drawn by the <a href="/source/main/subroutine/previewlandscape.html">PreviewLandscape</a> routine, which is called just after the landscape has been generated (a process that is explained in the deep dives on <a href="generating_the_landscape.html">generating the landscape</a>).</p>
+
+						<p>The first step is to add enemies to the landscape by calling the <a href="/source/main/subroutine/spawnenemies.html">SpawnEnemies</a> routine (see the deep dive on <a href="adding_enemies_and_trees_to_the_landscape.html">adding enemies and trees to the landscape</a> for details). This adds the objects for the Sentinel and any sentries, but it doesn't add the player or trees. It's at this point that we draw the landscape preview, so it only shows the enemies and no other objects.</p>
+
+						<p>As the landscape preview is a kind of title screen, it is displayed by the <a href="/source/main/subroutine/drawtitleview.html">DrawTitleView</a> routine when called with the relevant parameters. These parameters control whether we display a 3D object on the screen (which we don't in this case), the style of the background (which is always black with stars for the preview) and the view type (which is set to 0 for the landscape preview and stored in the <a href="/source/main/variable/viewtype.html">viewType</a> variable for later - see below).</p>
+
+						<p>The DrawTitleView routine then sets six variables from six lookup tables that contain different values for the landscape preview and the other title screens. These variables define object #16, which we use as the viewing object (i.e. the camera) when drawing the landscape in the preview.
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Lookup table</th><th>Value</th><th>Variable</th><th>Description</th></tr>
+							<tr><td><a href="/source/main/variable/xtextviewer.html">xTextViewer</a></td><td>15</td><td>xObject+16</td><td>x-coordinate of the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/ytextviewer.html">yTextViewer</a></td><td>33</td><td>yObjectHi+16</td><td>y-coordinate of the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/ztextviewer.html">zTextViewer</a></td><td>194</td><td>zObject+16</td><td>z-coordinate of the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/textviewerpitch.html">textViewerPitch</a></td><td>-22</td><td>objectPitchAngle+16</td><td>Pitch angle of the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/textvieweryaw.html">textViewerYaw</a></td><td>0</td><td>objectYawAngle+16</td><td>Yaw angle of the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/titleoffset.html">titleOffset</a></td><td>0</td><td>xTitleOffset</td><td>Title offset</td></tr>
+						</table>
+
+						<p>The coordinates are in terms of whole tile sizes, so the camera is positioned in the middle of the landscape (xTextViewer = 15), 33 tile heights above the landscape floor (yTextViewer = 33), and 194 tiles in front of the landscape (zTextViewer = 104). The camera is pointing down at an angle of 30.9 degrees (textViewerPitch = -22) and straight ahead (textViewerYaw = 0). The title offset is 0 so no offset will be applied in the drawing routines, as this is only needed when drawing large 3D text, which we don't use on the preview (see the deep dive on <a href="drawing_3d_text_using_blocks.html">drawing 3D text using blocks</a> for details).</p>
+
+						<p>Because the z-coordinate is so big, the camera is a long way from the landscape the entire landscape will fit onto the screen. The landscape is 31x31 tiles, just to put it in context.</p>
+
+						<p>Having set it all up, all we need to do is set <a href="/source/main/workspace/zero_page.html#viewingobject">viewingObject</a> to 16 (so that object #16 acts as the camera), and then call the <a href="/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView</a> routine to draw the landscape, using the exact same code as when we draw the scrolling landscape view in-game. And that's how the landscape preview works.</p>
+
+						<h2 class="articleSubheader">Micro and macro graphics<br>
+													 ------------------------</h2>
+
+						<p>To reiterate: we draw the landscape preview using the exact same routine that is used to draw the 3D objects in much higher resolutions during the game.</p>
+
+						<p>To be completely accurate, there is one minor difference in the drawing process for the landscape preview, and that's in the <a href="/source/main/subroutine/getobjectangles.html">GetObjectAngles</a> routine, which is called as part of the object-drawing process (see the deep dive on <a href="drawing_3d_objects.html">drawing 3D objects</a> for details). In this routine we check whether this is the landscape preview by testing the <a href="/source/main/variable/viewtype.html">viewType</a> variable, and if it is the preview then we rotate all the objects to face the camera, by changing their yaw angles to 128. We also draw all objects apart from the Sentinel's tower at twice the size and slightly higher in the landscape than they normally would be, so that they stand out at such a distance. But apart from these minor tweaks, we simply draw the landscape preview using the same routine that's used to draw the landscape in-game.</p>
+
+						<p>I'd always assumed that the enemies on the landscape preview were little sprites, particularly the Sentinel, as they're like perfectly designed stick men. This is particularly obvious in landscape 9000, where the colours make them really stand out:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/landscape/landscape_9000_preview.png" alt="The landscape preview screen for landscape 9000 in the BBC Micro version of The Sentinel">
+
+						<p>I mean, look at all those mean, hulking robots! They're so cute! So cute that they really need to be extracted into their own rogue's gallery:</p>
+
+						<img class="titleImage marginBorder" style="width: 352px" src="/images/objects/preview_enemies.png" alt="The enemies on the preview screen for landscape 9000 in the BBC Micro version of The Sentinel">
+
+						<p>Astonishingly, these are not hand-crafted sprites, they are just the normal in-game object-drawing routines working beautifully at a very small scale. Even in the simplest parts of the game, Geoff Crammond's attention to detail shows through...</p>
 					</div>
 				</div>
 
