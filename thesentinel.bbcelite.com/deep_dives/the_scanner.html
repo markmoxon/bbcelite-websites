@@ -11,9 +11,87 @@ page_header("deep_dives", "the_scanner.html", "The scanner", "The scanner", "A d
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Displaying exposure levels with a static-filled scanner</h2>
 
-						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
+						<p>The scanner is one of the scariest parts of The Sentinel. There you are, minding your own business, absorbing trees and building boulder stacks, and suddenly the air is filled with pulsating sonic beams and the scanner fills with static as an enemy has spotted you and is preparing to suck the life energy out of you. And so starts the mad scramble to create a robot somewhere far away and transfer to safety, all before your energy icons evaporate in a cloud of dithered pixels.</p>
 
-						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
+						<p>Here's the scanner in full panic mode in the top-right corner of the game screen:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/landscape/landscape_0000_tree_view.png" alt="A tree view over landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<p>This is where The Sentinel really hits the fear spot: it genuinely feels like those nightmares where you're trying desperately to get away from a looming monster but your feet are glued to the ground. The letterbox viewport doesn't help, and neither does the fact that most of the time you don't even know where your attacker is, but for me it's the sound and static of the scanner that triggers the fear.</p>
+
+						<p>Let's see how it works.</p>
+
+						<h2 class="articleSubheader">Drawing the scanner box<br>
+													 -----------------------</h2>
+
+						<p>The scanner is part of the top row of the screen, which it shares with the energy icons. This row has its own dedicated screen buffer and set of update routines, which are described in the deep dive on <a href="the_energy_icons.html">the energy icons</a>. As far as the scanner itself is concerned, the white box in the top-right corner gets cleared by the <a href="/source/main/subroutine/cleariconsscanner.html">ClearIconsScanner</a> routine, and it's redrawn along with the rest of the top row by the <a href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a> routine.</p>
+
+						<p>The scanner itself is ten character blocks wide. The blocks on each end contain the end-caps of the box, which leaves eight character blocks inside the scanner. Each block is four pixels wide, so the contents of the scanner is 32 pixels wide. The scanner looks like this when it's empty, which is how the UpdateIconsScanner draws it:</p>
+
+						<img class="titleImage marginBorder" style="width: 272px; padding: 22px 13px" src="/images/energy_scanner/scanner.png" alt="The scanner in the BBC Micro version of The Sentinel">
+
+						<p>The box is drawn by the DrawIcon routine, using these three individual icons:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Number</th><th>Description</th><th>Icon</th></tr>
+							<tr><td>7</td><td>Scanner box (left)</td><td><img class="titleImage marginBorder" style="width: 32px; margin: 0" src="/images/energy_scanner/scanner_1.png" alt="The left scanner icon in the BBC Micro version of The Sentinel"></td></tr>
+							<tr><td>8</td><td>Scanner box (middle)</td><td><img class="titleImage marginBorder" style="width: 32px; margin: 0" src="/images/energy_scanner/scanner_2.png" alt="The middle scanner icon in the BBC Micro version of The Sentinel"></td></tr>
+							<tr><td>9</td><td>Scanner box (right)</td><td><img class="titleImage marginBorder" style="width: 32px; margin: 0" src="/images/energy_scanner/scanner_3.png" alt="The right scanner icon in the BBC Micro version of The Sentinel"></td></tr>
+						</table>
+
+						<p>Redrawing the scanner box isn't the interesting part, though, because it's the static that makes the scanner really scary. Let's see how that works.</p>
+
+						<h2 class="articleSubheader">Generating static<br>
+													 -----------------</h2>
+
+						<p>When an enemy spots the player on the landscape, the scanner fills with static, like this:</p>
+
+						<img class="titleImage marginBorder" style="width: 272px; padding: 22px 13px" src="/images/energy_scanner/scanner_full.png" alt="The scanner filled with static in the BBC Micro version of The Sentinel">
+
+						<p>If the enemy can see the player but can't see the player's tile, then the scanner fills up, but only half way:</p>
+
+						<img class="titleImage marginBorder" style="width: 272px; padding: 22px 13px" src="/images/energy_scanner/scanner_half.png" alt="The scanner half-filled with static in the BBC Micro version of The Sentinel">
+
+						<p>When the scanner is full, the player will soon start to lose energy; when it is half full, the enemy starts looking for a suitable tree to turn into a meanie, to force the player into hyperspace (see the deep dive on <a href="enemy_tactics.html">enemy tactics</a> for details).</p>
+
+						<p>The static effect in the scanner is not, um, well, static. It crackles and jumps, just as you would expect from an energy-depletion scanner (note that this is a very short clip of the scanner that is looped around, so it repeats in a way that it doesn't in-game, but it gives you the idea):</p>
+
+						<img class="titleImage marginBorder" style="width: 288px; padding: 8px 5px 0 5px; background: black" src="/images/energy_scanner/static.gif" alt="An animation of the scanner filled with static in the BBC Micro version of The Sentinel">
+
+						<p>The contents of the scanner is set by the <a href="/source/main/subroutine/updatescannernow.html">UpdateScannerNow</a> routine. This updates the inside portion of the scanner, but it doesn't touch the surrounding box. It takes a parameter that determines the new state of the scanner, which in turn determines what the routine should draw: black, green or static.</p>
+
+						<p>Black is the default state and denotes that the player is not being scanned, the green state indicates that the game is paused, and the static state is for when the player is being scanned. The green and black states are used by the <a href="/source/main/subroutine/processpausekeys.html">ProcessPauseKeys</a> routine when the game is paused and unpaused, but the static state is a bit more interesting.</p>
+
+						<p>The scanner's static effect is managed by the <a href="/source/main/subroutine/updatescanner.html">UpdateScanner</a> routine, which is called from the interrupt handler at <a href="/source/main/subroutine/irqhandler.html">IRQHandler</a> during every interrupt while the game is in progress (so that's 50 times a second). The <a href="/source/main/workspace/main_variable_workspace.html#scannerupdate">scannerUpdate</a> variable controls whether UpdateScanner updates the scanner on every call; if it is non-zero then every call to UpdateScanner will update the scanner, otherwise it only updates if the scanner state has changed. The only place where scannerUpdate is set to a non-zero value is in the <a href="/source/main/subroutine/getplayerdrain.html">GetPlayerDrain</a> routine if the player is being scanned by an enemy, so this ensures that the static in the scanner is updated on every interrupt, but only when the player is being scanned.</p>
+
+						<p>The UpdateScannerNow routine manages all three scanner states within the same code, which makes it a bit confusing, because even for the black and green states, we fetch random numbers and process them as if we were about to create some kind of animation effect.</p>
+
+						<p>The routine first works out the address of the inside portion of the scanner in screen memory; note that this isn't the address in the screen buffer, but in screen memory, as the contents of the scanner is poked directly onto the screen (only the scanner outline is managed via the buffer). It then steps through the eight character blocks in the scanner, and for each character block it steps through the four pixel rows inside the scanner box, working from top to bottom.</p>
+
+						<p>For each pixel row (which consists of four pixels), it does the following:</p>
+
+						<ul>
+							<li>Call <a href="/source/main/subroutine/getrandomnumber.html">GetRandomNumber</a> to fetch a random seed number.</li>
+
+							<li>Call <a href=""></a> to </li>
+
+							<li>Call <a href=""></a> to </li>
+
+							<li>Call <a href=""></a> to </li>
+
+							<li>Call <a href=""></a> to </li>
+
+							<li>Call <a href=""></a> to </li>
+						</ul>
+
+
+
+
+
+
+<a href="/source/main/subroutine/updatescanner.html">UpdateScanner</a> and 
+
+
 					</div>
 				</div>
 
