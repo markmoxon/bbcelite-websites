@@ -11,7 +11,7 @@ page_header("deep_dives", "drawing_the_title_screens.html", "Drawing the title s
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The main title screen, landscape preview and game over screen</h2>
 
-						<p>Outside of the distinctive 3D landscape view of the game itself, there are four other screens in The Sentinel, which I've loosely termed the "title screens". In this article we'll look at each of these in turn and explain how they work, and you can click on these links to jump to a particular section:</p>
+						<p>Outside of the distinctive 3D landscape view of the game itself, there are four other screens in The Sentinel, which I've loosely termed the "title screens". They are the following:</p>
 
 						<ul>
 							<li><a href="#title">The main title screen</a></li>
@@ -23,14 +23,16 @@ page_header("deep_dives", "drawing_the_title_screens.html", "Drawing the title s
 							<li><a href="#gameover">The game over screen</a></li>
 						</ul>
 
+						<p>In this article we'll look at each of these in turn and explain how they work; if you're in a hurry, you can click on the links above to jump to a particular section.</p>
+
 						<p>It's worth noting that almost everything in The Sentinel is drawn by the same 3D graphics engine that draws the 3D landscape in-game, and that includes the title screens. The only parts of the game that aren't drawn by the game engine are:</p>
 
 						<ul>
-							<li>The standard system text on the title screens, such as "PRESS ANY KEY" in the first screenshot below (see the deep dive on <a href="text_tokens.html">text tokens</a>).</li>
+							<li>The standard system text on the title screens, such as "PRESS ANY KEY" in the first screenshot below (see the deep dive on <a href="text_tokens.html">text tokens</a> for more about the text system).</li>
 
-							<li>The stars on some of the title screen backgrounds.</li>
+							<li>The stars on some of the title screen backgrounds (see the section below on the game over screen for details).</li>
 
-							<li>The energy icons and scanner at the top of the game screen (see the deep dives on <a href="the_energy_icons.html">the energy icons</a> and <a href="the_scanner.html">the scanner</a>).</li>
+							<li>The energy icons and scanner at the top of the game screen (see the deep dives on <a href="the_energy_icons.html">the energy icons</a> and <a href="the_scanner.html">the scanner</a> for more information).</li>
 						</ul>
 
 						<p>Absolutely everything else in The Sentinel is drawn using the 3D landscape engine; even the dithering screen-decay effect on the game over screen reuses the object-dithering routine from the game. It's a very clever way of fitting fancy title screens into a small memory footprint.</p>
@@ -48,13 +50,13 @@ page_header("deep_dives", "drawing_the_title_screens.html", "Drawing the title s
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/title_screens/main_title_landscape.png" alt="The main title screen with landscape number entry in the BBC Micro version of The Sentinel">
 
-						<p>and for landscapes apart from landscape 0000, you then enter a secret code, like this:</p>
+						<p>and for landscapes apart from landscape 0000, you can then enter a secret code, like this:</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/title_screens/main_title_secret_code.png" alt="The main title screen with secret code entry in the BBC Micro version of The Sentinel">
 
-						<p>Once the code has been entered, the next screen shown is the landscape preview (see below).</p>
+						<p>Once the code has been entered, the next screen shown is the landscape preview (see the next section below).</p>
 
-						<p>The main title screen is drawn in <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> by calling the <a href="/source/main/subroutine/drawtitlescreen.html">DrawTitleScreen</a> routine with bit 7 of A clear. Here is the program flow for this routine when drawing the main title screen:</p>
+						<p>The main title screen is drawn in the <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> routine by calling the <a href="/source/main/subroutine/drawtitlescreen.html">DrawTitleScreen</a> routine with bit 7 of A clear (to denote that we should draw the main title screen rather than the secret code screen). Here is the program flow for this routine when drawing the main title screen:</p>
 
 						<ul>
 							<li>Initialise the 3D text system by configuring object #63, setting bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#drawingtitlescreen">drawingTitleScreen</a> and calling <a href="/source/main/subroutine/processtiledata.html">ProcessTileData</a> to initialise the tile data.</li>
@@ -77,32 +79,34 @@ page_header("deep_dives", "drawing_the_title_screens.html", "Drawing the title s
 							<li>Once everything is drawn, clear bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#drawingtitlescreen">drawingTitleScreen</a> so that tile and object drawing goes back to normal.</li>
 						</ul>
 
-						<p>The 3D text-drawing process is described in the deep dive on <a href="drawing_3d_text_using_blocks.html">drawing 3D text using blocks</a>.</p>
+						<p>The 3D text-drawing process is described in the deep dive on <a href="drawing_3d_text_using_blocks.html">drawing 3D text using blocks</a>; we'll concentrate on the object-drawing process here.</p>
 
-						<p>For drawing an object on the title screen, the <a href="/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> routine sets up the object that we want to draw in object #1, and the viewing object (i.e. the camera) in object #2. The configuration for these objects comes from various lookup tables; here are the values for the Sentinel's tower:</p>
+						<p>For drawing an object on the title screen, the <a href="/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> routine sets up the object that we want to draw in object #1, and the viewing object (i.e. the camera) in object #2. The configuration values for these objects are pulled from a number of lookup tables and stored in the object variables, as noted in the following tables.</p>
+
+						<p>Here are the values in object #1 for the Sentinel's tower:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Lookup table</th><th>Value</th><th>Variable</th><th>Description</th></tr>
-							<tr><td><a href="/source/main/variable/ytitleobject.html">yTitleObject</a></td><td>0</td><td>yObjectHi+1</td><td>y-coordinate of the tower relative to the viewer</td></tr>
-							<tr><td><a href="/source/main/variable/ztitleobject.html">zTitleObject</a></td><td>7</td><td>zObject+1</td><td>z-coordinate of the tower relative to the viewer</td></tr>
-							<tr><td><a href="/source/main/variable/titleobjectyaw.html">titleObjectYaw</a></td><td>-50</td><td>objectYawAngle+1</td><td>Yaw angle of the tower</td></tr>
+							<tr><td><a href="/source/main/variable/ytitleobject.html">yTitleObject</a></td><td>0</td><td>yObjectHi+1</td><td>The y-coordinate of the tower relative to the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/ztitleobject.html">zTitleObject</a></td><td>7</td><td>zObject+1</td><td>The z-coordinate of the tower relative to the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/titleobjectyaw.html">titleObjectYaw</a></td><td>-50</td><td>objectYawAngle+1</td><td>The yaw angle of the tower</td></tr>
 						</table>
 
-						<p>And here are the values for the Sentinel on top of the tower:</p>
+						<p>And here are the values in object #1 for the Sentinel on top of the tower:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Lookup table</th><th>Value</th><th>Variable</th><th>Description</th></tr>
-							<tr><td><a href="/source/main/variable/ytitleobject.html">yTitleObject</a></td><td>1</td><td>yObjectHi+1</td><td>y-coordinate of the Sentinel relative to the viewer</td></tr>
-							<tr><td><a href="/source/main/variable/ztitleobject.html">zTitleObject</a></td><td>7</td><td>zObject+1</td><td>z-coordinate of the Sentinel relative to the viewer</td></tr>
-							<tr><td><a href="/source/main/variable/titleobjectyaw.html">titleObjectYaw</a></td><td>-114</td><td>objectYawAngle+1</td><td>Yaw angle of the Sentinel</td></tr>
+							<tr><td><a href="/source/main/variable/ytitleobject.html">yTitleObject</a></td><td>1</td><td>yObjectHi+1</td><td>The y-coordinate of the Sentinel relative to the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/ztitleobject.html">zTitleObject</a></td><td>7</td><td>zObject+1</td><td>The z-coordinate of the Sentinel relative to the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/titleobjectyaw.html">titleObjectYaw</a></td><td>-114</td><td>objectYawAngle+1</td><td>The yaw angle of the Sentinel</td></tr>
 						</table>
 
-						<p>Finally, the viewing object is set up in the same way for drawing both objects, as follows:</p>
+						<p>Finally, the viewing object in object #2 is set up in the same way for drawing both objects, as follows:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Lookup table</th><th>Value</th><th>Variable</th><th>Description</th></tr>
-							<tr><td><a href="/source/main/variable/titleviewerpitch.html">titleViewerPitch</a></td><td>-5</td><td>objectPitchAngle+2</td><td>Pitch angle of the viewer</td></tr>
-							<tr><td><a href="/source/main/variable/titlevieweryaw.html">titleViewerYaw</a></td><td>-8</td><td>objectYawAngle+2</td><td>Yaw angle of the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/titleviewerpitch.html">titleViewerPitch</a></td><td>-5</td><td>objectPitchAngle+2</td><td>The pitch angle of the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/titlevieweryaw.html">titleViewerYaw</a></td><td>-8</td><td>objectYawAngle+2</td><td>The yaw angle of the viewer</td></tr>
 						</table>
 
 						<p>This means that:</p>
@@ -110,7 +114,7 @@ page_header("deep_dives", "drawing_the_title_screens.html", "Drawing the title s
 						<ul>                        
 							<li>The Sentinel is set to a yaw angle of -114, so it looks out of the screen, just towards the left of the viewer (-128 would be looking straight ahead, directly out of the screen).</li>
                         
-							<li>The tower is set to a yaw angle of -50, so it is rotated left by 70 degrees compared to looking into the screen, so it looks towards the rear left (this just makes the tower colours look nicely orientated on-screen).</li>
+							<li>The tower is set to a yaw angle of -50, so it is rotated left by 70 degrees compared to looking into the screen, so it looks towards the rear left (this makes the tower colours look nicely orientated on-screen).</li>
                                                 
 							<li>The viewing object is set to a pitch angle of -5 and a yaw of -8, so the camera points down and left, thus moving both the Sentinel and tower to the right of the screen.</li>
                         
@@ -123,9 +127,9 @@ page_header("deep_dives", "drawing_the_title_screens.html", "Drawing the title s
 							<li>The Sentinel and tower are both at a z-coordinate distance of seven tile sizes from the viewer.</li>
 						</ul>                        
 
-						<p>The Sentinel is drawn first and then the tower, as the Sentinel is higher than the viewer, and then the 3D text is drawn. On returning to the <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> routine, the drop-shadow system text is printed ("PRESS ANY KEY") and the landscape number and secret code are processed.</p>
+						<p>The Sentinel is drawn first and then the tower, as the Sentinel is higher than the viewer, and then the 3D text is drawn. On returning to the <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> routine, the drop-shadow system text is printed ("PRESS ANY KEY") and the landscape number and secret code can be entered.</p>
 
-						<p>And that's how the main title screen is constructed.</p>
+						<p>Once the code has been processed, the landscape preview appears, so let's look at that next.</p>
 
 						<h2 class="articleSubheader"><a class="anchor" id="preview"></a>The landscape preview<br>
 													 ---------------------</h2>
@@ -143,32 +147,36 @@ page_header("deep_dives", "drawing_the_title_screens.html", "Drawing the title s
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/title_screens/secret_code.png" alt="The secret code screen in the BBC Micro version of The Sentinel">
 
-						<p>This screen is drawn in a very similar manner to the main title screen, except the object on the tower is a robot (which denotes the victorious player), the background is black with coloured stars (as opposed to solid blue), the 3D text is the landscape's secret code, and the system text is different at the top of the screen.</p>
+						<p>This screen is drawn in a very similar manner to the main title screen, except the object on the tower is a robot (which denotes the victorious player), the background is black with coloured stars (as opposed to solid blue), the 3D text is the landscape's secret code, and the system text at the top of the screen is different.</p>
 
 						<p>The stars are placed randomly on the background by the <a href="/source/main/subroutine/drawstars.html">DrawStars</a> routine, which calls <a href="/source/main/subroutine/drawrandomdots.html">DrawRandomDots</a> to actually draw the stars. This uses the same algorithm as the decaying process used in the game over screen, which is described in the deep dive on <a href="dithering_to_the_screen.html">dithering to the screen</a>.</p>
 
-						<p>The object configurations for the Sentinel and tower in the main title screen are reused for the robot and tower on the secret code screen - see above for the details. The screen background is set and the system text is printed by the <a href="/source/main/subroutine/finishlandscape.html">FinishLandscape</a> routine, which calls <a href="/source/main/subroutine/getnextlandscape.html">GetNextLandscape</a> to generate the number of the next landscape and the new secret code along with it. This then calls the <a href="/source/main/subroutine/drawtitlescreen.html">DrawTitleScreen</a> routine to do the drawing, passing a set bit 7 in A to make the routine draw the secret code instead of the main title text. See the deep dive on <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a> for details.</p>
+						<p>The object configurations for the Sentinel and tower in the main title screen are reused for the robot and tower on the secret code screen - see above for the details. The screen background is set and the system text is printed by the <a href="/source/main/subroutine/finishlandscape.html">FinishLandscape</a> routine, which calls <a href="/source/main/subroutine/getnextlandscape.html">GetNextLandscape</a> to generate the number of the next landscape and the new secret code along with it. This then calls the <a href="/source/main/subroutine/drawtitlescreen.html">DrawTitleScreen</a> routine to do the drawing, passing a set bit 7 in A to make the routine draw the secret code instead of the main title text.
+
+						<p>See the deep dive on <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a> for more details.</p>
 
 						<h2 class="articleSubheader"><a class="anchor" id="gameover"></a>The game over screen<br>
 													 --------------------</h2>
 
-						<p>The game over screen is shown when the player loses the game, either by having all of their energy drained by an enemy, or by hyperspacing when they don't have enough energy to create a robot to transfer into (i.e. three energy points). It looks like this:</p>
+						<p>The game over screen is shown when the player loses the game, either by having all of their energy drained by an enemy, or by trying to hyperspace when they don't have enough energy to create a robot to transfer into (i.e. three energy points). It looks like this:</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/game_over.png" alt="The game over screen in the BBC Micro version of The Sentinel">
 
-						<p>The game over screen is drawn by calling the <a href="/source/main/subroutine/showgameoverscreen.html">ShowGameOverScreen</a> routine. The program flow and dithering system used on the game over screen are described in the deep dives on <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a> and <a href="dithering_to_the_screen.html">dithering to the screen</a>.</p>
+						<p>The game over screen is drawn by calling the <a href="/source/main/subroutine/showgameoverscreen.html">ShowGameOverScreen</a> routine. The program flow and dithering system used on the game over screen are described in the deep dives on <a href="program_flow_of_the_main_title_loop.html">program flow of the main title loop</a> and <a href="dithering_to_the_screen.html">dithering to the screen</a>, but we'll take a look at the object-drawing process here.</p>
 
-						<p>The screen dithers the victorious enemy object into the centre of the screen during the middle part of the animation. The type of object that is drawn is determined by the value of the <a href="/source/main/workspace/main_variable_workspace.html#titleobjecttodraw">titleObjectToDraw</a> variable. By the time the game ends, titleObjectToDraw has been set to the type of object that caused the player's demise, be it the Sentinel, a sentry, a meanie or the player themselves (the latter object is declared the culprit in the case of a failed hyperspace). This ensures that we can display the correct object on the game over screen.</p>
+						<p>The screen dithers the victorious enemy object into the centre of the screen during the middle part of the animation. The type of object that is drawn is determined by the value of the <a href="/source/main/workspace/main_variable_workspace.html#titleobjecttodraw">titleObjectToDraw</a> variable. By the time the game ends, titleObjectToDraw has been set to the type of object that caused the player's demise, be it the Sentinel, a sentry, a meanie or the player themselves (the player is declared the culprit in the case of a failed hyperspace). This ensures that we can display the correct object on the game over screen.</p>
 
-						<p>For drawing the victor on the title screen, the <a href="/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> routine sets up the object that we want to draw in object #1, and then sets up the viewing object in object #2. The configuration for these objects comes from various lookup tables; here are the values for the victorious object:</p>
+						<p>For drawing the victor on the title screen, the <a href="/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> routine sets up the object that we want to draw in object #1, and then sets up the viewing object in object #2. Juat as on the other title screens, the configuration values for these objects are pulled from a number of lookup tables and stored in the object variables, as noted in the following table.</p>
+
+						<p>Here are the values for the victorious object in object #1 and the viewer in object #2:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Lookup table</th><th>Value</th><th>Variable</th><th>Description</th></tr>
-							<tr><td><a href="/source/main/variable/ytitleobject.html">yTitleObject</a></td><td>0</td><td>yObjectHi+1</td><td>y-coordinate of the victor relative to the viewer</td></tr>
-							<tr><td><a href="/source/main/variable/ztitleobject.html">zTitleObject</a></td><td>5</td><td>zObject+1</td><td>z-coordinate of the victor relative to the viewer</td></tr>
-							<tr><td><a href="/source/main/variable/titleobjectyaw.html">titleObjectYaw</a></td><td>128</td><td>objectYawAngle+1</td><td>Yaw angle of the victor</td></tr>
-							<tr><td><a href="/source/main/variable/titleviewerpitch.html">titleViewerPitch</a></td><td>-12</td><td>objectPitchAngle+2</td><td>Pitch angle of the viewer</td></tr>
-							<tr><td><a href="/source/main/variable/titlevieweryaw.html">titleViewerYaw</a></td><td>0</td><td>objectYawAngle+2</td><td>Yaw angle of the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/ytitleobject.html">yTitleObject</a></td><td>0</td><td>yObjectHi+1</td><td>The y-coordinate of the victor relative to the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/ztitleobject.html">zTitleObject</a></td><td>5</td><td>zObject+1</td><td>The z-coordinate of the victor relative to the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/titleobjectyaw.html">titleObjectYaw</a></td><td>128</td><td>objectYawAngle+1</td><td>The yaw angle of the victor</td></tr>
+							<tr><td><a href="/source/main/variable/titleviewerpitch.html">titleViewerPitch</a></td><td>-12</td><td>objectPitchAngle+2</td><td>The pitch angle of the viewer</td></tr>
+							<tr><td><a href="/source/main/variable/titlevieweryaw.html">titleViewerYaw</a></td><td>0</td><td>objectYawAngle+2</td><td>The yaw angle of the viewer</td></tr>
 						</table>
 
 						<p>The values for the tower can be found in the section on the main title screen above. This means that:</p>
