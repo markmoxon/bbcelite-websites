@@ -67,10 +67,26 @@ page_header("deep_dives", "following_the_gaze_vector.html", "Following the gaze 
 
 							<li><span class="highlight">boulderOnTile:</span> has bit 7 set if the tile contains a boulder.</li>
 
+							<li><span class="highlight">targetOnTile:</span> has bit 7 set if the tile contains target object.</li>
+
+							<li><span class="highlight">gazeCanSeeTree:</span> has bit 7 set if tile contains a tree that can be seen by the gaze vector.</li>
+
 							<li><span class="highlight">considerObjects:</span> has bit 6 if the tile contains a boulder or the Sentinel's tower and the current position along the gaze vector is not within the platform object (so the gaze vector is passing close by the platform object but is not hitting it).</li>
 
 							<li><span class="highlight">yAccuracyLo:</span> is changed from 128 to 16 if the tile contains the Sentinel's tower and the gaze vector is pointing at the sides of the tower, which we can use to prevent the sides of the tower acting like the sides of the boulder (so you can't absorb the Sentinel by pointing at the sides of the tower).</li>
 						</ul>
+
+						<p>The most complex parts of the above analysis are the calculations for the <a href="/source/main/workspace/main_variable_workspace.html#boulderontile">boulderOnTile</a> and <a href="/source/main/workspace/main_variable_workspace.html#gazecanseetree">gazeCanSeeTree</a> flags. These both call the <a href="/source/main/subroutine/checkfortilecentre.html">CheckForTileCentre</a> routine to work out the horizontal distance from the tile centre to the gaze vector, and then they compare that with the shape of the boulder or tile.</p>
+
+						<p>The boulder calculation is fairly simple, simply requiring the horizontal distance to be within 50% of the tile centre, but things get more complicated for the tree. It first checks whether the vector is within the correct vertical range for the tree, making sure to include any boulders beneath the tree. If it is in the correct vertical strip, it then compares these values:
+
+						<ul>
+							<li>The horizontal distance from the centre of the tile (i.e. from the centre of the trunk).</li>
+
+							<li>The height difference between the gaze vector and the top of the tree, divided by 4.</li>
+						</ul>
+
+						<p>If the distance to the centre is less than the height difference, then the gaze vector is deemed to be inside the tree, so we register a hit and set bit 7 of gazeCanSeeTree. In this way, gazes at the lower parts of the tree can be further from the centre point than gazes at the upper parts of the tree, while still being considered gazes that fall upon the tree.</p>
 
 						<p>Now that we have all this extra information about the tiles we're going to be gazing at, let's analyse how the FollowGazeVector routine works.</p>
 
