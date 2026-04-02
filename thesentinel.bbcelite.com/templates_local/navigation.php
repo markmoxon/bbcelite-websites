@@ -129,8 +129,8 @@
 									<li class="menuItemHeader">Tactics and gameplay</li>
 									<li><a id="deep_dives_tactics_and_gameplay_the_crosshair_sights" href="/deep_dives/the_crosshair_sights.html"><span class="menuTitle">The crosshair sights</span> <span class="menuSummary">Aiming the player's gaze through the crosshair sights</span></a></li>
 									<li><a id="deep_dives_tactics_and_gameplay_following_the_gaze_vector" href="/deep_dives/following_the_gaze_vector.html"><span class="menuTitle">Following the gaze vector</span> <span class="menuSummary">How the game calculates line-of-sight by tracing the gaze vector</span></a></li>
+									<li><a id="deep_dives_tactics_and_gameplay_enemy_timers_and_state_variables" href="/deep_dives/enemy_timers_and_state_variables.html"><span class="menuTitle">Enemy timers and state variables</span> <span class="menuSummary">How interrupt-based timers and state variables control enemy tactics</span></a></li>
 									<li><a id="deep_dives_tactics_and_gameplay_enemy_tactics" href="/deep_dives/enemy_tactics.html"><span class="menuTitle">Enemy tactics</span> <span class="menuSummary">An analysis of exactly how the Sentinel, sentries and meanies act and think</span></a></li>
-									<li><a id="deep_dives_tactics_and_gameplay_gameplay_timers" href="/deep_dives/gameplay_timers.html"><span class="menuTitle">Gameplay timers</span> <span class="menuSummary">How the interrupt handler manages gameplay timers and controls enemy tactics</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_maths"><span class="menuTitle">Sound and music</span> <span class="menuSummary menuSummarySubmenu">The eerie, minimalist and atmospheric soundscape</span>
