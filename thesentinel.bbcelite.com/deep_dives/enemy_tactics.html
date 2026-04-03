@@ -29,6 +29,42 @@ page_header("deep_dives", "enemy_tactics.html", "Enemy tactics", "Enemy tactics"
 
 						<p>Don't hold your breath, though...</p>
 
+						<h2 class="articleSubheader">Tactics overview<br>
+													 ----------------</h2>
+
+						<p>There's a lot of detail in this article, so if you want to cut to the chase, here's a very high-level view of how the game applies tactics to each individual enemy (i.e. the Sentinel or a sentry). This process is run repeatedly on each enemy in turn, in a loop, so "abort" in this context effectively means "wait until the next iteration".</p>
+
+						<ul>
+							<li>If the enemy's tactic timer is still counting down, abort.</li>
+
+							<li>The enemy's tactic timer has counted down, so we now apply tactics to this enemy. Set the enemy's tactic timer to 0.24 seconds, so we don't reapply tactics to this enemy for at least this long.</li>
+
+							<li>If the enemy has previously turned a tree into a meanie, then:
+
+								<ul>
+									<li>If the meanie's target is no longer valid (e.g. the player transferred to another robot, or the meanie can no longer see the player's tile), then change the meanie back into a tree and abort.</li>
+
+									<li>If the meanie can't see the player's tile, rotate the meanie by one step in the direction of the player, set the enemy's tactic timer to 0.6 seconds and abort.</li>
+
+									<li>The meanie can see the player's tile, so force the player into hyperspace and abort.</li>
+								</ul>
+							</li>
+
+							<li>If the enemy has any stored energy from objects it has previously drained, try to expend the energy on the landscape by spawning a tree. If the spawning is successful, abort.</li>
+
+							<li>If a previous tactics loop discovered that the enemy can't see the player, then look for other objects to drain (e.g. a tree on top of a stack, an exposed boulder, and so on). If we find one, drain one point from it, update the screen, set the enemy's tactic timer to 1.8 seconds and abort.</li>
+
+							<li>If the enemy is already targeting a robot, try to drain it as follows. If the robot is fully visible then drain it of energy once every 7.2 seconds and abort; if the robot is only partially visible, try to turn a nearby tree into a meanie, set the enemy's tactic timer to 3.0 seconds and abort.</li>
+
+							<li>Otherwise the enemy has no target, so search the landscape for a robot that the enemy can see.</li>
+
+							<li>If we find one, set this as the enemy's target. If the robot is fully visible then drain it of energy once every 7.2 seconds and abort; if the robot is only partially visible, try to turn a nearby tree into a meanie, set the enemy's tactic timer to 3.0 seconds and abort.</li>
+
+							<li>If we don't find a suitable robot then make a note of this so that in the next loop we look for other objects to drain (see above). Then rotate the enemy every 12 seconds and abort.</li>
+						</ul>
+
+						<p>There is a lot more nuance to this breakdown, which we'll look at now.</p>
+
 						<h2 class="articleSubheader">The tactics loop<br>
 													 ----------------</h2>
 
@@ -66,7 +102,7 @@ page_header("deep_dives", "enemy_tactics.html", "Enemy tactics", "Enemy tactics"
 
 							<li>If it is still counting down, stop applying tactics to this enemy and return to the gameplay loop.</li>
 
-							<li>If we get here then enemyTacticTimer has counted down, so reset the timer to 4 so that by default we will be able to apply tactics to this enemy again in 0.6 seconds (though we may change this value in the course of this routine).</li>
+							<li>If we get here then enemyTacticTimer has counted down, so reset the timer to 4 so that by default we will be able to apply tactics to this enemy again in 0.24 seconds (though we may change this value in the course of this routine).</li>
 
 							<li>Set enemyViewingArc = 20, so the enemy's gaze has a viewing arc that's the same width as the screen (as the screen is 20 yaw angles across). This is used in the <a href="/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a> routine, which is called from a number of places in the tactics code to work out what the enemy can see.</li>
 
@@ -129,7 +165,7 @@ page_header("deep_dives", "enemy_tactics.html", "Enemy tactics", "Enemy tactics"
 						<h2 class="articleSubheader">Part 4: Search for non-player targets to drain<br>
 													 ----------------------------------------------</h2>
 
-						<p>We didn't expend any stored energy from the enemy in part 3, so we now check whether a previuous tactics loop has configured that we search the landscape for non-player targets to drain. This will be the case if the enemy already scanned the landscape in a previous loop and failed to find the player.</p>
+						<p>We didn't expend any stored energy from the enemy in part 3, so we now check whether a previous tactics loop has configured that we search the landscape for non-player targets to drain. This will be the case if the enemy already scanned the landscape in a previous loop and failed to find the player.</p>
 
 						<p>Here's the program flow of <a href="/source/main/subroutine/applytactics_part_4_of_10.html">ApplyTactics (Part 4 of 10)</a>:</p>
 
@@ -143,7 +179,7 @@ page_header("deep_dives", "enemy_tactics.html", "Enemy tactics", "Enemy tactics"
 								</ul>
 							</li>
 
-							<li>Call <a href="/source/main/subroutine/findobjecttodrain.html">FindObjectToDrain</a> to look for a suitable target object for the enemy to drain (i.e. a tree that is stacked on top of another object, or a boulder, which is exposed to the enemy and on a tile that can be seen by the enemy).</li>
+							<li>Call <a href="/source/main/subroutine/findobjecttodrain.html">FindObjectToDrain</a> to look for a suitable non-robot target object for the enemy to drain (i.e. a tree that is stacked on top of another object, or a boulder, which is exposed to the enemy and on a tile that can be seen by the enemy).</li>
 
 							<li>If we find one, set enemyMeanieCheck = 64 for the enemy so if we start scanning objects for trees to potentially turn into a meanie, we start from the last object and work down (because we just added a tree to the landscape, so it might be suitable for turning into a meanie). Then jump to part 6 to start draining energy from the found object.</li>
 
@@ -193,7 +229,7 @@ page_header("deep_dives", "enemy_tactics.html", "Enemy tactics", "Enemy tactics"
 
 							<li>If we get here then we didn't find a robot to drain, so et enemyDrainTimer = 0 to disable the drain timer so we don't repeat the process in the next iteration.</li>
 
-							<li>Call <a href="/source/main/subroutine/findobjecttodrain.html">FindObjectToDrain</a> to look for a suitable target object for the enemy to drain (i.e. a tree that is stacked on top of another object, or a boulder, which is exposed to the enemy and on a tile that can be seen by the enemy).
+							<li>Call <a href="/source/main/subroutine/findobjecttodrain.html">FindObjectToDrain</a> to look for a suitable non-robot target object for the enemy to drain (i.e. a tree that is stacked on top of another object, or a boulder, which is exposed to the enemy and on a tile that can be seen by the enemy).
 
 								<ul>
 									<li>If a suitable target is found, jump to part 6 to drain energy from the enemy.</li>
@@ -230,7 +266,7 @@ page_header("deep_dives", "enemy_tactics.html", "Enemy tactics", "Enemy tactics"
 						<ul>
 							<li>If enemyRotateTimer for the enemy has not yet run down, then stop applying tactics to this enemy and return to the gameplay loop.</li>
 
-							<li>If we get here then enemyRotateTimer has run rown, so rotate the enemy by the yaw angle in enemyYawStep.</li>
+							<li>If we get here then enemyRotateTimer has run down, so rotate the enemy by the yaw angle in enemyYawStep.</li>
 
 							<li>Set enemyRotateTimer for the enemy to 200 so we wait for 200 * 0.06 = 12 seconds before rotating the enemy again.</li>
 
@@ -280,7 +316,7 @@ page_header("deep_dives", "enemy_tactics.html", "Enemy tactics", "Enemy tactics"
 						<ul>
 							<li>Call <a href="/source/main/subroutine/scanformeanietree.html">ScanForMeanieTree</a> to work through the objects in the landscape to see if any of them are trees that are suitable for turning into a meanie.</p>
 
-							<li>If we find a suitable tree, then call <a href="/source/main/subroutine/checkobjvisibility.html">CheckObjVisibility</a> routine to check whether (a) the tree is on-screen, (b) we have just finished processing a landscape pan and (c) the player is still holding down the same pan key. If all these are true then we don't have time to do a dithered update of the tree on-screen as we want to keep the momentum of the pan ongoing, but if we don't do that then changing the tree into a meanie mid-pan might corrupt the view, as the on-screen portion of the object would be a tree but the new portion would be a meanie. So instead set enemyMeanieScan to the object number of the tree plus 1, so the next time we apply tactics to this enemy, we can pick up where we left off, by which time the player might no longer be panning the screen.</li>
+							<li>If we find a suitable tree, then call <a href="/source/main/subroutine/checkobjvisibility.html">CheckObjVisibility</a> routine to check whether (a) the tree is on-screen, (b) we have just finished processing a landscape pan and (c) the player is still holding down the same pan key. If all these are true then we don't have time to do a dithered update of the tree on-screen as we want to keep the momentum of the pan ongoing, but if we don't do that then changing the tree into a meanie mid-pan might corrupt the view, as the on-screen portion of the object would be a tree but the new portion would be a meanie. So instead set <a href="/source/main/workspace/main_variable_workspace.html#enemymeaniescan">enemyMeanieScan</a> to the object number of the tree plus 1, so the next time we apply tactics to this enemy, we can pick up where we left off, by which time the player might no longer be panning the screen.</li>
 
 							<li>If we find a suitable tree and there is no risk of corrupting the screen, then change the object's type into a meanie and return from ScanForMeanieTree to ApplyTactics, where we set enemyTacticTimer for the enemy to 50 so we wait for 50 * 0.06 = 3.0 seconds before applying tactics to the enemy (i.e. the meanie) again. Then jump to part 10 with X set to the number of the tree that is now a meanie, to update it on-screen with a dithered effect (as it has now been transformed into a different type of object). Then stop applying tactics to this enemy and return to the gameplay loop.</li>
 
@@ -310,20 +346,23 @@ page_header("deep_dives", "enemy_tactics.html", "Enemy tactics", "Enemy tactics"
 						<h2 class="articleSubheader">Other tactic-related routines<br>
 													 -----------------------------</h2>
 
-						<p>The tactics routines call a number of subroutines that implement aspects of the enemy tactics. We take a look at the more important ones here.</p>
+						<p>The tactics routines call a number of subroutines that implement aspects of the enemy tactics. Let's take a look at the more important ones.</p>
 
+						<ul>
+							<li>The <a href="/source/main/subroutine/abortwhenvisible.html">AbortWhenVisible</a> and <a href="/source/main/subroutine/checkobjvisibility.html">CheckObjVisibility</a> routines are used to check whether updating an object on-screen might interfere with a pan where the player keeps holding down the same pan key, in which case we don't have time to update the screen. These routines are fairly simple wrappers around the <a href="/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> routine, which uses the calculations described in the deep dive on <a href="converting_coordinates_to_angles.html">converting coordinates to angles</a> to work out whether the object's projected yaw angle is on-screen (it doesn't worry about the pitch angle).</li>
 
+							<li>The <a href="/source/main/subroutine/expendenemyenergy.html">ExpendEnemyEnergy</a> routine checks the energy level of the specified enemy via the enemyEnergy variable. If the enemy has any energy, it tries to spawn a tree at a lower altitude than the lowest enemy by calling <a href="/source/main/subroutine/spawnobjectbelow.html">SpawnObjectBelow</a>. If the spawned tree would appear on-screen and might interfere with a pan, then the tree is deleted and the process aborted, otherwise the enemy's energy is decremented.</li>
 
-AbortWhenVisible
-CheckObjVisibility
-ExpendEnemyEnergy
-CheckEnemyGaze
-FindObjectToDrain
-DrainObjectEnergy
-ScanForMeanieTree
-ResetMeanieScan
+							<li>The <a href="/source/main/subroutine/findobjecttodrain.html">FindObjectToDrain</a> routine works through all 64 objects in the landscape, starting with object #63, and looks for either a boulder or an object that is stacked on top of another object. It then calls <a href="/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a> to see whether the enemy can see the object's tile, and if it can then this is returned as a suitable target. If not, then we keep looking until we either find a target or run out of objects to check.</li>
 
+							<li>The <a href="/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a> routine takes both an object type and an object number as argument, and calculates <a href="/source/main/workspace/zero_page.html#targetvisibility">targetVisibility</a> and <a href="/source/main/workspace/main_variable_workspace.html#treevisibility">treeVisibility</a>. Bit 6 of targetVisibility records whether this is a robot whose object is visible but not its tile (which we can use to work out whether the player is only partially visible), and bit 7 records whether the enemy can see the target object's tile. Meanwhile, treeVisibility records whether there is a tree blocking the enemy's view of the target object; bit 6 is set if there is a tree blocking the view of the robot object, while bit 7 is set if there is a tree blocking the view of the target object's tile. The gaze is followed by calling the <a href="/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector</a> routine, as described in the deep dive on <a href="following_the_gaze_vector.html">following the gaze vector</a>.</li>
 
+							<li>The <a href="/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a> routine drains one unit of energy from an object into an enemy. If the target is the player and they have run out of energy, then bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#sentinelhaswon">sentinelHasWon</a> is set to trigger the game over process, otherwise we decrement the player's energy, call <a href="/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a> to update the energy icons, make a ping sound and increment the enemy's energy count. If the target isn't the player then we call <a href="/source/main/subroutine/abortwhenvisible.html">AbortWhenVisible</a> to make sure that changing the object type won't corrupt an ongoing pan, and then decrement the target object, change its type or delete the object as required, and increment the enemy's energy count.</li>
+
+							<li>The <a href="/source/main/subroutine/scanformeanietree.html">ScanForMeanieTree</a> routine scans the landscape to see if any of them are trees that are suitable for turning into a meanie. We set enemyViewingArc to 40 for this process, which is double the width of the enemy's normal viewing arc. We work down through the object numbers, starting from the object number stored in <a href="/source/main/workspace/main_variable_workspace.html#enemymeaniescan">enemyMeanieScan</a>, which we may set later in the routine. We check for tree objects, and calculate their distance from the target (i.e. the player) in the x- and y-axes. If the distance in both axes is less than ten tiles, we call <a href="/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a> to see whether the enemy can see the tree's tile. If it can then we call <a href="/source/main/subroutine/checkobjvisibility.html">CheckObjVisibility</a> to make sure that changing the object type won't corrupt an ongoing pan; if it might corrupt a pan then we store this object number in enemyMeanieScan and abort, so we can come back in the next tactics loop and pick up the scan with the same object, just in case the player has stopped panning. If there is no risk of corrupting a pan, then we have found a suitable tree for turning into a meanie, so we store the tree's object number in <a href="/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyMeanieTree</a> and change its object type into a meanie, so it's ready to act as a meanie in the next iteration of the tactics loop.</li>
+						</ul>
+
+						<p>There is a lot of detail in the enemy tactics routines, and even an article this long won't be totally comprehensive. It turns out that futuristic robots have quite sophisticated operating systems - who knew?</p>
 					</div>
 				</div>
 
