@@ -41,7 +41,26 @@ page_header("deep_dives", "the_scanner.html", "The scanner", "The scanner", "A d
 							<tr><td>9</td><td>Scanner box (right)</td><td><img class="titleImage marginBorder" style="width: 32px; margin: 0" src="/images/energy_scanner/scanner_3.png" alt="The right scanner icon in the BBC Micro version of The Sentinel"></td></tr>
 						</table>
 
-						<p>Redrawing the scanner box isn't the interesting part, though, because it's the static that makes the scanner really scary. Let's see how that works.</p>
+						<p>Redrawing the scanner box isn't the interesting part, though, because it's the static that makes the scanner really scary. We'll see how that works in a moment, but first let's discuss how the scanner is activated.</p>
+
+						<h2 class="articleSubheader">Activating the scanner<br>
+													 ----------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/processgameplay.html">ProcessGameplay</a> routine checks whether we need to activate the scanner on each iteration of the gameplay loop. It does this by calling the <a href="/source/main/subroutine/getplayerdrain.html">GetPlayerDrain</a> routine, which works as follows.</p>
+
+						<p>By default the scanner status is black, which we denote by setting the <a href="/source/main/workspace/main_variable_workspace.html#playertileishidden">playerTileIsHidden</a> variable to zero. The GetPlayerDrain routine can change this in one of two ways: by setting it to 128 to denote a full scanner (when an enemy can see the player's tile, or 64 for a half scanner (when an enemy can see the player but can't see their tile).</p>
+
+						<p>To work out what to do, we iterate through all of the enemies on the landscape (i.e. all of the sentries and the Sentinel) and check their target objects. For enemies that have the player object as their target, we check that enemy's <a href="/source/main/workspace/main_variable_workspace.html#enemyvisibility">enemyVisibility</a> variable, which gets set to the following during the tactics loop (see the deep dive on <a href="enemy_tactics.html">enemy tactics</a> for details):</p>
+
+						<ul>
+							<li>Bit 7 set = the enemy can see the target's tile.</li>
+					
+							<li>Bit 6 set = the enemy can see the target object but it can't see the target's tile.</li>
+						</ul>
+
+						<p>If bit 7 of enemyVisibility is set then we know this enemy can see the player's tile, so we set the <a href="/source/main/workspace/main_variable_workspace.html#playertileishidden">playerTileIsHidden</a> variable to the value of enemyVisibility (i.e. 128). If bit 7 is clear then we finish working through the enemies to see if there is an enemy with a clear view of the player's tile, and if there is then that enemy will set playerTileIsHidden to 128; but if there isn't an enemy with a clear view, then we set playerTileIsHidden to the value of enemyVisibility from the enemy with the partial view, so this sets playerTileIsHidden to 64.</p>
+
+						<p>This value is checked when we draw the scanner to determine whether to show a full or a half scanner, so let's take a look at the drawing process next.</p>
 
 						<h2 class="articleSubheader">Generating static<br>
 													 -----------------</h2>
@@ -72,7 +91,7 @@ page_header("deep_dives", "the_scanner.html", "The scanner", "The scanner", "A d
 
 						<p>The black (scannerState = 0) and pause states (scannerState = 8) are used by the <a href="/source/main/subroutine/processpausekeys.html">ProcessPauseKeys</a> routine when the game is paused and unpaused, but the static state (scannerState = 4) is a bit more interesting.</p>
 
-						<p>In terms of triggering the scanner's static effect, we can do this by setting the <a href="/source/main/workspace/main_variable_workspace.html#scannerupdate">scannerUpdate</a> variable to 4. The only place where this happens is in the <a href="/source/main/subroutine/getplayerdrain.html">GetPlayerDrain</a> routine, when the player is being scanned by an enemy (see the deep dives on <a href="following_the_gaze_vector.html">following the gaze vector</a> and <a href="enemy_tactics.html">enemy tactics</a> for details).</p>
+						<p>In terms of triggering the scanner's static effect, we can do this by setting the <a href="/source/main/workspace/main_variable_workspace.html#scannerupdate">scannerUpdate</a> variable to 4 (see below for more on this).</p>
 
 						<p>The scanner's static effect is managed by the <a href="/source/main/subroutine/updatescanner.html">UpdateScanner</a> routine, which is called from the interrupt handler at <a href="/source/main/subroutine/irqhandler.html">IRQHandler</a> during every interrupt while the game is in progress (so that's 50 times a second). The aforementioned <a href="/source/main/workspace/main_variable_workspace.html#scannerupdate">scannerUpdate</a> variable controls whether or not UpdateScanner updates the scanner on every call; if it is non-zero then every call to UpdateScanner will update the scanner, otherwise it only updates if the scanner state has changed. This check ensures that the static in the scanner is updated quickly when the player is being scanned, but not otherwise.</p>
 
@@ -102,7 +121,7 @@ page_header("deep_dives", "the_scanner.html", "The scanner", "The scanner", "A d
 
 						<img class="titleImage marginBorder" style="width: 272px" src="/images/energy_scanner/scanner_full.png" alt="The scanner in the BBC Micro version of The Sentinel">
 
-						<p>The only other nuance is that after plotting the first four character blocks of static, the routine checks the value of the <a href="/source/main/workspace/main_variable_workspace.html#playertileishidden">playerTileIsHidden</a> variable. This gets set to 64 if the player is being scanned by an enemy who can see the player but can't see the player's tile (see the deep dive on <a href="following_the_gaze_vector.html">following the gaze vector</a> for details). So the scanner routine checks whether playerTileIsHidden equals 64, and if it does it sets scannerState to zero so the remaining four character blocks are drawn in black, giving us a half-filled scanner with exactly four green pixels on each pixel row:</p>
+						<p>The only other nuance is that after plotting the first four character blocks of static, the routine checks the value of the <a href="/source/main/workspace/main_variable_workspace.html#playertileishidden">playerTileIsHidden</a> variable. This gets set to 64 if the player is being scanned by an enemy who can see the player but can't see the player's tile (see the previous section above details). So the scanner routine checks whether playerTileIsHidden equals 64, and if it does it sets scannerState to zero so the remaining four character blocks are drawn in black, giving us a half-filled scanner with exactly four green pixels on each pixel row:</p>
 
 						<img class="titleImage marginBorder" style="width: 272px" src="/images/energy_scanner/scanner_half.png" alt="The scanner in the BBC Micro version of The Sentinel">
 
