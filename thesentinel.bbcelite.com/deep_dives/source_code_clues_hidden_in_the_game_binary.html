@@ -11,14 +11,142 @@ page_header("deep_dives", "source_code_clues_hidden_in_the_game_binary.html", "S
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">Snippets of original source code and what they can tell us</h2>
 
-						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
+						<p>Assembling large machine code programs on memory-starved 8-bit home computers can be a tricky process. Assembly language source code is always considerably larger than the machine code that it produces, so if you're trying to build a machine code binary that fills your computer to the brim, assembling the whole thing in-place is not an option (at least, not on the original hardware).</p>
 
-						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
+						<p>The most popular approach is to split the source code up into smaller batches, and then assemble each batch to produce a set of smaller binaries that you can concatenate into the final game binary. On the BBC Micro, this is fairly easy to do with the assembler that comes built into BBC BASIC, with each part assembling its code, saving it to a file, and then loading the next BASIC program to assemble the next part.</p>
 
-<!--
-ClearMemory: source code snippet is around .ResetMeanieScan
-stripData: source code snippet is from after .mean4
--->
+						<p>A side-effect of this approach is that unless you clear down the computer's memory between program loads - something you are extremely unlikely to do, as this process relies on variables retaining their values between parts - then you will be left with fragments of the previous part's program and its assembled code in memory. If the source code defines a variable's block of memory by simply incrementing the program counter in P%, rather than using an explicit sequence of EQU commands to zero the block, then the block will contain whatever was already in memory, and whatever was already there will then be saved into the finished game binary.</p>
+
+						<p>As a result, it is pretty common to find bits of original source code buried in game binaries, particularly with large games. The Sentinel is no exception, so let's take a look at the secrets that are buried in the released game.</p>
+
+						<h2 class="articleSubheader">The first snippet of source code<br>
+													 --------------------------------</h2>
+
+						<p>One of the easiest ways of tracking down clues in a game binary is to load the binary into a hex editor. Hex editors show the contents of the file both as hexadecimal bytes and as ASCII characters, so if there's a block of original source code hidden in there, it should be fairly obvious. There is only one game binary file in The Sentinel, and if you load this into a hex editor and jump down to offsets &amp;3C30 (15408) and &amp;3F00 (16128), you should be able to see two snippets of assembly code in there (you can <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/blob/main/3-assembled-output/TheSentinel.bin">grab the file from the accompanying repository</a> if you want to try this).</p>
+
+						<p>In the case of hidden code from the BBC BASIC assembler sources, the embedded assembly language is generally quite readable, though the surrounding BASIC is tokenised and line numbers are stored as integers rather than ASCII text, so the source code appears as assembly language, embedded in random noise. Luckily it's easy enough to copy the source snippets into a modern text editor and work out the line numbers (the first two bytes at the start of each line contain the line number, high byte then low byte, followed by the line length and then the line itself).</p>
+
+						<p>The Sentinel binary contains two big chunks of original BBC BASIC assembler source code. Both of them match the code in the game binary.</p>
+
+						<p>The first block is after the <a href="/source/main/subroutine/configuremachine.html">ConfigureMachine</a> and <a href="/source/main/subroutine/clearmemory.html">ClearMemory</a> routines, which run at address &amp;3F00 and are only used during the loading process. The snippet of source code pads this code out to the nearest page boundary at &amp;4100, so presumably these routines were saved out in a block of &amp;200 bytes.</p>
+
+						<p>The buried source code looks like this, once the line numbers have been decoded:</p>
+
+<pre class="articleIndented">
+            ...ets6
+  4810      LDX#6:JSR CFLSH
+  4820 
+  4830.ets6 rts
+  4840 
+  4850 
+  4860 
+  4870 
+  4880 
+  4890 
+  4900 
+  4910.MINI LDA#128:STA MEANY,X:STA MEMORY,X
+  4920      LDA#0:STA MEANYSCAN,X
+  4930      LDA#64:STA MTRYCNT,X:rts
+  4940
+  4950.MEAN LDA#40:STA COVER
+  4960      LDX ETEM:STX XT...
+</pre>
+
+						<p>So this is part of Geoff Crammond's original source code for The Sentinel! He literally wrote this - it's in his own, personal style, with his own indented layout, spaces between the mnemonics and variable names (but no spaces between mnemonics and numbers), and his own label names, with routine names in four-letter capitals, and in-routine labels in lower case with three letters and a number. This is the exact same style as in Aviator, which also contains snippets of buried code (see the Aviator deep dive on <a href="https://aviator.bbcelite.com/deep_dives/source_code_clues_hidden_in_the_game_binary.html">source code clues</a> for details). I guess Crammond liked this coding layout.</p>
+
+						<p>It's really interesting to compare this snippet of Aviator source code with the comparatively unreadable Elite source code, which doesn't bother with things like spaces or indents or consistent labelling (see my <a href="https://elite.bbcelite.com/about_site/about_this_project.html">Elite source code project</a> to see for yourself). The difference is really illuminating; the Sentinel source code is a lot neater and easier to follow, no doubt about it.</p>
+
+						<p>It's also pretty easy to work out where this code is from. In this case, the code at the start of the snippet is from the end of <a href="/source/main/subroutine/getplayerdrain.html#pdra5">GetPlayerDrain</a>, while the code at the bottom contains the full <a href="/source/main/subroutine/resetmeaniescan.html">ResetMeanieScan</a> routine and the start of <a href="/source/main/subroutine/scanformeanietree.html">ScanForMeanieTree</a>. This code implements part of the enemy tactics.</p>
+
+						<p>The label names are pretty short, and it's interesting to compare them to the labels I invented while disassembling the game (the original source code has never been released, so I had to make up my own for this project). Here's a list:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>My label</th><th>Original source label</th></tr>
+							<tr><td>pdra5</td><td>ets6</td></tr>
+							<tr><td>FlushBuffer</td><td>CFLSH</td></tr>
+							<tr><td>ResetMeanieScan</td><td>MINI</td></tr>
+							<tr><td>enemyMeanieTree</td><td>MEANY</td></tr>
+							<tr><td>enemyFailTarget</td><td>MEMORY</td></tr>
+							<tr><td>enemyFailCounter</td><td>MEANYSCAN</td></tr>
+							<tr><td>enemyMeanieScan</td><td>enemyMeanieScan</td></tr>
+							<tr><td>ScanForMeanieTree</td><td>MEAN</td></tr>
+							<tr><td>enemyViewingArc</td><td>COVER</td></tr>
+							<tr><td>enemyObject</td><td>ETEM</td></tr>
+							<tr><td>viewingObject</td><td>Starts with XT</td></tr>
+						</table>
+
+						<p>Interestingly, the original source talks about the "meany", but all the game documentation calls it a "meanie", so that got changed for the release. Presumably "MINI" is short for "meany initialise", and calling the viewing arc "COVER" makes sense too. "ETEM" is perhaps a little less obvious for the enemy object, though.</p>
+
+						<h2 class="articleSubheader">The second snippet of source code<br>
+													 ---------------------------------</h2>
+
+						<p>The second block of source code in the game binary is rather larger, and can be found in the <a href="/source/main/variable/stripdata.html">stripData</a>, <a href="/source/main/variable/tilesataltitude.html">tilesAtAltitude</a>, <a href="/source/main/variable/maxaltitude.html">maxAltitude</a>, <a href="/source/main/variable/xtilemaxaltitude.html">xTileMaxAltitude</a> and <a href="/source/main/variable/ztilemaxaltitude.html">zTileMaxAltitude</a>, which take up the block of memory from &amp;5A00 to &amp;5BFF when the game has finished loading. These tables are used for storage and don't contain any lookup data, so it doesn't matter what they contain, as any content will be overwritten when the game runs. It's likely that these blocks were skipped in the BBC BASIC assembler by incrementing P%, which jumps over the allocated memory while leaving its contents alone.</p>
+
+						<p>The buried source code looks like this, once the line numbers have been decoded:</p>
+
+<pre class="articleIndented">
+            ...DX ETEM
+  5180
+  5190      TYA:JSR EMIRTEST:BCC mea2
+  5200 
+  5210      TYA:STA MEANY,X 
+  5220 
+  5230      LDA#4:STA OBTYPE,Y
+  5240      LDA#104:STA OBHALFSIZEMIN
+  5250      CLC:rts
+  5251 
+  5252.mea2 INC MTRYCNT,X:JMP EEXIT
+  5253 
+  5260 
+  5270.tak5 LDA#128:STA THEEND:JMP EEXIT
+  5280 
+  5290.TAKE LDX PERSON
+  5300      CPX PLAYERINDEX:BNE tak1
+  5310      LDA ENERGY:BEQ tak5
+  5320      SEC:SBC#1:STA ENERGY
+  5330      JSR EDIS
+  5340      LDA#5:JSR VIPO
+  5350      SEC:JMP tak3
+  5360 
+  5370 
+  5380.tak1 TXA:JSR EMIRPT
+  5390 
+  5400      LDA OBTYPE,X:BNE tak4
+  5410
+  5420 \...
+</pre>
+
+						<p>Again, it's easy enough to work out where this code is from. In this case, the code at the start of the snippet is from the end of <a href="/source/main/subroutine/scanformeanietree.html#mean4">ScanForMeanieTree</a> (which was the last routine in the first snippet above), while the code at the bottom contains the start of <a href="/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a>. This code is therefore still part of the enemy tactics.</p>
+
+						<p>The label names map to my disassembly like this:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>My label</th><th>Original source label</th></tr>
+							<tr><td>enemyObject</td><td>ETEM</td></tr>
+							<tr><td>CheckObjVisibility</td><td>EMIRTEST</td></tr>
+							<tr><td>enemyMeanieTree</td><td>MEANY</td></tr>
+							<tr><td>objectTypes</td><td>OBTYPE</td></tr>
+							<tr><td>minObjWidth</td><td>OBHALFSIZEMIN</td></tr>
+							<tr><td>mean5</td><td>mea2</td></tr>
+							<tr><td>enemyMeanieScan</td><td>MTRYCNT</td></tr>
+							<tr><td>FinishEnemyTactics</td><td>EEXIT</td></tr>
+							<tr><td>dobj1</td><td>tak5</td></tr>
+							<tr><td>sentinelHasWon</td><td>THEEND</td></tr>
+							<tr><td>DrainObjectEnergy</td><td>TAKE</td></tr>
+							<tr><td>targetObject</td><td>PERSON</td></tr>
+							<tr><td>playerObject</td><td>PLAYERINDEX</td></tr>
+							<tr><td>dobj2</td><td>tak1</td></tr>
+							<tr><td>playerEnergy</td><td>ENERGY</td></tr>
+							<tr><td>UpdateIconsScanner</td><td>EDIS</td></tr>
+							<tr><td>MakeSound</td><td>VIPO</td></tr>
+							<tr><td>dobj7</td><td>tak3</td></tr>
+							<tr><td>AbortWhenVisible</td><td>EMIRPT</td></tr>
+							<tr><td>dobj3</td><td>tak4</td></tr>
+						</table>
+
+						<p>Again, there are some obvious matches - objectTypes sounds a lot like OBTYPE, and playerObject and PLAYERINDEX are clearly related - but I'm not sure I'd work out that the EDIS routine updated the energy icons and scanner row, or that EMIRPT aborts the updating of a visible object if drawing it might corrupt an ongoing pan.</p>
+
+						<p>But these are the original label names that Geoff Crammond chose, and that in itself is amazing. This is probably the most literal aspect of software archaeology - digging about in the code to see what we can find - and I find it endlessly fascinating to discover artefacts like these from the game's creation. What a privilege...</p>
 					</div>
 				</div>
 
