@@ -11,11 +11,125 @@ page_header("deep_dives", "the_key_logger.html", "The key logger", "The key logg
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How the game reads the keyboard and logs activity during gameplay</h2>
 
-						<p>This deep dive is currently being written and will be published in the next few weeks. I will post details to <a href="https://universeodon.com/@markmoxon">Mastodon</a> and <a href="https://bsky.app/profile/markmoxon.bsky.social">Bluesky</a> as soon as it is ready.</p>
+						<p>A lot of 8-bit computers have built-in keyboard routines that are not really suitable for gaming. That's hardly surprising; after all, the main purpose of the keyboard is to allow you to type, rather than frantically avoiding evil futuristic robots, and for that you don't need to worry about timings or processing too many simultaneous key presses at the same time.</p>
 
-						<p>There's a lot to say about The Sentinel, and it's going to take a while to say it, but I hope it will be worth the wait...</p>
+						<p>For some games, though, we need to keep track of key presses in a more sophisticated manner. Elite is an extreme example, as it goes the whole hog and completely ignores the operating system, choosing instead to read key presses directly from the keyboard and into a key logger (see the Elite deep dive on <a href="https://elite.bbcelite.com/deep_dives/the_key_logger.html">the key logger</a> for details). Other games, like Aviator and Revs, don't need to support such a multitude of simultaneous key presses as Elice, so they content themselves with simply reading from the keyboard whenever they need to know what's being pressed.</p>
 
-						<!-- Cover CheckForKeyPresses-->
+						<p>The Sentinel inhabits the middle ground. It uses the exact same <a href="/source/main/subroutine/scankeyboard.html">ScanKeyboard</a> routine as Revs to read the keyboard, but it stores the results in a key logger, like Elite. In this article, we'll take a look at how this works.</p>
+
+						<h2 class="articleSubheader">Populating the key logger<br>
+													 -------------------------</h2>
+
+						<p>The key logger is at the heart of keyboard support in The Sentinel. The logger itself is a four-byte table at <a href="/source/main/workspace/main_variable_workspace.html#keylogger">keyLogger</a> that contains information about which keys have been pressed, grouped into four distinct entries (with one byte for each entry).</p>
+
+						<p>The key logger entries fall into four categories:</p>
+
+						<ul>
+							<li>Entry 0 is for sideways movement keys (pan left, pan right)</li>
+
+							<li>Entry 1 is for action keys (absorb, transfer, create, hyperspace, U-turn)</li>
+
+							<li>Entry 2 is for vertical movement keys (pan up, pan down)</li>
+
+							<li>Entry 3 is for utility keys (volume control, pause)</li>
+						</ul>
+
+						<p>The logger is populated by the <a href="/source/main/subroutine/scanforgamekeys.html">ScanForGameKeys</a> routine. This routine works through a specified set of game keys and sets the key logger according to whether those keys are being pressed. The game keys are defined in the <a href="/source/main/variable/gamekeys.html">gameKeys</a> table, and the routine is called with an offset in Y that defines the offset within gameKeys where we start the scan, with the scan working towards the start of gameKeys.</p>
+
+						<p>The routine does the following:</p>
+
+						<ul>
+							<li>Reset all four bytes in the key logger to be empty, which it demoted by bit 7 being set (so all four entries are set to %10000000).</li>
+
+							<li>Work through the <a href="/source/main/variable/gamekeys.html">gameKeys</a> table, starting from the index specified in Y, and working backwards to the start of the table. The gameKeys table contains internal key numbers for all the keys used in the game, so for each internal key number we do the following:</li>
+
+								<ul>
+									<li>Call the <a href="/source/main/subroutine/scankeyboard.html">ScanKeyboard</a> to read the keyboard and check whether the internal key number from gameKeys is being pressed.</li>
+
+									<li>If it is, look up the details for this key from the <a href="/source/main/variable/keyloggerconfig.html">keyLoggerConfig</a> table to see how we should store this key in the logger, and store the key press.</li>
+								</ul>
+							</li>
+
+							<li>Set the N flag on whether a pan key is being pressed, so we can branch with BMI or BPL on returning depending on whether pan keys are being pressed.</li>
+						</ul>
+
+						<p>The keyLoggerConfig table defines two things for each game key: the entry number in the key logger in which we should store this key press (which ranges from 0 to 3), and the value that should be stored in that key logger entry if the key is being pressed.</p>
+
+						<p>Here are the details for each logger entry, with the keys in that entry being shown in priority order. In the event that two keys for the same logger entry are being pressed at the same time, the higher priority key will be recorded in the key logger and the lower priority key will be ignored:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Logger entry</th><th>Value</th><th>Key</th><th>Action</th></tr>
+							<tr><td>0</td><td>1</td><td>S</td><td>Pan left</td></tr>
+							<tr><td>0</td><td>0</td><td>D</td><td>Pan right</td></tr>
+							<tr><td>1</td><td>32</td><td>A</td><td>Absorb</td></tr>
+							<tr><td>1</td><td>33</td><td>Q</td><td>Transfer</td></tr>
+							<tr><td>1</td><td>0</td><td>R</td><td>Create robot</td></tr>
+							<tr><td>1</td><td>2</td><td>T</td><td>Create tree</td></tr>
+							<tr><td>1</td><td>3</td><td>B</td><td>Create boulder</td></tr>
+							<tr><td>1</td><td>34</td><td>H</td><td>Hyperspace</td></tr>
+							<tr><td>1</td><td>35</td><td>U</td><td>U-turn</td></tr>
+							<tr><td>2</td><td>2</td><td>L</td><td>Pan up</td></tr>
+							<tr><td>2</td><td>3</td><td>,</td><td>Pan down</td></tr>
+							<tr><td>3</td><td>0</td><td>7</td><td>Volume down</td></tr>
+							<tr><td>3</td><td>1</td><td>8</td><td>Volume up</td></tr>
+							<tr><td>3</td><td>2</td><td>COPY</td><td>Pause</td></tr>
+							<tr><td>3</td><td>3</td><td>DELETE</td><td>Unpause</td></tr>
+						</table>
+
+						<p>So if "S" is being pressed to pan the screen left, then key logger entry 0 will be set to 1, while pressing "T" to initiate a transfer will set key logger entry 1 to 33.</p>
+
+						<h2 class="articleSubheader">Using the key logger<br>
+													 --------------------</h2>
+
+						<p>The <a href="/source/main/subroutine/scanforgamekeys.html">ScanForGameKeys</a> routine described above is called from three places, each of which populates the key logger:</p>
+
+						<ul>
+							<li>The interrupt handler at <a href="/source/main/subroutine/irqhandler.html">IRQHandler</a> calls the <a href="/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a> routine to check for key presses, which in turn calls the ScanForGameKeys routine to populate the logger. This is only done when a game is in progress and not paused, and the game is not currently focusing on a key action such as drawing a landscape pan.</li>
+
+							<li>When the game is paused, the interrupt handler calls ScanForGameKeys to check for the pause and volume keys, and processes them accordingly.</li>
+
+							<li>The <a href="/source/main/subroutine/checkforsamepankey.html">CheckForSamePanKey</a> routine calls ScanForGameKeys with Y = 3 to update the logger for just the four pan keys, so it can check whether a pan key is still being held down.</li>
+						</ul>
+
+						<p>CheckForKeyPresses is the core keyboard handling routine, and it uses a combination of calls to <a href="/source/main/subroutine/scanforgamekeys.html">ScanForGameKeys</a> and <a href="/source/main/subroutine/scankeyboard.html">ScanKeyboard</a> to process the correct range of key presses for the current game state. It implements a couple of interesting features:</p>
+
+						<ul>
+							<li>Debounce is implemented for the SPACE key by recording the key state in the <a href="/source/main/variable/spacekeydebounce.html">spaceKeyDebounce</a> variable. This means that holding down SPACE will not flip the sights on and off repeatedly, but instead will wait for the key to be released first.</li>
+
+							<li>The pan keys are checked and if the crosshair sights are visible, then inertia is applied to the movement, so the sights start off by moving slowly before increasing in speed if the same movement key is held down.</li>
+						</ul>
+
+						<p>The crosshair inertia is worth mentioning in more detail. It is implemented by setting a bit pattern in the <a href="/source/main/workspace/main_variable_workspace.html#sightsinitialmoves">sightsInitialMoves</a> variable, to control the initial movement of the sights when a pan key is pressed and held down. Specifically, this value is shifted left once on each call to this routine, with a zero shifted into bit 0, and we only move the sights when a zero is shifted out of bit 7.</p>
+
+						<p>The bit pattern is set to #%01101011, which means that when we start moving the sights, they move like this, with each step happening on one call of the interrupt handler:
+
+						<ul class="tightList">
+							<li>0 = Move</li>
+							<li>1 = Pause</li>
+							<li>1 = Pause</li>
+							<li>0 = Move</li>
+							<li>1 = Pause</li>
+							<li>0 = Move</li>
+							<li>1 = Pause</li>
+							<li>1 = Pause</li>
+						</ul>
+
+						<p>And then we move on every subsequent shift, as by now all bits of sightsInitialMoves are clear.</p>
+
+						<p>This means the sights move more slowly at the start, with a slight judder, before speeding up fully after eight steps (so this applies a bit of inertia to the movement of the sights).</p>
+
+						<h2 class="articleSubheader">The input buffer<br>
+													 ----------------</h2>
+
+						<p>Although it is separate from the key logger, it's worth noting the input buffer, which is used to store the landscape number and secret code as entered by the player on the main title screen. The input buffer lives at <a href="/source/main/workspace/main_variable_workspace.html#inputbuffer">inputBuffer</a> in the main variable workspace, and input is captured and stored here by calling the <a href="/source/main/subroutine/readnumber.html">ReadNumber</a> routine.</p>
+
+						<p>The input buffer is not only used for storing the player's input, but it's also used to check that the entered secret code matches the generated secret code for the landscape. To make things more confusing for those of us wanting to follow along, the key presses are stored in the input buffer using a descending stack that is shuffled up in memory as it grows, with new input being pushed into the low end of inputBuffer, and any existing content in the buffer moving up in memory.</p>
+
+						<p>This means that digits at the low end of the stack (i.e. those that were typed most recently) are of lower significance than those that are higher in memory (i.e. those that were typed first). It also means that if the player presses the DELETE key, we need to delete the most recently entered character at inputBuffer and shuffle the rest of the stack down in memory to close up the gap.</p>
+
+						<p>This odd layout of the inputBuffer means that when we come to check the secret code that the player has entered, the first byte in the buffer has the lowest significance. This is the opposite direction to the way that the seeds are stored in the secret code stash, so when we come to compare the two codes in <a href="/source/main/subroutine/checksecretcode_part_1_of_2.html">CheckSecretCode</a>, we need to maintain two indexes: an ascending index in Y for the stash, and a descending index in X for the input buffer.</p>
+
+						<p>I suspect it's done this way to make it harder to search the computer's memory for matching secret codes; for more obfuscations and confusions, see the deep dive on <a href="anti-cracker_checks.html">anti-cracker checks</a>.</p>
 					</div>
 				</div>
 
