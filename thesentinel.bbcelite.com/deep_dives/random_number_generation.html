@@ -11,20 +11,20 @@ page_header("deep_dives", "random_number_generation.html", "Random number genera
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How random numbers are generated for gameplay and the dithered screen</h2>
 
-						<p>The 10,000 landscapes in The Sentinel are procedurally generated using a pseudo-random number generator, as described in the deep dives on <a href="seed_number_generation.html">seed number generation</a> and <a href="generating_the_landscape.html">generating the landscape</a>. This process is tightly controlled to ensure that each individual landscape is generated in the exact same way each time, so although the seed numbers are randomly distributed, they are predictable.</p>
+						<p>The 10,000 game landscapes in The Sentinel are procedurally generated using a pseudo-random number generator, as described in the deep dives on <a href="seed_number_generation.html">seed number generation</a> and <a href="generating_the_landscape.html">generating the landscape</a>. This process is tightly controlled to ensure that each individual landscape is generated in the exact same way each time, so although the seed numbers themselves are randomly distributed, they are generated in a predictable manner.</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/dither/game_over.png" alt="The game over screen in the BBC Micro version of The Sentinel">
 
-						<p>Once the landscape has been generated, there is still a need for random numbers. The seed generator is used to pump out random numbers for use in the game itself, and there's another, much simpler pseudo-random number generator that's used to generate random graphical effects, like the game over screen above.</p>
+						<p>Once the landscape has been generated and the game has started, there is still a need for random numbers. The seed generator is still useful for pumping out random numbers for use in the game itself, and there's another, much simpler pseudo-random number generator that's used to generate random graphical effects, like the dithering in the game over screen above.</p>
 
 						<p>We'll take a look at both of these methods here, starting with the landscape seed generator.</p>
 
 						<h2 class="articleSubheader">Using landscape seeds for gameplay<br>
 													 ----------------------------------</h2>
 
-						<p>Once the landscape has been generated, we don't need the seed generator to be reliably repeatable anymore; indeed, because there's still a need for random numbers during gameplay, we actually need a generator that is <i>not</i> predictable or reliable, otherwise the game would be predictable.</p>
+						<p>Once the landscape has been generated, we don't need the seed generator to be reliably repeatable anymore; indeed, because there's still a need for random numbers during gameplay, we actually need a generator that is <i>not</i> predictable or reliable, otherwise the game would never change.</p>
 
-						<p>That said, there isn't a great deal of randomness in the actual gameplay. The only times that we need randomness are:</p>
+						<p>That said, there isn't a great deal of randomness in the actual gameplay. In fact, the only time that we need a random number is when we spawn objects in the following circumstances:</p>
 
 						<ul>
 							<li>When an enemy expends energy onto the landscape by spawning a tree in a random place, then the spawning process uses seed numbers to work out where to place the tree (see the <a href="/source/main/subroutine/spawnobjectbelow.html">SpawnObjectBelow</a> routine).</li>
@@ -34,11 +34,11 @@ page_header("deep_dives", "random_number_generation.html", "Random number genera
 							<li>When a new object is created by either the player or an enemy, then the new object's yaw angle is determined by a random seed (see the <a href="/source/main/subroutine/spawnobjectontile.html">SpawnObjectOnTile</a> routine).</li>
 						</ul>
 
-						<p>Outside of these spawning events, everything else in the gameplay is scheduled, predictable and non-random (if you ignore the random nature of the player's very human actions).</p>
+						<p>Outside of these specific spawning events, everything else in the gameplay is scheduled, predictable and non-random (if you ignore the less predictable nature of the player's rather more human actions).</p>
 
-						<p>To ensure that the seed generator's linear feedback shift register starts to produce more unpredictable random numbers rather than a continuing sequence of predictable seeds, the game calls <a href="/source/main/subroutine/getnextseednumber.html">GetNextSeedNumber</a> at the start of the <a href="/source/main/subroutine/moveontonextenemy.html">MoveOnToNextEnemy</a> routine. It ignores the seed number that is generated, but this process means that every time we apply tactics to an enemy, the shift register moves on to the next pseudo-random seed, and because the game applies tactics to all eight enemies, with one enemy being processed in each gameplay loop (even if that enemy isn't actually present in-game), it doesn't take long for the sequence to end up in a fairly unpredictable state. See the deep dive on <a href="enemy_tactics.html">enemy tactics</a> for more details on the application of tactics to enemies.</p>
+						<p>To ensure that the seed generator's linear feedback shift register starts to produce more unpredictable random numbers rather than a continuing sequence of predictable seeds, the game calls <a href="/source/main/subroutine/getnextseednumber.html">GetNextSeedNumber</a> at the start of the <a href="/source/main/subroutine/moveontonextenemy.html">MoveOnToNextEnemy</a> routine. It ignores the seed number that is generated, but this process means that every time we apply tactics to an enemy, the shift register moves on to the next pseudo-random seed, and because the game applies tactics to all eight enemies, with one enemy being processed in each gameplay loop (even if that enemy isn't actually present in-game), it doesn't take long for the sequence to end up in a fairly unpredictable state. See the deep dive on <a href="enemy_tactics.html">enemy tactics</a> for more about the application of tactics to enemies.</p>
 
-						<p>There is one more use of the seed generator, but it occurs during the game over sequence, after the game has ended. The sound processor routine at <a href="/source/main/subroutine/processsound.html">ProcessSound</a> fetches the next seed to apply to sound counter for the decaying white noise sound effect on the game over screen. This randomises the length of each white noise burst, so the decaying sound combines a lowering pitch with a random white noise effect. See the deep dive on <a href="sound_effects.html">sound effects</a> for more details.</p>
+						<p>There is one more use of the seed generator, but it occurs during the game over sequence, after the game has ended. The sound processor routine at <a href="/source/main/subroutine/processsound.html">ProcessSound</a> fetches the next seed and uses it as the sound counter for the decaying white noise sound effect on the game over screen. This randomises the length of each white noise burst, so the decaying sound combines a lowering pitch with a random white noise effect. See the deep dive on <a href="sound_effects.html">sound effects</a> for more details.</p>
 
 						<h2 class="articleSubheader">Linear congruential generator<br>
 													 -----------------------------</h2>
@@ -50,29 +50,26 @@ page_header("deep_dives", "random_number_generation.html", "Random number genera
 
 							<li><a href="/source/main/subroutine/drawrandomdots.html">DrawRandomDots</a> uses random numbers to choose coordinates for drawing dots, such as the title screen stars drawn by <a href="/source/main/subroutine/drawstars.html">DrawStars</a>, or the black dots that are used to fade the screen to black in the <a href="/source/main/subroutine/drawblackdots.html">DrawBlackDots</a> routine (see the deep dive on <a href="drawing_the_title_screens.html">drawing the title screens</a> for more details).</li>
 
-							<li><a href="/source/main/subroutine/updatescannernow.html">UpdateScannerNow</a> uses random numbers to draw a static effect in the scanner when the player is being scanned by an enemy (see the deep dive on <a href="the_scanner.html">the scanner</a> for details).</li>
+							<li><a href="/source/main/subroutine/updatescannernow.html">UpdateScannerNow</a> uses random numbers to draw a TV static effect in the scanner when the player has been spotted by an enemy (see the deep dive on <a href="the_scanner.html">the scanner</a> for details).</li>
 						</ul>
 
-						<p>The pseudo-random number generator implemented in <a href="/source/main/subroutine/getrandomnumber.html">GetRandomNumber</a> is extremely simple, but what it loses in randomness it makes up for in being fast. The current state of the generator is stored in a 24-bit number at <a href="/source/main/variable/randomgenerator.html">randomGenerator</a>, and the GetRandomNumber routine returns the high byte of the current state from randomGenerator+2 (though some of the routines above also access the middle byte at randomGenerator+1).</p>
+						<p>The pseudo-random number generator implemented in <a href="/source/main/subroutine/getrandomnumber.html">GetRandomNumber</a> is extremely simple. The current state of the generator is stored in a 24-bit number at <a href="/source/main/variable/randomgenerator.html">randomGenerator</a>, and the GetRandomNumber routine extracts a random number from this generator by simply returning the high byte of the current state from randomGenerator+2 (though some of the routines above also access the middle byte at randomGenerator+1 without calling GetRandomNumber).</p>
 
-						<p>The algorithm for generating a new random number is very simple: we generate a new random number by taking our 24-bit
-                         generator in randomGenerator(2 1 0) and adding it to
-                         itself but shifted left by two places. So on each
-                         iteration we do the following:
+						<p>The algorithm for generating a new random number is also simple: we generate a new random number by taking our 24-bit generator in randomGenerator(2 1 0) and adding it to itself but shifted left by two places. So on each iteration we do the following:</p>
 
 <pre class="articleIndented">
   randomGenerator(2 1 0) += randomGenerator(2 1 0) &lt;&lt; 2
 </pre>
 
-						<p>We then return the high byte of randomGenerator(2 1 0) as the next random number. The initial value of randomGenerator(2 1 0) is set to 1, as otherwise the generator would produce nothing but zeroes.</p>
+						<p>We then return the high byte of randomGenerator(2 1 0) as the next random number, and that's it. The only other step is to make sure the generator is initialised properly; this is why the initial value of randomGenerator(2 1 0) within the game binary is set to 1, as otherwise the generator would produce nothing but zeroes.</p>
 
-						<p>Needless to say, this is not a very good pseudo-random number generator, but it suffices for graphical effects. Technically speaking, it's a specialised form of linear congruential generator, in this form:</p>
+						<p>Needless to say, this is not a very good pseudo-random number generator, but it suffices for graphical effects. Technically speaking, it's a specialised form of a linear congruential generator, which looks like this:</p>
 
 <pre class="articleIndented">
   X(n + 1) = (a * X(n) + c) mod m
 </pre>
 
-						<p>where the constant (c) is 0, the multiplier (a) is 4 and the modulus (m) is &amp;1000000. Because c is zero, this variant is actually a multiplicative congruential generator.</p>
+						<p>In this particular generator, the constant (c) is 0, the multiplier (a) is 4 and the modulus (m) is &amp;1000000. Because c is zero, the correct name for this variant is a multiplicative congruential generator.</p>
 
 						<p>For a discussion of the properties of this kind of generator, see the Wikipedia article on <a href="https://en.wikipedia.org/wiki/Linear_congruential_generator">linear congruential generators</a>, and in particular the section that talks about <a href="https://en.wikipedia.org/wiki/Linear_congruential_generator#m_a_power_of_2,_c_=_0">m being a power of 2 with c = 0</a>.</p>
 					</div>

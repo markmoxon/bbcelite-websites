@@ -11,16 +11,18 @@ page_header("deep_dives", "text_tokens.html", "Text tokens", "Text tokens", "A d
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How the game text in The Sentinel is tokenised to save space</h2>
 
-						<p>There isn't a lot of text in The Sentinel, but there's still enough to justify compressing it with a text tokenisation system, as every byte counts in this game. The tokenisation system used is a simplified version of the text tokenisation system from Revs; the latter system is pretty complex as it needs to encode teletext graphics for all the menu screens, but The Sentinel only needs to encode some simple positioning and colouring information, plus the text itself.</p>
+						<p>There isn't a lot of text in The Sentinel, but there's still enough to justify compressing it with a text tokenisation system, as absolutely every byte counts in this game (see <a href="the_sentinel_memory_map.html">The Sentinel memory map</a> for details).</p>
+
+						<p>The system used is a simplified version of the text tokenisation system from Revs. The latter system is more complicated as it needs to encode teletext control codes for all the menu screens, but The Sentinel only needs to encode some simple positioning and colouring information, plus the text itself.</p>
 
 						<p>You can read about the more complex system in the Revs deep dive on <a href="https://revs.bbcelite.com/deep_dives/text_tokens.html">text tokens</a>, but we'll stick to examining The Sentinel's simpler offshoot here.</p>
 
 						<h2 class="articleSubheader">Text token strings<br>
 													 ------------------</h2>
 
-						<p>The compression system used in The Sentinel is relatively simple. The game contains 18 text tokens, that are numbered from 0 to 17. Each of these tokens has an associated string of text, labelled token0 through token17 in the source code. This string contains not only the text for that token, but it can contain other tokens too, and because the BBC Micro encapsulates a number of graphics commands via its VDU system, we can also encode commands such as colour changes and cursor movements.</p>
+						<p>The compression system used in The Sentinel is relatively simple. The game contains 18 text tokens that are numbered from 0 to 17. Each of these tokens has an associated string of text, labelled token0 through token17 in the source code. This string contains not only the text for that token, but it can contain other tokens too, and because the BBC Micro encapsulates a number of graphics commands via its VDU system, we can also encode commands such as colour changes and cursor movements.</p>
 
-						<p>Each token's string is a sequence of bytes. They have the following meanings:</p>
+						<p>Each token's string is a sequence of bytes. These bytes have the following meanings:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Token</th><th>Meaning</th></tr>
@@ -29,7 +31,7 @@ page_header("deep_dives", "text_tokens.html", "Text tokens", "Text tokens", "A d
 							<tr><td>255</td><td>End of token</td></tr>
 						</table>
 
-						<p>Let's look at an example to see how this works. Text token 1 is designed to be printed once the player has pressed a key from the main title screen, so it gets printed when the screen looks like this:</p>
+						<p>Let's look at an example to see how this works. Text token 1 is designed to be printed once the player has pressed a key on the main title screen, so it gets printed when the screen looks like this:</p>
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/title_screens/main_title.png" alt="The main title screen in the BBC Micro version of The Sentinel">
 
@@ -37,7 +39,7 @@ page_header("deep_dives", "text_tokens.html", "Text tokens", "Text tokens", "A d
 
 						<img class="titleImage marginBorder" style="width: 320px" src="/images/title_screens/main_title_landscape.png" alt="The main title screen with landscape number entry in the BBC Micro version of The Sentinel">
 
-						<p>Note that the black box and 1234 text are displayed by other parts of the code, not the text token; the text token deals with removing the "PRESS ANY KEY" text, printing "LANDSCAPE NUMBER?" along the top, and getting things ready for the black input field.</p>
+						<p>Note that the black text box and "1234" text are displayed by other parts of the code rather than the text token. Instead, the text token deals with removing the "PRESS ANY KEY" text, printing "LANDSCAPE NUMBER?" along the top, and getting things ready for the black input field.</p>
 
 						<p>Text token 1 is defined at <a href="/source/main/variable/token1.html">token1</a>, which looks like this:</p>
 
@@ -88,20 +90,20 @@ page_header("deep_dives", "text_tokens.html", "Text tokens", "Text tokens", "A d
 
 						<p>Next we print 13 spaces in three batches, which removes the "PRESS ANY KEY" text from the screen, and then we move the graphics cursor to (64, 768), which is along the top of the screen, before printing "LANDSCAPE NUMBER?".</p>
 
-						<p>Finally we do a VDU 4 command so we write text at the text cursor rather than the graphics cursor, and then move the text cursor to (5, 27). This positions the cursor ready for the four-character landscape number input, which is drawn and managed by calling the <a href="/source/main/subroutine/readnumber.html">ReadNumber</a> routine after the text token has finished printing.</p>
+						<p>Finally we do a VDU 4 command so we print text at the text cursor rather than the graphics cursor, and then we move the text cursor to (5, 27). This positions the cursor ready for the four-character landscape number input field (i.e. the "1234" box in the screenshot above), which is drawn and managed by calling the <a href="/source/main/subroutine/readnumber.html">ReadNumber</a> routine after the text token has finished printing.</p>
 
-						<p>If you look at the title screen, you'll notice that text is printed with a drop shadow. This effect is implemented in the <a href="/source/main/subroutine/printcharacter.html">PrintCharacter</a> routine, which prints the sequence of VDU commands at <a href="/source/main/variable/vdushadowrear.html">vduShadowRear</a> and <a href="/source/main/variable/vdushadowfront.html">vduShadowFront</a>, which produce the drop shadow effect.</p>
+						<p>If you look at the title screen, you'll notice that text is printed with a drop shadow. This effect is implemented in the <a href="/source/main/subroutine/printcharacter.html">PrintCharacter</a> routine, which prints the sequence of VDU commands at <a href="/source/main/variable/vdushadowrear.html">vduShadowRear</a> and <a href="/source/main/variable/vdushadowfront.html">vduShadowFront</a> to produce the drop shadow effect.</p>
 
 						<p>The first step is to poke the ASCII code of the character to print into the first byte of the vduShadowRear and vduShadowFront tables. Then the drop shadow is printed by first printing the VDU commands in vduShadowRear, to print the rear character in yellow, and then in vduShadowFront, to print the front character in red or cyan.</p>
                         
 						<p>The rear character is offset down from the front character by four graphics units, which equates to an offset of one pixel in mode 5.</p>
                         
-						<p>The VDU commands are printed backwards, because that makes the loop condition slightly simpler, and it also means we can poke the character to print into the start of each block of VDU commands, knowing that they will then be printed last in each VDU sequence.</p>
+						<p>The VDU commands are printed backwards, because that makes the loop condition slightly simpler, and it also means we can poke the characters to print into the start of each block of VDU commands, knowing that they will then be printed last in each VDU sequence.</p>
 
 						<h2 class="articleSubheader">All the text tokens in The Sentinel<br>
 													 -----------------------------------</h2>
 
-						<p>The table below lists all the text tokens in The Sentinel. Click on the token names to see the exact breakdown of each step in each token:</p>
+						<p>The table below lists all the text tokens in The Sentinel. Click on the token names to see the exact breakdown of each byte in each token:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Token</th><th>Text</th></tr>
@@ -125,9 +127,9 @@ page_header("deep_dives", "text_tokens.html", "Text tokens", "Text tokens", "A d
 							<tr><td><a href="/source/main/variable/token17.html">token17</a></td><td>Print "PRESS ANY KEY"</td></tr>
 						</table>
 
-						<p>Note that the two sets of coordinates for text entry (i.e. when we position the text cursor) seem a bit strange; for example, the landscape number entry box in the above example is positioned at text coordinates (5, 27), which means text column 5 on row number 27. Text rows count down from row 0 at the top of the screen, so this puts the cursor on the 28th character row... but as discussed in the deep dive on <a href="the_custom_screen_mode.html">the custom screen mode</a>, the game screen is only 25 rows tall, and in the title screens it's one less, at a height of 24 character rows. So why isn't text row 27 off the bottom of the screen?</p>
+						<p>Note that the coordinates for positioning the text cursor in the text tokens might seem a bit strange; for example, the landscape number entry box in the above example is positioned at text coordinates (5, 27), which means text column 5 on row number 27. Text rows count down from row 0 at the top of the screen, so this puts the cursor on the 28th character row... but as discussed in the deep dive on <a href="the_custom_screen_mode.html">the custom screen mode</a>, the game screen is only 25 rows tall, and in the title screens it's one less, with a height of 24 character rows. So why isn't text row 27 off the bottom of the screen?</p>
 
-						<p>The reason is that the while the custom screen mode might have fewer character rows, the operating system doesn't know about this, as we create the custom screen mode by reprogramming the 6845 directly. The text system in The Sentinel uses the operating system's OSWRCH routine to write text to the screen, which therefore writes text to the screen as if it were a normal mode 5 screen. In terms of screen memory, you can think of the custom screen as being the bottom portion of the standard mode 5 screen (we just reuse the top part for game code and don't display that part), so when setting the text cursor, we have to specify a row number in the VDU command that is relative to where the top of mode 5 would be, rather than the custom screen mode.</p>
+						<p>The reason is that the while the custom screen mode might have fewer character rows, the operating system doesn't know about this, as we create the custom screen mode by reprogramming the 6845 directly. The text system in The Sentinel uses the operating system's OSWRCH routine to write text to the screen, which therefore writes text to the screen as if it were a normal mode 5 screen. In terms of screen memory, you can think of the custom screen as occupying the bottom portion of the standard mode 5 screen, and we just reuse the top part for game code and don't display that part; so when setting the text cursor, we have to specify a row number in the VDU command that is relative to where the top of where mode 5 would normally be, rather than the top of the custom screen mode.</p>
 
 						<p>This issue doesn't apply to the graphics-related VDU commands, as the graphics origin is in the bottom-left of the screen, while the text origin is in the top-left.</p>
 					</div>

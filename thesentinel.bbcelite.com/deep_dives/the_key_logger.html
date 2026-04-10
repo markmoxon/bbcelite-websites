@@ -11,9 +11,9 @@ page_header("deep_dives", "the_key_logger.html", "The key logger", "The key logg
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How the game reads the keyboard and logs activity during gameplay</h2>
 
-						<p>A lot of 8-bit computers have built-in keyboard routines that are not really suitable for gaming. That's hardly surprising; after all, the main purpose of the keyboard is to allow you to type, rather than frantically avoiding evil futuristic robots, and for that you don't need to worry about timings or processing too many simultaneous key presses at the same time.</p>
+						<p>It's not unusual for 8-bit computers to come with built-in keyboard routines that are not really suitable for gaming. That's hardly surprising; after all, the main purpose of the keyboard is to allow you to type in programs from magazines, right? As opposed to conquering evil futuristic robots, I mean. And for typing you don't need to worry about timings or processing too many panicky key presses at the same time.</p>
 
-						<p>For some games, though, we need to keep track of key presses in a more sophisticated manner. Elite is an extreme example, as it goes the whole hog and completely ignores the operating system, choosing instead to read key presses directly from the keyboard and into a key logger (see the Elite deep dive on <a href="https://elite.bbcelite.com/deep_dives/the_key_logger.html">the key logger</a> for details). Other games, like Aviator and Revs, don't need to support such a multitude of simultaneous key presses as Elice, so they content themselves with simply reading from the keyboard whenever they need to know what's being pressed.</p>
+						<p>For some games, though, we need to keep track of key presses in a more sophisticated manner. Elite is an extreme example, as it goes the whole hog and completely ignores the operating system, choosing instead to read key presses directly from the keyboard membrane and into a key logger (see the Elite deep dive on <a href="https://elite.bbcelite.com/deep_dives/the_key_logger.html">the key logger</a> for details). Other games, like Aviator and Revs, don't need to support such a multitude of simultaneous key presses as Elite, so they content themselves with simply reading from the keyboard using operating system calls whenever they need to know what's being pressed.</p>
 
 						<p>The Sentinel inhabits the middle ground. It uses the exact same <a href="/source/main/subroutine/scankeyboard.html">ScanKeyboard</a> routine as Revs to read the keyboard, but it stores the results in a key logger, like Elite. In this article, we'll take a look at how this works.</p>
 
@@ -31,15 +31,15 @@ page_header("deep_dives", "the_key_logger.html", "The key logger", "The key logg
 
 							<li>Entry 2 is for vertical movement keys (pan up, pan down)</li>
 
-							<li>Entry 3 is for utility keys (volume control, pause)</li>
+							<li>Entry 3 is for utility keys (volume control, pause, unpause)</li>
 						</ul>
 
-						<p>The logger is populated by the <a href="/source/main/subroutine/scanforgamekeys.html">ScanForGameKeys</a> routine. This routine works through a specified set of game keys and sets the key logger according to whether those keys are being pressed. The game keys are defined in the <a href="/source/main/variable/gamekeys.html">gameKeys</a> table, and the routine is called with an offset in Y that defines the offset within gameKeys where we start the scan, with the scan working towards the start of gameKeys.</p>
+						<p>The logger is populated by the <a href="/source/main/subroutine/scanforgamekeys.html">ScanForGameKeys</a> routine. This routine works its way through a specified set of game keys and sets the key logger according to whether those keys are being pressed. The full set of game keys is defined in the <a href="/source/main/variable/gamekeys.html">gameKeys</a> table, and the routine is called with a value in Y that defines the offset within gameKeys from where we start the scan, with the scan working through the keys from that point back to the start of the table.</p>
 
-						<p>The routine does the following:</p>
+						<p>The ScanForGameKeys routine does this as follows:</p>
 
 						<ul>
-							<li>Reset all four bytes in the key logger to be empty, which it demoted by bit 7 being set (so all four entries are set to %10000000).</li>
+							<li>Reset all four bytes in the key logger to be empty, which is denoted by bit 7 being set (so all four entries are set to %10000000).</li>
 
 							<li>Work through the <a href="/source/main/variable/gamekeys.html">gameKeys</a> table, starting from the index specified in Y, and working backwards to the start of the table. The gameKeys table contains internal key numbers for all the keys used in the game, so for each internal key number we do the following:</li>
 
@@ -50,12 +50,12 @@ page_header("deep_dives", "the_key_logger.html", "The key logger", "The key logg
 								</ul>
 							</li>
 
-							<li>Set the N flag on whether a pan key is being pressed, so we can branch with BMI or BPL on returning depending on whether pan keys are being pressed.</li>
+							<li>Set the N flag on whether a pan key is being pressed, so we can branch with BMI or BPL on returning, depending on whether any pan keys are being pressed.</li>
 						</ul>
 
 						<p>The keyLoggerConfig table defines two things for each game key: the entry number in the key logger in which we should store this key press (which ranges from 0 to 3), and the value that should be stored in that key logger entry if the key is being pressed.</p>
 
-						<p>Here are the details for each logger entry, with the keys in that entry being shown in priority order. In the event that two keys for the same logger entry are being pressed at the same time, the higher priority key will be recorded in the key logger and the lower priority key will be ignored:</p>
+						<p>Here are the details for each logger entry, with the keys in that entry being shown with higher priority keys first. In the event that two keys for the same logger entry are being pressed at the same time, the higher priority key will be recorded in the key logger and the lower priority key will be ignored.</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Logger entry</th><th>Value</th><th>Key</th><th>Action</th></tr>
@@ -76,7 +76,7 @@ page_header("deep_dives", "the_key_logger.html", "The key logger", "The key logg
 							<tr><td>3</td><td>3</td><td>DELETE</td><td>Unpause</td></tr>
 						</table>
 
-						<p>So if "S" is being pressed to pan the screen left, then key logger entry 0 will be set to 1, while pressing "T" to initiate a transfer will set key logger entry 1 to 33.</p>
+						<p>So if "S" is being pressed to pan the screen left, then key logger entry 0 will be set to 1, while pressing "Q" to initiate a transfer will set key logger entry 1 to 33.</p>
 
 						<h2 class="articleSubheader">Using the key logger<br>
 													 --------------------</h2>
@@ -99,9 +99,11 @@ page_header("deep_dives", "the_key_logger.html", "The key logger", "The key logg
 							<li>The pan keys are checked and if the crosshair sights are visible, then inertia is applied to the movement, so the sights start off by moving slowly before increasing in speed if the same movement key is held down.</li>
 						</ul>
 
-						<p>The crosshair inertia is worth mentioning in more detail. It is implemented by setting a bit pattern in the <a href="/source/main/workspace/main_variable_workspace.html#sightsinitialmoves">sightsInitialMoves</a> variable, to control the initial movement of the sights when a pan key is pressed and held down. Specifically, this value is shifted left once on each call to this routine, with a zero shifted into bit 0, and we only move the sights when a zero is shifted out of bit 7.</p>
+						<p>The crosshair inertia is worth describing in more detail. It is implemented by setting a bit pattern in the <a href="/source/main/workspace/main_variable_workspace.html#sightsinitialmoves">sightsInitialMoves</a> variable, to control the initial movement of the sights when a pan key is pressed and held down.</p>
 
-						<p>The bit pattern is set to #%01101011, which means that when we start moving the sights, they move like this, with each step happening on one call of the interrupt handler:
+						<p>This bit pattern is initialised to %01101011 when a new movement key is pressed and the sights are visible. The pattern is then shifted left by one place on each call to the CheckForKeyPresses routine, while the movement key is held down. This shifts a zero into bit 0, and the rule is that we only move the sights when a zero is shifted out of bit 7.</p>
+
+						<p>This means that when we start moving the sights, they move like this, with each step happening on one call of the interrupt handler:</p>
 
 						<ul class="tightList">
 							<li>0 = Move</li>
@@ -114,9 +116,9 @@ page_header("deep_dives", "the_key_logger.html", "The key logger", "The key logg
 							<li>1 = Pause</li>
 						</ul>
 
-						<p>And then we move on every subsequent shift, as by now all bits of sightsInitialMoves are clear.</p>
+						<p>And then we move on every subsequent shift, as by now all eight bits of sightsInitialMoves are clear.</p>
 
-						<p>This means the sights move more slowly at the start, with a slight judder, before speeding up fully after eight steps (so this applies a bit of inertia to the movement of the sights).</p>
+						<p>This means the sights move more slowly at the start, with a slight judder, before speeding up fully after eight steps, so this process applies a bit of inertia to the initial movement of the sights.</p>
 
 						<h2 class="articleSubheader">The input buffer<br>
 													 ----------------</h2>
@@ -125,11 +127,9 @@ page_header("deep_dives", "the_key_logger.html", "The key logger", "The key logg
 
 						<p>The input buffer is not only used for storing the player's input, but it's also used to check that the entered secret code matches the generated secret code for the landscape. To make things more confusing for those of us wanting to follow along, the key presses are stored in the input buffer using a descending stack that is shuffled up in memory as it grows, with new input being pushed into the low end of inputBuffer, and any existing content in the buffer moving up in memory.</p>
 
-						<p>This means that digits at the low end of the stack (i.e. those that were typed most recently) are of lower significance than those that are higher in memory (i.e. those that were typed first). It also means that if the player presses the DELETE key, we need to delete the most recently entered character at inputBuffer and shuffle the rest of the stack down in memory to close up the gap.</p>
+						<p>This means that digits at the low end of the stack (i.e. those that were typed last) are of lower significance than those that are higher in memory (i.e. those that were typed first). It also means that if the player presses the DELETE key, then we need to delete the most recently entered character at address inputBuffer and shuffle the rest of the stack down in memory to close up the gap.</p>
 
-						<p>This odd layout of the inputBuffer means that when we come to check the secret code that the player has entered, the first byte in the buffer has the lowest significance. This is the opposite direction to the way that the seeds are stored in the secret code stash, so when we come to compare the two codes in <a href="/source/main/subroutine/checksecretcode_part_1_of_2.html">CheckSecretCode</a>, we need to maintain two indexes: an ascending index in Y for the stash, and a descending index in X for the input buffer.</p>
-
-						<p>I suspect it's done this way to make it harder to search the computer's memory for matching secret codes; for more obfuscations and confusions, see the deep dive on <a href="anti-cracker_checks.html">anti-cracker checks</a>.</p>
+						<p>This odd layout of the inputBuffer makes some buffer-related code easier and some more difficult, but I'm not entirely sure why it's built in this more complicated direction. Perhaps it's just another obfuscation to go along with the many others described in the deep dive on <a href="anti-cracker_checks.html">anti-cracker checks</a>? Maybe...</p>
 					</div>
 				</div>
 
