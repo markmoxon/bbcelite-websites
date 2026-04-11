@@ -11,9 +11,9 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">The Sentinel is crammed full of traps and obfuscations for would-be crackers</h2>
 
-						<p>Back in the 1980s, copy protection was a big deal, and most blockbuster games came with some kind of obfuscation or anti-copying code that would make it harder for would-be crackers to hack into the game code and, say, generate all 10,000 secret codes. Of course, the whole thing was a cat-and-mouse game that the crackers almost always won, but if the copy protection could put off all except the best hackers, then it might buy you enough time to stop any piracy from denting sales.</p>
+						<p>Back in the 1980s, copy protection was a big deal, and most blockbuster games came with some kind of obfuscation or anti-copying code that would make it harder for would-be crackers to hack into the game code and, say, generate all 10,000 secret codes without having to play the game (as if anyone would want to do that!). Of course, the whole thing was a cat-and-mouse game that the crackers eventually won, but if the copy protection could put off all except the best hackers, then it might buy you enough time to stop any piracy from denting sales.</p>
 
-						<p>The original 1986 release of The Sentinel came wrapped up in plenty of tape protection code, but the version I've analysed on this site is the 1989 release from the Play It Again Sam 6 compilation, which came without any noticeable copy protection (apart from hiding the game files from the disc catalogue, the game binaries are otherwise unprotected). But the game code itself is unchanged between the two releases, and buried inside the game itself is a fascinating collection of obfuscations and downright fiendish anti-cracker code that's mainly aimed at protecting the game's secrets, rather than preventing copying.
+						<p>The original 1986 release of The Sentinel came wrapped up in plenty of tape protection code, but the version I've analysed on this site is the 1989 release from the Play It Again Sam 6 compilation, which came without any noticeable copy protection: apart from hiding the game files from the disc catalogue, the game binaries are otherwise completely unprotected. But despite this lack of media-based copy protection, there are still plenty of traps for would-be hackers, because buried inside the game itself is a fascinating collection of obfuscations and downright fiendish anti-cracker code that's mainly aimed at protecting the game's secrets, rather than preventing copying.
 
 						<p>This anti-cracker code comes in four flavours, which we'll look at in turn. I've called them the cracker seed, the secret stash, stack hacking, and tower corruption, and they are split up and threaded throughout the game code in a way that makes life harder not just for crackers, but for software archaeologists too.</p>
 
@@ -22,11 +22,11 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 						<h2 class="articleSubheader">The cracker seed<br>
 													 ----------------</h2>
 
-						<p>Let's start with the cracker seed. This involves the following routines and variables, in the order in which they are run:</p>
+						<p>Let's start with the cracker seed. This involves the following routines and variables, shown in the order in which they are run:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Name</th><th>Location</th><th>Description</th></tr>
-							<tr><td><a href="/source/main/subroutine/setcrackerseed.html">SetCrackerSeed</a></td><td>After part 3 of <a href="/source/main/subroutine/smoothtilecorners_part_3_of_4.html">SmoothTileCorners</a></td><td>Set up anti-cracker tile-related data that can be checked in the CheckCrackerSeed routine</td></tr>
+							<tr><td><a href="/source/main/subroutine/setcrackerseed.html">SetCrackerSeed</a></td><td>After part 3 of <a href="/source/main/subroutine/smoothtilecorners_part_3_of_4.html">SmoothTileCorners</a></td><td>Set up anti-cracker landscape-related data that can be checked in the CheckCrackerSeed routine</td></tr>
 							<tr><td><a href="/source/main/subroutine/crackerseed.html">CrackerSeed</a></td><td>Before <a href="/source/main/subroutine/getangleinradians.html">GetAngleInRadians</a></td><td>Obfuscated storage for the high byte of the landscape number</td></tr>
 							<tr><td><a href="/source/main/subroutine/altercrackerseed.html">AlterCrackerSeed</a></td><td>After part 1 of <a href="/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a></td><td>Create an altered version of the anti-cracker seed-related data</td></tr>
 							<tr><td><a href="/source/main/workspace/main_variable_workspace.html#alteredseed">alteredSeed</a></td><td>Main variable workspace</a></td><td>An altered version of the anti-cracker seed-related data</td></tr>
@@ -34,21 +34,21 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 							<tr><td><a href="/source/main/subroutine/corruptsecretcode.html">CorruptSecretCode</a></td><td>Called by <a href="/source/main/subroutine/checkcrackerseed.html">CheckCrackerSeed</a></td><td>Corrupt the generation process for the landscape's secret code by fetching one more seed number than necessary</td></tr>
 						</table>
 
-						<p>The first step in this process happens in the <a href="/source/main/subroutine/setcrackerseed.html">SetCrackerSeed</a> routine, which is embedded between parts 3 and 4 of the SmoothTileCorners routine, which is run multiple times during the landscape generation process when smoothing strips of tile corners (see the deep dive on <a href="generating_the_landscape.html">generating the landscape</a> for details).</p>
+						<p>The first step in this process happens in the <a href="/source/main/subroutine/setcrackerseed.html">SetCrackerSeed</a> routine, which is embedded between parts 3 and 4 of the SmoothTileCorners routine. This code is run multiple times during the landscape generation process when smoothing strips of tile corners (see the deep dive on <a href="generating_the_landscape.html">generating the landscape</a> for details).</p>
 
-						<p>SetCrackerSeed is very simple: it just copies the contents of stripData+78 into the operand of the unused LDA #0 instruction at <a href="/source/main/subroutine/crackerseed.html">CrackerSeed</a>. So what is stripData+78, and why are we copying it into this LDA instruction in CrackerSeed?</p>
+						<p>SetCrackerSeed is very simple: it just copies the contents of stripData+78 into the operand of the unused LDA #0 instruction at <a href="/source/main/subroutine/crackerseed.html">CrackerSeed</a>. So what is stripData+78, and why are we copying it into this LDA instruction?</p>
 
-						<p>The answer can be found at the start of the <a href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a> routine, where we generate 81 seed numbers in a loop, storing the results in stripData. The main reason for doing this is to get the seed number generator to a point where the output is usable and random enough to use for generating the landscape, but there's another use.</p>
+						<p>The answer can be found at the start of the <a href="/source/main/subroutine/generatelandscape.html">GenerateLandscape</a> routine, where we generate 81 seed numbers in a loop, storing the results in <a href="/source/main/variable/stripdata.html">stripData</a>. The main reason for doing this is to get the seed number generator to a point where the output is usable and random enough to use for generating the landscape, but there is another use, as part of the anti-cracker code.</p>
 
-						<p>These 81 seed numbers get stored in the stripData table in reverse order, from stripData+80 down to stripData+0. This means that the third seed number that's generated and stored at stripData+78 contains the high byte of the BCD landscape number (so if the landscape number is 0123, stripData+78 contains 01, for example). This is because the seed generator is initialised using the landscape number, and the third number out of the shift register is unchanged and still contains the initial value of that byte - see the deep dive on <a href="seed_number_generation.html">Seed number generation</a> for more details.</p>
+						<p>These 81 seed numbers get stored in the stripData table in reverse order, from stripData+80 down to stripData+0. This means that the third seed number that's generated and stored at stripData+78 contains the high byte of the binary coded decimal version of the landscape number (so if the landscape number is 0123, stripData+78 contains 01, for example). This is because the seed generator is initialised using the BCD  landscape number, and the third number out of the shift register is unchanged and still contains the initial value of that byte - see the deep dive on <a href="seed_number_generation.html">seed number generation</a> for more details.</p>
 
-						<p>So stripData+78 contains part of the landscape number, but why do we store this in the operand of an LDA #0 instruction? The instruction appears just before the <a href="/source/main/subroutine/getangleinradians.html">GetAngleInRadians</a> routine, so it looks like it might either be part of that routine or a different entry point, but in reality this instruction is unused, and the fact that it's in memory in the form &amp;A9 &amp;00 is pure distraction. In reality, the &amp;A9 byte is unused and the &amp;00 byte is only used for storing the high byte of the BCD landscape number from stripData+78, but this is far from obvious without analysing the code.</p>
+						<p>So stripData+78 contains part of the landscape number, but why do we store this in the operand of an LDA #0 instruction? This instruction appears just before the <a href="/source/main/subroutine/getangleinradians.html">GetAngleInRadians</a> routine, so to someone poking through the code, it looks like it might either be part of that routine or a different entry point. But in reality this instruction is unused, and the fact that it's in memory in the form &amp;A9 &amp;00 is pure distraction. It turns out that the &amp;A9 byte is completely unused and the &amp;00 byte is only used for storing the high byte of the BCD landscape number from stripData+78, but this is far from obvious without analysing the code in some depth.</p>
 
-						<p>For want of a better name, I've named this stored value the "cracker seed", because it contains a seed - the third seed - and it's part of the anti-cracker process. Similarly, I've called the unused instruction where we store the seed <a href="/source/main/subroutine/crackerseed.html">CrackerSeed</a>, so the cracker seed is actually stored in CrackerSeed+1.</p>
+						<p>For want of a better name, I've named this stored value the "cracker seed", because it contains a seed - the third seed - and it's part of the anti-cracker process. Similarly, for the unused instruction where we store the cracker seed, I've given it the label <a href="/source/main/subroutine/crackerseed.html">CrackerSeed</a>, so the cracker seed is actually stored in CrackerSeed+1.</p>
 
-						<p>To get back to <a href="/source/main/subroutine/setcrackerseed.html">SetCrackerSeed</a>, this routine simply stores the high byte of the BCD landscape number in CrackerSeed+1. It gets run every time we smooth a strip of tiles when generating the landscape, but it runs in the same way every time, so by the time the landscape is generated, we still have CrackerSeed+1 set to the cracker seed.</p>
+						<p>To get back to <a href="/source/main/subroutine/setcrackerseed.html">SetCrackerSeed</a>, this routine simply stores the high byte of the BCD landscape number in CrackerSeed+1. It gets run every time we smooth a strip of tiles when generating the landscape, but it runs in the same way every time, so by the time the landscape is generated, we still have the contents of CrackerSeed+1 set to the cracker seed.</p>
 
-						<p>It's worth noting that the code in SetCrackerSeed is deliberately confusing. Here's the code:</p>
+						<p>It's worth noting that the two instructions in SetCrackerSeed are written to be deliberately confusing as well. Here's the code:</p>
 
 <pre class="articleIndented">
    LDA stripData+78-32,X 
@@ -64,15 +64,15 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 
 						<p>But if you're looking through the game binary, trying to disassemble this part of the code, then it is far from obvious what's going on here. Trust me, I've been there...</p>
 
-						<p>The next stage in cracker seed saga is the <a href="/source/main/subroutine/altercrackerseed.html">AlterCrackerSeed</a> routine, which is slipped into the middle of the <a href="/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a> routine. This latter routine is run throughout the game, as it checks what the enemy can see, so AlterCrackerSeed gets run a lot if you are playing the game properly.</p>
+						<p>The next stage in the cracker seed saga is the <a href="/source/main/subroutine/altercrackerseed.html">AlterCrackerSeed</a> routine, which is slipped into the middle of the <a href="/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a> routine. This latter routine is run throughout the game, as it checks what each of the enemies can see, so AlterCrackerSeed gets run a lot if you are playing the game properly.</p>
 
-						<p>AlterCrackerSeed does what it says: it takes the cracker seed and alters it, storing the altered version in the <a href="/source/main/workspace/main_variable_workspace.html#alteredseed">alteredSeed</a> variable. As with SetCrackerSeed, this code is run multiple times throughout the game, and each time it does the exact same calculation.</p>
+						<p>AlterCrackerSeed does what it says: it takes the cracker seed and alters it, before storing the altered version in the <a href="/source/main/workspace/main_variable_workspace.html#alteredseed">alteredSeed</a> variable. As with SetCrackerSeed, this code is run multiple times throughout the game, and each time it does the exact same calculation.</p>
 
-						<p>The calculation is pretty simple. Take the cracker seed, which is a BCD number, and extract the second digit, so if the landscape number is 0123, the cracker seed contains 01 and we extract the second digit, in this case 1. If the second digit is in the range 0 to 8, then we add 7 to it to get a number in the range 7 to 15; and if the second digit is 9, then we add 1 to it to get 10. We then add this number to the cracker seed, and we store the result in alteredSeed.</p>
+						<p>The calculation is pretty simple. We take the cracker seed, which is a BCD number, and extract the second digit, so if the landscape number is 0123, the cracker seed contains 01 and we extract the second digit, in this case 1. If the second digit is in the range 0 to 8, then we add 7 to it to get a number in the range 7 to 15; and if the second digit is 9, then we add 1 to it to get 10. We then store the result in alteredSeed.</p>
 
 						<p>The altered cracker seed has one important property: it is always greater than CrackerSeed+1, as the addition never overflows. This works because the cracker seed is a BCD number, so it has a maximum value of &amp;99, in which case we will add 1 to it to get &amp;A0 (as the addition is done in normal, non-BCD mode). If the cracker seed is in the range &amp;x0 to &amp;x8, then the addition will simply change the cracker seed into the range &amp;x7 to &amp;xF, without any overflow.</p>
 
-						<p>The scene is now set for the anti-cracker code itself. So far we've simply populated the cracker seed and the altered cracker seed, which has no effect on anything. But if the player wins against the Sentinel, then the last part of the code kicks in when the secret code is drawn on-screen in big 3D text. The deep dive on <a href="drawing_3d_text_using_blocks.html">drawing 3D text using blocks</a> describes the details, but each letter in the secret code screen is spawned on the landscape using 3D blocks, and that spawning is done in the <a href="/source/main/subroutine/spawncharacter3d_part_1_of_2.html">SpawnCharacter3D</a> routine. And sandwiched between parts 1 and 2 of this routine is the anti-cracker routine <a href="/source/main/subroutine/checkcrackerseed.html">CheckCrackerSeed</a>, in which we check the cracker seeds that we have generated.</p>
+						<p>The scene is now set for the anti-cracker code itself. So far we've simply populated the cracker seed and the altered cracker seed, which has no effect on anything. But if the player wins against the Sentinel, then the last part of the code kicks in when the secret code is drawn on-screen in big 3D text. The deep dive on <a href="drawing_3d_text_using_blocks.html">drawing 3D text using blocks</a> describes the details, but each letter in the secret code screen is spawned on the landscape using 3D blocks, and that spawning is done in the <a href="/source/main/subroutine/spawncharacter3d_part_1_of_2.html">SpawnCharacter3D</a> routine. And sandwiched between parts 1 and 2 of this spawning routine is the anti-cracker routine <a href="/source/main/subroutine/checkcrackerseed.html">CheckCrackerSeed</a>, in which we check the cracker seeds that we have generated.</p>
 
 						<p>CheckCrackerSeed is run for every 3D character that we spawn as part of the secret code, so that's eight times (as the secret code contains eight characters). Each time it performs the same simple check: is the altered cracker seed bigger than the cracker seed? If it is then both our seeds are in the correct state, so we do nothing, but if the altered cracker seed is smaller than the cracker seed, something has gone wrong, so we call the <a href="/source/main/subroutine/corruptsecretcode.html">CorruptSecretCode</a> routine. Again, this innocent check is buried in obfuscated code that uses an index to make it far from obvious what's going on:</p>
 
@@ -80,30 +80,36 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
    LDA alteredSeed-7,X
    CMP CrackerSeed+1-7,X
    BCS csee1
+
    JSR CorruptSecretCode
+
   .csee1
 </pre>
 
-						<p>In this case X is 7, so this code does the following:</p>
+						<p>In this case X is 7, so this code actually does the following:</p>
 
 <pre class="articleIndented">
    LDA alteredSeed
    CMP CrackerSeed+1
    BCS csee1
+
    JSR CorruptSecretCode
+
   .csee1
 </pre>
 
-						<p>The CorruptSecretCode routine is sneaky. All it does is generate one extra landscape seed, and then it returns without doing anything else. The effect on the secret code that's being drawn is devastating, though; it corrupts it and makes it invalid. Of course, the player has no idea that this is happening as the game still displays a secret code, but when they come to enter it on the main title screen, it will fail and with a "WRONG SECRET CODE" error.</p>
+						<p>So as you can see, this just compares the cracker seed and the altered cracker seed and calls CorruptSecretCode if the altered seed is smaller than the cracker seed.</p>
 
-						<p>So what kind of hacking might trigger a corrupted secret code? The altered seed is zeroed in the <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> routine along with the rest of the main variable workspace, so if we only run one of the <a href="/source/main/subroutine/setcrackerseed.html">SetCrackerSeed</a> and <a href="/source/main/subroutine/altercrackerseed.html">AlterCrackerSeed</a> routines, then the chances are that the landscape code will be corrupted. So this is a trap to catch any crackers who try to skip the landscape generation process, or skip playing the game, in the hunt for secret codes.</p>
+						<p>The CorruptSecretCode routine is sneaky. All it does is generate one extra landscape seed, and then it returns without doing anything else. The effect on the secret code that's being drawn is devastating, though; it corrupts it and makes it invalid. Of course, the player has no idea that this is happening as the game still displays a valid-looking secret code, but when they come to enter it on the main title screen, it will fail and with a "WRONG SECRET CODE" error.</p>
 
-						<p>Interestingly, if we disable both these routines, then both CrackerSeed+1 and alteredSeed will be zero and the secret code will be correct, which seems like a missed opportunity; changing the fake LDA #0 instruction to LDA #&FF in CrackerSeed would trigger this trap even if both routines at SetCrackerSeed and AlterCrackerSeed were disabled, which would be even better.</p>
+						<p>So what kind of hacking might trigger a corrupted secret code? Well, the altered seed is zeroed in the <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> routine along with the rest of the main variable workspace, so if we only run one of the <a href="/source/main/subroutine/setcrackerseed.html">SetCrackerSeed</a> and <a href="/source/main/subroutine/altercrackerseed.html">AlterCrackerSeed</a> routines rather than both, then the chances are that the landscape code will be corrupted. So this is a trap to catch any crackers who try to skip the landscape generation process, or skip playing the game, in their hunt for secret codes.</p>
+
+						<p>Interestingly, if we disable both these routines, then both CrackerSeed+1 and alteredSeed will be zero and the secret code will be correct. This seems like a missed opportunity; changing the fake LDA #0 instruction to LDA #&FF in CrackerSeed would trigger this trap even if both routines at SetCrackerSeed and AlterCrackerSeed were disabled, which would be even better. I guess even anti-cracker code can have its weaknesses.</p>
 
 						<h2 class="articleSubheader">The secret stash<br>
 													 ----------------</h2>
 
-						<p>Next up is the secret stash. This involves the following routines and variables:</p>
+						<p>Next up is the secret stash. This involves the following routines and variables, shown in the order in which they are run:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Name</th><th>Location</th><th>Description</th></tr>
@@ -115,24 +121,28 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 							<tr><td><a href="/source/main/workspace/zero_page.html#stashaddr">stashAddr</a></td><td>Main variable workspace</a></td><td>The address of the four bytes in the secretCodeStash that correspond to the landscape's secret code</td></tr>
 						</table>
 
-						<p>The secret stash is an area of memory where the code stores seed numbers that are used to generate the landscape's secret code. As with the cracker seed, this protection is aimed at stopping hackers who try to circumvent parts of the code.</p>
+						<p>The secret stash is an area of memory where the code stores seed numbers that are used to generate the landscape's secret code. As with the cracker seed, this protection is aimed at stopping hackers who try to circumvent parts of the code in their quest for secret codes.</p>
 
-						<p>The first step in setting up the secret stash is the <a href="/source/main/subroutine/setsecretstash.html">SetSecretStash</a> routine, which appears just after the <a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a>. This latter routine draws flat tiles by checking where the tile is in the chess board layout of the landscape; if the tile is not blue then it jumps straight to <a href="/source/main/subroutine/drawonefacetile.html">DrawOneFaceTile</a> to draw the tile, but if the tile is blue then it passes through the SetSecretStash routine on the way to DrawOneFaceTile.</p>
+						<p>The first step in setting up the secret stash is the <a href="/source/main/subroutine/setsecretstash.html">SetSecretStash</a> routine, which appears just after the <a href="/source/main/subroutine/drawflattile.html">DrawFlatTile</a> routine. This latter routine draws flat tiles by checking where the tile is in the chess board layout of the landscape and giving the tile the correct colour; if the tile is blue then it passes through the SetSecretStash routine on the way to the tile-drawing routine in <a href="/source/main/subroutine/drawonefacetile.html">DrawOneFaceTile</a>, otherwise it jumps straight to DrawOneFaceTile without going via SetSecretStash.</p>
 
-						<p>The first time we need to draw landscape tiles is during the landscape preview, so this ensures that SetSecretStash is run once for every flat blue tile that appears in the landscape preview. SetSecretStash is very simple; it copies the middle byte of the pseudo-random number generator for the landscape seeds and stores it in the <a href="/source/main/workspace/main_variable_workspace.html#stashoffset">stashOffset</a> variable. The seed generator is stored in seedNumberLFSR(4 3 2 1 0), so all it does is this:</p>
+						<p>The first time we need to draw landscape tiles is during the landscape preview, which looks like this:</p>
+
+						<img class="titleImage marginBorder" style="width: 320px" src="/images/landscape/landscape_0000_preview.png" alt="The landscape preview screen for landscape 0000 in the BBC Micro version of The Sentinel">
+
+						<p>The SetSecretStash routine is therefore run once for every flat blue tile that appears in the landscape preview, of which there will be quite a few. In terms of code, SetSecretStash is very simple; it just copies the middle byte of the pseudo-random number generator for the landscape seeds and stores it in the <a href="/source/main/workspace/main_variable_workspace.html#stashoffset">stashOffset</a> variable. The generator is stored in seedNumberLFSR(4 3 2 1 0), so all SetSecretStash does is this:</p>
 
 <pre class="articleIndented">
   stashOffset = seedNumberLFSR+2
 </pre>
 
-						<p>Of course, the code in SetSecretStash is obfuscated, and looks like this:</p>
+						<p>Of course, the code in SetSecretStash is obfuscated, and consists of this rather confusing pair of instructions:</p>
 
 <pre class="articleIndented">
   LDA seedNumberLFSR+2-8,X
   STA stashOffset-8,X
 </pre>
 
-						<p>At this point X is always 8, so this code does the following:</p>
+						<p>It turns out that at this point X is always 8, so this code actually does the following:</p>
 
 <pre class="articleIndented">
   LDA seedNumberLFSR+2
@@ -141,15 +151,15 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 
 						<p>You can read more about the pseudo-random number generator in the deep dive on <a href="seed_number_generation.html">seed number generation</a>.</p>
 
-						<p>Because SetSecretStash is run for every blue tile, the value of stashOffset is overwritten until the last tile is drawn, so by the end of the landscape preview, stashOffset contains the middle byte of the seed generator from the point of drawing the last flat blue tile in the preview.</p>
+						<p>Because SetSecretStash is run for every blue tile, this means the value of stashOffset is overwritten until the last tile is drawn, so by the end of the landscape preview, stashOffset contains the middle byte of the seed generator from the point at which we drew the last flat blue tile in the preview.</p>
 
 						<p>Once the landscape has been generated and drawn in the preview, the final step is to generate the landscape's secret code and check that it matches the code entered by the player. This process is described in the deep dive on <a href="the_landscape_secret_code.html">the landscape secret code</a>, but essentially we generate a further 38 seed numbers, and then the next four seed numbers give us the secret code in BCD format, from high byte to low byte.</p>
 
-						<p>The <a href="/source/main/subroutine/checksecretcode_part_1_of_2.html">CheckSecretCode</a> routine implements this process, and it stores these extra seeds in a part of memory called the secret code stash at <a href="/source/main/variable/secretcodestash.html">secretCodeStash</a>. The seeds are stored at an offset of stashOffset within the secret code stash, so this ensures that the stash moves around in memory depending on the number of flat blue tiles in the landscape, making the whole secret code generation and checking process that much harder to follow.</p>
+						<p>The <a href="/source/main/subroutine/checksecretcode_part_1_of_2.html">CheckSecretCode</a> routine implements this process, and it stores information about these extra seeds in a part of memory called the secret code stash at <a href="/source/main/variable/secretcodestash.html">secretCodeStash</a>. This seed information is stored in a block at an offset of stashOffset within the secret code stash, so this ensures that the stash moves around in memory depending on the number of flat blue tiles in the landscape, making the whole secret code generation and checking process that much harder to follow.</p>
 
-						<p>The next part of the secret stash checks is the <a href="/source/main/subroutine/checksecretstash.html">CheckSecretStash</a> routine, which appears between parts 1 and 2 of <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a>. This latter routine is run as part of the tile visibility process, which works out which tiles are visible from the point of view of the player, to help speed up the landscape drawing process (see the deep dive on <a href="ray-casting_for_the_tile_visibility_table.html">ray-casting for the tile visibility table</a> for details).</p>
+						<p>The next part of the secret stash check is the <a href="/source/main/subroutine/checksecretstash.html">CheckSecretStash</a> routine, which appears between parts 1 and 2 of <a href="/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a>. This latter routine is run as part of the tile visibility process, which works out which tiles are visible from the point of view of the player, to help speed up the landscape drawing process (see the deep dive on <a href="ray-casting_for_the_tile_visibility_table.html">ray-casting for the tile visibility table</a> for details).</p>
 
-						<p>The CheckSecretStash routine is run every time we analyse a new tile row for visibility, but it implements a flag in bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#donotchecksecret">doNotCheckSecret</a> that makes us execute the body of the routine only once, on the first run; all subsequent runs simply skip to part 2 of GetRowVisibility.</p>
+						<p>The CheckSecretStash routine is run every time we analyse a new tile row for visibility, but it implements a flag in bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#donotchecksecret">doNotCheckSecret</a> that makes us execute the body of the routine only once, so that's only on the first run; all subsequent runs simply skip to part 2 of GetRowVisibility.</p>
 
 						<p>The CheckSecretStash routine works as follows. It does a check on the secret entry code for the current landscape to ensure that it matches the entered code in the keyboard input buffer. If the check fails, then the game restarts by jumping to <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> to display the title screen.</p>
 
@@ -159,24 +169,26 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
   stashAddr(1 0) = secretCodeStash + stashOffset + 41
 </pre>
 
-						<p>When the secretCodeStash gets populated in the CheckSecretCode routine, we add one byte for each iteration and comparison in the secret code generation process. That process starts by performing 38 iterations and storing the results in the secretCodeStash from offset stashOffset to stashOffset + 37. It then generates the four BCD numbers that make up the secret code, storing the results in the stash from offset stashOffset + 38 to stashOffset + 41. (And it then generates one more result, but we ignore that) So stashAddr(1 0) points to the last of those bytes in the secretCodeStash, i.e. the byte at stashOffset + 41.</p>
+						<p>When the secretCodeStash gets populated in the CheckSecretCode routine, we add one byte for each iteration and comparison in the secret code generation process. That process starts by performing 38 iterations and storing the results in the secretCodeStash from offset stashOffset to stashOffset + 37. It then generates the four BCD numbers that make up the secret code, storing the results in the stash from offset stashOffset + 38 to stashOffset + 41. So stashAddr(1 0) points to the last of those bytes in the secretCodeStash, i.e. the byte at stashOffset + 41.</p>
                         
-                        <p>The value that is stashed in the secretCodeStash is the result of subtracting the entered code in inputBuffer from the generated code, which will be zero if they match (see the deep dive on <a href="the_key_logger.html">the key logger</a> for more about the input buffer). Then %01111111 is added to the result (%01111111 being the object flags for the Sentinel, which is all part of the obfuscation of this process). So if the secretCodeStash contains %01111111, this means that particular byte matched, so if all four bytes at offset stashOffset + 38 to stashOffset + 41 equal %01111111, this means the secret code was deemed correct by CheckSecretCode.</p>
+                        <p>The value that is stashed in the secretCodeStash is the result of subtracting the entered code in inputBuffer from the generated code, which will be zero if they match (see the deep dive on <a href="the_key_logger.html">the key logger</a> for more about the input buffer). Then %01111111 is added to the result, so if the secretCodeStash contains %01111111, this means that particular byte matched, so if all four bytes at offset stashOffset + 38 to stashOffset + 41 equal %01111111, this means the secret code was deemed correct by CheckSecretCode.</p>
+
+						<p>Incidentally, the value of %01111111 in the above calculation is also part of the obfuscation, as it is a special constant that happens to be the value of the object flags for the Sentinel. <a href="/source/main/subroutine/checksecretcode_part_1_of_2.html">CheckSecretCode</a> actually sets valid secret code matches to the value of the Sentinel's object flags, rather than hard-coding %01111111, so if anyone has been hacking the state of the Sentinel object, this will break the checks as well. See the stack hacking section below for a more detailed explanation of this value.</p>
 
 						<p>So we check the four bytes to ensure they all equal %01111111, and if any of them don't match, then we jump to <a href="/source/main/subroutine/maintitleloop.html">MainTitleLoop</a> to restart the game.</p>
 
 						<p>The four code bytes have now been checked, but we have one more check to do: that of the comparison from just before the four bytes. This comparison would have been between the keyboard input buffer in inputBuffer+4 and a BCD number from the landscape's sequence of seed numbers.</p>
 
-						<p>When the landscape code is entered, it is converted into four BCD numbers in inputBuffer, and the rest of the buffer is padded out with &amp;FF, so inputBuffer+4 contains &amp;FF at the point of comparison. &amp;FF is not a valid BCD number, so it can never match a BCD number from the landscape's sequence of seed numbers, so we know that this comparison can never have matched.</p>
+						<p>When the landscape code is entered by the player, it is stored in inputBuffer as four ASCII codes that are then converted in-place into two BCD numbers, and the rest of the buffer is padded out with &amp;FF, so inputBuffer+4 contains &amp;FF at the point of comparison. &amp;FF is not a valid BCD number, so it can never match a BCD number from the landscape's sequence of seed numbers, so we know that this comparison can never have matched.</p>
                         
                         <p>So if stashAddr(1 0) contains %01111111 to indicate a match, then we know that the stash must have been modified by a cracker, so we restart the game.</p>
 
-						<p>The secret stash checks therefore add another layer to the secret code checks, in that bypassing or modifying the secret code checks will trigger a mismatch between the results from those checks and the contents of the secret stash, and the game will restart instead of moving forward to the play the landscape.</p>
+						<p>The secret stash checks add another layer to the secret code checks, in that bypassing or modifying the secret code checks will trigger a mismatch between the results from those checks and the contents of the secret stash, and the game will restart instead of moving forward to play the landscape.</p>
 
 						<h2 class="articleSubheader">Stack hacking<br>
 													 -------------</h2>
 
-						<p>Next up we have a couple of bouts of stack hacking. This involves the following routines:</p>
+						<p>Next up we have a couple of bouts of stack hacking. This involves the following routines, shown in the order in which they are run:</p>
 
 						<table class="spacedTableBorder codeSummary">
 							<tr class="codeSummaryHeader"><th>Location</th><th>Description</th></tr>
@@ -205,9 +217,9 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
   STA &amp;01FE
 </pre>
 
-						<p>So this code actually pokes a two-byte address of &amp;5F7D into the top two bytes of the 6502 stack (the stack starts at &amp;01FF and descends). This is stack manipulation of some kind, but what is it manipulating, and how does it affect the code?</p>
+						<p>So this code pokes a two-byte address of &amp;5F7D into the top two bytes of the 6502 stack (as the stack starts at &amp;01FF and descends in memory). This is clearly stack manipulation of some kind, but what is it manipulating, and how does it affect the code?</p>
 
-						<p>Working back from the SmoothTileCorners routine, we find that the call chain is like this, where an arrow denotes a call to a subroutine using a JAR instruction:</p>
+						<p>Working back from the SmoothTileCorners routine, we find that the call chain is like this, where an arrow denotes a call to a subroutine using a JSR instruction:</p>
 
 <pre class="articleIndented">
   MainTitleLoop -> GenerateLandscape -> SmoothTileData -> SmoothTileCorners
@@ -244,11 +256,11 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
   JMP &amp;3F30
 </pre>
 
-						<p>So what's at address &amp;3F30? Well, rather strangely it's one of three things: it's either instruction in the middle of the 6845 CRTC chip setup code in the <a href="/source/main/subroutine/configuremachine.html">ConfigureMachine</a> routine, or it's the contents of the secret code stash, or it's one of the screen buffers, depending on the location of the stash and whether we've already played a landscape by this point. In any case, jumping to this address is probably going to crash the machine, and if it doesn't then the best it can do is try to restart the game.</p>
+						<p>So what's at address &amp;3F30? Well, rather strangely it's one of three things: it's either an instruction in the middle of the 6845 CRTC chip setup code in the <a href="/source/main/subroutine/configuremachine.html">ConfigureMachine</a> routine, or it's the contents of the secret code stash, or it's one of the screen buffers. Which of these it is depend on the specific location of the secret code stash and whether we've already played a landscape by this point. In any case, though, jumping to this address is probably going to crash the computer, and if it doesn't then the best we can hope for is that it tries to restart the game.</p>
 
-						<p>Of course, this is a clever bit of misdirection, and we need to understand exactly how the RTS instruction works if we're to follow this stack hack to its correct conclusion. When the RTS instruction is executed, it pops the address off the top of the stack, and then it increments that address before jumping to it. So when we execute the RTS in GenerateLandscape, it grabs our hacked address from the stack, which is &amp;5F7D, and then increments it, to give &amp;5F7E, and it jumps to that address.</p>
+						<p>Of course, this is a clever bit of misdirection, and we need to understand exactly how the RTS instruction works if we're to follow this stack hack to its correct conclusion. When the RTS instruction is executed, it pops the address off the top of the stack, and then it increments that address before jumping to it. So when we execute the RTS in GenerateLandscape, it grabs our hacked address from the stack, which is &amp;5F7D, and then increments it, to give &amp;5F7E, and it jumps to that address rather than the one we followed above.</p>
 
-						<p>So what's at address &amp;5F7E? It's the same binary code but without the &amp;4C, like this:</p>
+						<p>So what's at address &amp;5F7E? It's the same binary code as before but without the &amp;4C, so it looks like this:</p>
 
 <pre class="articleIndented">
   &amp;30 &amp;3F
@@ -280,7 +292,7 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 
 						<p>So this routine ends with the N flag being set, which means a BMI branch would be taken. Another way to think about this is that we have to pass through the BPL instruction to reach the RTS, so the flags can't be indicating a positive result, so they must be indicating a negative result, which would make a BMI instruction take the branch.</p>
 
-						<p>The N flag is therefore carried back up the chain when we return to GenerateLandscape, and then on to our hacked RTS address which takes us to the BMI &amp;5FBF instruction that jumps to PreviewLandscape. You can see this obfuscated branch in the documented <a href="/source/main/subroutine/jumptopreview.html">JumpToPreview</a> routine.</p>
+						<p>The set state of the N flag is therefore carried back up the chain when we return to GenerateLandscape and on to our hacked RTS address, which takes us to the BMI &amp;5FBF instruction; and because the N flag is set, we always jump to PreviewLandscape. You can see this obfuscated branch in the documented <a href="/source/main/subroutine/jumptopreview.html">JumpToPreview</a> routine.</p>
 
 						<p>This stack hacking process does have a valid function - it isn't just a clever way of distracting would-be crackers and software archaeologists, though it's certainly that. The stack hacking code in part 2 of <a href="/source/main/subroutine/smoothtilecorners_part_2_of_4.html">SmoothTileCorners</a> is only run when bit 7 of <a href="/source/main/workspace/main_variable_workspace.html#donotplaylandscape">doNotPlayLandscape</a> is clear, which means we can configure the return behaviour by changing this bit.</p>
 
@@ -292,7 +304,7 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 							<li>However, when the player successfully finishes a landscape, we call the <a href="/source/main/subroutine/getnextlandscape.html">GetNextLandscape</a> routine to generate the landscape's secret code to display on-screen. We calculate the secret code by generating the entire landscape, as described in the deep dive on <a href="the_landscape_secret_code.html">the landscape secret code</a>, so GetNextLandscape calls GenerateLandscape to do this. In this case we only want to generate the landscape to get the secret code, but we don't want to display the preview as we want to display the secret code screen instead; so we make sure that bit 7 of doNotPlayLandscape is set to ensure that GenerateLandscape returns like a normal subroutine, without any stack hacking.</li>
 						</ul>
 
-						<p>This bit 7 override gives us another anti-cracker twist, as bit 7 of doNotPlayLandscape only ever gets set in one place, and that's in the <a href="/source/main/subroutine/performhyperspace.html">PerformHyperspace</a> routine when the player performs a hyperspace from the Sentinel's tower to win the game. So if the crackers try to skip this step when trying to generate secret codes, then bit 7 will remain clear, and instead of seeing the secret code screen, they will see the landscape preview instead.</p>
+						<p>This bit 7 override gives us another anti-cracker twist, as bit 7 of doNotPlayLandscape only ever gets set in one place, and that's in the <a href="/source/main/subroutine/performhyperspace.html">PerformHyperspace</a> routine, and specifically when the player performs a hyperspace from the Sentinel's tower to win the game. So if the crackers try to skip this step when generating secret codes, then bit 7 will remain clear, and instead of seeing the secret code screen on completion of a landscape, they will see the landscape preview instead.</p>
 
 						<p>The second stack hack in The Sentinel is even harder to work out. It can be found in <a href="/source/main/subroutine/checksecretcode_part_2_of_2.html">part 2 of CheckSecretCode</a>, where we come across the following code:</p>
 
@@ -316,11 +328,11 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 						<p>Object #0 is always the Sentinel, and the Sentinel is always placed on top of the Sentinel's tower, so the object flags for the Sentinel are constructed as follows:</p>
 
 						<ul>
-							<li>Bits 0-5 = the number of the object beneath this one</li>
+							<li>Bits 0-5 is the number of the object beneath this one.</li>
 
-							<li>Bit 6 = set to indicate that this object is on top of another object</li>
+							<li>Bit 6 is set to indicate that this object is on top of another object.</li>
 
-							<li>Bit 7 = clear to indicate that this object number is allocated to an object</li>
+							<li>Bit 7 is clear to indicate that this object number is allocated to an object.</li>
 						</ul>
 
 						<p>The Sentinel's tower is always the first object to be spawned, and object numbers are allocated from 63 and down, so this means the tower is always object #63, or %111111. So with this object number in bits 0 to 5, bit 6 set and bit 7 clear, this means the Sentinel's object flags are always %01111111.</p>
@@ -332,7 +344,7 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
              = &amp;135
 </pre>
 
-						<p>The overflow is ignored to this sets A to &amp;35, and that gets pushed onto the stack. We then move on to the second byte:</p>
+						<p>The overflow is ignored so this sets A to &amp;35, and that gets pushed onto the stack. We then move on to the second byte:</p>
 
 <pre class="articleIndented">
   Second byte = first byte + &amp;6E
@@ -340,15 +352,15 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
               = &amp;A3
 </pre>
 
-						<p>The return address is stored on the stack with the high byte first and the low byte second, so the address on the stack is &amp;35A3. And remember that the RTS instruction increments the address when it takes it off the stack, so the address that the RTS will jump to will be &amp;35A4.</p>
+						<p>The return address is stored on the stack with the high byte first and the low byte second, so the address on the stack is now &amp;35A3. And remember that the RTS instruction increments the address when it takes it off the stack, so the address that the RTS will jump to will be &amp;35A4.</p>
 
 						<p>This is the address of the <a href="/source/main/subroutine/playgame.html">PlayGame</a> routine, so this stack hack is used to start the game once CheckSecretCode has finished checking the entered secret code against the calculated one. And as above, the stack hack is only applied when bit 7 of doNotPlayLandscape is clear, so we can control the flow.</p>
 
-						<p>This works in the same way. Bit 7 of doNotPlayLandscape is checked at the end of <a href="/source/main/subroutine/checksecretcode_part_1_of_2.html">part 1 of CheckSecretCode</a>, and if it is clear (the default behaviour) then we jump to <a href="/source/main/subroutine/checksecretcode_part_2_of_2.html">part 2</a> to check the entered secret code against the calculated one. If it matches then we apply the stack hack, so that the RTS jumps to PlayGame to start the game, but if it doesn't match then we leave the stack alone and the RTS takes us back to <a href="/source/main/subroutine/previewlandscape.html">PreviewLandscape</a> to display the "WRONG SECRET CODE" error.</p>
+						<p>This works in the same way as in the first stack hack. We check bit 7 of doNotPlayLandscape at the end of <a href="/source/main/subroutine/checksecretcode_part_1_of_2.html">part 1 of CheckSecretCode</a>, and if it is clear (the default behaviour) then we jump to <a href="/source/main/subroutine/checksecretcode_part_2_of_2.html">part 2</a> to check the entered secret code against the calculated one. If it matches then we apply the stack hack, so that the RTS jumps to PlayGame to start the game, but if it doesn't match then we leave the stack alone and the RTS takes us back to <a href="/source/main/subroutine/previewlandscape.html">PreviewLandscape</a> to display the "WRONG SECRET CODE" error.</p>
 
-						<p>If, however, bit 7 of doNotPlayLandscape is set, then this means we are calling CheckSecretCode from the <a href="/source/main/subroutine/getnextlandscape.html">GetNextLandscape</a> routine, which means we don't want to play the game after generating the landscape, but we want to display the secret code instead of checking it. So we leave the stack alone, so that the RTS takes us back to GetNextLandscape in the normal way, to display the secret code that we just generated.</p>
+						<p>If bit 7 of doNotPlayLandscape is set (which is not the default behaviour), then this means we are calling CheckSecretCode from the <a href="/source/main/subroutine/getnextlandscape.html">GetNextLandscape</a> routine, which means we don't want to play the game after generating the landscape, and we want to display the secret code instead of checking it. So we leave the stack alone, so that the RTS takes us back to GetNextLandscape in the normal way, to display the secret code that we just generated.</p>
 
-						<p>To finish off, we can reconstruct the calculations used in the source code so they calculate the values to put on the stack in the stack hack. If we consider the calculation for the high byte that's done during the hack, then we get the following:</p>
+						<p>To finish off, we can reconstruct the calculations that would have been used in the source code to calculate the correct values to put on the stack in the stack hack. If we consider the calculation that's done during the hack for the high byte, then we get the following:</p>
 
 <pre class="articleIndented">
     objectFlags + HI(PlayGame-1) - %01111111
@@ -356,7 +368,7 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
   = HI(PlayGame-1)
 </pre>
 
-						<p>and same calculation for the low byte looks like this:
+						<p>And the same calculation for the low byte looks like this:
 
 <pre class="articleIndented">
     high byte + LO(PlayGame-1) - HI(PlayGame-1)
@@ -390,19 +402,19 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 							<tr><td><a href="/source/main/workspace/main_variable_workspace.html#playerisontower">playerIsOnTower</a></td><td>Main variable workspace</a></td><td>A flag to record whether the player is on top of the Sentinel's tower (6 = the player is on top of the Sentinel's tower</td></tr>
 						</table>
 
-						<p>This hack involves running the SetPlayerIsOnTower routine whenever the player transfers into a new robot. Transfers are performed at the end of part 1 of <a href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys</a>, and SetPlayerIsOnTower is run when the target object for the transfer is an object of type 0, i.e. a robot.</p>
-
-						<p>SetPlayerIsOnTower works out whether the player just transferred into a robot that's on the Sentinel's tower, and it stores the result in the <a href="/source/main/workspace/main_variable_workspace.html#playerisontower">playerIsOnTower</a> variable.</p>
+						<p>This hack involves running the SetPlayerIsOnTower routine whenever the player transfers into a new robot. Transfers are performed at the end of part 1 of <a href="/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys</a>, and SetPlayerIsOnTower is run when the target object for the transfer is an object of type 0, i.e. a robot. This routine works out whether the player just transferred into a robot that's on the Sentinel's tower, and it stores the result in the <a href="/source/main/workspace/main_variable_workspace.html#playerisontower">playerIsOnTower</a> variable.</p>
                         
 						<p>We do this by taking object #X, which is the robot that the player just transferred into, and if it's on top of another object or stack of objects, we work our way down the stack, checking to see if the stack contains the Sentinel's tower. The Sentinel's tower is always the first object to be spawned, and object numbers are allocated from 63 and down, so this means the tower is always object #63, so that's what we look for while working through the object stack.</p>
 
-						<p>If we find object #63 in the object stack, then we set playerIsOnTower to the type of that object; so assuming that object #63 is indeed the tower, as it should be, then playerIsOnTower gets set to 6 when the player transfers onto the tower. The default value of playerIsOnTower is set in the <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> routine to 128, and the variable isn't set anywhere else, so when the player successfully finishes a landscape, which you can only do by transferring to the Sentinel's tower and performing a hyperspace, playerIsOnTower will be 6, otherwise it will be 128.</p>
+						<p>If we find object #63 in the object stack, then we set playerIsOnTower to the type of that object; so assuming that object #63 is indeed the tower, as it should be, then playerIsOnTower gets set to 6 when the player transfers into a robot that's on the tower. The default value of playerIsOnTower is set in the <a href="/source/main/subroutine/resetvariables.html">ResetVariables</a> routine to 128, and this variable isn't set anywhere else, so when the player successfully finishes a landscape, which you can only do by transferring to a robot on the Sentinel's tower and performing a hyperspace, then playerIsOnTower will be set to 6, otherwise it will still be 128.</p>
                         
-						<p>The anti-cracker aspect of this code is implemented in the <a href="/source/main/subroutine/spawnsecretcode3d.html">SpawnSecretCode3D</a> routine, which draws the landscape's secret code on-screen when a landscape is successfully completed. The secret code for a landscape is calculated by generating four seeds, one for each pair of numbers in the secret code, after the landscape generation process has finished (see the deep dive on <a href="the_landscape_secret_code.html">the landscape secret code</a> for details). By the time we get to SpawnSecretCode3D, the seed generation system is set up so that the next four seeds will produce the secret code.</p>
+						<p>The anti-cracker aspect of this code is implemented in the <a href="/source/main/subroutine/spawnsecretcode3d.html">SpawnSecretCode3D</a> routine, which draws the landscape's secret code on-screen when a landscape is successfully completed. The secret code for a landscape is calculated by generating four seeds, one for each pair of numbers in the secret code, and this is done after the landscape generation process has finished (see the deep dive on <a href="the_landscape_secret_code.html">the landscape secret code</a> for details). By the time we get to draw the secret code in SpawnSecretCode3D, the seed generation system will have been set up so that the next four seeds will produce the secret code.</p>
 
-						<p>In order to loop through these four seeds, we set up a loop counter in X, and set it to the value of playerIsOnTower divided by 2. If the player completed the landscape by transferring to the Sentinel's tower, then playerIsOnTower is set to 6, so the loop counter in X is set to 3, which will loop through four seeds for the secret code. But if the player didn't transfer to the Sentinel's tower, perhaps because a cracker jumped straight to the secret code generator without bothering to play the game, then then playerIsOnTower will be set to 128, so the loop counter in X will be 64, and SpawnSecretCode3D will work through 65 seeds in total, 61 more than it should do. The secret code is only printed on-screen for the last four seeds produced, so this ensures that the wrong secret code is shown on-screen.</p>
+						<p>In order to loop through these four seeds, we set up a loop counter in X. To loop through four items, we would normally set the loop counter to 3, but instead we set it to the value of playerIsOnTower divided by 2. If the player completed the landscape properly by transferring to the Sentinel's tower, then playerIsOnTower will be set to 6, and the loop counter in X will get set to 3, which will loop through the four seeds that give us the secret code, drawing the correct code on-screen.</p>
 
-						<p>So if the player doesn't transfer into a robot on the Sentinel's tower, then the secret code screen will display an incorrect number and it won't work. Very sneaky!</p>
+						<p>But if the player didn't transfer to the Sentinel's tower, perhaps because a cracker jumped straight to the secret code generator without bothering to play the game first, then playerIsOnTower will be set to 128, so the loop counter in X will be 64, and SpawnSecretCode3D will work through 65 seeds in total, 61 more than it should do. The secret code is only printed on-screen for the last four seeds produced, so this ensures that a completely wrong secret code is shown on-screen.</p>
+
+						<p>So if the player doesn't transfer into a robot on the Sentinel's tower, then the secret code screen will display a corrupted number that will give the "WRONG SECRET CODE" error when entered into the main title screen. It's very sneaky!</p>
 
 						<h2 class="articleSubheader">Other obfuscations<br>
 													 ------------------</h2>
@@ -415,7 +427,7 @@ page_header("deep_dives", "anti-cracker_checks.html", "Anti-cracker checks", "An
 
 						<p>However, OSBYTE 200 was only introduced in version 1.00 of the operating system, so anyone running the game on MOS 0.10 could simply load the game, wait for it to decrypt and unfold into memory, and then press BREAK to access the loaded game code. So The Sentinel installs a break handler, copying the routine from <a href="/source/main/subroutine/clearmemory.html">ClearMemory</a> into the cassette filing system workspace at &amp;0380, which is unused now that the game is loaded, so it's a suitable location for our handler. It then sets the Break Intercept code to a JMP &amp;0380 instruction, which will be called on a break event, thus clearing the game from memory for all operating systems, not just those that support OSBYTE 200.</p>
 
-						<p>And that's probably enough anti-cracker code for now. If you managed to pick your way through this article, well done - and now imagine doing this back in the day, with nothing more than a hexadecimal printout and a basic disassembler. You may or may not approve of code-crackers, but you can't deny their tenacity...</p>
+						<p>And that's probably enough anti-cracker code for now. If you managed to pick your way through this article, well done - and now imagine doing this back in the day, with nothing more than a hex-dump printout and a basic disassembler. You may not approve of code-crackers, but you can't deny their tenacity...</p>
 					</div>
 				</div>
 
