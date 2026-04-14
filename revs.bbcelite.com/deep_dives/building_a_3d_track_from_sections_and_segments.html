@@ -44,7 +44,8 @@ page_header("deep_dives", "building_a_3d_track_from_sections_and_segments.html",
 
 						<p>Taking the most obvious approach, each segment needs a 3D coordinate for the inner verge, and another for the outer verge, and each 3D coordinate contains three axes, one for longitude, one for latitude and a third dimension for elevation (i.e. the track height). Each axis stores its coordinates as 16-bit signed integers, which take up two bytes each, so overall, to store the track segment data, we need this much memory:</p>
 
-<pre class="articleIndented">  1024 segments * 2 verges * 3 axes * 2 bytes = 12,228 bytes
+<pre class="articleIndented">
+  1024 segments * 2 verges * 3 axes * 2 bytes = 12,228 bytes
 </pre>
 
 						<p>That's a lot of memory on a 32K micro, especially one that loses 8K of that to screen memory. Luckily, the track data file for Silverstone comes in at just 1,849 bytes, which isn't even in the same ballpark. The data structure of the track data file is covered in the deep dive on <a href="the_track_data_file_format.html">the track data file format</a>, and it doesn't just contain track data, but details of road signs, corner markers, optimum racing lines and all sorts of other data. Not surprisingly, there's some clever stuff going on here to squeeze so much data into such a small footprint, and without losing any accuracy.</p>
@@ -101,7 +102,8 @@ page_header("deep_dives", "building_a_3d_track_from_sections_and_segments.html",
 
 						<p>For the coordinates of each track section, the data file contains one set of coordinates for the inner track verge and another for the outer verge. Specifically, the coordinates for each section are stored in the track data file as follows:</p>
 
-<pre class="articleIndented">                        [ (xTrackSectionIHi xTrackSectionILo) ]
+<pre class="articleIndented">
+                        [ (xTrackSectionIHi xTrackSectionILo) ]
   Inner verge starts at [ (yTrackSectionIHi yTrackSectionILo) ]
                         [ (zTrackSectionIHi zTrackSectionILo) ]
 
@@ -116,7 +118,8 @@ page_header("deep_dives", "building_a_3d_track_from_sections_and_segments.html",
 
 						<p>As there are up to 26 sections in the track data file (only 24 of which are used by Silverstone), we need this much memory to store the coordinates for the track section starting points:</p>
 
-<pre class="articleIndented">  26 sections * 5 coordinates * 2 bytes = 260 bytes
+<pre class="articleIndented">
+  26 sections * 5 coordinates * 2 bytes = 260 bytes
 </pre>
 
 						<p>This doesn't save any memory over the standard approach of storing all data as 16-bit, but now that we have our sections defined, we can encode all the other coordinate data in the track file using 8-bit signed vectors. Let's take a look at the most important of these - the segment vectors.</p>
@@ -149,7 +152,8 @@ page_header("deep_dives", "building_a_3d_track_from_sections_and_segments.html",
 
 						<p>Let's see how this works. As with the section coordinates, we have two sets of segment vectors, one for the inner verge, and the other for the outer verge. <a href="/source/silverstone/variable/xtracksegmenti.html">xTrackSegmentI</a>, <a href="/source/silverstone/variable/ytracksegmenti.html">yTrackSegmentI</a> and <a href="/source/silverstone/variable/ztracksegmenti.html">zTrackSegmentI</a> contain the inner segment vector for each segment, with each coordinate being a signed 8-bit value like this:</p>
 
-<pre class="articleIndented">                         [ xTrackSegmentI ]
+<pre class="articleIndented">
+                         [ xTrackSegmentI ]
   Inner segment vector = [ yTrackSegmentI ]
                          [ zTrackSegmentI ]
 </pre>
@@ -157,7 +161,8 @@ page_header("deep_dives", "building_a_3d_track_from_sections_and_segments.html",
 
 						<p><a href="/source/silverstone/variable/xtracksegmento.html">xTrackSegmentO</a> and <a href="/source/silverstone/variable/ztracksegmento.html">zTrackSegmentO</a> contain the outer segment vector for each segment, with each coordinate again being a signed 8-bit value:</p>
 
-<pre class="articleIndented">                         [ xTrackSegmentO ]
+<pre class="articleIndented">
+                         [ xTrackSegmentO ]
   Outer segment vector = [ yTrackSegmentI ]
                          [ zTrackSegmentO ]
 </pre>
@@ -184,7 +189,8 @@ page_header("deep_dives", "building_a_3d_track_from_sections_and_segments.html",
 
 						<p>Given these two optimisations, we can encode each segment vector table using 256 entries (though the last entry is not used), and each entry is an 8-bit signed integer, taking up just one byte. So the segment vectors take up this much space:</p>
 
-<pre class="articleIndented">  256 segment vectors * 5 coordinates * 1 byte = 1,280 bytes
+<pre class="articleIndented">
+  256 segment vectors * 5 coordinates * 1 byte = 1,280 bytes
 </pre>
 
 						<p>Using this information, and the section starting coordinates, the game can calculate the 3D coordinates of any segment's inner or outer verge, all with full 16-bit accuracy (see the <a href="/source/main/subroutine/gettracksegment_part_1_of_3.html">GetTrackSegment</a> routine for the gory details). The section coordinates take up 280 bytes, while the segment vectors take up 1,280 bytes, so that's a total of 1,560 bytes. There's a handful of other values that we need as well, though these are all very efficient:</p>

@@ -29,7 +29,8 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>Taking the first table as an example, the table contains 256 values, as follows:</p>
 
-<pre class="articleIndented">  FOR I%, 0, 255
+<pre class="articleIndented">
+  FOR I%, 0, 255
    EQUB INT(0.5 + ATN(I% / 256) * 256 / ATN(1))
   NEXT
 </pre>
@@ -38,17 +39,20 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>To use this table, the GetObjYawAngle routine sets Y to the following value:</p>
 
-<pre class="articleIndented">  Y = 256 * |z-delta| / |x-delta|
+<pre class="articleIndented">
+  Y = 256 * |z-delta| / |x-delta|
 </pre>
 
 						<p>which gets converted to the yaw angle via this lookup:</p>
 
-<pre class="articleIndented">  LDA arctanY,Y
+<pre class="articleIndented">
+  LDA arctanY,Y
 </pre>
 
 						<p>This sets A to arctan(Y), which is arctan(|z-delta| / |x-delta|). To see what this represents, consider the following triangle, which is an overhead view of the player's car, with the player in the bottom-left corner. The player is looking straight ahead, which means they are looking up the screen, and there's an object in front of and to the right of the player:</p>
 
-<pre class="articleIndented">                            object
+<pre class="articleIndented">
+                            object
                          +
                        .´|
                      .´  |
@@ -62,7 +66,8 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>If the object is x-delta to the right of the player and z-delta ahead of the player (so x-delta and z-delta are the coordinates of the object relative to the player), then we can calculate the yaw angle a of the object relative to the player by using the definition of tangent and arctangent:</p>
 
-<pre class="articleIndented">             opposite     z-delta
+<pre class="articleIndented">
+             opposite     z-delta
   tan(a)  =  --------  =  -------
              adjacent     x-delta
 
@@ -91,7 +96,8 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>The values in the table are cosines. For example, the handPixels table contains the following values:</p>
 
-<pre class="articleIndented">  FOR I%, 0, 21
+<pre class="articleIndented">
+  FOR I%, 0, 21
    EQUB INT(0.5 + 28 * COS((PI/4) * I% / 21))
   NEXT
 </pre>
@@ -132,7 +138,8 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>Given this, we can consider how to store the value of PI, which is around 3.14. PI * 256 is around 804.25, so if we store a value of 804 in a 16-bit number, and consider it to be a floating point number, then we have a value of PI that we can work with. Or, to put it another way, the following are all equivalent:</p>
 
-<pre class="articleIndented">  (piHi piLo) = 804
+<pre class="articleIndented">
+  (piHi piLo) = 804
               = 3.140625 * 256
               = 3.140625 * 2^8
               = 3.140625 &lt;&lt; 8
@@ -141,7 +148,8 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>It isn't exact, but defining PI as 3.140625 is more than good enough for our needs. Similarly, we have:</p>
 
-<pre class="articleIndented">  402 = PI/2
+<pre class="articleIndented">
+  402 = PI/2
 
   201 = PI/4
 </pre>
@@ -160,7 +168,8 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 						<p>For these small angles, we can use what's known as the "Taylor series" to calculate the sine of the angle. The Taylor series is a way of expressing trigonometric functions as infinite sums, such as this one for sin(x), where x is in radians:</p>
 
 
-<pre class="articleIndented">                   x^3     x^5     x^7
+<pre class="articleIndented">
+                   x^3     x^5     x^7
   sin(x)  =  x  -  ---  +  ---  -  ---  +  ...
                     3!      5!      7!
 </pre>
@@ -169,12 +178,14 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>Because the components in the above sum get smaller and smaller as the various factorials increase, we can approximate the value of sin(x) by doing just the first few calculations. Revs uses this technique in <a href="/source/main/subroutine/getrotationmatrix_part_2_of_5.html">GetRotationMatrix</a>, where for small values of yawRadians, it calculates the following:</p>
 
-<pre class="articleIndented">  (yawRadians / 2 - (171 / 256) * (yawRadians / 2) ^ 3) * 2
+<pre class="articleIndented">
+  (yawRadians / 2 - (171 / 256) * (yawRadians / 2) ^ 3) * 2
 </pre>
 
 						<p>Given that we have multiplication routines in <a href="/source/main/subroutine/multiply8x8.html">Multiply8x8</a> and <a href="/source/main/subroutine/multiply8x16.html">Multiply8x16</a> that can handle the multiplications, and bitwise shifting that can handle the powers of two, the above is relatively easy to implement in 8-bit assembler. But what does it actually do? Let's break it down:</p>
 
-<pre class="articleIndented">    (yawRadians / 2 - (171 / 256) * (yawRadians / 2) ^ 3) * 2
+<pre class="articleIndented">
+    (yawRadians / 2 - (171 / 256) * (yawRadians / 2) ^ 3) * 2
 
   = (yawRadians / 2 - 2/3 * (yawRadians / 2) ^ 3) * 2
 
@@ -198,18 +209,21 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>To calculate the sine of a larger angle, we calculate the following, which we do in <a href="/source/main/subroutine/getrotationmatrix_part_3_of_5.html">part 3 of GetRotationMatrix</a>:</p>
 
-<pre class="articleIndented">  (U T) = (PI/4 - yawRadians / 2) ^ 2 * 2
+<pre class="articleIndented">
+  (U T) = (PI/4 - yawRadians / 2) ^ 2 * 2
 </pre>
 
 						<p>We implement PI/4 as the integer 201, as described above, and the rest is simple subtraction and bitwise shifting. So, what does this calculation mean? Let's expand it slightly:</p>
 
-<pre class="articleIndented">  (U T) = (PI/4 - yawRadians / 2) ^ 2 * 2
+<pre class="articleIndented">
+  (U T) = (PI/4 - yawRadians / 2) ^ 2 * 2
         = ((PI/2 - yawRadians) / 2) ^ 2 * 2
 </pre>
 
 						<p>If we define x = PI/2 - yawRadians, then we have:
 
-<pre class="articleIndented">  (U T) = (x / 2) ^ 2 * 2
+<pre class="articleIndented">
+  (U T) = (x / 2) ^ 2 * 2
         = ((x ^ 2) / (2 ^ 2)) * 2
         = (x ^ 2) / 2
         = (x ^ 2) / 2!
@@ -217,33 +231,39 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>The small angle approximation (see <a href="https://en.wikipedia.org/wiki/Small-angle_approximation">Wikipedia</a> for details) states that for small values of x, the following approximation holds true:
 
-<pre class="articleIndented">  cos(x) =~ 1 - (x ^ 2) / 2!
+<pre class="articleIndented">
+  cos(x) =~ 1 - (x ^ 2) / 2!
 </pre>
 
 						<p>As yawRadians is large, this means x is small (as x = PI/2 - yawRadians), so we can legitimately use the approximation. So substituting the value of (U T) above, we get:
 
-<pre class="articleIndented">  cos(x) =~ 1 - (x ^ 2) / 2!
+<pre class="articleIndented">
+  cos(x) =~ 1 - (x ^ 2) / 2!
          =  1 - (U T)
 </pre>
 
 						<p>It's a trigonometric identity that:
 
-<pre class="articleIndented">  cos(PI/2 - x) = sin(x)
+<pre class="articleIndented">
+  cos(PI/2 - x) = sin(x)
 </pre>
 						<p>so we have:
 
-<pre class="articleIndented">  cos(x) = cos(PI/2 - yawRadians)
+<pre class="articleIndented">
+  cos(x) = cos(PI/2 - yawRadians)
          = sin(yawRadians)
 </pre>
 
 						<p>and we already calculated that:
 
-<pre class="articleIndented">  cos(x) =~ 1 - (U T)
+<pre class="articleIndented">
+  cos(x) =~ 1 - (U T)
 </pre>
 
 						<p>so that means that:
 
-<pre class="articleIndented">  sin(yawRadians) = cos(x)
+<pre class="articleIndented">
+  sin(yawRadians) = cos(x)
                   =~ 1 - (U T)
                   =~ 1 - (PI/4 - yawRadians / 2) ^ 2 * 2
 </pre>
@@ -255,7 +275,8 @@ page_header("deep_dives", "trigonometry.html", "Trigonometry", "Trigonometry", "
 
 						<p>The above routines calculate the sine of an angle, but we can use the same routines to calculate the cosine by manipulating the angle, calculating the sine, and then manipulating the result to get the cosine. There are a few trigonometric identities that we can use to support this approach:</p>
 
-<pre class="articleIndented">  sin(PI/2 - x) = cos(x)            cos(PI/2 - x) = sin(x)
+<pre class="articleIndented">
+  sin(PI/2 - x) = cos(x)            cos(PI/2 - x) = sin(x)
 
   cos(-x) = cos(x)                  sin(-x) = -sin(x)
 

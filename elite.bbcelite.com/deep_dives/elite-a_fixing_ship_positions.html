@@ -36,36 +36,38 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
 
 						<p>We start our sleuthing in <a href="/disc/flight/subroutine/main_game_loop_part_2_of_6.html">part 2 of the main game loop</a>, where we check the main loop counter and only consider spawning a new ship once every 256 iterations (the spawning code starts just after the JMP MLOOP instruction at <a href="/disc/flight/subroutine/main_game_loop_part_2_of_6.html#ytq">ytq</a>). The first bit of logic checks whether we are in witchspace, and assuming we aren't, it goes on to decide whether to spawn junk (i.e. an asteroid or a cargo canister) or a trader. The code looks like this:</p>
 
-<pre class="articleIndented"> JSR DORND            \ Set A and X to random numbers
+<pre class="articleIndented">
+  JSR DORND           \ Set A and X to random numbers
 
- CMP #35              \ If A >= 35 (87% chance), jump down to MTT1 to skip
- BCS MTT1             \ the spawning of an asteroid or cargo canister and
+  CMP #35             \ If A >= 35 (87% chance), jump down to MTT1 to skip
+  BCS MTT1            \ the spawning of an asteroid or cargo canister and
                       \ potentially spawn something else
 
- LDA JUNK             \ If we already have 3 or more bits of junk in the local
- CMP #3               \ bubble, jump down to MTT1 to skip the following and
- BCS MTT1             \ potentially spawn something else
+  LDA JUNK            \ If we already have 3 or more bits of junk in the local
+  CMP #3              \ bubble, jump down to MTT1 to skip the following and
+  BCS MTT1            \ potentially spawn something else
 </pre
 
 						<p>So we call DORND, and if our random A >= 35 or we already have enough junk in the vicinity, we jump down to MTT1 to skip the spawning of an asteroid, cargo canister or trader, and potentially spawn something else (see the next section). But if our random A &lt; 35, we keep going, and the code then goes on to reset the INWK workspace with a call to ZINF and set z_hi to 38, so whatever we spawn will be far away in the distance ahead of us.</p>
 
 						<p>So far so good... and then we do this:</p>
 
-<pre class="articleIndented"> JSR DORND            \ Set A, X and C flag to random numbers
+<pre class="articleIndented">
+  JSR DORND           \ Set A, X and C flag to random numbers
 
- STA INWK             \ Set x_lo = random
+  STA INWK            \ Set x_lo = random
 
- STX INWK+3           \ Set y_lo = random
+  STX INWK+3          \ Set y_lo = random
 
- AND #%10000000       \ Set x_sign = bit 7 of x_lo
- STA INWK+2
+  AND #%10000000      \ Set x_sign = bit 7 of x_lo
+  STA INWK+2
 
- TXA                  \ Set y_sign = bit 7 of y_lo
- AND #%10000000
- STA INWK+5
+  TXA                 \ Set y_sign = bit 7 of y_lo
+  AND #%10000000
+  STA INWK+5
 
- ROL INWK+1           \ Set bit 1 of x_hi to the C flag, which is random, so
- ROL INWK+1           \ this randomly moves us off-centre by 512 (as if x_hi
+  ROL INWK+1          \ Set bit 1 of x_hi to the C flag, which is random, so
+  ROL INWK+1          \ this randomly moves us off-centre by 512 (as if x_hi
                       \ is %00000010, then (x_hi x_lo) is 512 + x_lo)
 </pre>
 
@@ -84,20 +86,21 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
 
 						<p>First we make sure we aren't in the station's safe zone, as the safe zone has its own spawning rules (see the <a href="/disc/flight/subroutine/tactics_part_2_of_7.html">TACTICS</a> routine for that logic). Assuming we are in deep space, we then calculate how bad are, based on our legal status and the amount of contraband we are carrying, and store the result in A. And then we fall into the same trap as above:</p>
 
-<pre class="articleIndented"> STA T                \ Store our badness level in T
+<pre class="articleIndented">
+  STA T               \ Store our badness level in T
 
- JSR Ze               \ Call Ze to initialise INWK to a fairly aggressive
+  JSR Ze              \ Call Ze to initialise INWK to a fairly aggressive
                       \ ship, and set A and X to random values
 
- CMP T                \ If the random value in A >= our badness level, which
- BCS P%+7             \ will be the case unless we have been really, really
+  CMP T               \ If the random value in A >= our badness level, which
+  BCS P%+7            \ will be the case unless we have been really, really
                       \ bad, then skip the following two instructions (so
                       \ if we are really bad, there's a higher chance of
                       \ spawning a cop, otherwise we got away with it, for
                       \ now)
 
- LDA #COPS            \ Add a new police ship to the local bubble
- JSR NWSHP
+  LDA #COPS           \ Add a new police ship to the local bubble
+  JSR NWSHP
 </pre>
 
 						<p>As before, the Ze routine calls DORND and sets the ship's y-coordinate to the value of X that is returned. This value of X is the same as the value of A that was returned from the previous call to DORND, which is the one we checked above to decide whether to jump to MTT1 (i.e. A >= 35). So we know that y_lo >= 35, and y_sign gets set to bit 7 of this previous value of A. This means the y-coordinate can be positive or negative, though there's a higher chance that it's negative as we know the X returned from DORND in Ze is in the range 35 to 255, and most of these values have bit 7 set, giving a negative y_sign. Specifically, 93 values of X (35 to 127, or 42%) give a positive y-coordinate, while 128 values of X (128 to 255, or 58%) give a negative y-coordinate.</p>
@@ -111,14 +114,15 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
 
 						<p>We start with the Thargoid. There's a bit of checking to see whether we are in the middle of mission 2, which spawns a lot more Thargoids than normal, but if we aren't, we consider whether to spawn a random Thargoid like this:</p>
 
-<pre class="articleIndented"> JSR DORND            \ Set A and X to random numbers
+<pre class="articleIndented">
+  JSR DORND           \ Set A and X to random numbers
 
- CMP #200             \ If the random number in A &lt; 200 (78% chance), jump to
- BCC nopl             \ nopl to skip spawning a Thargoid
+  CMP #200            \ If the random number in A &lt; 200 (78% chance), jump to
+  BCC nopl            \ nopl to skip spawning a Thargoid
 
 .fothg2
 
- JSR GTHG             \ Call GTHG to spawn a Thargoid ship and a Thargon
+  JSR GTHG            \ Call GTHG to spawn a Thargoid ship and a Thargon
                       \ companion
 
 .nopl
@@ -126,18 +130,19 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
 
 						<p>This is pretty reasonable, and it means we only jump to GTHG if our random number A >= 200. But what awaits us in <a href="/disc/flight/subroutine/gthg.html">GTHG</a>? It's another call to Ze:</p>
 
-<pre class="articleIndented">.GTHG
+<pre class="articleIndented">
+ .GTHG
 
- JSR Ze               \ Call Ze to initialise INWK
+  JSR Ze              \ Call Ze to initialise INWK
 
- LDA #%11111111       \ Set the AI flag in byte #32 so that the ship has AI,
- STA INWK+32          \ an aggression level of 63 out of 63, and E.C.M.
+  LDA #%11111111      \ Set the AI flag in byte #32 so that the ship has AI,
+  STA INWK+32         \ an aggression level of 63 out of 63, and E.C.M.
 
- LDA #THG             \ Call NWSHP to add a new Thargoid ship to our local
- JSR NWSHP            \ bubble of universe
+  LDA #THG            \ Call NWSHP to add a new Thargoid ship to our local
+  JSR NWSHP           \ bubble of universe
 
- LDA #TGL             \ Call NWSHP to add a new Thargon ship to our local
- JMP NWSHP            \ bubble of universe, and return from the subroutine
+  LDA #TGL            \ Call NWSHP to add a new Thargon ship to our local
+  JMP NWSHP           \ bubble of universe, and return from the subroutine
                       \ using a tail call
 </pre>
 
@@ -150,32 +155,33 @@ page_header("deep_dives", "elite-a_fixing_ship_positions.html", "Fixing ship pos
 
 						<p>If we skipped to nopl above, avoiding the Thargoid spawning, then this is what we come across next:</p>
 
-<pre class="articleIndented">.nopl
+<pre class="articleIndented">
+.nopl
 
- JSR DORND            \ Set A and X to random numbers
+  JSR DORND           \ Set A and X to random numbers
 
- LDY gov              \ If the government of this system is 0 (anarchy), jump
- BEQ LABEL_2          \ straight to LABEL_2 to start spawning pirates or a
+  LDY gov             \ If the government of this system is 0 (anarchy), jump
+  BEQ LABEL_2         \ straight to LABEL_2 to start spawning pirates or a
                       \ lone bounty hunter
 
- CMP #120             \ If the random number in A >= 120 (53% chance), jump
- BCS MLOOPS           \ to MLOOPS to stop spawning (so there's a 47% chance
+  CMP #120            \ If the random number in A >= 120 (53% chance), jump
+  BCS MLOOPS          \ to MLOOPS to stop spawning (so there's a 47% chance
                       \ of spawning pirates or a lone bounty hunter)
 
- AND #7               \ Reduce the random number in A to the range 0-7, and
- CMP gov              \ if A is less than government of this system, jump
- BCC MLOOPS           \ to MLOOPS to stop spawning (so safer governments with
+  AND #7              \ Reduce the random number in A to the range 0-7, and
+  CMP gov             \ if A is less than government of this system, jump
+  BCC MLOOPS          \ to MLOOPS to stop spawning (so safer governments with
                       \ larger gov numbers have a greater chance of jumping
                       \ out, which is another way of saying that more
                       \ dangerous systems spawn pirates and bounty hunters
                       \ more often)
 
-.LABEL_2
+ .LABEL_2
 
                       \ Now to spawn a lone bounty hunter, a Thargoid or a
                       \ group of pirates
 
- JSR Ze               \ Call Ze to initialise INWK to a fairly aggressive
+  JSR Ze              \ Call Ze to initialise INWK to a fairly aggressive
                       \ ship, and set A and X to random values
 </pre>
 

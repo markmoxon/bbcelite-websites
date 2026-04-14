@@ -27,7 +27,8 @@ page_header("hacks", "bbc_micro_b_plus_master_elite_technical_information.html",
 
 						<p>In this configuration, the B+ behaves exactly like the standard BBC Micro, with screen memory taking up the top part of user RAM. Consider the situation where we turn on our B+ and switch to screen mode 1; the upper part of the memory map will look like this:</p>
 
-<pre class="articleIndented">  +-----------------------------------+   &amp;FFFF
+<pre class="articleIndented">
+  +-----------------------------------+   &amp;FFFF
   |                                   |
   | Machine Operating System (MOS)    |
   |                                   |
@@ -67,7 +68,8 @@ page_header("hacks", "bbc_micro_b_plus_master_elite_technical_information.html",
 
 						<p>Here's the same part of the B+ memory map when both shadow RAM and private RAM are enabled and we are in shadow screen mode 1:</p>
 
-<pre class="articleIndented">  +-----------------------------------+   &amp;FFFF
+<pre class="articleIndented">
+  +-----------------------------------+   &amp;FFFF
   |                                   |
   | Machine Operating System (MOS)    |
   |                                   |
@@ -131,7 +133,8 @@ page_header("hacks", "bbc_micro_b_plus_master_elite_technical_information.html",
 
 						<p>In the standard BBC Micro, the ROM Select latch is used to page one of the 16K sideways ROMs into address &amp;8000 to &amp;BFFF. We do this by storing the ROM number into bits 0-3 of &amp;FE30 (bit 7 is ignored). There's also a RAM copy of SHEILA &amp;30 in address &amp;00F4 that must be updated as well, just before we write to &amp;FE30, so switching ROMs is actually a two-instruction process, as follows (where A contains the ROM number):</p>
 
-<pre class="articleIndented">  STA &amp;00F4
+<pre class="articleIndented">
+  STA &amp;00F4
   STA &amp;FE30
 </pre>
 
@@ -172,7 +175,8 @@ page_header("hacks", "bbc_micro_b_plus_master_elite_technical_information.html",
 
 						<p>A much easier approach is to replace just the screen-poking parts. Examining the above routines, it turns out there are only eight different variations of code that poke into screen memory. The most popular is this snippet:</p>
 
-<pre class="articleIndented">   EOR (SC),Y             \ Draw a pixel using EOR logic
+<pre class="articleIndented">
+   EOR (SC),Y             \ Draw a pixel using EOR logic
    STA (SC),Y
 </pre>
 
@@ -180,13 +184,15 @@ page_header("hacks", "bbc_micro_b_plus_master_elite_technical_information.html",
 
 						<p>So the easiest solution is to write eight subroutines to implement all eight variations, and place them into the address range &amp;A000-&amp;AFFF so they act as VDU driver code. We can then replace all the original screen pokes with JSR calls to these new routines, so the above code gets changed to the following, for example:</p>
 
-<pre class="articleIndented">   JSR DrawPixelEOR       \ Perform the EOR/STA instructions from &A000-&AFFF
+<pre class="articleIndented">
+   JSR DrawPixelEOR       \ Perform the EOR/STA instructions from &A000-&AFFF
                           \ so they affect screen memory in shadow RAM
 </pre>
 
 						<p>The DrawPixelEOR then looks a bit like this:</p>
 
-<pre class="articleIndented">  .DrawPixelEOR
+<pre class="articleIndented">
+  .DrawPixelEOR
 
    EOR (SC),Y             \ Draw a pixel using EOR logic
    STA (SC),Y
@@ -200,7 +206,8 @@ page_header("hacks", "bbc_micro_b_plus_master_elite_technical_information.html",
 
 						<p>In the end I had to shrink the size of the VDU driver routines to fit them into the top part of private RAM along with all the large text tables (see the next section for more on this). As a result I had to use shared entry points and BIT hacks to reduce the code size, but the concept remains the same. This is what the entire VDU driver looks like for B+ Elite, all 35 bytes of it:</p>
 
-<pre class="articleIndented">  .DrawPixelEOR
+<pre class="articleIndented">
+  .DrawPixelEOR
   
    EOR (SC),Y             \ Draw a pixel using EOR logic
   

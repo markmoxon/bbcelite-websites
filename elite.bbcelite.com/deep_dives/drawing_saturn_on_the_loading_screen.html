@@ -46,19 +46,22 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>So, for each star, we draw a pixel at (x, y) where:</p>
 
-<pre class="articleIndented">  x = a signed random number from -128 to 127
+<pre class="articleIndented">
+  x = a signed random number from -128 to 127
 
   y = a signed random number from -128 to 127
 </pre>
 
 						<p>and where:
 
-<pre class="articleIndented">  (x^2 + y^2) DIV 256 &gt; 17
+<pre class="articleIndented">
+  (x^2 + y^2) DIV 256 &gt; 17
 </pre>
 
 						<p>The final equation here rearranges into:</p>
 
-<pre class="articleIndented">  x^2 + y^2 &gt; 65.96^2
+<pre class="articleIndented">
+  x^2 + y^2 &gt; 65.96^2
 </pre>
 
  						<p>which is the filter that ensures each star is outside of the planet's circular disk. It actually ensures the stars are slightly further outside of the planet than the planet's exact radius (hence the use of 65.96^2 in place of 64^2), so this emulates a thin dark atmospheric ring, surrounding the planet, in which no stars are drawn. This atmospheric gap is only 2 pixels wide, so is barely noticeable.</p>
@@ -76,38 +79,44 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>First, we choose random numbers r5, r6:</p>
 
-<pre class="articleIndented">  r5 = a signed random number from -128 to 127
+<pre class="articleIndented">
+  r5 = a signed random number from -128 to 127
 
   r6 = a signed random number from -128 to 127
 </pre>
 
 						<p>Then let:</p>
 
-<pre class="articleIndented">  r7 = r5 DIV 4
+<pre class="articleIndented">
+  r7 = r5 DIV 4
 </pre>
 
 						<p>Next, convert r6 and r7 into screen coordinates by a transformation:</p>
 
-<pre class="articleIndented">  x = r6 + r7
+<pre class="articleIndented">
+  x = r6 + r7
 
   y = r6
 </pre>
 
 						<p>This transformation from r5, r6 and r7 to x and y sets (x, y) to be any point along a wide diagonal band running from the top-left of the screen to the bottom-right of the screen. This can be seen because the above equations can be written as:</p>
 
-<pre class="articleIndented">  y = x - r5 DIV 4
+<pre class="articleIndented">
+  y = x - r5 DIV 4
 </pre>
 
 						<p>This transformation to a wide diagonal band concentrates the candidate points so that they are more likely to lie within the planet rings, compared to a random point chosen anywhere over the entire screen, which is more likely to miss the planet rings entirely, and waste CPU time. So this transformation makes the code faster. Another benefit is that if r5 &gt; 0, then the point (x, y) lies in the upper-right triangle of the screen, i.e. behind the planet. This logic is used later on, to avoid drawing the rear rings as they pass behind the planet.</p>
 
 						<p>Next we apply the elliptical filter, to ensure that (x, y) lies between the two ellipses shown in the diagram above. This is implemented in the code by checking:</p>
 
-<pre class="articleIndented">  32 &lt;= ((r6 + r7)^2 + r5^2 + r6^2) / 256 &lt; 80
+<pre class="articleIndented">
+  32 &lt;= ((r6 + r7)^2 + r5^2 + r6^2) / 256 &lt; 80
 </pre>
 
 						<p>Note that this rearranges into:</p>
 
-<pre class="articleIndented">  32 * 256   &lt;=   x^2 + (4 * r7)^2 + y^2               &lt;   80 * 256
+<pre class="articleIndented">
+  32 * 256   &lt;=   x^2 + (4 * r7)^2 + y^2               &lt;   80 * 256
 
   32 * 256   &lt;=   x^2 + 16 * (x - y)^2 + y^2           &lt;   80 * 256
 
@@ -118,31 +127,36 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>Note that an equation of the form:</p>
 
-<pre class="articleIndented">  ax^2 + bxy + cy^2 = 1
+<pre class="articleIndented">
+  ax^2 + bxy + cy^2 = 1
 
   with a &gt; 0, c &gt; 0 and b^2 - 4ac &lt; 0
 </pre>
 
 						<p>is a general ellipse, centred on the origin (see this <a href="https://en.wikipedia.org/wiki/Ellipse#General_ellipse">Wikipedia article on general ellipses</a> for details). The equations:</p>
 
-<pre class="articleIndented">  17 * x^2 - 32xy + 17 * y^2 = 32 * 256
+<pre class="articleIndented">
+  17 * x^2 - 32xy + 17 * y^2 = 32 * 256
 </pre>
 
 						<p>and:</p>
 
-<pre class="articleIndented">  17 * x^2 - 32xy + 17 * y^2 = 80 * 256
+<pre class="articleIndented">
+  17 * x^2 - 32xy + 17 * y^2 = 80 * 256
 </pre>
 
 						<p>represent the inner and outer ellipse boundaries of the planet rings (as shown in the diagram above). Hence the above filter is checking that (x, y) lies inside the outer ellipse, and outside the inner ellipse - i.e. in the ring shape between the two ellipses.</p>
 
 						<p>On top of this, the code makes additional filter checks to ensure that the rings are not drawn when they pass behind the planet. These filters check whether either:</p>
 
-<pre class="articleIndented">  (x^2 + y^2) / 256 >= 16       (the point is outside the planet's disk)
+<pre class="articleIndented">
+  (x^2 + y^2) / 256 >= 16       (the point is outside the planet's disk)
 </pre>
 
 						<p>or both these are true:</p>
 
-<pre class="articleIndented">  (x^2 + y^2) / 256 &lt; 16        (the point is inside the planet's disk)
+<pre class="articleIndented">
+  (x^2 + y^2) / 256 &lt; 16        (the point is inside the planet's disk)
 
   r5 &lt; 0                        (and the point is on the rings that go
                                  in front of the planet)
@@ -161,31 +175,36 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>First, we pick two uniform random numbers:</p>
 
-<pre class="articleIndented">  r1 = a signed random number from -128 to 127
+<pre class="articleIndented">
+  r1 = a signed random number from -128 to 127
 
   r2 = a signed random number from -128 to 127
 </pre>
 
 						<p>Next, we check that the point (r1/2, r2/2) lies inside the planet's disk, i.e. that:</p>
 
-<pre class="articleIndented">  (r1^2 + r2^2) &lt; 128^2
+<pre class="articleIndented">
+  (r1^2 + r2^2) &lt; 128^2
 </pre>
 
 						<p>By using r1/2 and r2/2 here (in place of r1 and r2) and by doubling the circle radius to 128, we increase the number of random coordinates that intersect the circle of interest, which speeds things up. Another advantage of doing this is that it gives us an extra bit for numerical accuracy. The final circle shown, though, is still a circle of radius 64, since:
 
-<pre class="articleIndented">  (r1^2 + r2^2) &lt; 128^2
+<pre class="articleIndented">
+  (r1^2 + r2^2) &lt; 128^2
 </pre>
 
 						<p>is algebraically equivalent to:</p>
 
-<pre class="articleIndented">  x^2 + y^2 = 64^2
+<pre class="articleIndented">
+  x^2 + y^2 = 64^2
 </pre>
 
  						<p>if we substitute (x, y) for (r1/2, r2/2).</p>
 
 						<p>Next, we choose screen coordinates as follows:</p>
 
-<pre class="articleIndented">  y = r2
+<pre class="articleIndented">
+  y = r2
 
   x = SQRT(128^2 - (r1^2 + r2^2))
 </pre>
@@ -201,7 +220,8 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>The final line of code above:</p>
 
-<pre class="articleIndented">  x = SQRT(128^2 - (r1^2 + r2^2))
+<pre class="articleIndented">
+  x = SQRT(128^2 - (r1^2 + r2^2))
 </pre>
 
 						<p>does a particularly neat mathematical transformation, changing the probability distribution for each point (r1, r2) from being uniformly scattered across the planet's disk, into a scattering of points which correctly obey the lighting model for a sphere illuminated from the right-hand side. It does this using the SQRT function to calculate a square root, as implemented by the <a href="/cassette/loader/subroutine/ROOT.html">ROOT</a> routine.</p>
@@ -220,19 +240,22 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>Note that modern computer languages often include random-number generating functions which return non-uniform probability distributions (e.g. Gaussian or Normal distributions). How do they do this?  Just like Elite's Saturn planet code, they usually start with a uniform random number, u say, and squish it a bit to change it into the probability distribution that they want. The formal theory behind changing one probability distribution into another one in this way is called "Inverse transform sampling" (see <a href="https://en.wikipedia.org/wiki/Inverse_transform_sampling">Wikipedia</a> for details). From this theory, if you want to change a uniform random number u (in the range 0 to 1) into your desired probability density function, then you push u through the squishing function:</p>
 
-<pre class="articleIndented">   x = CDF<sup>-1</sup>(u)
+<pre class="articleIndented">
+   x = CDF<sup>-1</sup>(u)
 </pre>
 
 						<p>where CDF<sup>-1</sup> denotes the inverse of the cumulative density function (CDF) for your target PDF. (Note that a CDF is defined to be the integral of its corresponding PDF.) This makes the output variable x be a random number in the distribution given by the desired PDF.</p>
 
 						<p>Remember, the formula that Elite uses to generate x is:</p>
 
-<pre class="articleIndented">  x = SQRT(128^2 - (r1^2 + r2^2))
+<pre class="articleIndented">
+  x = SQRT(128^2 - (r1^2 + r2^2))
 </pre>
 
 						<p>So that's its squishing formula. This can be rewritten as:</p>
 
-<pre class="articleIndented">  x = SQRT(rx^2 - (128u)^2)
+<pre class="articleIndented">
+  x = SQRT(rx^2 - (128u)^2)
 
   u = |r1 / 128|
 
@@ -249,29 +272,34 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>From the theory of Inverse Transform Sampling, the squishing function:</p>
 
-<pre class="articleIndented">  x = SQRT(rx^2 - (128u)^2)
+<pre class="articleIndented">
+  x = SQRT(rx^2 - (128u)^2)
 </pre>
 
 						<p>is the inverse cumulative density function (CDF<sup>-1</sup>) of the probability distribution that we seek to find. So therefore, to recover the CDF from this, we have to invert the function, i.e. solve it for u. Doing this gives:</p>
 
-<pre class="articleIndented">  u = SQRT(rx^2 - x^2) / 128 = CDF(x)
+<pre class="articleIndented">
+  u = SQRT(rx^2 - x^2) / 128 = CDF(x)
 </pre>
 
 						<p>Next, to convert this cumulative distribution function (CDF) to a probability density function (PDF), we differentiate it, since a CDF is defined to be the integral of a PDF. The derivative of:</p>
 
-<pre class="articleIndented">  y = SQRT(rx^2 - x^2) / 128
+<pre class="articleIndented">
+  y = SQRT(rx^2 - x^2) / 128
 </pre>
 
 						<p>with respect to x is:</p>
 
-<pre class="articleIndented">  dy/dx = x / (SQRT(rx^2 - x^2) * 128)
+<pre class="articleIndented">
+  dy/dx = x / (SQRT(rx^2 - x^2) * 128)
 
         = x / (SQRT(128^2 - y^2 - x^2) * 128)
 </pre>
 
 						<p>So this is the PDF that describes x, when x &gt; 0:</p>
 
-<pre class="articleIndented">  pdf(x) = x / (SQRT(128^2 - y^2 - x^2) * 128)
+<pre class="articleIndented">
+  pdf(x) = x / (SQRT(128^2 - y^2 - x^2) * 128)
 </pre>
 
 						<p>When x &lt; 0, just by knowing that the original SQRT line of code always gives a positive output, we can say that pdf(x) = 0, when x &lt; 0.</p>
@@ -283,19 +311,22 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>Now we know that for x &gt; 0, the transformed probability distribution is:</p>
 
-<pre class="articleIndented">  pdf(x) = x / (SQRT(128^2 - y^2 - x^2) * 128)
+<pre class="articleIndented">
+  pdf(x) = x / (SQRT(128^2 - y^2 - x^2) * 128)
 </pre>
 
 						<p>So how can we interpret it geometrically?</p>
 
 						<p>The PDF derived above can be rewritten as:</p>
 
-<pre class="articleIndented">  pdf(x) = x / 128z
+<pre class="articleIndented">
+  pdf(x) = x / 128z
 </pre>
 
 						<p>since for the 3D sphere, x^2 + y^2 + z^2 = 128^2, and so:</p>
 
-<pre class="articleIndented">  z = SQRT(128^2 - y^2 - x^2)
+<pre class="articleIndented">
+  z = SQRT(128^2 - y^2 - x^2)
 </pre>
 
 						<p>Now suppose that P is the point on the sphere with coordinates (x, y, z), and the centre of the sphere is at O = (0, 0, 0). If nx, ny and nz are the 3D components of a unit-normal vector n pointing up from the sphere's surface, then the vector OP = [x y z] is parallel to the vector n = [nx ny nz], as n is effectively a continuation of OP from the surface into space. If two vectors are parallel, then one must be a multiple of the other, so we have:</p>
@@ -308,7 +339,8 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>for some scalar k'. So therefore we have:
 
-<pre class="articleIndented">  pdf(x) = x / 128z
+<pre class="articleIndented">
+  pdf(x) = x / 128z
 
          = (k' * nx) / (128 * k' * nz)
 
@@ -317,24 +349,28 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>Hence the PDF can be rewritten as:</p>
 
-<pre class="articleIndented">  pdf(x) = k nx/nz
+<pre class="articleIndented">
+  pdf(x) = k nx/nz
 </pre>
 
 						<p>where k = 1 / 128.</p>
 
 						<p>If we have Cartesian unit vectors i, j, k in the x, y, z directions, and n is the unit normal vector from the sphere's surface, then:</p>
 
-<pre class="articleIndented">  nx = n.i = cos(theta_x)
+<pre class="articleIndented">
+  nx = n.i = cos(theta_x)
 </pre>
 
 						<p>where theta_x is the angle the sphere's unit normal makes with the x-axis. This follows from:</p>
 
-<pre class="articleIndented">  (nx, ny, nz).i = nx
+<pre class="articleIndented">
+  (nx, ny, nz).i = nx
 </pre>
 
 						<p>and also from the definition of the vector dot product:</p>
 
-<pre class="articleIndented">  n.i = |n||i|cos(theta_x)
+<pre class="articleIndented">
+  n.i = |n||i|cos(theta_x)
       = cos(theta_x)
 </pre>
    
@@ -342,14 +378,16 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>Also, by exactly the same reasoning as above, but for z in place of x, we also have:</p>
 
-<pre class="articleIndented">  nz = n.k = cos(phi_z)
+<pre class="articleIndented">
+  nz = n.k = cos(phi_z)
 </pre>
 
 						<p>where phi_z is the angle the sphere's unit normal makes with the z-axis.</p>
 
 						<p>Hence the probability distribution for drawing a point at (x, y) is proportional to cos(theta_x) / cos(phi_z), or:
 
-<pre class="articleIndented">  pdf = k cos(theta_x) / cos(phi_z)
+<pre class="articleIndented">
+  pdf = k cos(theta_x) / cos(phi_z)
 </pre>
 
 						<p>where theta_x is the angle the sphere's normal vector makes with the x-axis (i.e. the direction the light source is coming from), and phi_z is the angle the sphere's normal vector makes with the z-axis (i.e. the angle we are viewing from), and k is a constant of proportionality.</p>
@@ -367,7 +405,8 @@ page_header("deep_dives", "drawing_saturn_on_the_loading_screen.html", "Drawing 
 
 						<p>As the PDF for plotting a point at (x, y) is:</p>
 
-<pre class="articleIndented"> pdf = k cos(theta_x) / cos(phi_z)
+<pre class="articleIndented">
+  pdf = k cos(theta_x) / cos(phi_z)
 </pre>
 
 						<p>where k is a constant of proportionality, we can investigate the relative merit of the denominator and numerator visually. For example, if we only had the numerator present, then the plot would look like this:</p>

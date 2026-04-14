@@ -18,12 +18,13 @@ page_header("deep_dives", "hard-coded_division_in_the_dashboard_routines.html", 
 
 						<p>Generally, if we want to calculate A * T / 256, then the traditional approach would be to use a shift-and-add loop like this:</p>
 
-<pre class="articleIndented"> LSR A               \ Set P = A >> 1 and C flag = bit 0 of A
- STA P
+<pre class="articleIndented">
+  LSR A              \ Set P = A >> 1 and C flag = bit 0 of A
+  STA P
 
- LDX T               \ Set T1 = T - 1
- DEX                 \
- STX T1              \ We subtract 1 as the C flag will be set when we want
+  LDX T              \ Set T1 = T - 1
+  DEX                \
+  STX T1             \ We subtract 1 as the C flag will be set when we want
                      \ to do an addition in the loop below
 
                      \ We are now going to work our way through the bits of
@@ -33,57 +34,58 @@ page_header("deep_dives", "hard-coded_division_in_the_dashboard_routines.html", 
                      \ P = |A| >> 1 and C = bit 0 of A, so we now need to set
                      \ up a loop to sift through the other 7 bits in P
 
- LDA #0              \ Set A = 0 so we can start building the answer in A
+  LDA #0             \ Set A = 0 so we can start building the answer in A
 
- LDX #7              \ Set up a counter in X to count the 7 bits remaining
+  LDX #7             \ Set up a counter in X to count the 7 bits remaining
                      \ in P
 
-.MUL4
+ .MUL4
 
- BCC P%+4            \ If C (i.e. the next bit from P) is set, do the
- ADC T1              \ addition for this bit of P:
+  BCC P%+4           \ If C (i.e. the next bit from P) is set, do the
+  ADC T1             \ addition for this bit of P:
                      \
                      \   A = A + T1 + C
                      \     = A + T - 1 + 1
                      \     = A + T
 
- ROR A               \ As mentioned above, this ROR shifts A right and
+  ROR A              \ As mentioned above, this ROR shifts A right and
                      \ catches bit 0 in C - giving another digit for our
                      \ result - and the next ROR sticks that bit into the
                      \ left end of P while also extracting the next bit of P
                      \ for the next addition
 
- ROR P               \ Add the overspill from shifting A to the right onto
+  ROR P              \ Add the overspill from shifting A to the right onto
                      \ the start of P, and shift P right to fetch the next
                      \ bit for the calculation
 
- DEX                 \ Decrement the loop counter
+  DEX                \ Decrement the loop counter
 
- BNE MUL4            \ Loop back for the next bit until P has been rotated
+  BNE MUL4           \ Loop back for the next bit until P has been rotated
                      \ all the way
 
- LSR A               \ Rotate (A P) once more to get the final result, as
- ROR P               \ we only pushed 7 bits through the above process
+  LSR A              \ Rotate (A P) once more to get the final result, as
+  ROR P              \ we only pushed 7 bits through the above process
 </pre>
 
 						<p>You can read all about this algorithm in my <a href="https://elite.bbcelite.com/deep_dives/shift-and-add_multiplication.html">Elite source code project</a>, and you can see it <i>in situ</i> in the Elite source code in the <a href="https://elite.bbcelite.com/cassette/main/subroutine/mult1.html">MULT1</a> routine.</p>
 
 						<p>If we aren't worried about memory usage, then we can unroll the central loop of the algorithm like this, to save a bit of time going around the loop:</p>
 
-<pre class="articleIndented"> BCC P%+4            \ Shift-and-add the first bit of P
- ADC T1
- ROR A
- ROR P
+<pre class="articleIndented">
+  BCC P%+4           \ Shift-and-add the first bit of P
+  ADC T1
+  ROR A
+  ROR P
 
- BCC P%+4            \ Repeat for the second bit
- ADC T1
- ROR A
- ROR P
+  BCC P%+4           \ Repeat for the second bit
+  ADC T1
+  ROR A
+  ROR P
 
- BCC P%+4            \ Repeat for the third bit
- ADC T1
- ROR A
- ROR P
+  BCC P%+4           \ Repeat for the third bit
+  ADC T1
+  ROR A
+  ROR P
 </pre>
 
 						<p>The above code does three bits, and we can repeat the same block for all eight bits to implement the full calculation. You can see this approach in the <a href="https://elite.bbcelite.com/6502sp/main/subroutine/mult1.html">MULT1 routine in the 6502 Second Processor version of Elite</a>.</p>
@@ -96,66 +98,73 @@ page_header("deep_dives", "hard-coded_division_in_the_dashboard_routines.html", 
 
 						<p>We can therefore hard-code the value of n into the code by replacing each of these unrolled blocks:</p>
 
-<pre class="articleIndented"> BCC P%+4
- ADC T1
- ROR A
- ROR P
+<pre class="articleIndented">
+  BCC P%+4
+  ADC T1
+  ROR A
+  ROR P
 </pre>
 
 						<p>with either this, when that bit of n is 0:</p>
 
-<pre class="articleIndented"> LSR A
- ROR P
+<pre class="articleIndented">
+  LSR A
+  ROR P
 </pre>
 
 						<p>or this, when that bit of n is 1:</p>
 
-<pre class="articleIndented"> ADC T1
- ROR A
- ROR P
+<pre class="articleIndented">
+  ADC T1
+  ROR A
+  ROR P
 </pre>
 
 						<p>We can also ditch the need to calculate T1 = T - 1 by adding in a CLC, like this:</p>
 
-<pre class="articleIndented"> CLC
- ADC T
- ROR A
- ROR P
+<pre class="articleIndented">
+  CLC
+  ADC T
+  ROR A
+  ROR P
 </pre>
 
 						<p>Finally, we only need to keep the ROR P instructions if we need to keep the overspill from the result, as we are no longer shifting P to see whether or not to branch over each bit's addition. If we don't need the overspill, we can replace the unrolled calculation with this, when that bit of n is 0:</p>
 
-<pre class="articleIndented"> LSR A
+<pre class="articleIndented">
+  LSR A
 </pre>
 
 						<p>or this, when that bit of n is 1:</p>
 
-<pre class="articleIndented"> CLC
- ADC T
- ROR A
+<pre class="articleIndented">
+  CLC
+  ADC T
+  ROR A
 </pre>
 
 						<p>Putting all of this together into a working example, the following code calculates A = T * 68 / 256, using a value of n = 34 (%00100010). The factor of 2 is because the following omits the final LSR A that normally appears after the loop, for optimal performance.</p>
 
-<pre class="articleIndented"> LDA T               \ Set A = T
+<pre class="articleIndented">
+  LDA T              \ Set A = T
 
- LSR A               \ Bit 0 of n is 0
+  LSR A              \ Bit 0 of n is 0
 
- CLC                 \ Bit 1 of n is 1
- ADC T
- ROR A
+  CLC                \ Bit 1 of n is 1
+  ADC T
+  ROR A
 
- LSR A               \ Bit 2 of n is 0
+  LSR A              \ Bit 2 of n is 0
 
- LSR A               \ Bit 3 of n is 0
+  LSR A              \ Bit 3 of n is 0
 
- LSR A               \ Bit 4 of n is 0
+  LSR A              \ Bit 4 of n is 0
 
- CLC                 \ Bit 5 of n is 1
- ADC T
- ROR A
+  CLC                \ Bit 5 of n is 1
+  ADC T
+  ROR A
 
- LSR A               \ Bit 6 of n is 0
+  LSR A              \ Bit 6 of n is 0
 
                      \ Bit 7 of n is 0 and the final right shift is missing
 </pre>

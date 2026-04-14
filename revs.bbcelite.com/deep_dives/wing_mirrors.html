@@ -52,14 +52,16 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>Earlier in the main driving loop, before we get to the wing mirrors, the object size for each car in the vicinity gets calculated and put into the objectSize table, as part of the car-building process in the <a href="/source/main/subroutine/buildcarobjects_part_1_of_3.html">BuildCarObjects</a> routine. We can therefore calculate the size of the car in the mirror by taking the size of the car's object from the objectSize table, dividing it by 8 and putting it in variable T, as follows:</p>
 
-<pre class="articleIndented">  T = objectSize / 8
+<pre class="articleIndented">
+  T = objectSize / 8
 </pre>
 
 						<p>This gives us half the number of pixel lines to draw in the mirror, so if T = 1, we will end up drawing a block that's two pixels high, and if T = 4, we'll draw a block that's eight pixels high.</p>
 
 						<p>We then calculate the upper and lower offsets of the car block within the mirror segment, by taking the offset of the middle row in the segment, and adding and subtracting T to give us T rows either side of the centre line. The offset for the centre line is defined as &amp;B6, so we can calculate the upper and lower offsets of the car block in TT and N as follows:</p>
 
-<pre class="articleIndented">  TT = &amp;B6 + T
+<pre class="articleIndented">
+  TT = &amp;B6 + T
 
   N = &amp;B6 - T
 </pre>
@@ -73,7 +75,8 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>We do this by calculating the yaw angle between the player's car and the car behind, but before diving into the maths behind this, let's remind ourselves how yaw angles are measured in Revs. You can read all about them in the deep dive on <a href="pitch_and_yaw_angles.html">pitch and yaw angles</a>, but this sums up the important parts:</p>
 
-<pre class="articleIndented">           0
+<pre class="articleIndented">
+           0
      -32   |   +32
         \  |  /
          \ | /                 ^
@@ -90,12 +93,14 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>Coming back to the mirror segment calculation, we want to work out the yaw angle between the player and the car behind. The player's current yaw angle in (playerYawAngleHi playerYawAngleLo) is the angle in which the player's car is pointing, relative to the direction of the track, so a yaw angle of 0 means the player is pointing dead ahead. The other driver's yaw angle in (objYawAngleHi objYawAngleLo) is also stored relative to the direction of the track, and denotes the angle between the player and the other driver. So we now calculate the following:</p>
 
-<pre class="articleIndented">  A = (objYawAngleHi - playerYawAngleHi - 4) / 8
+<pre class="articleIndented">
+  A = (objYawAngleHi - playerYawAngleHi - 4) / 8
 </pre>
 
 						<p>This gives us the difference in yaw angle between the direction that the player is facing along the track, and the angle between the player and the car behind. This is a bit difficult to visualise, but if you imagine that the player's car is facing dead straight along the track, then playerYawAngleHi is 0 and we only need to consider the value of objYawAngleHi, so the angle we want would look like this for positive values of objYawAngleHi:</p>
 
-<pre class="articleIndented">                            ^
+<pre class="articleIndented">
+                            ^
                             |
                             |        -.
                             |          `.  objYawAngleHi
@@ -109,7 +114,8 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>or like this if objYawAngleHi were negative:</p>
 
-<pre class="articleIndented">                            ^
+<pre class="articleIndented">
+                            ^
                             |
                    .-       |
   objYawAngleHi  .´         |
@@ -124,7 +130,8 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>If playerYawAngleHi is non-zero, then the player is not pointing straight along the track, so we subtract the angles to get the relative yaw. For example, if playerYawAngleHi is positive, then the player is pointing to the right and we have the following:</p>
 
-<pre class="articleIndented">              playerYawAngleHi
+<pre class="articleIndented">
+              playerYawAngleHi
                               |
                               v
                             :   /
@@ -141,7 +148,8 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>Note that we divide the angle by 8 in our calculation above, but only after subtracting 4, which rounds the result down to the integer below (as we simply ignore the fractional part in what would be the low byte of the calculation). This division and rounding converts the standard set of angles to the following:</p>
 
-<pre class="articleIndented">           0
+<pre class="articleIndented">
+           0
     -4     |   +3
         \  |  /
          \ | /                 ^
@@ -160,7 +168,8 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>We can now map this result to the segments in each mirror, which we do using the <a href="/source/main/variable/mirrorsegment.html">mirrorSegment</a> table. This table maps the divided and rounded yaw angle to the mirror segments as follows:</p>
 
-<pre class="articleIndented">    | left  |  left  | left  |                | right | right  | right |
+<pre class="articleIndented">
+    | left  |  left  | left  |                | right | right  | right |
     | outer | middle | inner |                | outer | middle | inner |
     |       |        |       |                |       |        |       |
     |       |        |       |                |       |        |       |
@@ -169,7 +178,8 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>If we consider how this would work if we used the unrounded yaw angle in (objYawAngleHi - playerYawAngleHi) / 8, we would get the following ranges for each segment:</p>
 
-<pre class="articleIndented">    | left  |  left  | left  |                | right | right  | right |
+<pre class="articleIndented">
+    | left  |  left  | left  |                | right | right  | right |
     | outer | middle | inner |                | outer | middle | inner |
     |       |        |       |                |       |        |       |
     |       |        |       |                |       |        |       |
@@ -178,7 +188,8 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>In other words, each segment maps to a range of size 1 in our divided yaw angle, which is the equivalent of an undivided angle of 8. Given that 128 is equivalent to 180 degrees, that means that each mirror segment covers an arc of 180 * (8 / 128) = 11.25 degrees. So in terms of degrees, the mirror segments cover the angles behind the driver as follows:</p>
 
-<pre class="articleIndented">    | left  |  left  | left  |                | right | right  | right |
+<pre class="articleIndented">
+    | left  |  left  | left  |                | right | right  | right |
     | outer | middle | inner |                | outer | middle | inner |
     |       |        |       |                |       |        |       |
     |       |        |       |                |       |        |       |
@@ -212,7 +223,8 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>The routine draws all the pixel lines in the specified mirror segment, drawing either white or black lines depending on this calculation:</p>
 
-<pre class="articleIndented">  If N &lt;= offset &lt; A              then draw a black line (draw a car)
+<pre class="articleIndented">
+  If N &lt;= offset &lt; A              then draw a black line (draw a car)
 
   If N &gt; offset or offset &gt;= A    then draw a white line (clear the mirror)
 </pre>
@@ -221,7 +233,8 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>A reminder that we calculated A and N above, from the car size in T, as follows (we passed TT to the DrawCarInMirror in A):</p>
 
-<pre class="articleIndented">  TT</td><td> = &amp;B6 + T
+<pre class="articleIndented">
+  TT</td><td> = &amp;B6 + T
 
   N</td><td> = &amp;B6 - T
 </pre>
@@ -273,7 +286,8 @@ page_header("deep_dives", "wing_mirrors.html", "Wing mirrors", "Wing mirrors", "
 
 						<p>This is a small touch, and a brilliant one... but even more impressive is just how tiny the code is that implements this detail. These are the instructions in the <a href="/source/main/subroutine/drawcarinmirror.html">DrawCarInMirror</a> routine that apply the magic:</p>
 
-<pre class="articleIndented">  LDX VIA+&amp;68
+<pre class="articleIndented">
+  LDX VIA+&amp;68
   AND &amp;2000,X
   AND engineStatus
 </pre>
