@@ -19,6 +19,26 @@
 							<li><a id="talks_others" href="/talks/others.html"><span class="menuTitle">Other talks and videos</span> <span class="menuSummary">Talks by other people who have found my research useful</span></a></li>
 						</ul>
 					</li>
+					<li id="disassembly_maths"><span class="menuTitle">Disassembly diary</span> <span class="menuSummary menuSummarySubmenu">The story of how I documented The Sentinel</span>
+						<ul id="submenu_disassembly_diary">
+							<li class="menuItemHeader">About my disassembly process</li>
+							<li><a id="disassembly_diary_overview" href="/disassembly-diary/overview.html"><span class="menuTitle">Overview of a disassembly project</span> <span class="menuSummary">How I disassembled The Sentinel</span></a></li>
+							<li><a id="disassembly_diary_tools" href="/disassembly-diary/tools.html"><span class="menuTitle">The tools I use</span> <span class="menuSummary">Keeping it as simple and as manual as possible</span></a></li>
+							<li><a id="disassembly_diary_keeping_track" href="/disassembly-diary/keeping_track.html"><span class="menuTitle">Keeping track of progress</span> <span class="menuSummary">The documents and philosophy I use to get through such large disassembly projects</span></a></li>
+							<li class="menuItemHeader">Disassembly diary for The Sentinel</li>
+							<li><a id="disassembly_diary_progress_0-10-percent" href="/disassembly-diary/progress_0-10-percent.html"><span class="menuTitle">Progress: 0-10%</span> <span class="menuSummary">3 September to 14 September 2025</span></a></li>
+							<li><a id="disassembly_diary_progress_10-20-percent" href="/disassembly-diary/progress_10-20-percent.html"><span class="menuTitle">Progress: 10-20%</span> <span class="menuSummary">14 September to 24 September 2025</span></a></li>
+							<li><a id="disassembly_diary_progress_20-30-percent" href="/disassembly-diary/progress_20-30-percent.html"><span class="menuTitle">Progress: 20-30%</span> <span class="menuSummary">24 September to 16 October 2025</span></a></li>
+							<li><a id="disassembly_diary_progress_30-40-percent" href="/disassembly-diary/progress_30-40-percent.html"><span class="menuTitle">Progress: 30-40%</span> <span class="menuSummary">16 October to 28 October 2025</span></a></li>
+							<li><a id="disassembly_diary_progress_40-50-percent" href="/disassembly-diary/progress_40-50-percent.html"><span class="menuTitle">Progress: 40-50%</span> <span class="menuSummary">29 October to 11 November 2025</span></a></li>
+							<li><a id="disassembly_diary_progress_50-60-percent" href="/disassembly-diary/progress_50-60-percent.html"><span class="menuTitle">Progress: 50-60%</span> <span class="menuSummary">11 November to 20 November 2025</span></a></li>
+							<li><a id="disassembly_diary_progress_60-70-percent" href="/disassembly-diary/progress_60-70-percent.html"><span class="menuTitle">Progress: 60-70%</span> <span class="menuSummary">20 November to 5 December 2025</span></a></li>
+							<li><a id="disassembly_diary_progress_70-80-percent" href="/disassembly-diary/progress_70-80-percent.html"><span class="menuTitle">Progress: 70-80%</span> <span class="menuSummary">5 December to 16 December 2025</span></a></li>
+							<li><a id="disassembly_diary_progress_80-80-percent" href="/disassembly-diary/progress_80-80-percent.html"><span class="menuTitle">Progress: 80-80%</span> <span class="menuSummary">16 December to 22 December 2025</span></a></li>
+							<li><a id="disassembly_diary_progress_90-100-percent" href="/disassembly-diary/progress_90-100-percent.html"><span class="menuTitle">Progress: 90-100%</span> <span class="menuSummary">22 December to 31 December 2025</span></a></li>
+							<li><a id="disassembly_diary_deep_dives" href="/disassembly-diary/deep_dives.html"><span class="menuTitle">Deep dives</span> <span class="menuSummary">31 January to 12 April 2026</span></a></li>
+						</ul>
+					</li>
 					<li id="disassembly_websites"><span class="menuTitle">Creating my disassembly websites</span>
 						<span class="menuSummary menuSummarySubmenu">The scripts that generate my source code sites</span>
 						<ul id="submenu_disassembly_websites">
