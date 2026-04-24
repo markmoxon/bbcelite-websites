@@ -452,6 +452,19 @@
 									<li><a id="disc_indexes_macros" href="/disc/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the BBC Micro disc version of Elite</span></a></li>
 								</ul>
 							</li>
+							<li id="demo_indexes"><span class="menuTitle">Demonstration Disc source code indexes</span>
+								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the Elite Demonstration Disc</span>
+								<ul id="submenu_demo_indexes">
+									<li class="menuItemHeader">A-Z indexes for the Elite Demonstration Disc</li>
+									<li><a id="demo_indexes_a-z" href="/demo/indexes/a-z.html"><span class="menuTitle">A-Z index of the source code</span> <span class="menuSummary">An index of every subroutine, entry point, variable, workspace and macro in the source code</span></a></li>
+									<li><a id="demo_indexes_source_code_cross-references" href="/demo/articles/source_code_cross-references.html"><span class="menuTitle">Source code cross-references</span> <span class="menuSummary">Every label and variable in the source code and where they are used</span></a></li>
+									<li class="menuItemHeader">Indexes by category for the Elite Demonstration Disc</li>
+									<li><a id="demo_indexes_subroutines" href="/demo/indexes/subroutines.html"><span class="menuTitle">List of all subroutines by category</span> <span class="menuSummary">Subroutines in the Elite Demonstration Disc</span></a></li>
+									<li><a id="demo_indexes_variables" href="/demo/indexes/variables.html"><span class="menuTitle">List of all variables by category</span> <span class="menuSummary">Variables in the Elite Demonstration Disc</span></a></li>
+									<li><a id="demo_indexes_workspaces" href="/demo/indexes/workspaces.html"><span class="menuTitle">List of all workspaces by category</span> <span class="menuSummary">Workspaces in the Elite Demonstration Disc</span></a></li>
+									<li><a id="demo_indexes_macros" href="/demo/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the Elite Demonstration Disc</span></a></li>
+								</ul>
+							</li>
 							<li id="electron_indexes"><span class="menuTitle">Acorn Electron source code indexes</span>
 								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the Electron version of Elite</span>
 								<ul id="submenu_electron_indexes">
@@ -560,6 +573,7 @@
 							<li class="menuItemHeader">Source code statistics</li>
 							<li><a id="compare_statistics_cassette_statistics" href="/cassette/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the BBC Micro cassette version</span> <span class="menuSummary">A breakdown of the BBC Micro cassette source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_disc_statistics" href="/disc/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the BBC Micro disc version</span> <span class="menuSummary">A breakdown of the BBC Micro disc source code by category, type and number of instructions</span></a></li>
+							<li><a id="compare_statistics_demo_statistics" href="/demo/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Elite Demonstration Disc</span> <span class="menuSummary">A breakdown of the Elite Demonstration Disc source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_electron_statistics" href="/electron/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Acorn Electron version</span> <span class="menuSummary">A breakdown of the Acorn Electron source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_sp_statistics" href="/6502sp/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the 6502 Second Processor version</span> <span class="menuSummary">A breakdown of the 6502 Second Processor source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_c64_statistics" href="/c64/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Commodore 64 version</span> <span class="menuSummary">A breakdown of the Commodore 64 source code by category, type and number of instructions</span></a></li>
