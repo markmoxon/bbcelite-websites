@@ -139,6 +139,8 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 		$twitter_image = 'https://elite.bbcelite.com/images/cassette/github-social-preview.png';
 	} elseif (str_starts_with($page_parameter1, 'disc_') || str_starts_with($page_parameter2, 'disc_')) {
 		$twitter_image = 'https://elite.bbcelite.com/images/disc/github-social-preview.png';
+	} elseif (str_starts_with($page_parameter1, 'demo_') || str_starts_with($page_parameter2, 'demo_')) {
+		$twitter_image = 'https://elite.bbcelite.com/images/demo/github-social-preview.png';
 	} elseif (str_starts_with($page_parameter1, 'electron_') || str_starts_with($page_parameter2, 'electron_')) {
 		$twitter_image = 'https://elite.bbcelite.com/images/electron/github-social-preview.png';
 	} elseif (str_starts_with($page_parameter1, 'c64_') || str_starts_with($page_parameter2, 'c64_')) {
