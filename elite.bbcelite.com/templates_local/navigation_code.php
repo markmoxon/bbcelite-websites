@@ -19,6 +19,15 @@
 						</ul>
 					</li>
 
+					<li id="demo_sources"><span class="menuTitle">Elite Demonstration Disc source code</span>
+						<span class="menuSummary menuSummarySubmenu">Acornsoft's demo version of BBC Micro Elite</span>
+						<ul id="submenu_demo_sources">
+							<li class="menuItemHeader">Version information</li>
+							<li><a id="demo_sources_index" href="/demo/"><span class="menuTitle">About the Elite Demonstration Disc</span><span class="menuSummary">Information on the self-playing version of Elite</span></a></li>
+		                    <?php include('navigation_demo.php'); ?>
+						</ul>
+					</li>
+
 					<li id="electron_sources"><span class="menuTitle">Acorn Electron source code</span>
 						<span class="menuSummary menuSummarySubmenu">A cut-down version for the Beeb's little brother</span>
 						<ul id="submenu_electron_sources">

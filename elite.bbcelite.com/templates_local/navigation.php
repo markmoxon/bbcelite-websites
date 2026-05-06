@@ -244,6 +244,16 @@
 									<li><a id="deep_dives_saving_and_loading_the_competition_code" href="/deep_dives/the_competition_code.html"><span class="menuTitle">The competition code</span> <span class="menuSummary">All the information that's hidden in the Elite competition code</span></a></li>
 								</ul>
 							</li>
+							<li id="deep_dives_maths"><span class="menuTitle">Demonstration modes</span> <span class="menuSummary menuSummarySubmenu">Self-playing demos and Star Wars scroll text</span>
+								<ul id="submenu_deep_dives_demonstration_modes">
+									<li class="menuItemHeader">Demonstration modes</li>
+									<li><a id="deep_dives_demonstration_modes_the_elite_demonstration_disc" href="/deep_dives/the_elite_demonstration_disc.html"><span class="menuTitle">The Elite Demonstration Disc</span> <span class="menuSummary">The secrets of Acornsoft's self-playing demo for the BBC Micro</span></a></li>
+									<li><a id="deep_dives_demonstration_modes_code_changes_in_the_demonstration_disc" href="/deep_dives/code_changes_in_the_demonstration_disc.html"><span class="menuTitle">Code changes in the Demonstration Disc</span> <span class="menuSummary">The differences between the cassette version and the demonstration disc</span></a></li>
+									<li><a id="deep_dives_demonstration_modes_6502sp_demo_mode" href="/deep_dives/6502sp_demo_mode.html"><span class="menuTitle">The 6502 Second Processor demo mode</span> <span class="menuSummary">All about the Star Wars-esque scroll text in the Tube-based version of Elite</span></a></li>
+									<li><a id="deep_dives_demonstration_modes_the_nes_combat_demo" href="/deep_dives/the_nes_combat_demo.html"><span class="menuTitle">The NES combat demo</span> <span class="menuSummary">How the scroll text and combat practice works</span></a></li>
+									<li><a id="deep_dives_nes_auto-deep_dives_demonstration_modes_auto" href="/deep_dives/auto-playing_the_combat_demo.html"><span class="menuTitle">Auto-playing the NES combat demo</span> <span class="menuSummary">The magic of watching Elite playing itself</span></a></li>
+								</ul>
+							</li>
 							<li class="menuItemHeader">Version-specific deep dives</li>
 							<li id="deep_dives_memory_maps"><span class="menuTitle">Memory maps</span> <span class="menuSummary menuSummarySubmenu">Details of memory usage in the different versions</span>
 								<ul id="submenu_deep_dives_memory_maps">
@@ -269,7 +279,6 @@
 								<ul id="submenu_deep_dives_6502sp_elite">
 									<li class="menuItemHeader">6502 Second Processor Elite</li>
 									<li><a id="deep_dives_6502sp_elite_6502sp_tube_communication" href="/deep_dives/6502sp_tube_communication.html"><span class="menuTitle">6502 Second Processor Tube communication</span> <span class="menuSummary">How the 6502 Second Processor version of Elite talks over the Tube</span></a></li>
-									<li><a id="deep_dives_6502sp_elite_6502sp_demo_mode" href="/deep_dives/6502sp_demo_mode.html"><span class="menuTitle">The 6502 Second Processor demo mode</span> <span class="menuSummary">All about the Star Wars-esque scroll text in the Tube-based version of Elite</span></a></li>
 									<li><a id="deep_dives_6502sp_elite_the_tina_hook" href="/deep_dives/the_tina_hook.html"><span class="menuTitle">The TINA hook</span> <span class="menuSummary">Adding your own custom code to the 6502 Second Processor version using TINA</span></a></li>
 									<li><a id="deep_dives_6502sp_elite_secrets_of_the_executive_version" href="/deep_dives/secrets_of_the_executive_version.html"><span class="menuTitle">Secrets of the Executive version</span> <span class="menuSummary">Infinite jumps, retro-futuristic fonts, speech support... and Pizzasoft?</span></a></li>
 								</ul>
@@ -302,8 +311,6 @@
 									<li><a id="deep_dives_nes_image_and_data_compression" href="/deep_dives/image_and_data_compression.html"><span class="menuTitle">Image and data compression</span> <span class="menuSummary">How images and data are compressed in NES Elite</span></a></li>
 									<li><a id="deep_dives_nes_displaying_two-layer_images" href="/deep_dives/displaying_two-layer_images.html"><span class="menuTitle">Displaying two-layer images</span> <span class="menuSummary">The beautiful pixel art of the commander and system images</span></a></li>
 									<li><a id="deep_dives_nes_sprite_usage_in_nes_elite" href="/deep_dives/sprite_usage_in_nes_elite.html"><span class="menuTitle">Sprite usage in NES Elite</span> <span class="menuSummary">Stardust, scanners, images, crosshairs and more</span></a></li>
-									<li><a id="deep_dives_nes_the_nes_combat_demo" href="/deep_dives/the_nes_combat_demo.html"><span class="menuTitle">The NES combat demo</span> <span class="menuSummary">How the scroll text and combat practice works</span></a></li>
-									<li><a id="deep_dives_nes_auto-playing_the_combat_demo" href="/deep_dives/auto-playing_the_combat_demo.html"><span class="menuTitle">Auto-playing the combat demo</span> <span class="menuSummary">The magic of watching Elite playing itself</span></a></li>
 								</ul>
 							</li>
 							<li id="deep_dives_elite-a"><span class="menuTitle">Elite-A</span> <span class="menuSummary menuSummarySubmenu">How Angus Duggan modified the original Elite</span>
@@ -452,6 +459,19 @@
 									<li><a id="disc_indexes_macros" href="/disc/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the BBC Micro disc version of Elite</span></a></li>
 								</ul>
 							</li>
+							<li id="demo_indexes"><span class="menuTitle">Demonstration Disc source code indexes</span>
+								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the Elite Demonstration Disc</span>
+								<ul id="submenu_demo_indexes">
+									<li class="menuItemHeader">A-Z indexes for the Elite Demonstration Disc</li>
+									<li><a id="demo_indexes_a-z" href="/demo/indexes/a-z.html"><span class="menuTitle">A-Z index of the source code</span> <span class="menuSummary">An index of every subroutine, entry point, variable, workspace and macro in the source code</span></a></li>
+									<li><a id="demo_indexes_source_code_cross-references" href="/demo/articles/source_code_cross-references.html"><span class="menuTitle">Source code cross-references</span> <span class="menuSummary">Every label and variable in the source code and where they are used</span></a></li>
+									<li class="menuItemHeader">Indexes by category for the Elite Demonstration Disc</li>
+									<li><a id="demo_indexes_subroutines" href="/demo/indexes/subroutines.html"><span class="menuTitle">List of all subroutines by category</span> <span class="menuSummary">Subroutines in the Elite Demonstration Disc</span></a></li>
+									<li><a id="demo_indexes_variables" href="/demo/indexes/variables.html"><span class="menuTitle">List of all variables by category</span> <span class="menuSummary">Variables in the Elite Demonstration Disc</span></a></li>
+									<li><a id="demo_indexes_workspaces" href="/demo/indexes/workspaces.html"><span class="menuTitle">List of all workspaces by category</span> <span class="menuSummary">Workspaces in the Elite Demonstration Disc</span></a></li>
+									<li><a id="demo_indexes_macros" href="/demo/indexes/macros.html"><span class="menuTitle">List of all macros by category</span> <span class="menuSummary">Macros used in the Elite Demonstration Disc</span></a></li>
+								</ul>
+							</li>
 							<li id="electron_indexes"><span class="menuTitle">Acorn Electron source code indexes</span>
 								<span class="menuSummary menuSummarySubmenu">A-Z indexes and indexes by category for the Electron version of Elite</span>
 								<ul id="submenu_electron_indexes">
@@ -560,6 +580,7 @@
 							<li class="menuItemHeader">Source code statistics</li>
 							<li><a id="compare_statistics_cassette_statistics" href="/cassette/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the BBC Micro cassette version</span> <span class="menuSummary">A breakdown of the BBC Micro cassette source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_disc_statistics" href="/disc/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the BBC Micro disc version</span> <span class="menuSummary">A breakdown of the BBC Micro disc source code by category, type and number of instructions</span></a></li>
+							<li><a id="compare_statistics_demo_statistics" href="/demo/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Elite Demonstration Disc</span> <span class="menuSummary">A breakdown of the Elite Demonstration Disc source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_electron_statistics" href="/electron/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Acorn Electron version</span> <span class="menuSummary">A breakdown of the Acorn Electron source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_sp_statistics" href="/6502sp/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the 6502 Second Processor version</span> <span class="menuSummary">A breakdown of the 6502 Second Processor source code by category, type and number of instructions</span></a></li>
 							<li><a id="compare_statistics_c64_statistics" href="/c64/articles/source_code_statistics.html"><span class="menuTitle">Code statistics for the Commodore 64 version</span> <span class="menuSummary">A breakdown of the Commodore 64 source code by category, type and number of instructions</span></a></li>

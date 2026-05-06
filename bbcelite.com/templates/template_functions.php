@@ -139,6 +139,8 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 		$twitter_image = 'https://elite.bbcelite.com/images/cassette/github-social-preview.png';
 	} elseif (str_starts_with($page_parameter1, 'disc_') || str_starts_with($page_parameter2, 'disc_')) {
 		$twitter_image = 'https://elite.bbcelite.com/images/disc/github-social-preview.png';
+	} elseif (str_starts_with($page_parameter1, 'demo_') || str_starts_with($page_parameter2, 'demo_')) {
+		$twitter_image = 'https://elite.bbcelite.com/images/demo/github-social-preview.png';
 	} elseif (str_starts_with($page_parameter1, 'electron_') || str_starts_with($page_parameter2, 'electron_')) {
 		$twitter_image = 'https://elite.bbcelite.com/images/electron/github-social-preview.png';
 	} elseif (str_starts_with($page_parameter1, 'c64_') || str_starts_with($page_parameter2, 'c64_')) {
@@ -181,8 +183,8 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 		<meta name="og:title" content="<?php echo $meta_title ?>">
 		<meta name="og:image" content="<?php echo $twitter_image ?>">
 
-		<link rel="stylesheet" href="/css/20260330/main.min.css">
-		<link rel="stylesheet" href="/css/20260330/print.min.css" media="print">
+		<link rel="stylesheet" href="/css/20260505/main.min.css">
+		<link rel="stylesheet" href="/css/20260505/print.min.css" media="print">
 
 		<link rel="icon" type="image/png" href="/favicons/favicon-16x16.png" sizes="16x16">
 		<link rel="icon" type="image/png" href="/favicons/favicon-32x32.png" sizes="32x32">
@@ -190,7 +192,7 @@ function page_header($folder, $name, $meta_title, $title, $description, $page_ty
 
 		<link rel="home" href="/" title="Home page">
 
-		<script defer="defer" src="/javascript/20260330/main.min.js" onload="<?php echo $initialise_page ?>"></script>
+		<script defer="defer" src="/javascript/20260505/main.min.js" onload="<?php echo $initialise_page ?>"></script>
 	</head>
 
 	<body<?php echo $body_class ?>>
