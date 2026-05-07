@@ -8,43 +8,50 @@ page_header("disassembly_diary", "progress_0-10-percent.html", "Progress: 0-10%"
 				</div>
 
 				<div class="codeBlockWrapper">
-					<div class="codeBlock article">
+					<div class="codeBlock article fullWidth">
 						<h2 class="articleSubheader deepDive">3 September to 14 September 2025</h2>
 
 						<h2 class="articleSubheader">3/9/25<br>
 													 ======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Hunt down disc images (hfe, SSD)
+</pre>
 
-<hr>
+<pre>
 Extract files using Disc Image Manager or JSBeeb (latter for hfe)
+</pre>
 
-<hr>
+<pre>
 Analyse with crc32 into a spreadsheet to pick out suitable binaries
+</pre>
 
-<hr>
+<pre>
 Extract game binary from SSD version of hfe for Play It Again Sam 6
   Use JSBeeb to convert hfe to ssd
     Doesn't work with original Firebird, but does work with PIAS 6 version
   Load into HexEdit and search for game binary, comparing it to binary from BBC
 Micro Games Archive on bbcmicro.co.uk, so we know we have the genuine game
 binary from the PIAS 6 disc
+</pre>
 
-<hr>
+<pre>
 Create empty git repo
+</pre>
 
-<hr>
+<pre>
 Add skeleton build process that simply adds game binaries to a disc image
+</pre>
 
-<hr>
+<pre>
 Create a py8dis setup within the repo
 
 This shows two crc scores that match the py8dis output with the game binary so
 we can start to work on the py8dis output to get it to a point where we can
 take it and work on it manually
+</pre>
 
-<hr>
+<pre>
 Start by simply loading the binary at its load address of &1900 and setting an
 entry point of &6D00 (which we take from the file attributes):
 
@@ -60,8 +67,9 @@ And suddenly we have quite a good disassembly that we can start to pick apart
 https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/blob/
 8b0e5db87b86a19bcd50d45bcb094b018fdb6de4/2-build-files/py8dis/the-sentinel-
 source.asm
+</pre>
 
-<hr>
+<pre>
 Next, go through the disassembly and try to identify which parts of the code
 are just data blocks, and which are code that hasn't been disassembled
 
@@ -72,8 +80,9 @@ byte(0x0400, 0x0800, cols=8)
 
 This pumps out a bunch of labels like L0A40, so we check these in the code to
 make sure they look like they are variables (which they are)
+</pre>
 
-<hr>
+<pre>
 In a number of places we suddenly fall from data into code, like this:
 
  LSR L008B                                                            ; 0E70
@@ -104,8 +113,9 @@ and now 0E75 onwards is code again:
  STA L0C53                                                            ; 0E7E
  LDA L0075                                                            ; 0E81
  STA L0C54                                                            ; 0E83
+</pre>
 
-<hr>
+<pre>
 Same for lots of points where py8dis thinks this is data:
 
 entry(0x0E75, "sub_C0E75")
@@ -120,8 +130,9 @@ instructions
 
 This is unlikely, so these are probably variables, with the code starting at
 1224, which is indeed the case
+</pre>
 
-<hr>
+<pre>
 Sometimes we try to convert data into code, and it just doesn't look right
 
 Example is at 137D and 138C - these are almost certainly lookup tables of some
@@ -131,7 +142,7 @@ kind, so we can make these EQUBs
 						<h2 class="articleSubheader">4/9/25<br>
 													 ======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Started looking through .Begin, and it moves a block of memory from &4100 to
 &5800, so we need to capture this in the disassembly somehow
 
@@ -148,8 +159,8 @@ py8dis source:
 https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/blob/
 b8550a6b835347046ea29b40f54e1a3630b4800b/2-build-files/py8dis/the-sentinel-
 source.py
-
-<hr>
+</pre>
+<pre>
 Tidied up data blocks from &4A00 to &5560 by applying byte() to them
 
 For some, like this:
@@ -189,8 +200,9 @@ L5501 = L5500+1
 
 There is no doubt a way to do this in py8dis, but I'm a lazy hacker and just
 want to get into the text editor stage as quickly as possible.
+</pre>
 
-<hr>
+<pre>
 Sometimes it looks as if a label should be inserted, like this:
 
  EQUB &87, &87, &87, &87, &87, &87, &0F, &0F                          ; 58F8
@@ -204,8 +216,9 @@ the L5904 data than the &58xx data, so we insert a label with:
 label(0x5900, "L5900")
 
 If it's wrong, it doesn't matter.
+</pre>
 
-<hr>
+<pre>
 If we make our byte() blocks too big, then we get output like this:
 
 .L5900
@@ -239,8 +252,9 @@ Is this one long lookup table that is accessed in chunks, or is it a sequence
 of lookup tables? Probably the latter, but I can't see any obvious blocks to
 split it into, so we can work this out as we work through the disassembly
 later.
+</pre>
 
-<hr>
+<pre>
 Meanwhile, at 5980 we have this:
 
  EQUB &78, &FA, &FE, &FE, &78, &00, &01, &01                          ; 5968
@@ -269,8 +283,9 @@ And another at 5260:
  EQUB &42, &41, &45, &44, &40, &41, &47, &4C                          ; 5280
 
 Ditto 4F40, 5080, 51C0
+</pre>
 
-<hr>
+<pre>
 Then there are remnants of source code in the binary, which I've labelled as
 Noise1 and Noise2/3 (for "workspace noise").
 
@@ -280,8 +295,9 @@ label(0x5B00, "Noise3")
 
 It looks like the latter is used as variable space, as there are lots of
 pointers into the noise, but we'll see.
+</pre>
 
-<hr>
+<pre>
 Now, look at the labels py8dis has put in there. They seem OK... but what about
 this one?
 
@@ -311,8 +327,9 @@ to give:
  JSR sub_C5E2C                                                        ; 35A6
 
 which at least gets rid of the (surely) incorrect L83A9 label.
+</pre>
 
-<hr>
+<pre>
 So now we are done:
 
 https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/tree/
@@ -328,8 +345,9 @@ Copy and paste into main source file, and:
 Split into sections (configuration variables, zero page etc.)
 Strip comments with a regex
 Add blank line around all .labels with a regex
+</pre>
 
-<hr>
+<pre>
 Now to start editing in a text editor (I use VSCode and BBEdit), checking the
 build after each change to make sure a matching binary is still being built
 </pre>
@@ -337,12 +355,13 @@ build after each change to make sure a matching binary is still being built
 						<h2 class="articleSubheader">5/9/25<br>
 													 ======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Minor tidying of EQUB blocks:
 0x5FFF to 0x6100 (do in py8dis)
 Manually wrap blocks of zeroes in 0xC00 workspace
+</pre>
 
-<hr>
+<pre>
 Tidy up sub_ labels, ready for adding headers
 
 Search for "B.. sub_" and check whether the destination labels also have JSRs
@@ -351,23 +370,28 @@ sub_C3763, sub_C5560 have no JSRs only branches, so remove sub_ from these
 Also search for "JMP sub_" and check whether the destination labels also have
 JSRs
 (All matched JMPs also have JSRs, so nothing to change here)
+</pre>
 
-<hr>
+<pre>
 Convert OSBYTE calls, SHEILA pokes and OS variable names to house style
+</pre>
 
-<hr>
+<pre>
 Convert vector addresses to variables (e.g. IRQ1V)
+</pre>
 
-<hr>
+<pre>
 Move L49xx labels into correct location within main game code, so config and
 workspace variable blocks contain the correct declarations
+</pre>
 
-<hr>
+<pre>
 Look for labels that are JSR'd but aren't in the format sub_
 by looking for JSR C and changing the destination label to sub_C
 sub_C39D9, sub_C125A, sub_C3194, sub_C1200 etc.
+</pre>
 
-<hr>
+<pre>
 Look for RTS followed by a code label that isn't a sub_, judging each on their
 own merit (convert if it looks like a self-contained bit of code rather than a
 part of a multi-part routine)
@@ -393,14 +417,17 @@ but C2136 is OK as it is:
 
  ADC L2140,Y
  ...
+</pre>
 
-<hr>
+<pre>
 Convert return_xx to CREXX so all in-code labels are 5 chars and start with C
+</pre>
 
-<hr>
+<pre>
 Convert loop_C1234 to P1234 for the same reason
+</pre>
 
-<hr>
+<pre>
 Now that we have added as many correct sub_ links as possible, we add
 subroutine headers:
 
@@ -440,16 +467,19 @@ Manually add headers to Begin, Entry and NoiseX
 
 Scroll through and look for code that needs a header, e.g. L5FFF and C5560
 (latter also needs to be sub_C5560)
+</pre>
 
-<hr>
+<pre>
 Convert L0C00 block to a workspace
+</pre>
 
-<hr>
+<pre>
 Remove headers for loops, e.g. loop_C1054 (because I forgot to make the
 variable
 header replace case sensitive - oops!)
+</pre>
 
-<hr>
+<pre>
 Move parts of subroutines that come before main entry point into subroutine,
 e.g.
 
@@ -502,8 +532,9 @@ changes to:
  JSR check_if_object_to_update_is_visible
  BCS C1F78
  LDA #&19
+</pre>
 
-<hr>
+<pre>
 Remove sub_ headers when they are obviously not subroutines, e.g. change 
 
 \ ******************************************************************************
@@ -524,15 +555,18 @@ to:
 .C23C6
 
 L23C7 = C23C6+1
+</pre>
 
-<hr>
+<pre>
 Rename Noise1-3 to Lxxxx for consistency, adding details about the noise to the
 header
+</pre>
 
-<hr>
+<pre>
 Rename Begin to sub_C3F04 as it probably needs a better name
+</pre>
 
-<hr>
+<pre>
 Now to create a progress spreadsheet.
 
 Extract names and line numbers from source using regex:
@@ -589,7 +623,7 @@ Time to start documenting this source code!
 						<h2 class="articleSubheader">6/9/25<br>
 													 ======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Start by looking for maths lookup tables
 
 Good candidates are L3B00, L3D00 and L5980, as they gradually increase as the
@@ -606,8 +640,9 @@ L3D00 also seems to start at L3D02, but it's harder to calculate (GOT THIS FROM
 Z80 source, so not sure how to explain!)
 
 Convert to FOR loops for calculable tables
+</pre>
 
-<hr>
+<pre>
 Remove the need for the likes of:
 
 .L3E00
@@ -621,7 +656,7 @@ by inserting labels when they make sense
 						<h2 class="articleSubheader">7/9/25<br>
 													 ======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Only got 15 mins today, but it's an important 15 mins.
 
 And we're off! Entry becomes the first subroutine to be documented - every long
@@ -631,52 +666,61 @@ journey starts with a single step...
 						<h2 class="articleSubheader">9/9/25<br>
 													 ======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Continuing from Entry through ConfigureMachine and ClearMemory
 
 TIL about the addressable latch in the System VIA (used to set the screen
 memory address)
+</pre>
 
-<hr>
+<pre>
 Then into what looks like a main game loop, which contains a lot of JSRs within
 a loop
 
 Call it MainLoop, start to analyse what the JSRs might do by setting
 breakpoints
+</pre>
 
-<hr>
+<pre>
 First one is SetColourPalette, pretty simple VDU stuff
+</pre>
 
-<hr>
+<pre>
 Next one zeroes a load of memory blocks, so call it ResetVariables
+</pre>
 
-<hr>
+<pre>
 Next one draws the title screen, but if we simply run it the screen stays blue,
 so change the palette to the visible colour scheme (by changing the
 SetColourPalette from A=4 to A=0) and we can see it actually drawing the screen
 
 (See Quicktime video Drawing title screen)
+</pre>
 
-<hr>
+<pre>
 Can then dive into the DrawTitleScreen routine, which draws the title text and
 the Sentinel on the right
 
 The routine takes an argument in A that's 0 or &80; changing this either draws
 the title screen with The Sentinel, or it draws the landscape code screen with
 a robot
+</pre>
 
-<hr>
+<pre>
 Title text is in a variable that's passed to sub_C31CE that draws the letter,
 so name that routine DrawLetter3D
+</pre>
 
-<hr>
+<pre>
 The Sentinel or robot is drawn by a call to sub_C139B, so call this DrawObject
 for now
+</pre>
 
-<hr>
+<pre>
 The landscape code is drawn by sub_C3381, so call this DrawLandscapeCode
+</pre>
 
-<hr>
+<pre>
 SPOTTED WHILE EXPLORING:
 
 Turns out that sub_C0D03 is the same as Multiply8x8 in Revs, so that's a quick
@@ -688,7 +732,7 @@ And sub_C0F3E is GetAngleInRadians from Revs
 						<h2 class="articleSubheader">10/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Turns out there are more Revs subroutines in The Sentinel, so copy over the
 Revs comments for some quick wins:
 
@@ -697,11 +741,13 @@ sub_C0E75 is the same as GetRotationMatrix
 sub_C0F4A is Multiply8x16
 
 sub_C0F9E is Multiply16x16
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 5% barrier
+</pre>
 
-<hr>
+<pre>
 More Revs code:
 
 sub_C1007 is Absolute16Bit
@@ -712,38 +758,45 @@ sub_C0F62 is almost ScanKeyboard
 
 sub_C0D4A seems to contain chunks of the Divide16x16 routine from Revs, so copy
 that over
+</pre>
 
-<hr>
+<pre>
 Add labels to arctan and sin tables
 </pre>
 
 						<h2 class="articleSubheader">11/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 sub_C0D4A contains a lot more code then simple division, so document that as
 GetAngleFromCoords
+</pre>
 
-<hr>
+<pre>
 L3D02 and sub_C565F contain a calculation for the hypotenuse, see "Hypotenuse
 calculation" PDF and TXT, so document it as GetHypotenuse
+</pre>
 
-<hr>
+<pre>
 sub_C1C6C is close to MultiplyCoords
+</pre>
 
-<hr>
+<pre>
 Go through and document all calls to the Revs-based routines above
+</pre>
 
-<hr>
+<pre>
 Lay out zero page and workspaces so each variable has its own comment
+</pre>
 
-<hr>
+<pre>
 Identified GetRandomNumber routine - it appears to be a linear feedback shift
 register with EOR feedback, see
 https://www.nesdev.org/wiki/Random_number_generator/
 Linear_feedback_shift_register_(advanced)#Overlapped_24_and_32_bit_LFSR
+</pre>
 
-<hr>
+<pre>
 Relly starting to feel like I'm unpeeling a Geoff Crammond game now, with such
 a clear development path from Revs
 </pre>
@@ -751,13 +804,15 @@ a clear development path from Revs
 						<h2 class="articleSubheader">14/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Documented GetRandomNumber
+</pre>
 
-<hr>
+<pre>
 sub_C36AD prints text on-screen, takes a token argument in X -> PrintTextToken
+</pre>
 
-<hr>
+<pre>
 There's a token lookup table at L5784
 
 Tokens end in &FF, so insert token0, token1 labels after each &FF and replace
@@ -765,15 +820,18 @@ lookups with calculated offsets to tokens
 
 Turns out tokens are recursive, with characters 200+token expanding into
 recursive tokens
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 10% barrier
+</pre>
 
-<hr>
+<pre>
 Document all the text tokens and text token routines, and add comments to all
 the calls
+</pre>
 
-<hr>
+<pre>
 Keep following the MainLoop routine:
 
 ReadKeyboard
@@ -784,7 +842,7 @@ EnableKeyboard
 						<h2 class="articleSubheader">15/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Continuing to follow the threads from MainLoop, by documenting various small
 number-printing routines:
 
@@ -792,8 +850,9 @@ PrintNumber
 PrintDigit
 Print2DigitBCD
 PrintLandscapeCode
+</pre>
 
-<hr>
+<pre>
 And then following these rabbit holes from MainLoop:
 
 ReadNumber
@@ -805,13 +864,15 @@ SeedLandscape
 Rest of MainLoop
 
 Into a routine that plays the game - let's call it PlayGame for now
+</pre>
 
-<hr>
+<pre>
 There is some kind of return stack shenanigans here, as there's a JSR PlayGame
 that would return to the part of the code that says "wrong secret code", which
 can't be right
+</pre>
 
-<hr>
+<pre>
 Poking through the PlayGame routine, looks like it might be setting the
 landscape heights, a bit like Lander (PlayGame might not be the best routine
 name - might be GenerateLandscape or something)
@@ -820,7 +881,7 @@ name - might be GenerateLandscape or something)
 						<h2 class="articleSubheader">16/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 sub_C2AF2 is the next subroutine to analyse in PlayGame, and it contains STA
 (L005E),Y
 
@@ -837,8 +898,9 @@ set in two places, like this:
 
 One of these is in sub_C2B78, which is called by sub_C2AF2, so let's analyse
 that first
+</pre>
 
-<hr>
+<pre>
 sub_C2AF2 takes two arguments in L0024 and L0026, and it sets L005E and
 calculates Y, so it sets up the values for the STA (L005E),Y instruction
 
@@ -851,8 +913,9 @@ So STA (L005E),Y accesses the table at L0400, what is it?
 sub_C2AF2 calls sub_C2B78 with L0026 and L0024 ranging from 0 to &1F in a
 nested loop - surely this is some kind of two-dimensional landscape thing,
 maybe tiles, maybe corner coordinates like Lander?
+</pre>
 
-<hr>
+<pre>
 In MainLoop, the next routine to be called is sub_C2B53, which calls sub_C2B90
 twice, and sub_C2B90 also contains STA (L005E),Y
 
@@ -867,11 +930,13 @@ Let's shove in some placeholder variable names, we can revisit them later:
 L0400-L0700 = tileData (as the landscape is made up of tiles)
 L005E = tileDataPage (as this contains a page address &xx00 into tileData)
 L005F = tileDataPage+1
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 15% barrier
+</pre>
 
-<hr>
+<pre>
 Looks like sub_C2B78 is GetTileData, as it returns a value from tileData, with
 the address being calculated from L0024 and L0026 (which ranging from 0 to &1F
 in the nested loop in sub_C2AF2)
@@ -882,8 +947,9 @@ L0024 = xTile
 The tile number along the x-axis, where the x-axis goes from left to right
 L0026 = zTile
 The tile number along the z-axis, where the z-axis goes into the screen 
+</pre>
 
-<hr>
+<pre>
 Tile data table is made up of sequences of 32-tile columns going into the
 screen, where each column goes from z = 0 to 31 with the same x-coordinate,
 with the columns interleaved in steps of 4 like this:
@@ -926,8 +992,9 @@ with the columns interleaved in steps of 4 like this:
 
 Weird! I wonder why it's interleaved like this. It's reminiscent of the way the
 Apple II hi-res screen mode interleaves its pixel lines. And that's bonkers!
+</pre>
 
-<hr>
+<pre>
 Next up is sub_C2AF2, which takes an argument in A that performs various
 actions on the tile data (such as zeroing it, setting it to random values,
 swapping nibbles(?) and doing some kind of scaling and capping)
@@ -937,11 +1004,13 @@ Documented sub_C2AF2 -> ProcessTileData
 It contains some very weird multiplication and capping stuff, probably need to
 look at this again later as it seems to be converting random tile data into the
 stepped landscape in the game (i.e. tile data values from 1 to 11)
+</pre>
 
-<hr>
+<pre>
 PlayGame is probably better renamed as GenerateLandscape
+</pre>
 
-<hr>
+<pre>
 More speculative naming:
 
 sub_C2B53
@@ -966,7 +1035,7 @@ Smooth the whole landscape, strip by strip?
 						<h2 class="articleSubheader">18/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Started documenting the SmoothTileData and SmoothTileStrip routines
 
 Not sure that landscapeHeight actually seeds the heights, as its content seems
@@ -981,7 +1050,7 @@ will probably change this again at some point!
 						<h2 class="articleSubheader">19/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Finishing documenting the SmoothTileStrip routine
 
 Follow through the strange stack return address modifications in
@@ -991,8 +1060,9 @@ We either return to the last part of the main loop, so rename this to
 SecretCodeError, or we modify the stack so we return to PreviewLandscape. This
 goes via some tricky code at JumpToPreview that is easy to misinterpret (which
 I did at first).
+</pre>
 
-<hr>
+<pre>
 Rename "landscape code" to "secret code" throughout as that's what the game
 calls it
 </pre>
@@ -1000,13 +1070,14 @@ calls it
 						<h2 class="articleSubheader">22/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Document sub_C2C4E -> SetTileSlope
 
 This compares tiles with neighbours to work out a slope - begs the question,
 are we storing tiles or tile corners here? Might need to look into that
+</pre>
 
-<hr>
+<pre>
 Finish documenting GenerateLandscape
 
 Ah... so looking at a screenshot of the preview screen, the landscape is 31
@@ -1025,32 +1096,35 @@ everything is clear and understandable. By me as well as the audience!
 						<h2 class="articleSubheader">23/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Analysing from PreviewLandscape down, starting with sub_C1410
 
 Rename sub_C33F0 -> GetEnemyCount, uses a weird bit-counting scheme to get a
 random number
+</pre>
 
-<hr>
+<pre>
 landscapeColour2 and 3 are for setting the game palette depending on number of
 enemies
+</pre>
 
-<hr>
+<pre>
 Started poking into sub_C14EB (another subroutine of sub_C1410)
 </pre>
 
 						<h2 class="articleSubheader">24/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Some speculative naming for the subroutines off the PreviewLandscape routine,
 given some quick analysis:
 
 sub_C1410 -> SpawnEnemies
 sub_C14EB -> CreateEnemies
 sub_C1440 -> SpawnPlayerTrees
+</pre>
 
-<hr>
+<pre>
 Continue analysing by looking at CreateEnemies
 
 Analyse sub_C15BC, rename it to GetHighestTiles, as goes through the landscape
@@ -1059,11 +1133,13 @@ block
 
 Data is stored in various data blocks from &5B10, so name them: maxTileHeight,
 xMaxTileHeight, zMaxTileHeight
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 20% barrier
+</pre>
 
-<hr>
+<pre>
 Back to CreateEnemies itself
 
 If enemy count = 1 then we must be putting the Sentinel on the landscape, so
@@ -1072,39 +1148,46 @@ when X = 0 we are spawning the Sentinel
 sub_C210E takes an argument that depends on whether we are spawning the
 Sentinel vs Sentry and sticks it in a table - rename to SpawnObject for the
 time being, argument is objectType?
+</pre>
 
-<hr>
+<pre>
 It seems that objects have slots, like Elite, with flags stored in L0100 (name
 to objectFlags), where bit 7 set means slot is empty
+</pre>
 
-<hr>
+<pre>
 There are 64 objects, as SpawnObject loops through all 64 slots looking for an
 empty slot
+</pre>
 
-<hr>
+<pre>
 There's a table at L0A40 that stores the argument, objectType, so call this
 objectTypes
+</pre>
 
-<hr>
+<pre>
 Also we can organise the blocks and labels around 0A00 better, as they clearly
 split up into blocks of 64 bytes (so they probably contain object-related data
+</pre>
 
-<hr>
+<pre>
 Start looking at CreateEnemies > sub_C158D
 </pre>
 
 						<h2 class="articleSubheader">26/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 sub_C158D gets a list of tile blocks that are at a specific height, so rename
 to GetTilesAtHeight and document
+</pre>
 
-<hr>
+<pre>
 Rename CreateEnemies -> AddEnemiesToTiles as that's what it does ("create" is a
 bit vague, especially as we also have a SpawnEnemies routine already)
+</pre>
 
-<hr>
+<pre>
 Added labels to tile object coordinates from L0900 onwards:
 xTileObject, yTileObject, zTileObject
 </pre>
@@ -1112,10 +1195,11 @@ xTileObject, yTileObject, zTileObject
 						<h2 class="articleSubheader">30/9/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 SpawnPlayerTrees: split into SpawnPlayer, SpawnTrees and CheckSecretCode
+</pre>
 
-<hr>
+<pre>
 Continue working through AddEnemiesToTiles, the next subroutine to check is
 sub_C1EFF, which adds object to tile (so call it PlaceObjectOnTile)
 
@@ -1140,18 +1224,21 @@ First one contains tile slope and height, second one contains object slot
 number.
 
 Clever packing of data here.
+</pre>
 
-<hr>
+<pre>
 Also, objectFlags can contain an object slot number, if objects are stacked. We
 can only stack objects on object types 3 and 6, so one of these is presumably
 the boulder. The other is probably the Sentinel's tower?
+</pre>
 
-<hr>
+<pre>
 So xTileObject etc. seem to be object 3D coordinates in space, rather than
 tiles, but obviously objects are on tiles so there is overlap, but (xObject,
 yObject, zObject) is clearer.
+</pre>
 
-<hr>
+<pre>
 During first pass of AddEnemiesToTiles, and looking back at PlaceObjectOnTile,
 it turns out we add the Sentinel after adding an object of type 6, so 6 must be
 the tower and 3 must be the boulder. We already identified the Sentinel as type
@@ -1161,26 +1248,29 @@ the tower and 3 must be the boulder. We already identified the Sentinel as type
 						<h2 class="articleSubheader">1/10/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Penny dropped, y-axis must have fractional heights as boulders are not as tall
 as a single tile block, so presumably L0A00 = yObjectLo, and yObject must
 really be yObjectHi
 
 Update all uses of yObject to talk about the two-byte value
+</pre>
 
-<hr>
+<pre>
 Picking up the analysis of AddEnemiesToTiles, next subroutine is sub_C196A, not
 sure what that is so skip it to finish the first pass
+</pre>
 
-<hr>
+<pre>
 Big revamp of terminology: we need to talk about altitudes for y-coordinates
 instead of heights. "Object altitude" is its y-coordinate. "Object height" is
 how tall the object is. Boulders, for example, have a height of 0.5
 coordinates, while the Sentinel's tower have a height of 1.0 coordinates, but
 they can be at any altitude. Big manual search and replace to sort this out -
 it's worth it in the end for clarity's sake.
+</pre>
 
-<hr>
+<pre>
 Expand the final set of calculated labels so the only ones in the form Lxxxx =
 Lyyyy + z are code modification labels.
 
@@ -1194,21 +1284,23 @@ L49B6                = &49B6
 L49C1                = &49C1
 
 into proper labels and headers
+</pre>
 
-<hr>
+<pre>
 Roll back up the hierarchy to PreviewLandscape, next up is SpawnPlayer.
 
 This calls sub_C1224, which places the player below a specified height, so call
 it PlaceObjectBelow.
+</pre>
 
-<hr>
+<pre>
 Finish off comments in SpawnPlayer.
 </pre>
 
 						<h2 class="articleSubheader">2/10/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Next up is SpawnTrees, which is easy to document, but it contains some weird
 code at the end that isn't to do with trees.
 
@@ -1218,12 +1310,14 @@ checks the secret code (the other half is after landscapeColour3, and we
 already identified it as related to the secret code).
 
 So split them off into CheckSecretCode (Part 1 of 2) and Part 2.
+</pre>
 
-<hr>
+<pre>
 Calls sub_C3364 which returns a random number in BCD format, so
 GetRandomNumberBCD.
+</pre>
 
-<hr>
+<pre>
 Rename showCodeError flag -> doNotPlayLandscape, because we don't always show
 the secret code error when this is set (it's also set in another routine,
 sub_C2147, which affects how we return from the call to GenerateLandscape in
@@ -1240,7 +1334,7 @@ progress here...
 						<h2 class="articleSubheader">3/10/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 CheckSecretCode is a beast, but I finally understand it
 
 It uses various hacks, including obfuscation of the return address, checking
@@ -1251,25 +1345,28 @@ code and entered code
 Also using objectFlags (the Sentinel's flags) as a constant %01111111
 
 Very tricky stuff! Glad that's done
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 25% barrier
 
 >>> THIS IS COOL! The first non-numerical milestone of "one quarter". A big
 event...
+</pre>
 
-<hr>
+<pre>
 Document PreviewLandscape, which is where all this jumping around ends up if
 the codes don't match
+</pre>
 
-<hr>
+<pre>
 Add ??? to all the variables that need documenting properly
 </pre>
 
 						<h2 class="articleSubheader">4/10/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 So it turns out that the random numbers in the Sentinel aren't - they are
 always seeded sequences used for the landscape and secret code generation, so
 they are always the same for each specific landscape. No random element is
@@ -1302,7 +1399,7 @@ predictable sequences of seed numbers.
 						<h2 class="articleSubheader">7/10/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 So far I've been trying to analyse this stuff almost on my own, without looking
 too hard at any anyone else's disassemblies or articles
 
@@ -1350,42 +1447,47 @@ into the game, this will help.
 
 Between Level 7 and Simon Owens, I feel I've got some very useful secret entry
 codes of my own. :-)
+</pre>
 
-<hr>
+<pre>
 Simon Owen's resource enabled me to identify the objRotationSpeed,
 objRotationTimer and objectYawAngle variables, and to clarify some of my
 explanations of the landscape generation. Really useful!
+</pre>
 
-<hr>
+<pre>
 Moved on to PlayGame, which contains a game loop, so it makes sense to talk
 about two main loops: the main title loop and the main game loop (so update
 comments accordingly)
 
 Also quitGame, gameInProgress flags are fairly self-evident, so that's PlayGame
 documented
+</pre>
 
-<hr>
+<pre>
 FlushSoundBuffers is an easy win at the start of the main game loop
 </pre>
 
 						<h2 class="articleSubheader">8/10/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Now that we are moving into the gameplay part, the section of memory from &5A00
 to &5C00 is reused for two big tables. So it would be clearer to separate this
 out into two separate bits of code - landscape data and game data. So I've
 added CLEAR and ORG directives to the stripData variable to make this clearer
 and have documented all the landscape variables (I still don't know what L5A00
 and L5B00 are for).
+</pre>
 
-<hr>
+<pre>
 Also added a few more comments to workspace variables that I hadn't filled in,
 and replaced Lxxxx labels with variable names, even if they don't turn out to
 be correct (we can change them later, but it's easier to deal with descriptive
 words than walls of Lxxxx labels).
+</pre>
 
-<hr>
+<pre>
 Another clue: in sub_C1BFF we have these two blocks:
 
  STA playerYawAngleLo
@@ -1414,7 +1516,7 @@ objectPitchAngle+16 (as that also fits with the surrounding code).
 						<h2 class="articleSubheader">9/10/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Time to plug a few holes before moving forward, starting with two maths
 routines.
 
@@ -1423,8 +1525,9 @@ rename to GetSineAndCosine and document (it's such a simple routine, but so
 complex to explain, fo rme anyway!).
 
 DivideBy16 does what it says.
+</pre>
 
-<hr>
+<pre>
 Also, GetRotationMatrix from Revs only really returns the sine and cosine but
 at 16-bit accuracy, so we could consider renaming it to something like
 GetSineAndCosine16, but let's leave it for now - if it does actually populate a
@@ -1449,8 +1552,9 @@ pitch and yaw angles, which is probably a 3D vector, and looking at the
 preceding code it looks like this involves the position of the sights, so let's
 name these xSightsVector etc. to denote the vector of the gaze from the player
 through the sights
+</pre>
 
-<hr>
+<pre>
 Need clues on the sights, so documented key logger
 
 Followed sights-moving keys to identify xSights and ySights for sight
@@ -1469,7 +1573,7 @@ Out of time for the day!
 						<h2 class="articleSubheader">10/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 More housekeeping.
 
 First, add the effects of the various key presses to the code, to save looking
@@ -1478,8 +1582,9 @@ it up every time, e.g.
 Negative key value for "S"
 ->
 Negative key value for "S" (Pan left)
+</pre>
 
-<hr>
+<pre>
 Also this code can be improved in DrawLetter3D:
 
  LDX #&07
@@ -1509,8 +1614,9 @@ Still not entirely sure how this works, but it looks like some kind of
 anti-cracking code around the secret code generation, so added more
 documentation and renamed sub_C316C to CorruptSecretCode. We'll have to come
 back to this, but at least it's starting to make a bit more sense.
+</pre>
 
-<hr>
+<pre>
 Another thing to look at is objectType, which also seems to store key presses
 from the keyLoggerConfig table. Turns out this variable is shared - it is used
 to store key presses, but also object types, as the "create xxx" key presses
@@ -1518,8 +1624,9 @@ contain the relevant object type in their configuration (e.g. "create robot"
 puts a 0 in the key logger, "create tree" puts a 2 and "create boulder" puts a
 3). So to create something, we simply pass the key logger entry to
 SpawnObject+3. Neat!
+</pre>
 
-<hr>
+<pre>
 Now to follow the trail around calls to ScanKeyboard.
 
 sub_C118B processes f1 (quit game) and SPACE (toggle sights), so this leads to
@@ -1549,7 +1656,7 @@ good enough.
 						<h2 class="articleSubheader">13/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Very short day (10 mins).
 
 Convert "tile slope" to "tile shape", as the different tile shapes include a
@@ -1561,7 +1668,7 @@ that insight.
 						<h2 class="articleSubheader">14/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Now to trace through all uses of the key logger, to check for all the other key
 press logic.
 
@@ -1580,8 +1687,9 @@ sub_C118B -> CheckForKeyPresses
 sub_C120F -> CheckForSamePanKey
 L1222 -> spaceKeyDebounce
 sub_C2147 -> PerformHyperspace
+</pre>
 
-<hr>
+<pre>
 Look around OSWORD calls to find the game's sound routines and categorise them:
 
 sub_C343A
@@ -1592,8 +1700,9 @@ L3478
 L3479
 L34D4
 L34D5
+</pre>
 
-<hr>
+<pre>
 Next up, sub_C342C is called from FinishLandscape before we add to the
 landscape number. The game adds the player's remaining energy to the landscape
 number to get the next landscape, using BCD arithmetic (as landscape numbers
@@ -1601,8 +1710,9 @@ are BCD), so rename sub_C342C to GetPlayerEnergyBCD.
 
 This also means that L0C0A must be player energy, so we can document
 GetPlayerEnergyBCD and finish off FinishLandscape.
+</pre>
 
-<hr>
+<pre>
 There are lots of flags controlling whether things are done, so these need
 working out somehow. For example:
 
@@ -1629,8 +1739,9 @@ sub_C1264 (when quitting game, when bit 7 of L0C63 is set, when L0C4E is
 non-zero)
 
 Not quite sure what this all means, though.
+</pre>
 
-<hr>
+<pre>
 So perhaps in the meantime, explore uses of variables we've identified - such
 as playerEnergy.
 
@@ -1652,7 +1763,7 @@ to investigate next time, plus playerIsDead.
 						<h2 class="articleSubheader">15/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 While looking at DrainEnergy, there's a sound call of some kind. Noted that
 this is quite similar to Revs, and sub_C3459, sub_C3463, sub_C3463 look a bit
 like the Revs sound routines. So some renaming:
@@ -1668,16 +1779,18 @@ soundData
 
 There's also a mapping from sound number to sound data in L3479, so call that
 soundNumberData.
+</pre>
 
-<hr>
+<pre>
 Back to analysing DrainObjectEnergy, playerEnergy, playerIsDead...
 
 Putting a breakpoint on sub_C36C7, this looks like it updates the player's
 energy details in the top-left of the screen and the scanner box in the
 top-right, so rename to UpdateIconsScanner. And the repeated calls to sub_C373A
 draw each individual icon, so rename to DrawIcon.
+</pre>
 
-<hr>
+<pre>
 Documented UpdateIconsScanner and DrawIcon. Worth noting that this draws into
 an area of memory that isn't screen memory - it's at &5A00, which I've labelled
 iconBuffer. The UpdateIconsScanner routine ends with a jump to sub_C3AEB, which
@@ -1716,7 +1829,7 @@ copies from fromAddr to toAddr, but that analysis is for another day.
 						<h2 class="articleSubheader">16/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 While poking through the code, I realised there's a bit missing in the middle -
 the page of data at &6000 should actually be at &4900 during runtime, as this
 block copy in ConfigureMachine includes data in the last page:
@@ -1729,23 +1842,27 @@ that!
 Need to move the EQUB data from &6000 in the source to &4900, which is
 currently zeroes, and then add an extra COPYBLOCK to duplicate it to &6000 to
 be saved at the end of the game binary.
+</pre>
 
-<hr>
+<pre>
 Also take the opportunity to remove labels and headers from a bunch of blocks
 of unused data in the range L4AE0 to L5520 - it looks like there are lots of
 lookup tables with unused space at the ends, as the labels I've put in aren't
 ever used, so we might as well clear them up. In each case I've removed the
 header and merged them into the preceding routine/variable, adding a comment
 that the bytes appear to be unused.
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 30% barrier
+</pre>
 
-<hr>
+<pre>
 Also, object slot number seems a bit confusing. Maybe change to "object number"
 so the Sentinel is object 0, the tower is object 63 and so on?
+</pre>
 
-<hr>
+<pre>
 And, looking at AddEnemiesToTiles, it looks like the starting set of enemies
 (Sentinel, sentries) are added from object 0 upwards, i.e. objects 0 to 7 (as
 maximum enemy count is 8)
@@ -1769,28 +1886,32 @@ rename them all).
 
 Rename sub_C196A to SetEnemyData (we can always rename it later when we know
 what it does).
+</pre>
 
-<hr>
+<pre>
 Now let's move on to something simpler: ProcessVolumeKeys. This hacks the
 envelope data with the updated volume level, and it plays a sound as we change
 it. That is sound #5 and it sounds like a ping, so that's what we'll call it.
 (It's also the error noise, if you press a key that can't be actioned, for
 example.)
+</pre>
 
-<hr>
+<pre>
 Also, L0CDF seems to be a counter that is decremented in the IRQ handler, and
 which gets set to a value before each sound is made (so it's set to 12 for the
 ping sound, and the volume can only be changed once the counter has reached 1
 or less). So this is some kind of sound counter? Let's call it soundCounter for
 now, anyway.
+</pre>
 
-<hr>
+<pre>
 Next up, let's document ProcessPauseKeys. All simple except the calls to
 sub_C162D, which appear to fill the scanner with green (paused) or black
 (unpaused). This is called from elsewhere, with different arguments in A, so is
 it the scanner update routine? Rename it UpdateScanner for now.
+</pre>
 
-<hr>
+<pre>
 Realised I didn't name sub_C3AD3, even though it's been documented, so name it
 GetIconRowAddress (and label inside it) and document all calls to it.
 </pre>
@@ -1798,42 +1919,48 @@ GetIconRowAddress (and label inside it) and document all calls to it.
 						<h2 class="articleSubheader">17/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Start documenting PerformHyperspace
 
 This calls sub_C2127, which affects the player's energy, so change to
 UpdatePlayerEnergy. It gets the energy levels for an object type from L2140, so
 rename this to objectTypeEnergy.
+</pre>
 
-<hr>
+<pre>
 Document UpdatePlayerEnergy.
+</pre>
 
-<hr>
+<pre>
 Also, we need to talk about death. There isn't any death in the Sentinel - if
 you lose a level then you get absorbed, but you come back to have another go.
 The instructions don't mention death at all, so let's remove any mention of
 death from the comments, and rename the playerIsDead flag to sentinelHasWon.
 After all, we don't know who's the baddie here; perhaps the player is a virus
 and the Sentinel is a protector? Who knows...
+</pre>
 
-<hr>
+<pre>
 Also in PerformHyperspace we call sub_C1ED8, which deletes an object, so rename
 to DeleteObject and document.
+</pre>
 
-<hr>
+<pre>
 Finish off PerformHyperspace, though there are a few flags and calls in there
 that need explaining: sub_C5FF6, sub_C1200, L0C4C, L0CDE, L0C63.
 
 I'm also unsure of which category to put PerformHyperspace in, same with
 UpdatePlayerEnergy. We might need a new one for "gameplay" or "tactics" or
 something like that.
+</pre>
 
-<hr>
+<pre>
 And I just noticed, while looking through the categories, that I FORGOT to mark
 SetTileShape as done, it's still in there as sub_C2C4E and not done yet. So
 change itto Done... and that means we have reached exactly 33.3%, and have...
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 33.33% barrier
 
 Nice! That's one-third, a proper milestone. So hust do that agin, twice, and
@@ -1843,13 +1970,14 @@ we're done.
 						<h2 class="articleSubheader">19/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Some variable renaming to make things a bit clearer:
 
 enemyCount -> numberOfEnemies
 maxEnemyCount -> maxNumberOfEnemies
+</pre>
 
-<hr>
+<pre>
 Let's look at IRQHandler next
 
 It gets called exactly 50 times a second, triggered by the User VIA timer 1
@@ -1897,16 +2025,18 @@ sub_C3832 is called from just one other place
 						<h2 class="articleSubheader">20/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Add some more categories to headers:
 
 DrawTitleObject, category = Title screen
 Also: L140x variables, as they are only mentioned in DrawTitleObject
+</pre>
 
-<hr>
+<pre>
 C28A4 is very close to GetTileData, so copy over the comments
+</pre>
 
-<hr>
+<pre>
 Now look for SHEILA+&xx for hardware scrolling
 SHEILA+&00, SHEILA+&01 set 6845 R12 and R13 registers (screen start address)
 
@@ -1920,7 +2050,7 @@ Add documentation and we'll come back to naming them later
 						<h2 class="articleSubheader">21/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Name the routines that scroll the screen and copy the screen buffer into screen
 memory to implement the scrolling player view.
 
@@ -1951,23 +2081,26 @@ IRQHandler >
  DisplayIconBuffer >
    DisplayBufferRow >
      DisplayBufferBlock
+</pre>
 
-<hr>
+<pre>
 Now we just have to document the routines.
 
 Document DisplayBufferBlock, DisplayBufferRow and DisplayBufferColumn
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 35% barrier
 </pre>
 
 						<h2 class="articleSubheader">22/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Documented ScrollPlayerView, DisplayViewBuffer
+</pre>
 
-<hr>
+<pre>
 Also SetNumberOfScrolls, SetViewBufferAddr
 
 All makes sense bar viewBufferAddr(1 0), which I think is the address in the
@@ -1982,8 +2115,9 @@ for the same reason
 
 Probably need to uncover the code that write into the buffer before this will
 be totally clear.
+</pre>
 
-<hr>
+<pre>
 The view screen buffer is between &3F00 and &52FF, according to the overflow
 check in DisplayBufferColumn. But this clashes with a whole load of what looks
 like read-only lookup data (e.g. L49A0, L49CD, L4FE0, L5120, L5260 etc.)
@@ -1996,10 +2130,11 @@ would be fun!
 						<h2 class="articleSubheader">23/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Documented sub_C3699 -> ClearIconsScanner
+</pre>
 
-<hr>
+<pre>
 Analysing L0CE4, when bit 7 is set, it disables various keyboard scans:
 * Disables volume key checks in ProcessVolumeKeys
 * Disables game key presses in IRQHandler
@@ -2011,8 +2146,9 @@ so rename this to previousDoNotScan
 
 Not quite sure why we want to disable key scans - maybe something to do with
 panning and ignoring key presses while the screen is being scrolled?
+</pre>
 
-<hr>
+<pre>
 Let's look at sub_C1264
 
 Starts with L0C51, in which bits 6 and 7 are set and checked with regard to
@@ -2020,13 +2156,15 @@ U-turns (this flag seems to stop multiple U-turns if "U" is held down, and it
 also controls whether sub_C2463 gets called in MainGameLoop - sub_C2463 does
 not get called if we just did a U-turn). So rename L0C51 to uTurnStatus and
 document as far as we can.
+</pre>
 
-<hr>
+<pre>
 Continuing through sub_C1264, attaching breakpoints implies that sub_C5F24
 displays the "game over" screen with the Sentinel being victorious, so rename
 to DisplayGameOver
+</pre>
 
-<hr>
+<pre>
 L0C63 appears a lot too. This only appears in sub_C1264, ProcessActionKeys and
 PerformHyperspace.
 
@@ -2037,8 +2175,9 @@ In PerformHyperspace bit 7 is set after a hyperspace.
 
 These are all actions that include the player changing tile, so let's
 speculatively name L0C63 to playerHasMovedTile
+</pre>
 
-<hr>
+<pre>
 Continuing to document sub_C1264, alongside ProcessActionKeys and MainGameLoop,
 which between them seem to cover most of the main game loop actions
 </pre>
@@ -2046,7 +2185,7 @@ which between them seem to cover most of the main game loop actions
 						<h2 class="articleSubheader">24/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 L006E is clearly an object number, though I'm not sure of its significance yet.
 It's a bit like another currentObject - sometimes it's an enemy, sometimes it's
 the player:
@@ -2067,13 +2206,15 @@ MainGameLoop > sub_C1264 > ProcessActionKeys
 and MainGameLoop sets it to the player object before calling MainGameLoop, so
 it looks like anotherObject contains the player object by the time we get to
 sub_C1264 and ProcessActionKeys.
+</pre>
 
-<hr>
+<pre>
 Going through ProcessActionKeys is useful - for example, at the end there's
 stuff about meanies, so enemyData5 is something to do with them. But we've left
 a lot of ??? in ProcessActionKeys, so we need to come back to it soon.
+</pre>
 
-<hr>
+<pre>
 Meanwhile, a diversion into the addresses of the view screen buffer, which we
 looked at a couple of days ago. The address where stuff gets buffered is
 weirdly complex, and is this:
@@ -2099,7 +2240,7 @@ viewBuffer as that isn't actually correct
 						<h2 class="articleSubheader">25/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Move back up the call chain to sub_C1264. This routine does various things
 around key presses, calling the relevant key routines, as well as calling
 routines that seem to work with objects, such as activating the Sentinel. It's
@@ -2115,7 +2256,7 @@ Document it, though again leaving a fair number of ???s
 						<h2 class="articleSubheader">26/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 I'm starting to think that doNotScanKeyboard might need a better name, as it
 seems to denote something beyond keyboard disabling. And in ProcessGameplay, if
 bit 7 is set and panKeyBeingPressed bit 7 is clear (so no pan key is being
@@ -2135,8 +2276,9 @@ For now let's rename sub_C1200 to PauseKeyboardScan. It also sets L0C1E but I
 don't know what this does yet.
 
 This needs more looking at!
+</pre>
 
-<hr>
+<pre>
 L0CDE is a two-part hyperspace flag in bit 6 & 7
 Call it hyperspaceEndsGame
 
@@ -2150,7 +2292,7 @@ Bit 6 set = win, clear = die
 						<h2 class="articleSubheader">28/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Over the weekend I scribbled down a quick analysis of the trigonometry in the
 sub_C1BFF and sub_C1C43 routines, which I suspected above were something to do
 with the vector from the player's eyes to the sights, but I needed confirmation
@@ -2204,16 +2346,18 @@ sub_C1C43 -> GetVectorForAngles
 
 The sight coordinates have (10 0) and (3 32) added to them, so that still needs
 explaining, but at least the difficult geometry is now documented.
+</pre>
 
-<hr>
+<pre>
 Back to DrainObjectEnergy
 
 There are a couple of JSRs that aren't obvious plus a couple of variables, but
 the last part of the routine adds 1 to enemyData2 for the enemyObject, so it
 looks like enemyData2 contains energy levels for enemies... so rename
 enemyData2 to enemyEnergy
+</pre>
 
-<hr>
+<pre>
 Let's return to MainGameLoop
 
 Various flags in the start, including one that controls the scanner, so add
@@ -2221,16 +2365,18 @@ documentation to L0C09 (renamed as lastScannerState) as it stores the scanner
 state so we can check whether it's changed, rename UpdateScanner to
 UpdateScannerNow, rename sub_1623 to UpdateScanner, L0C04 to scannerUpdate, and
 document them all.
+</pre>
 
-<hr>
+<pre>
 sub_C1090 gets called a fair amount from MainGameLoop, so stick a breakpoint on
 it
 
 If we disable the palette JSR in game1 and put a breakpoint on &1090, then it
 stops just before clearing the screen to the blue-lined sky background, so this
 looks like some kind of ClearScreen routine, so let's name it that for now.
+</pre>
 
-<hr>
+<pre>
 Next up are sub_C2463 and sub_C2624. Doing the same palette and breakpoint
 trick, the latter appears to draw the landscape. So rename sub_C2624 to
 DrawLandscape for now - it's a huge routine, so this feels correct.
@@ -2240,16 +2386,19 @@ Perhaps this routine calculates something for the landscape-drawing process
 that doesn't need to be repeated if we U-turn? I seem to remember Simon Owens
 mentioning in his email how U-turns were slightly quicker because they could
 reuse calculations somewhere, so this could be it?
+</pre>
 
-<hr>
+<pre>
 L0055 is either 0 or 25. Not sure what it does, but it is only used in one
 place, in sub_C2299.
+</pre>
 
-<hr>
+<pre>
 Not sure what initialise_buffer_variables is all about - it doesn't contain any
 matched variable names at this point.
+</pre>
 
-<hr>
+<pre>
 L0CE7 seems to be some kind of flag that repeats calls to sub_C355A until bit 7
 gets set - this happens at game5 and game9. sub_C355A seems to be some kind of
 sound routine, so is L0CE7 some kind of sound counter? It gets incremented in
@@ -2265,27 +2414,31 @@ sub_C355A also checks L0C73, so the latter looks like its sound-related too.
 
 Probably need to hunt down the sound routines and work out what they do -
 they're generally pretty easy routines to fathom.
+</pre>
 
-<hr>
+<pre>
 L0C1B has bit 7 set if sights are not visible during a pan, seems to make
 DrawLandscapeView think that the pan key is being held down even if it isn't.
+</pre>
 
-<hr>
+<pre>
 Anyway, we got to the end MainGameLoop, in a first pass that's left a trail of
 ???s
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 40% barrier
 </pre>
 
 						<h2 class="articleSubheader">29/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Rename SetTileShape to GetTileShape, as the routine gets the shape and returns
 it in X, rather than setting a variable.
+</pre>
 
-<hr>
+<pre>
 Continuing with the sights routines, let's look at SetupSights as that sets a
 few variables that are referenced in places like SetSightsAddress
 
@@ -2307,8 +2460,9 @@ options of viewScreenAddr and find out.
 
 Meanwhile, SetupSights would be better named to InitialiseSights, as that's
 what it does, so rename it
+</pre>
 
-<hr>
+<pre>
 SetSightsAddress caters for when the sights move into different screen bytes or
 character rows, in which case they add a 16-bit offset from two tables, the low
 byte in L3AC7 and the high byte in L3ACD, choosing the relevant value for the
@@ -2316,8 +2470,9 @@ type of movement (which is passed to SetSightsAddress in X).
 
 So rename the tables to sightsMoveAddrHi and sightsMoveAddrLo and document the
 routine.
+</pre>
 
-<hr>
+<pre>
 ShowSights is actually DrawSights, so rename
 
 It does nothing if bit 7 of L0CD7 is set, so rename L0CD7 to doNotDrawSights
@@ -2326,7 +2481,7 @@ It does nothing if bit 7 of L0CD7 is set, so rename L0CD7 to doNotDrawSights
 						<h2 class="articleSubheader">30/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Continue with DrawSights and HideSights
 
 The sights are drawn and removed using a stash of screen bytes, which contain
@@ -2346,8 +2501,9 @@ HideSights is called from DrawSights and actually scrubs the sights from the
 screen, so perhaps RemoveSights is a better name.
 
 Document RemoveSights
+</pre>
 
-<hr>
+<pre>
 Started documenting DrawSights, which is more involved than you might imagine
 as it uses a stepping process to draw the sights byte by byte.
 </pre>
@@ -2355,7 +2511,7 @@ as it uses a stepping process to draw the sights byte by byte.
 						<h2 class="articleSubheader">31/10/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Finishing off DrawSights
 
 Uses tables at L227F, L36BF, L3A8A, L5730 that contain pixel masks and pixel
@@ -2371,7 +2527,7 @@ And that's the sights routines finished
 						<h2 class="articleSubheader">3/11/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Let's try to identify the sound routines, as these often offer handy clues to
 what subroutines do
 
@@ -2385,8 +2541,9 @@ sub_C3505 uses L5850 and L0C70
 
 MainGameLoop calls sub_C355A repeatedly until soundCounter2 runs down (it does
 this twice)
+</pre>
 
-<hr>
+<pre>
 Put a breakpoint on &355A - it's called all the time, so this might be some
 kind of background sound/music routine, call it ProcessSound for now? Seems to
 be called a lot, though, would expect this to be called once from an interrupt
@@ -2403,8 +2560,9 @@ finish, which sounds sensible
 And that makes SetSoundCounter2 the routine that starts the music by setting
 the counter? So maybe call this PlayMusic? And presumably musicCounter
 specifies the tune number? Sounds a bit odd, but let's roll with it
+</pre>
 
-<hr>
+<pre>
 Possible values of A passed to PlayMusic are: 0, 25, 40, 50, 66
 
 Looking at when these are called, we can work out when these values are passed:
@@ -2418,8 +2576,9 @@ Looking at when these are called, we can work out when these values are passed:
 So it looks like these are the different tunes in the game after all, so that's
 good. And musicCounter counts up in ProcessMusic, so music isn't a background
 operation but a blocking one (hence the loops in MainGameLoop)
+</pre>
 
-<hr>
+<pre>
 L0C73 seems to contain some kind of sound definition, 3 is music (as
 ProcessSound calls ProcessMusic when L0C73 = 3, which is also what is set in
 PlayMusic)
@@ -2450,8 +2609,9 @@ Not really sure what this is - some kind of flag that controls the way the
 sound is processed? Like an effects pedal or something?
 
 Let's call it soundEffect for now, this will need changing I'm sure
+</pre>
 
-<hr>
+<pre>
 L0C74 is another sound variable that only seems to be used during the game over
 sound
 
@@ -2466,8 +2626,9 @@ This is also passed in Y to MakeSound-6, so this lowers the pitch of the sound
 over time (which is what happens in the game over sound)
 
 So call it gameOverSoundPitch and finish documenting ProcessSound
+</pre>
 
-<hr>
+<pre>
 Now for ProcessMusic
 
 L5850 is where the music data is fetched from, so call it musicData
@@ -2480,20 +2641,22 @@ glissandos - very simple and very effective
 https://archive.org/details/tim-follin-the-sentinel-spectrum
 
 Documented all routines and data
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 45% barrier
 </pre>
 
 						<h2 class="articleSubheader">4/11/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Turns out "arpeggiated chord" is the technical term for a chord that's played
 with each note kicking in in a sequence with the notes being held, so update
 commentary for the game over music (it isn't a "discrete glissando").
+</pre>
 
-<hr>
+<pre>
 Now to look at ClearScreen and its subroutines
 
 ClearScreen is relatively simple. It sets up screen addresses, clears the
@@ -2502,8 +2665,9 @@ scanner row, and then:
 calls initialise_buffer_variables
 calls sub_C2202
 if L0C4C=3, it calls sub_C56D5
+</pre>
 
-<hr>
+<pre>
 Starting with initialise_buffer_variables, this sets up a bunch of variables
 depending on the argument A:
 
@@ -2518,8 +2682,9 @@ A = 0 or 1 when called from sub_C295D (this flips the value)
 A = 2 from MainGameLoop, initialise_tall_buffer
 
 Not sure where these variables are used, presumably in sub_C2202
+</pre>
 
-<hr>
+<pre>
 Next call is to sub_C2202, which takes arguments in A, X, Y
 
 In sub_C2202 we have a loop at .C2238 that pokes 8 bytes, presumably into a
@@ -2556,8 +2721,9 @@ panning, used by the hardware scrolling maybe?
 Anyway, we can change them into FOR loops and rename them to screenRowAddrHi
 and Lo, as they appear to point to rows in screen memory (the view screen
 address is &60C0, as per viewScreenAddr)
+</pre>
 
-<hr>
+<pre>
 zTile and yTile are used here, but this has nothing to do with tiles, so rename
 them with a shared label. zTile is some kind of row number, and yTile might be
 columns? Rename them like this for now
@@ -2575,13 +2741,15 @@ L227B to backgroundOdd
 
 sub_C2202 clearly fills the screen, so call it FillScreen and finish the
 documentation
+</pre>
 
-<hr>
+<pre>
 Interestingly, the call to initialise_buffer_variables doesn't set any
 variables that are used in the screen-clearing routine, so those variable
 aren't related to that aspect.
+</pre>
 
-<hr>
+<pre>
 ClearScreen calls sub_C56D5 for background type 3 only (solid black background)
 
 Looks like sub_C56D5 draws lots of dots on the screen, so this must draw the
@@ -2601,24 +2769,26 @@ and shiftGenerator, and document the routine
 						<h2 class="articleSubheader">5/11/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Turns out DrawStars can draw both black dots and stars, so split it up into
 three routines: DrawStars, DrawBlackDots, DrawRandomDots
 
 Finish documenting DrawRandomDots
+</pre>
 
-<hr>
+<pre>
 Documented SetScannerUpdate, which contains a delay loop that adds a pause when
 transferring to a new tile
+</pre>
 
-<hr>
+<pre>
 Documented UpdateScannerNow and associated variables
 </pre>
 
 						<h2 class="articleSubheader">6/11/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Now for sub_C5DC4, which calculates the difference (delta) between
 y-coordinates and stores it in (L0084 L0081), so rename:
 
@@ -2650,8 +2820,9 @@ This doesn't lay out the variables in quite the correct way in zero page - it
 feels as if L0084 should be yDeltaAbsoluteHi and L0087 should be yDeltaHi - but
 that arrangement isn't borne out by the routines, so let's leave them as-is for
 now, and maybe a penny will drop later...
+</pre>
 
-<hr>
+<pre>
 Time to create a hierarchy sheet!
 
 Just from MainGameLoop down, all done manually in this case (for Revs I did it
@@ -2671,7 +2842,7 @@ until the whole game is done...
 						<h2 class="articleSubheader">10/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Follow subroutines down from MainGameLoop, starting with sub_C2463, which leads
 to this hierarchy:
 
@@ -2679,11 +2850,13 @@ sub_C2463, sub_C1DE6, sub_C25C3, sub_C1E98, sub_C24EA
 
 sub_C1DE6 extracts the tile shape and altitude from the tile data, so rename to
 ExtractTileData
+</pre>
 
-<hr>
+<pre>
 This calls sub_C1E98, which calculates max(|L0037 - 128|, |L0039 - 128|)
+</pre>
 
-<hr>
+<pre>
 What are L0037 and L0039?
 
 From sub_C24EA, we have a big clue in this bit of code, which is a 24-bit
@@ -2725,8 +2898,9 @@ code - for example, .C2DCE contains this where Y is zero:
 
 And that doesn't tally with this usage, so let's just stick to renaming these
 variables within the sub_C2463 hierarchy
+</pre>
 
-<hr>
+<pre>
 Actually, doing these substitutions gives this code:
 
 .sub_C1EB5
@@ -2787,13 +2961,15 @@ to Bot.
 
 Aviator ended up with (xPlaneTop xPlaneHi xPlaneLo xPlaneBot), so this does
 have precedent.
+</pre>
 
-<hr>
+<pre>
 sub_C1E98 calculates max(|xCoordLo - 128|, |zCoordLo - 128|), but what is
 xCoord and zCoord at this point? Not sure, so call this routine GetMaxXZCoordLo
 for now.
+</pre>
 
-<hr>
+<pre>
 ExtractTileData extracts different levels of tile data depending on bit 7 of
 secondAxis (which probably needs a new name for this usage). Anyway, for the
 call to ExtractTileData from sub_C25C3, bit 7 is clear, so most of
@@ -2806,8 +2982,9 @@ And bit 6 of this byte is also used, as this code appears elsewhere:
 
 So the whole xCoord saga is for another usage of ExtractTileData, for when bit
 7 is set, so let's park that as xCoord isn't relevant yet.
+</pre>
 
-<hr>
+<pre>
 sub_C25C3 works through the landscape, calculating tile corner altitudes and
 maximum tile altitudes for tiles and sticking them in screen memory as a cache
 
@@ -2818,7 +2995,7 @@ code)
 						<h2 class="articleSubheader">11/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Some terminology changes, because this routine should clearly be named as
 follows:
 
@@ -2828,8 +3005,9 @@ So we should also rename the following, as these variables are always used for
 object coordinates:
 
 xCoord etc. -> xObjCoord
+</pre>
 
-<hr>
+<pre>
 Back to analysing sub_C2463 and down, the next routine to be called is
 sub_C24EA
 
@@ -2845,8 +3023,9 @@ L0018 -> xTileRow
 
 (though note that these are shared variables with zBlock and xBlock, amongst
 others)
+</pre>
 
-<hr>
+<pre>
 sub_C24EA is actually three parts, with a part in the middle that checks the
 secret stash (we already documented this part).
 
@@ -2865,17 +3044,20 @@ correct too:
 sub_C2463 -> GetTileVisibility
 
 As always, we can change this later if need be.
+</pre>
 
-<hr>
+<pre>
 Document part 1 of GetRowVisibility, which sets up variables and scales various
 values
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 50% barrier
 
 HALF WAY! All downhill from here, lol.
+</pre>
 
-<hr>
+<pre>
 That excellent YouTuber Martin Piper has just released a video looking at how
 the C64 version of the Sentinel works! It's interesting how similar and
 different it is at the same time - it uses character definitions to implement
@@ -2889,15 +3071,16 @@ yet. :-)
 
 I might have to add the C64 version to my site, but I've got to finish this one
 first!
+</pre>
 
-<hr>
+<pre>
 Start documenting part 2 of GetRowVisibility
 </pre>
 
 						<h2 class="articleSubheader">12/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Document part 2 of GetRowVisibility
 
 So this traces along the vector from the player to the tile corner, working out
@@ -2917,8 +3100,9 @@ sightsPitchAngle -> vectorPitchAngle
 Also, the whole scale factor thing is about making the trace steps as large as
 possible while still staying within tile boundaries while tracing, so rename
 scaleFactor to traceStepCounter and fix incorrect assumptions in part 1
+</pre>
 
-<hr>
+<pre>
 Rename ExtractTileData -> GetTileAltitude, as I think that's closer to what it
 does
 
@@ -2926,13 +3110,15 @@ That said, secondAxis in this routine contains two flags that change the
 behaviour, which I'll rename considerObjects (as bit 7 seems to control whether
 we take any notice of objects on the tile)... but there's a bit 6 in there as
 well, so I bet this label changes too 
+</pre>
 
-<hr>
+<pre>
 Also, GetMaxXZCoordLo is checking to see how far a coordinate is from *.5 in
 the x- and z-axes, so it's checking to see how far a point is away from the
 centre of the tile, so rename to CheckForTileCentre
+</pre>
 
-<hr>
+<pre>
 Finish documenting GetTileVisibility
 
 Woah, what on earth is going on in this one? It stores a visibility bit in a
@@ -2949,7 +3135,7 @@ Documented it all anyway, so there you go...
 						<h2 class="articleSubheader">13/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Start looking at DrawLandscapeView
 
 L003C is used later on in a LDA (L003C),Y instruction, so this looks like an
@@ -2966,12 +3152,14 @@ Ditto smoothingAction, convert this back to L0066
 
 Might as well do cosSightsPitchLo and cosSightsPitchHi as well - these variable
 names from previous routines aren't helping at all!
+</pre>
 
-<hr>
+<pre>
 Hmm, also should change sinSightsPitchAngle into sinVectorPitchAngle and so on,
 as these variables are pretty generic
+</pre>
 
-<hr>
+<pre>
 DrawLandscapeView starts off by taking the yaw angle of anotherObject (which
 looks like it's the object viewing the landscape) and working out which
 quadrant it is looking in
@@ -2995,11 +3183,13 @@ works yet!), so let's call them this for now:
 
 L0003 -> xTileViewer
 L001D -> zTileViewer
+</pre>
 
-<hr>
+<pre>
 Add a new category: Drawing the landscape
+</pre>
 
-<hr>
+<pre>
 Following the rabbit hole down documenting as we go...
 
 DrawLandscapeView > sub_C27AF > sub_C2815 > sub_C5567
@@ -3021,11 +3211,12 @@ angle, which always makes my head ache, so I'll mark that as needing work...
 						<h2 class="articleSubheader">14/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Clarified the first part of DrawLandscapeView... I think. This analysis might
 need revisiting!
+</pre>
 
-<hr>
+<pre>
 Following the rabbit hole down again, we get...
 
 DrawLandscapeView > sub_C27AF > sub_C2815 > sub_C561D
@@ -3035,8 +3226,9 @@ like screen coordinates from the viewing arc
 
 Split it into three parts so hopefully we can pull it all together once I've
 worked my way through them
+</pre>
 
-<hr>
+<pre>
 Part 3 calls sub_C561D
 
 sub_C561D does some trigonometry, using a hypotenuse length as one of the
@@ -3060,7 +3252,7 @@ some kind of point to all this! Lol.
 						<h2 class="articleSubheader">15/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 OK, so I've gone through the whole tree, and it seems to be calculating pitch
 and yaw angles for tiles and saving the results into a bunch of tables
 
@@ -3130,8 +3322,9 @@ we can always rename it later
 
 Looks like sub_C2963 sets a load of variables that are compared at the end of
 GetTileViewEdges, so that's one to analyse.
+</pre>
 
-<hr>
+<pre>
 Worth noting that the tables for storing angles actually contain two tables,
 like oddVisibility and evenVisibility
 
@@ -3143,15 +3336,17 @@ L0005, which I've now called drawingTableOffset
 						<h2 class="articleSubheader">16/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Finish off GetPitchAngleDelta, which is like the GetVectorForAngles routine,
 but in reverse (so it fetches the pitch angle from the vector). And it adds a
 subtraction to get a delta too.
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 55% barrier
+</pre>
 
-<hr>
+<pre>
 Time to add a progress graph! Which shows that we're being reasonably
 consistent with progress
 
@@ -3164,13 +3359,14 @@ Added to the Progress sheet in its own tab
 						<h2 class="articleSubheader">17/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Some slightly clearer names:
 
 CheckNextTile -> GetTileEdgeToRight
 CheckPreviousTile -> GetTileEdgeToLeft
+</pre>
 
-<hr>
+<pre>
 GetTileViewEdges starts at tile corner (L0032 zTile) and keeps checking tile
 corners on that row until it finds the edges of the on-screen view arc
 
@@ -3188,8 +3384,9 @@ xTileLeftPrevious? Also, starting from zero is why L0032 is left and L0033 is
 right.
 
 These are all guesses, but they feel pretty close.
+</pre>
 
-<hr>
+<pre>
 Gone through the GetTileViewEdges routine, and here's a quick summary:
 
 GetTileViewEdges starts at tile corner (xTileViewLeft zTile) and keeps checking
@@ -3224,8 +3421,9 @@ Call GetPitchAngleDelta to get relative pitch angle of tile and put into
 (tileViewPitchHi tileViewPitchLo) for this tile
 
 Check if it's on-screen, set tileIsOnScreen <-- still need to document
+</pre>
 
-<hr>
+<pre>
 So document the rest of GetTileViewAngles
 
 For the last part, it's checking the yaw angle against two limits:
@@ -3238,8 +3436,9 @@ I'm assuming they are some kind of screen edge or viewing arc edge?
 
 Finish documenting GetTileViewAngles, and in particular tileIsOnScreen, as
 that's used heavily in GetTileViewEdges
+</pre>
 
-<hr>
+<pre>
 Documented GetTileViewEdges, but I have to say it makes little sense. I'm
 worried that my analysis of tileIsOnScreen is wrong, as the logic for working
 along the row of tiles to work out the edges is completely weird, so I suspect
@@ -3272,8 +3471,9 @@ definitely not this big.
 So is maxYawAngleHi actually something else that I'm not understanding?
 
 I don't know, and this part of the commentary is really ropey as a result!
+</pre>
 
-<hr>
+<pre>
 Here's my current tile-edge search logic:
 
 tileIsOnScreen gets set as follows:
@@ -3338,8 +3538,9 @@ If off to left  -> edge7
 .edge9
 xTileViewLeft = current position
 END
+</pre>
 
-<hr>
+<pre>
 Also documented DrawTileRow as it's very simple and demonstrates how the
 xTileViewLeftEdge and xTileViewRightEdge variables work.
 
@@ -3350,7 +3551,7 @@ DrawLandscapeView...
 						<h2 class="articleSubheader">19/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Let's put some breakpoints on the landscape-drawing routines and disable the
 blue screen while the title screen and landscape preview is drawn, as this
 might help us name a few routines within the DrawLandscapeView hierarchy - i.e.
@@ -3393,15 +3594,17 @@ Also time to add two more categories:
 
 Drawing polygons
 Drawing objects
+</pre>
 
-<hr>
+<pre>
 Also, totally unrelated, but it's obvious that sub_C5F68, which is called from
 DisplayGameOver, draws black dots over the screen on game over to "decay" it to
 black, so let's also rename:
 
 sub_C5F68 -> DecayScreenToBlack
+</pre>
 
-<hr>
+<pre>
 I'm trying to work out what angle2Hi is in part 1 of DrawLandscapeView, and
 again in GetTileViewAngles (this time with angle2Lo).
 
@@ -3453,8 +3656,9 @@ which is 20, 20, 8
 
 So that's 20 again. It does really feel as if the field of view in the Sentinel
 is half that of Revs.
+</pre>
 
-<hr>
+<pre>
 Also, playing with Revs, it's possible to rotate the car in-place by hacking
 the player's yaw angle in address &0B (playerYawAngleHi)
 
@@ -3467,8 +3671,9 @@ confusing me a bit. If the right/left panning angles were +8 and -8 then this
 would all make sense... but they aren't.
 
 Hmm. Will have to come back to this.
+</pre>
 
-<hr>
+<pre>
 In the meantime, let's pick off some low-hanging fruit by documenting
 DrawTileAndObjects
 
@@ -3479,16 +3684,18 @@ objects it calls sub_C2A1B for flat tiles only.
 So sub_C2A1B looks like it might be DrawFlatTile. It's also surrounded by other
 tile-drawing entry points that depend on the tile shape, i.e. C2A39 and C2A5A,
 so convert these to sub_Cxxx format.
+</pre>
 
-<hr>
+<pre>
 DrawFlatTile contains cracker-related code
 
 To make it easier to follow all this cracker-related code, I've extracted all
 the code and put it into its own category: Cracker protection
 
 That'll make it easier for the crackers to follow what's going on. :-)
+</pre>
 
-<hr>
+<pre>
 Back to DrawLandscapeView, part 2 is relatively straightforward, and just makes
 sure the correct data is fetched for drawing the tile, so document it
 </pre>
@@ -3496,7 +3703,7 @@ sure the correct data is fetched for drawing the tile, so document it
 						<h2 class="articleSubheader">20/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Some improved categorisation of routines and variables, now that things are
 starting to take shape
 
@@ -3541,8 +3748,9 @@ viewBufferDown
 viewBufferAddr
 
 That should help.
+</pre>
 
-<hr>
+<pre>
 Now to finish off DrawLandscapeView (Part 3), which draws the row containing
 the viewer
 
@@ -3553,21 +3761,25 @@ One thing that I think is correct but I'm not sure: it doesn't draw the tile if
 the high byte of the pitch angle is >= 2, so is this an upper bound for the
 pitch angle for the screen edges? Must look closer into the screen bounds
 again...
+</pre>
 
-<hr>
+<pre>
 We can also document L0C1B, which controls whether the landscape drawing
 process aborts when the relevant pan key is released (which happens when
 panning normally, but not when panning because of the sights moving off-screen)
 
 Rename L0C1B to keepCheckingPanKey, as that's what it controls
+</pre>
 
-<hr>
+<pre>
 Document DecayScreenToBlack, for an easy win
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 60% barrier
+</pre>
 
-<hr>
+<pre>
 Document DisplayGameOver as well, though it does contain a few unknown flags
 and subroutine calls, so it will need revisiting
 </pre>
@@ -3575,7 +3787,7 @@ and subroutine calls, so it will need revisiting
 						<h2 class="articleSubheader">21/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Looking into those panning angles in L38F4 again...
 
 In sub_C10B7, which does the panning, the yaw angle is adjusted by the amount
@@ -3605,12 +3817,14 @@ my original analysis from 17/11/25 is correct!
 
 This means that the field of view is 20 yaw angles wide, so that's exactly
 double the width of the field of view of Revs.
+</pre>
 
-<hr>
+<pre>
 This presumably means that the screen is 3 * 12 = 36 pitch angles tall, as it
 takes 3 pans to pitch through a whole screen vertically.
+</pre>
 
-<hr>
+<pre>
 So, to be clear:
 
 Does Revs have the same underlying coordinate system as The Sentinel?
@@ -3624,16 +3838,19 @@ No, it's the exact same thing as in the Sentinel
 
 So there is only very simple projection in the Sentinel, exactly like Revs, and
 it's called the plate carrée equirectangular projection.
+</pre>
 
-<hr>
+<pre>
 Rename L38F4 to panAngle
+</pre>
 
-<hr>
+<pre>
 I'm not quite sure why the yaw angles are adjusted by +20 and +4 before drawing
 the landscape, and then readjusted to +8 and +12 afterwards, mind you. I guess
 that's a question for when we examine sub_C10B7.
+</pre>
 
-<hr>
+<pre>
 This also means that in DrawLandscapeView...
 
 angle2Hi is set to the high byte of the yaw angle of the left edge of the
@@ -3650,8 +3867,9 @@ angle2Lo -> yawAdjustmentLo
 
 I have no idea what yawAdjustmentLo is yet, but at least it's now a separate
 entity to the high byte, which feels more correct.
+</pre>
 
-<hr>
+<pre>
 At some point I need to work out what to call currentObject and anotherObject
 as they are not great names.
 
@@ -3682,13 +3900,14 @@ definitely a placeholder.
 						<h2 class="articleSubheader">24/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 To get a look into how the perspective works, I've created a panorama of the
 whole view of landscape 0000. Screenshots from b2, cropped and stitched
 together by ImageMagick. it's very cool - I must do another level at some
 point.
+</pre>
 
-<hr>
+<pre>
 Started looking at the cracker routines and variables, it'd be good to polish
 them off.
 
@@ -3711,10 +3930,11 @@ variable.
 						<h2 class="articleSubheader">25/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Looking at the L0C75 variable now, as it's only used in the anti-cracking code.
+</pre>
 
-<hr>
+<pre>
 Ah! I misread the way that stripData is populated by the GenerateLandscape
 routine when discarding those 81 seed numbers. It is filled downwards, from
 stripData+80 down to stripData+0, so the cracker code doesn't use the 79th
@@ -3724,20 +3944,23 @@ register unchanged.
 
 This finally makes sense! And the code that sets L0C75 is working with a BCD
 number, hence all that stuff about comparing with 9.
+</pre>
 
-<hr>
+<pre>
 Move instruction from just before GetAngleInRadians into its own header, as
 it's only used for the cracker stuff - rename it to CrackerSeed, as it stores
 the third seed number.
 
 Document CrackerSeed
+</pre>
 
-<hr>
+<pre>
 There's some cracker protection code in the middle of sub_C1882 too - it alters
 the cracker seed, so call it AlterCrackerSeed and document it to finish off the
 anti-cracker code commentary.
+</pre>
 
-<hr>
+<pre>
 Back to DrawFlatTile
 
 Looks like L2CE3 is some kind of lookup table that's indexed by shape, with two
@@ -3752,8 +3975,9 @@ might this be a tile colour lookup? Don't understand the first entry though
 perhaps not.
 
 One for later.
+</pre>
 
-<hr>
+<pre>
 So, thinking about drawing tiles, it feels as if tiles must always either
 appear as two triangles, or one quadrilateral (when visible)
 
@@ -3767,8 +3991,9 @@ sub_C2A5A -> DrawTwoFaceTile
 
 This seems to fit the routines, if DrawPolygon draws one face (as a
 quadrilateral or triangle)
+</pre>
 
-<hr>
+<pre>
 Playing with tileShapeLookup... if I swap the two halves around, the game looks
 pretty rubbish, but if I swap &04 and &08 and leave the rest along, the game
 works but with white and black swapped around
@@ -3786,15 +4011,16 @@ Maybe it's colour number * 4, so 0, 1, 2 -> &00, &04, &08 ???
 						<h2 class="articleSubheader">26/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Add documentation to DrawOneFaceTile, DrawSlopingTile, DrawTwoFaceTile where
 possible
 
 A fair few unknown variables, and I don't understand the algorithm for working
 out the face colours dependent on the viewer's orientation, but at least I
 understand what it's supposed to do, so that will do for now
+</pre>
 
-<hr>
+<pre>
 Looking at DrawPolygon, I'm pretty sure that xVectorBot and yVectorBot are
 being reused for different purposes in the polygon routines, so rename them
 back to L002C and L002D in those routines, as I think they are a distraction
@@ -3802,12 +4028,14 @@ with the vector names (I might be wrong)
 
 The look valid in sub_C1CAA though, but that routine isn't in the polygon
 hierarchy, so leave them alone there
+</pre>
 
-<hr>
+<pre>
 Rename columnCounter -> xTileToDraw for when we are tile drawing, as it is
 clearer (but don't rename for FillScreen, where columnCounter makes sense)
+</pre>
 
-<hr>
+<pre>
 DrawPolygon seems to do the drawing in this bit:
 
  JSR sub_C2D36
@@ -3827,8 +4055,9 @@ according to the value
 
 So DrawPolygon sometimes draws one polygon, then flips bit 0 of L0010, and then
 draws another one
+</pre>
 
-<hr>
+<pre>
 What is L0010?
 
 In sub_C2299 is it used to fetch values from L2293 and L2296 - these get added
@@ -3836,8 +4065,9 @@ to (screenRowAddrHi screenRowAddrLo) and put into (S R), so these must be
 high/low bytes? Can't see where (S R) is used though.
 
 Rename to L2293Lo L2293Hi, anyway. They contain 0, &60, 0 for Y = 0, 1, 2.
+</pre>
 
-<hr>
+<pre>
 Back to working out what L0010 does
 
 The only routines that set L0010 are:
@@ -3871,26 +4101,30 @@ It feels as if it might be something to do with the screen buffers, but there
 are four of them, not three, so maybe not?
 
 Might have to come back to this, getting a bit bogged down by unknowns!
+</pre>
 
-<hr>
+<pre>
 Not sure why I didn't rename sub_C10B7 before, as it clearly does the panning,
 so rename it now to PanLandscapeView
+</pre>
 
-<hr>
+<pre>
 Looks like tileShapeColour is the colour number shifted left by 2 places, so
 document the table accordingly
 
 Not sure why the first entry also has bits 4 and 5 set, but that will come out
 in the wash no doubt.
+</pre>
 
-<hr>
+<pre>
 DrawPolygon is still a bit of a mystery, so will have to come back to it when I
 know more about all these variables. Time to move on to something else, as I'm
 hitting a brick wall and it's screwing up the momentum...
 
 Ah, it happens sometimes!
+</pre>
 
-<hr>
+<pre>
 Let's see if we can get any further with GetTileAltitude, as we stalled on that
 for tiles that contain objects and when bit 7 of considerObjects is set, as we
 don't know what xCoord etc. contain
@@ -3908,8 +4142,9 @@ altitude
 considerObjects also has bit 6 set/cleared/checked. It is only set in
 GetTileAltitude in data6, though I guess LSR is used to move bit 7 into bit 6
 as well. Hmm, probably need to revisit this variable too.
+</pre>
 
-<hr>
+<pre>
 A quick look at sub_C1CCC, then. I wondered before whether this routine
 calculated some kind of gaze vector, as it's called from ProcessActionKeys with
 the vector from the player's eyes to the sights and viewingObject set to the
@@ -3921,8 +4156,9 @@ to a coordinate, so rename it as follows:
 sub_C1CAA -> AddVectorToCoord
 
 and document. Hooray, some code that is easy to follow! Woo-hoo!
+</pre>
 
-<hr>
+<pre>
 Back to sub_C1CCC, and yes, this looks like it's doing the usual trick of
 adding a vector to a point and working out if it hits something - not unlike
 the tile visibility routine in GetRowVisibility
@@ -3937,7 +4173,7 @@ And rename sub_C1CCC -> FollowGazeVector
 						<h2 class="articleSubheader">27/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Finished documenting FollowGazeVector
 
 Split up even more, into five parts, as it's properly complicated! But it is
@@ -3948,8 +4184,9 @@ each tile, so this might be worth further investigation - for example, do the
 bits in the tile number represent anything about the shape?
 
 Something for later, anyway - it's done!
+</pre>
 
-<hr>
+<pre>
 I had to look and see whether the last two bits of the tile shape number say
 anything about the tile shape
 
@@ -3976,8 +4213,9 @@ So the bits don't appear to categorise the tiles into groups, though they are
 very close; I wonder why 2 and 11 are that way around
 
 (I've double-checked GetTileShape, and those two do look correct)
+</pre>
 
-<hr>
+<pre>
 The only piece missing is to finish off GetTileAltitude
 
 Another bit of commentary added today - getting there slowly... but not quite
@@ -3987,7 +4225,7 @@ finished
 						<h2 class="articleSubheader">30/11/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Finished documenting GetTileAltitude, which sets some flags depending on
 whether the tile contains a tree that can be seen by the gaze vector
 
@@ -3998,7 +4236,7 @@ following the gaze vector - worth remembering.
 						<h2 class="articleSubheader">1/12/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Now to document PanLandscapeView
 
 It's straightforward apart from the panning angles in panAngles, which confused
@@ -4022,19 +4260,21 @@ Height, ditto, where -12 is added for panning down, so the strip below the
 bottom of the screen is drawn, and then the pitch angle is adjusted to -4
 
 To make this clearer, rename panAngles -> panAngleToUpdate
+</pre>
 
-<hr>
+<pre>
 That said, PanLandscapeView calls sub_C391E, sub_C3908 and sub_C3923 to set
 variables, so those need looking at
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 65% barrier
 </pre>
 
 						<h2 class="articleSubheader">2/12/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 It's time to investigate the screen buffer and screen memory.
 
 First up, the tables at screenRowAddrLo and screenRowAddrHi contain addresses
@@ -4044,8 +4284,9 @@ while the game is running confirms this).
 
 So let's start by splitting the table into screenRowAddrLo/Hi and
 bufferRowAddrLo/Hi, for clarity.
+</pre>
 
-<hr>
+<pre>
 An aside: we can also rename these pixel bit patterns, using some of the same
 names from Revs:
 
@@ -4055,14 +4296,16 @@ L228B -> pixelsToRight
 L228F -> leftPixels
 
 Nothing to do with the screen buffer, but still worth doing
+</pre>
 
-<hr>
+<pre>
 When calling FillScreen, A is the row offset into screenRowAddrLo, so passing
 25 when panning means we draw into the buffer
 
 So reword all calls to FillScreen to make this clearer
+</pre>
 
-<hr>
+<pre>
 We noted before that L0055 is 0 or 25, and it turns out that in sub_C2299 it is
 added to an index into screenRowAddrLo.
 
@@ -4070,8 +4313,9 @@ So, when L0025 is 0 this looks up screen addresses, and when it's 25 this looks
 up screen buffer addresses.
 
 So rename L0055 -> screenOrBuffer and document uses of it
+</pre>
 
-<hr>
+<pre>
 bufferRowAddrLo/Hi contain hard-coded addresses: &3F00 and &3FA0
 
 Can we make this more readable?
@@ -4136,8 +4380,9 @@ So that defines the extent of the screen buffer - it's made up of lots of bits,
 spread out in specific blocks of memory between &3F00 and &5200
 
 So the whole .viewBufferLeft thing is wrong in some way.
+</pre>
 
-<hr>
+<pre>
 So where does the screen get drawn when it gets drawn into the buffer?
 
 There's a clue in PanLandscapeView
@@ -4193,12 +4438,14 @@ L391A -> maxBufferPitch
 L391C -> minBufferPitch
 
 Not sure this is helping identify the structure of the screen buffer, mind you.
+</pre>
 
-<hr>
+<pre>
 SetNumberOfScrolls also sets the view buffer address and starts off a scroll,
 so rename to StartScrollingView
+</pre>
 
-<hr>
+<pre>
 OK, so I think I finally understand viewBufferAddrHi/Lo.
 
 It points to the address in the screen buffer where the interrupt routine
@@ -4213,8 +4460,9 @@ step of the scrolling process.
 
 Anyway, viewBufferAddrHi/Lo is now full of information, and I've updated lots
 of the scrolling commentary too.
+</pre>
 
-<hr>
+<pre>
 Let's talk about doNotScanKeyboard. Again.
 
 Bit 7 gets set when an action or panning key is pressed. This stops the
@@ -4236,7 +4484,7 @@ Something to ponder. Again.
 						<h2 class="articleSubheader">3/12/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 OK, some more clues on buffer 1
 
 If I disable the two-buffer drawing approach in DrawPolygon by always jumping
@@ -4254,8 +4502,9 @@ I'll document it this way, anyway, as it seems pretty clear:
 
 buffer type 0 = left row buffer
 buffer type 1 = right row buffer
+</pre>
 
-<hr>
+<pre>
 To celebrate, here's a breakdown of the configurations for the three buffer
 types, i.e. the variables set by UseRowBuffer and UseColumnBuffer (and
 ConfigureBuffer)
@@ -4288,8 +4537,9 @@ scene, just the right portion of it
 L0011 and L0035 are both smaller for the right row buffer, so presumably they
 aren't margins from the left edge of the view - maybe they are margins from the
 right edge? Not sure, one for later
+</pre>
 
-<hr>
+<pre>
 Let's document DrawObjectStack as that looks like an easy one
 
 This is pretty straightforward, only made complicated by the way we have to
@@ -4298,13 +4548,15 @@ object flags store object "links" from top to bottom and not from bottom to
 top).
 
 Still, it's another easy one done. Enjoy them while they last!
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 66.6% barrier
 
 Nice one! We are now 2/3 of the way. Slowly, slowly, catchy monkey...
+</pre>
 
-<hr>
+<pre>
 Ok, I'm going to experiment with the idea of changing the PauseKeyboardScan
 into something like FocusOnKeyAction, as it seems to be disabling the keyboard
 reading to focus attention on drawing the landscape, processing absorb actions
@@ -4319,18 +4571,21 @@ previousDoNotScan -> previousFocus
 
 I've just been setting up focuses on my iPhone. I hope this isn't a case of
 life influencing art.
+</pre>
 
-<hr>
+<pre>
 Actually, I quite like the new focusOnKeyAction documentation. It might be a
 keeper.
+</pre>
 
-<hr>
+<pre>
 Let's move on to look at object drawing, to follow on from documenting
 DrawObjectStack
 
 DrawObject is up next, which draws an object. This should be a long journey...
+</pre>
 
-<hr>
+<pre>
 DrawObject immediately calls sub_C5C01, so let's go there.
 
 It starts by analysing the angle deltas for the vector between the viewer and
@@ -4369,7 +4624,7 @@ expected!
 						<h2 class="articleSubheader">4/12/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 DrawObject calls sub_C5C75 next, so let's go there.
 
 It calculates the pitch and yaw angles for the object points. It's convoluted
@@ -4386,8 +4641,9 @@ Object points are stored as polar coordinates (yaw and distance) that are
 extruded up and down by a height
 
 Kinda heavy, but not that bad - just long!
+</pre>
 
-<hr>
+<pre>
 The rest of DrawObject involves lots of tables with lots of data, so I've made
 a first stab at documenting them, but this is incomplete - will have to come
 back to it next time, as that's enough for today!
@@ -4410,7 +4666,7 @@ Latter two contain addresses - need to anlyse those next
 						<h2 class="articleSubheader">5/12/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Looks like those address tables point into other tables - this must be the
 object definitions themselves, which are made up of lists polygon numbers (so
 DrawObject just draws those lists of polygons, with some objects having one
@@ -4428,8 +4684,9 @@ So this must be pointing to some kind of sequence of polygon-related data
 
 It is reset to L0C40 for non-object drawing, so that must be something to do
 with non-object drawing - tiles, presumably?
+</pre>
 
-<hr>
+<pre>
 Excel to the rescue! I've assembled the addresses from (L003CHi L003CLo) in a
 spreadsheet and matched them with the ranges of polygon numbers in
 objPolygonRange, so we now have a sequence of addresses for each polygon
@@ -4445,8 +4702,9 @@ sequences in the first three entries:
 So the robot object definition is at &53B4 (so call this objRobot for now).
 
 And it's made up of groups of 4 or 5 numbers. What are they?
+</pre>
 
-<hr>
+<pre>
 For now, let's just pull out the starting addresses for each object definition
 from the spreadsheet and give them headers.
 
@@ -4463,8 +4721,9 @@ The Sentinel's tower = &536D -> objTower
 
 The last three make sense, pointing to the same object definition, as these are
 just rectangular blocks for building the 3D text.
+</pre>
 
-<hr>
+<pre>
 I love this bit - extracting meaning from blocks of data!
 
 Start off with the manual job of breaking the various object definition tables
@@ -4478,11 +4737,13 @@ As this table contains the address of each polygon definition (a polygon is
 defined as a series of four or five point numbers).
 
 Big job! But very satisfying. :-)
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 70% barrier
+</pre>
 
-<hr>
+<pre>
 Must come back and extract the point numbers properly, as &40 represents point
 0 within the range of points allocated to the object, &41 is point 1 within the
 range, and so on. So we could change this to 64 + 0, 64 + 1 and so on.
@@ -4497,7 +4758,7 @@ But that's all for another time, as that's what I've just run out of.
 						<h2 class="articleSubheader">6/12/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 objPolygonData - how does this work? Let's pull it apart in a spreadsheet to
 see
 
@@ -4557,7 +4818,7 @@ That's much clearer than a bunch of hex numbers.
 						<h2 class="articleSubheader">7/12/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Extracted point coordinate data into comments for objPointYaw, objPointPitch,
 objPointDistance
 
@@ -4598,7 +4859,7 @@ Good old Excel, it's a properly useful tool!
 						<h2 class="articleSubheader">8/12/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Continue the Excel documentation by adding improved polygon data comments like
 this:
 
@@ -4611,8 +4872,9 @@ this:
                         \   * xxxxxxx01: Polygon has four sides (quadrilateral)
 
 That's much better than the original << shift-based commentary.
+</pre>
 
-<hr>
+<pre>
 Also added comments to the polygon point lists in .objMeaniem to give the
 actual point numbers rather than the object range-relative numbers in the
 EQUBs, so we get this kind of thing
@@ -4631,12 +4893,14 @@ As the meanie point range starts is 76 to 93, so EQUB of 7 maps to 7 + 76 = 83.
 
 All automated in Excel, so it's a relatively simple cut-and-paste from Excel
 into a text editor for some tidy-up work and into the source it goes.
+</pre>
 
-<hr>
+<pre>
 Change the terminology to talk about polygon edges rather than polygon lines,
 as that is clearer
+</pre>
 
-<hr>
+<pre>
 More documenting of DrawObject
 
 L0C7A -> blendPolygonEdges
@@ -4647,29 +4911,33 @@ Code to do this is just before .C22EF
 
 It copies colour from 2-3 (fill) into 4-5 (edge) to set edge colour to same as
 fill so edges blend in
+</pre>
 
-<hr>
+<pre>
 L0017 -> polygonPointCount
 
 This is one more then the number of sides, as the polygon lists contain the
 first point repeated at the end.
+</pre>
 
-<hr>
+<pre>
 L003C -> drawViewAngles
 
 This address points to the pitch and yaw angles of the tile corners and polygon
 points, relative to the view, so these are effectively the angles that we
 project onto the screen when drawing the view.
+</pre>
 
-<hr>
+<pre>
 Looks like this one is passed to DrawPolygon and determines which part of the
 routine is run, so it's some kind of polygon type:
 
 L003B -> polygonType
 
 It only uses bits 6 and 7, so let's document this as far as we can
+</pre>
 
-<hr>
+<pre>
 It turns out that these tables:
 
 tileViewYawHi tileViewYawLo
@@ -4687,8 +4955,9 @@ drawViewYawHi drawViewYawLo
 drawViewPitchHi drawViewPitchLo
 
 and remove the point* labels altogether.
+</pre>
 
-<hr>
+<pre>
 Time to see if we can identify all the screen buffers within the code layout,
 as they must be in there somewhere. So add .viewBufferRow0 through 24.
 
@@ -4703,10 +4972,11 @@ This clashes with object data, so presumably this row is never used
 						<h2 class="articleSubheader">9/12/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Finish documenting DrawObject
+</pre>
 
-<hr>
+<pre>
 Now that we understand a bit more about drawing objects, let's finish off the
 title screen code in DrawTitleObject.
 
@@ -4716,8 +4986,9 @@ The first palette in colourPalettes gets changed to the game palette, while the
 second one is fixed and is for the title screens.
 
 So let's document this properly.
+</pre>
 
-<hr>
+<pre>
 We should probably rename the title routines, as the 3D text routines don't
 draw the text they create text from 3D objects, and some of the routines I have
 marked as drawing the title screen similarly only spawn 3D objects.
@@ -4735,8 +5006,9 @@ sub_C5FE5 -> DrawTitleObjects
 sub_C5FEE -> DrawTitleObject
 
 The top-level routine is still DrawTitleScreen, which is almost all documented.
+</pre>
 
-<hr>
+<pre>
 DrawTitleView loads a bunch of variables from tables, depending on whether this
 is a title screen or the landscape preview, and almost all of those variables
 get poked into named labels.
@@ -4755,8 +5027,9 @@ and this one gets copied into xTitleOffset, so we can name it:
 L1409 -> titleOffset
 
 So now let's crack on with commenting DrawTitleView
+</pre>
 
-<hr>
+<pre>
 After configuring colours and object #16, DrawTitleView calls DrawTitleObjects,
 which calls DrawTitleObject, which calls SpawnTitleObject, so let's go there
 now.
@@ -4777,19 +5050,20 @@ and these set up the viewing object itself in object #2:
 
 L5FD9 -> titleViewerPitch
 L5FE2 -> titleViewerYaw
+</pre>
 
-<hr>
+<pre>
 Finish documenting SpawnTitleObject and all the configuration variable tables.
-
 </pre>
 
 						<h2 class="articleSubheader">9/12/25<br>
 													 =======</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Back to DrawTitleView, which is a relatively easy routine to finish documenting
+</pre>
 
-<hr>
+<pre>
 Next up is SpawnCharacter3D, which creates the text in the landscape as 3D text
 blocks
 
@@ -4800,21 +5074,24 @@ table
 L3248 -> objBlockNumber
 
 The 32 part gets cleared in DrawTileAndObjects, so that's a bit weird
+</pre>
 
-<hr>
+<pre>
 Also document the relevant bits of DrawTileAndObjects at .tobj1 and polish off
 titleText
 
 And clarify how the block pair objects 7-9 are defined using different point
 ranges.
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 75% barrier
 
 Three-quarters of the way there! Come on, the end is getting every-so-slightly
 closer...
+</pre>
 
-<hr>
+<pre>
 Explained various ???s in the commentary, just to keep on top of them - every
 little step is a step forward
 
@@ -4836,21 +5113,23 @@ we can have:
 .screenBufferAddr
 
 and so on. This feels a bit cleaner.
+</pre>
 
-<hr>
+<pre>
 Also, move the startup routines in ConfigureMachine and ClearMemory, and the
 original source code in the workspace noise, to the end of the source file, as
 they clash with the game memory structure and are much easier to follow if they
 move elsewhere (along with the CLEAR they need).
+</pre>
 
-<hr>
+<pre>
 Added a number of comments to variables in the workspaces
 </pre>
 
 						<h2 class="articleSubheader">10/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 A big terminology change that will make things simpler (and which I must roll
 out into my other projects).
 
@@ -4905,8 +5184,9 @@ $1(Lo Bot)
 There are still some chunky names in there, such as (xDeltaAbsoluteHi xDeltaLo)
 or (scrollScreenHi+Y scrollScreenLo+Y), but there aren't many, so let's leave
 them
+</pre>
 
-<hr>
+<pre>
 Time to move on to the ProcessGameplay routine and the unexplained subroutines
 therein.
 
@@ -4930,8 +5210,9 @@ sub_C16A8 -> ApplyEnemyTactics
 sub_C16C9 -> MoveOnToNextEnemy
 sub_C16D9 -> ApplyTactics
 sub_C1AEC -> FinishEnemyTactics
+</pre>
 
-<hr>
+<pre>
 ApplyTactics also calls sub_C1A54 and sub_C1871, when the enemy object number
 is no longer associated with an object (so it's been absorbed or something?)
 
@@ -4949,8 +5230,9 @@ sub_C2096
 
 sub_C2096 seems to check whether the object is visible, so rename
 GetObjVisibility
+</pre>
 
-<hr>
+<pre>
 CheckObjVisibility does a bunch of angle calculations that calculate the yaw
 angle of the object in terms of screen
 
@@ -4979,8 +5261,9 @@ calculation
 
 Weird, I wonder what it is? Let's call it minObjWidth as that's what it is, and
 we can work it out as we analyse the above bits of code further
+</pre>
 
-<hr>
+<pre>
 Ah! I think I have it. minObjWidth is set to a non-zero value when:
 
 a meanie replaces a tree (minObjWidth = 104)
@@ -4991,42 +5274,48 @@ why not 114 and 122 in both cases, so we check visibility on the widths of tree
 and boulder???
 
 Hmm, might not be totally correct, but it's something to do with this.
+</pre>
 
-<hr>
+<pre>
 Finished GetObjVisibility but with a lot of questions!
 </pre>
 
 						<h2 class="articleSubheader">11/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 OK, I've worked out why doubling a yaw angle converts it into character
 columns. It's obvious - the screen is 20 yaw angles wide and 40 character
 columns wide, you double the yaw to get the number of character columns.
 
 Looks like the vertical equivalent is to multiply by 2/3, as the screen is 36
 pitch angles tall and 24 character rows.
+</pre>
 
-<hr>
+<pre>
 So bufferColumns is set to GetObjVisibility with a maximum value of 20
 
 This is why close-up objects that take up a large amount of space on-screen are
 absorbed in two stages, left then right, as the object it too wide to fit into
 the column buffer's maximum width of 20 character columns, or half a screen
+</pre>
 
-<hr>
+<pre>
 Moving back up the hirearchy, we can rename sub_C1AF3 to CheckObjVisibility and
 finish documenting it
+</pre>
 
-<hr>
+<pre>
 sub_C1AE7 gets the visibility and aborts the enemy tactics if the object could
 be seen on-screen, so rename it to AbortIfVisible and document
+</pre>
 
-<hr>
+<pre>
 Rolling back up the hierarchy, we get back to DrainEnemyEnergy, so finish that
 off as it's almost all commented
+</pre>
 
-<hr>
+<pre>
 The next level up is the top one, ApplyEnemyTactics, so there are two choices
 for the next rabbit hole to dive down: ApplyTactics and sub_C1871.
 
@@ -5039,8 +5328,9 @@ emulator)
 
 Actually, this timer seems to control whether we apply tactics, not rotation as
 such, so rename it to objTacticsTimer
+</pre>
 
-<hr>
+<pre>
 After a bit of logic, we fetch enemyData5 for this enemy
 
 If bit 7 is set it jumps down (so add a header as this feels like a multipart
@@ -5082,7 +5372,7 @@ And that's enough for the day
 						<h2 class="articleSubheader">12/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Short day, so continuing with ApplyTactics...
 
 Part 2 of ApplyTactics calls sub_C1882 in the part that thinks about creating a
@@ -5098,8 +5388,9 @@ Working through the routine, this is calculating triangles and following a gaze
 vector, so it looks like some kind of "can the enemy see this object" routine?
 
 It seems to set L0014 and L0C76 accordingly...
+</pre>
 
-<hr>
+<pre>
 I got sidelined by trying to work out how the enemy timers are updated, as I
 keep talking about "iterations of the gameplay loop" and that might actually be
 nonsense
@@ -5114,7 +5405,7 @@ So let's look at sub_C12EE... but next time though, as I'm off for the day
 						<h2 class="articleSubheader">13/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 sub_C12EE updates three blocks of timers at L0C20, L0C28 and objTacticsTimer
 
 So rename as follows, so these all start with .enemy:
@@ -5154,8 +5445,9 @@ and these batches of enemy data:
 .enemyData8
 
 We'll flesh these out as we work through ApplyTactics
+</pre>
 
-<hr>
+<pre>
 Finish off documenting UpdateEnemyTimers, which is pretty simple
 
 The counters tick down from their starting value to 1, and then they stay there
@@ -5165,8 +5457,9 @@ They tick down on one in three calls to UpdateEnemyTimers
 UpdateEnemyTimers is called 50 times a second when the game is active
 
 So a timer set to n will count down in N * 0.06 seconds
+</pre>
 
-<hr>
+<pre>
 Anyway, back to sub_C1882 now
 
 So this routine is called to work out whether the current enemy can see a
@@ -5195,7 +5488,7 @@ L0C76 gets bit 7 set if the enemy can see a tree, so rename to treeVisibility
 						<h2 class="articleSubheader">14/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 OK, back to ApplyTactics
 
 First, we need to clarify what effect the enemyCheckingRobot parameter has on
@@ -5207,8 +5500,9 @@ the tile, so this allows us to calculate partial views of targets (so the
 scanner can be half-filled, presumably)
 
 So roll this into the commentary
+</pre>
 
-<hr>
+<pre>
 Back to ApplyTactics, let's keep going with part 2
 
 It's meanie logic and involves enemyData6
@@ -5219,15 +5513,16 @@ It's passed to CheckEnemyGaze as the target object in Y, so this is some kind
 of enemy-related target
 
 So enemyData6 -> enemyTarget, let's see if that helps clariry things
+</pre>
 
-<hr>
+<pre>
 It does, so let's keep on trucking with part 2 of ApplyTactics
 </pre>
 
 						<h2 class="articleSubheader">15/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 A quick aside about the last bit of ApplyTactics, at tact25, as this gets
 jumped to from lots of places.
 
@@ -5242,8 +5537,9 @@ sub_C1F84 -> DrawUpdatedObject
 sub_C5E5F -> DitherScreenBuffer
 
 and now we can document calls to tact25 accordingly
+</pre>
 
-<hr>
+<pre>
 Also, call to DrawUpdatedObject uses the following flags to control what it
 does:
 
@@ -5259,15 +5555,17 @@ So maybe:
 
 L0C4D -> drawOrRemoveObject
 L0C6D -> ditherObjectSights
+</pre>
 
-<hr>
+<pre>
 The final part of the object-drawing hierarchy is sub_C2997, which seems to set
 the same variables as ConfigureBuffer, so this is presumably configuring the
 screen buffer for drawing the object
 
 So sub_C2997 -> ConfigureBufferObj
+</pre>
 
-<hr>
+<pre>
 Anyway... back to ApplyTactics part 2
 
 Need to work out these timers, starting with enemyTimer1
@@ -5293,17 +5591,19 @@ Finish documenting ApplyTactics part 2 and 3
 						<h2 class="articleSubheader">16/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 As it's called so much from the ApplyTactics routine, let's look at
 DrawUpdatedObject and the routines it calls: ConfigureBufferObj and
 DitherScreenBuffer
+</pre>
 
-<hr>
+<pre>
 First thing is L0C1E, which seems to skip dithering in DitherScreenBuffer
 
 So L0C1E -> doNotDitherObject
+</pre>
 
-<hr>
+<pre>
 Dithering in DitherScreenBuffer is done with an inner and outer loop (with a
 call to the sound routines inbetween)
 
@@ -5314,15 +5614,17 @@ So:
 
 L0CD2 -> ditherInnerLoop
 L2094 -> ditherOuterLoop
+</pre>
 
-<hr>
+<pre>
 L2095 is interesting. It's used as a high byte for yawAdjustment(Hi Lo), but
 only in DrawUpdatedObject, so let's call it yawAdjustmentHi.
 
 So this adjusts the viewing object so that the object is drawn alongside the
 left edge of the buffer
+</pre>
 
-<hr>
+<pre>
 ConfigureObjBuffer is as confusing as ConfigureBuffer - lots of unknowns
 
 One more clue, though, as it turns out (L0011 L0029) is a 16-bit value
@@ -5332,17 +5634,20 @@ of some kind
 
 So rename to L0011YawHi and L0011YawLo for now, i.e. L0011Yaw(Hi Lo) in our new
 terminology
+</pre>
 
-<hr>
+<pre>
 Back to DrawUpdatedObject, and L2092 is used to store the screen addresss of
 the object, so:
 
 L2092 -> objScreenAddr
+</pre>
 
-<hr>
+<pre>
 Documented the rest of DrawUpdatedObject - it isn't too complex in the end
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 80% barrier
 
 This is pretty great - it's starting to feel a bit like the home straight,
@@ -5353,8 +5658,9 @@ as I've gone along, so in a sense the target is 95.6% rather than 100%, as the
 last 4.4% will slot in quite quickly.
 
 Getting there!
+</pre>
 
-<hr>
+<pre>
 Might as well look at DitherScreenBuffer next, to finish off the whole
 object-updating saga.
 
@@ -5372,11 +5678,12 @@ while!
 						<h2 class="articleSubheader">17/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Finish documenting DitherScreenBuffer, though that random stuff is still weird
 (though it's just a way of choosing a random pixel byte from the column buffer)
+</pre>
 
-<hr>
+<pre>
 Back to ApplyTactics part 4
 
 For this short bit of code we need to work out enemyData8, sub_C1AA7 and
@@ -5387,8 +5694,9 @@ to contain a number rather than flags (as it is affected by DEC and INC
 elsewhere)
 
 Probably a good idea to analyse sub_C1AA7 for clues here
+</pre>
 
-<hr>
+<pre>
 sub_C1AA7 iterates through the objects and looks for a tree-on-a-stack or a
 boulder that's exposed on top of a tile and whose tile can be seen by the enemy
 
@@ -5397,12 +5705,14 @@ In other words, a tree or boulder that the enemy can drain
 So sub_C1AA7 -> FindObjectToDrain
 
 And document it, as it's quite straightforward
+</pre>
 
-<hr>
+<pre>
 Back to ApplyTactics, and finish off part 4 (though I still don't understand
 enemyData1)
+</pre>
 
-<hr>
+<pre>
 On to ApplyTactics part 5, which we can split into two (part 5 and 6): looking
 for robots to drain, and rotating
 
@@ -5411,8 +5721,9 @@ sound effects, so I can replace all the ???s in the various sound routines and
 variables with the details.
 
 Document parts 5 and 6 and move on to part 7
+</pre>
 
-<hr>
+<pre>
 ApplyTactics part 7 drains energy from the object it's called with
 
 targetVisibility is put into enemyData7, so rename to enemyVisibility
@@ -5420,8 +5731,9 @@ targetVisibility is put into enemyData7, so rename to enemyVisibility
 It's fairly straightforward, draining energy in the usual way unless the target
 is partially obscured, in which case it calls sub_C197D, presumably to think
 about turning a tree into a meanie... but let's have a look
+</pre>
 
-<hr>
+<pre>
 sub_C197D, looks like enemyData1 stores an object number as we scan from 63
 down, looking for a tree that can be turned into a meanie, so:
 
@@ -5437,13 +5749,15 @@ enemyData3 -> enemyFailTarget
 enemyData4 -> enemyFailCounter
 
 as they keep track of failed meanie scans
+</pre>
 
-<hr>
+<pre>
 Also, this makes more sense as all the reset data is meanie-related:
 
 ResetEnemyData -> ResetMeanieScan
+</pre>
 
-<hr>
+<pre>
 Finish ScanForMeanieTree and finish ApplyTactics
 
 Good progress today!
@@ -5452,20 +5766,22 @@ Good progress today!
 						<h2 class="articleSubheader">19/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 A quick win here - finishing off the main variable workspace ay &0C00
 
 Just need to convert L0C40 to L0C44 to polygonPoint, as this is where the (up
 to) five polygon points get stashed in the polygon routine... and that's the
 workspace done
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 85% barrier
 
 A big leap because the workspace is a big one, though in fairness it has been
 updated slowly throughout the project
+</pre>
 
-<hr>
+<pre>
 sub_C191A -> GetPlayerDrain
 
 This works out whether the player is exposed to an enemy and whether they enemy
@@ -5473,8 +5789,9 @@ can see the player's tile, and it sets the variables accordingly
 
 It doesn't do the actual tile visibility calculation, it just uses the values
 from enemyVisibility etc. so it's pretty simple
+</pre>
 
-<hr>
+<pre>
 On to the final category - drawing polyons (there are some buffer variables
 that I haven't explained yet, but they seem to be tied into the drawing
 routine, so I'll work them out when I get there
@@ -5493,8 +5810,9 @@ rename:
 
 L0B40 -> L0B40Hi
 L54A0 -> L0B40Lo
+</pre>
 
-<hr>
+<pre>
 DrawPolygon is documented apart from the two calls to sub_C2D36 and sub_C2299,
 and some logic around the values of L002C (for left row buffer) and L002D (for
 right row buffer)
@@ -5516,7 +5834,7 @@ sub_C2299
 						<h2 class="articleSubheader">20/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 sub_C2D36 splits into multiple parts
 
 It looks like it analyses the pologon and works out what to plot, but it
@@ -5530,8 +5848,9 @@ sub_C2299 -> DrawPolygonPixels
 
 Can always rename, as always (the last one isn't great, but I need to
 distinguish it from the top level DrawPolygon)
+</pre>
 
-<hr>
+<pre>
 Also, split off a few subroutines, which may or may not be right, but hey
 
 sub_C2FCC
@@ -5539,8 +5858,9 @@ sub_C3087
 
 C2D5D looks like a sub in own right, as it is only called from way below
 C2D93 = Part 2 of AnalysePolygon ?
+</pre>
 
-<hr>
+<pre>
 AnalysePolygon starts with code that sets polygonPoint to +4 with the polygon
 point numbers
 
@@ -5564,8 +5884,9 @@ So EOR #32 flips between the two rows
 + 32 + 1 moves from top-left to bottom-right
 
 Might need to come back to this...
+</pre>
 
-<hr>
+<pre>
 As this is complex, let's try it from the other end: DrawPolygonPixels
 
 This seems a bit simpler and contains a construct from Revs at the end - a
@@ -5602,18 +5923,20 @@ L0006 -> yPolygonTop
 These may be the wrong way around of course, but we can change that
 
 And the adding and dividing by 2 is finding the middle polygon pixel line?
+</pre>
 
-<hr>
+<pre>
 Self-modifying code too! Lovely....
 </pre>
 
 						<h2 class="articleSubheader">22/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Looking at DrawPolygonPixels further, split it up into four parts
+</pre>
 
-<hr>
+<pre>
 L3E00 and L3E40 are indexed by the value of polygonColours+X
 
 i.e. %00eeff00 + %xx = %00eeffxx
@@ -5621,22 +5944,25 @@ i.e. %00eeff00 + %xx = %00eeffxx
 
 So break the table up into bytes, and convert them into pixel bytes in binary
 as they are poked directly into screen memory
+</pre>
 
-<hr>
+<pre>
 Part 4 of DrawPolygonPixels is a bit like Revs and jumps into a string of fill
 instructions to draw a horizontal line, so this is pretty easy to document
 
 Though the calculation to find the offset into the unrolled loop is
 intriguing...
+</pre>
 
-<hr>
+<pre>
 Part 1 of DrawPolygonPixels is almost done and converts polygon coordinates
 into screen coordinates (i.e. flipping the y-axis)
 
 Polygons are not drawn if left > right, i.e. it's flipped horizontally
 Ditto is bottom > top, i.e. it's flipped vertically
+</pre>
 
-<hr>
+<pre>
 Part 3 is the entry point, does some maths and possibly jumps up to part 2
 
 Looks like it's comparing x-coordinates from the polygon to L0035 and L0061,
@@ -5661,8 +5987,9 @@ L0061 -> bufferYawWidth
 
 The last two could be the other way around, but I suspect Crammond would put
 the right and left values together
+</pre>
 
-<hr>
+<pre>
 I think we're dealing with yaw angles here and not x-coordinates, so rename:
 
 xPolygonRight -> polygonYawRight
@@ -5670,11 +5997,13 @@ xPolygonLeft -> polygonYawLeft
 
 This may not be right, but I think we're still in yaw angle territory for this
 process...
+</pre>
 
-<hr>
+<pre>
 Documented part 3
+</pre>
 
-<hr>
+<pre>
 Getting there slowly, but it's complex stuff, and I'm not sure whether
 polygonYawRight does in fact contain yaw angles, or whether it's a pixel
 coordinate of some kind - I guess we'll have to leave that to when we go back
@@ -5685,8 +6014,9 @@ Also, rename:
 DrawPolygonPixels -> DrawPolygonLines
 
 It just feels a bit clearer
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 90% barrier
 
 Wow, 90% done? It's so close... especially as zero page accounts for 1.5% of
@@ -5696,11 +6026,12 @@ the remaining 10% and that's really close to completion
 						<h2 class="articleSubheader">23/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Ran a spell check on the commentary, using my extraction script, so lots of
 small fixes
+</pre>
 
-<hr>
+<pre>
 Let's do part 2 of DrawPolygonLines
 
 It's lots of edge cases (literally!) to do with detecting whether the polygon
@@ -5715,15 +6046,16 @@ This is fairly straightforward, though there are some doublings in here that
 are weird. The whole yaw angle buffer configuration thing is not matching my
 analysis, so I guess the next stage is to move on to AnalysePolygon... which is
 all that's left anyway
+</pre>
 
-<hr>
+<pre>
 Back to looking at AnalysePolygon
 </pre>
 
 						<h2 class="articleSubheader">24/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Only got five minutes, so just some tidying up:
 
 yVectorLo, zVectorLo are reused in AnalysePolygon, so put them back to L0030,
@@ -5734,8 +6066,9 @@ Split first bit of AnalysePolygon into a separate part 1
 Rename as follows, so GetPolygonLines and DrawPolygonLines feel more connected:
 
 AnalysePolygon -> GetPolygonLines
+</pre>
 
-<hr>
+<pre>
 So... are all the buffer yaw/pitch angle constraints actually pixel
 constraints?
 i.e. full landscape view is 160 pixels wide, 192 pixels tall
@@ -5769,11 +6102,12 @@ Probably going to have to rename buffersYaw to xBuffers or something, we'll see
 						<h2 class="articleSubheader">26/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 A quick bit of downtime after the main Christmas festivities to polish off some
 of the question marks in the source code
+</pre>
 
-<hr>
+<pre>
 First up, bit 6 of considerObjects
 
 Turns out that when bit 7 of considerObjects are set, then GetTileAltitude can
@@ -5786,8 +6120,9 @@ FollowGazeVector part 1 checks for bit 6 and if it's set, then it will report
 that a tile can't be seen, so this means that platform objects effectively
 block partially visible tiles that peek out from behind them, but trees don't
 do this
+</pre>
 
-<hr>
+<pre>
 I did wonder about LSR considerObjects in FollowGazeVector part 2, and does
 this implement some kind of "previous bit 7" thing.
 
@@ -5811,8 +6146,9 @@ where there are no labels where we can join in early:
 So the LSR is indeed a shorthand for setting considerObjects to zero, as we
 only get here if bit 7 is set, and once we duck out to gaze5, then if we come
 back we override considerObjects with the STA anyway.
+</pre>
 
-<hr>
+<pre>
 Now for L000C
 
 First, a renaming of the platform byte:
@@ -5841,22 +6177,25 @@ to
                         \ gaze4 to return from the subroutine with the C flag
                         \ set to indicate that the viewer is not looking at a
                         \ tile or object
+</pre>
 
-<hr>
+<pre>
 Also, in GetTileAltitude, naming of labels is odd, so:
 
 data1 -> tile1 etc.
 
 The original was from when this was called GetTileData, which was ages ago
+</pre>
 
-<hr>
+<pre>
 While we're renaming, it's clear that the polygon lines routine uses L0B40(Hi
 Lo) to stash polygon x-coordinates, so let's rename them like this:
 
 L0B40Hi -> xPolygonPointHi
 L0B40Lo -> xPolygonPointLo
+</pre>
 
-<hr>
+<pre>
 Also, might as well add a category of Drawing polygons to the three remaining
 subs, as they are pretty clearly related to this: sub_C2EAE, sub_C3087,
 sub_C316E
@@ -5869,7 +6208,7 @@ Still got 12 Summary header lines with ???s, but we're getting there...
 						<h2 class="articleSubheader">27/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Back onto GetPolygonLines
 
 These two seem to be part of the main routine flow rather than subroutines, so:
@@ -5885,12 +6224,14 @@ Also, vectorYawAngleHi and vectorPitchAngleLo don't seem to contain vector
 angles, so they must be reused, so:
 
 vectorYawAngleHi, vectorPitchAngleLo -> L003E, L003F
+</pre>
 
-<hr>
+<pre>
 Documented parts 3 and 4, which convert the yaw angle into an x-coordinate by
 multiplying by 8
+</pre>
 
-<hr>
+<pre>
 Started on part 5, which is all about pitch angles, so presumably this part is
 more about the y-coordinates, but we'll see...
 </pre>
@@ -5898,13 +6239,14 @@ more about the y-coordinates, but we'll see...
 						<h2 class="articleSubheader">28/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Following the threads, turns out that GetPolygonLines part 7 is actually
 sub_C2EAE part 2, so rename it accordingly
 
 Also, vectorPitchAngleHi is reused, so vectorPitchAngleHi -> L0040
+</pre>
 
-<hr>
+<pre>
 Let's try to name these variables:
 
  LDA drawViewPitchHi,Y
@@ -5956,8 +6298,9 @@ And we also have:
  SBC xEdgeEndHi
 
 So L0041 -> xEdgeStartHi
+</pre>
 
-<hr>
+<pre>
 Some terminology clarifications
 
 I'm going to refer to the polygon's sides as "polygon edges", to match the
@@ -5968,8 +6311,9 @@ So we will be tracing polygon edges to work out the coordinates of the polygon
 lines
 
 Search and replace to the rescue!
+</pre>
 
-<hr>
+<pre>
 OK, back to GetPolygonLines part 5 top continue the commentary
 
 (A L000C) and (V L000C) are used to store the difference in y-coordinate along
@@ -5977,8 +6321,9 @@ an edge, so rename L000C to yEdgeDeltaLo for now
 
 V is used as the high byte, so add a label of yEdgeDeltaHi to V in this part of
 the code only
+</pre>
 
-<hr>
+<pre>
 L0002 is set to &5A or &5B, and is poked into the high byte of this
 instruction:
 
@@ -5993,27 +6338,31 @@ So L0002 is being set to the high byte of the destination table for the polygon
 line x-coordinates (i.e. right or left)
 
 So L0002 -> xPolygonAddrHi
+</pre>
 
-<hr>
+<pre>
 Working through part 5, it looks like L001E is a counter that is incremented
 when we have edges with a y-axis delta of 0
 
 So there's a whole section devoted to horizontal edges and polygons that are
 only made up of horizontal edges
+</pre>
 
-<hr>
+<pre>
 Looks like part 5 loops through the edges, processes horizontal edges itself,
 and then sends edges with two-byte coordinates to part 6 for splitting up
 
 In both cases, sub_C2EAE is called to process the edge, so
 
 sub_C2EAE -> ProcessPolygonEdge
+</pre>
 
-<hr>
+<pre>
 Finished documenting part 5 of GetPolygonLines, but with a fair few question
 marks
+</pre>
 
-<hr>
+<pre>
 As an aside, let's try to make the buffer-related variables have a consistent
 naming convention:
 
@@ -6037,7 +6386,7 @@ This might help work out what these actually mean! Maybe...
 						<h2 class="articleSubheader">29/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Let's start by looking at the last remaining sub_Cxxxx routine, sub_C316E
 
 It modifies the code in ProcessPolygonEdge, changing opcodes between BIT, STA
@@ -6054,16 +6403,18 @@ So sub_C316E changes the code that stores the polygon line data, switching it
 between storing X, Y and nothing (the BIT is effectively a NOP)
 
 So rename sub_C316E -> ModifyStoringCode
+</pre>
 
-<hr>
+<pre>
 Also, these are equivalent and more relevant, as these instructions are
 modified to write into the xPolygonRight or xPolygonLeft tables, and the actual
 values are just placeholders:
 
  STX xTileMaxAltitude+62    -> xPolygonRight+&9E
  STX xTileMaxAltitude+63    -> xPolygonRight+&9F
+</pre>
 
-<hr>
+<pre>
 Back to part 6 of GetPolygonLines
 
 The L007F variable controls whether there is are any polygon pixels to draw, so
@@ -6074,22 +6425,25 @@ points, so name it xPointDeltaHi
 
 This part calls the edge-tracing process, splitting the edge up into smaller
 parts if they are too big for the deltas to fit into one byte
+</pre>
 
-<hr>
+<pre>
 As the polygon edge is processed by tracing along the edge and calculating the
 coordinates, this might be a better name:
 
 ProcessPolygonEdge -> TracePolygonEdge
+</pre>
 
-<hr>
+<pre>
 >>> Broken through the 95% barrier
 
 And of that, 1.5% is zero page, and that only has one unlabelled variable
 (L000D), so this means there is effectively only 3.5% to go and 96.5% coverage
 
 I might even post something to social media to get people excited!
+</pre>
 
-<hr>
+<pre>
 So, on to TracePolygonEdge, the last undocumented routine
 
 Working through, it starts by updating yPolygonTop and yPolygonBottom
@@ -6098,8 +6452,9 @@ That said, I think I might have my start and end points the wrong way around in
 terms of height, as this logic seems to be the wrong way around. Or, rather,
 I've got the start and end point heights the wrong way around. Will need to
 look into this.
+</pre>
 
-<hr>
+<pre>
 Turns out L000D is a single-byte x-axis delta, so rename L000D to xEdgeDelta -
 not to be confused with the two-byte version in xEdgeDelta(Hi Lo)
 
@@ -6107,22 +6462,24 @@ And that's the whole of zero page identified, though there are still some ???s
 in there, particularly around the buffer variables. Still, that's a big jump,
 as I can mark zero page with "Explain", and we're now at 96.5% done. Getting
 close!
+</pre>
 
-<hr>
+<pre>
 That's it for the day. I can almost feel the home straight under my feet...
 </pre>
 
 						<h2 class="articleSubheader">30/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 I've put my back out! The pain isn't exactly conducive, but sitting in an
 upright position seems to help, so who am I to argue?
 
 I'm not writing down the yelps of pain, so nobody will suspect a thing... buy
 my notes will be terse
+</pre>
 
-<hr>
+<pre>
 The TracePolygonEdge tracing routine is essentially multiple Bresenhams, split
 up into 16-bit vs 8-bit x-coordinates, and steep vs shallow, and off-screen vs
 on-screen
@@ -6145,27 +6502,30 @@ spasming.
 						<h2 class="articleSubheader">31/12/25<br>
 													 ========</h2>
 
-<pre style="margin-top: 1ch">
+<pre>
 Finish off part 8 of TracePolygonEdge by copying the not-exactly-brilliant
 commentary from part 7 and changing the axis names around
 
 This entire routine needs improving - but that's probably true of every
 Bresenham routine I've ever documented. I have trouble keeping awake during all
 this unrolled duplication. :-)
+</pre>
 
-<hr>
+<pre>
 Rename SetScannerUpdate to SetScannerAndPause, as the pause is the biggest part
 of this routine (and something on my snag list, as I don't know why it's
 there!)
+</pre>
 
-<hr>
+<pre>
 So that's almost everything done... except for the buffer variables. These need
 looking at, as I don't understand them and they feed into code that I suspect I
 have misinterpreted.
 
 Here goes...
+</pre>
 
-<hr>
+<pre>
 Let's look at where the buffer variables are actually used.
 
 These are only ever used in DrawPolygonLines to clip polygons to the buffer:
@@ -6185,8 +6545,9 @@ calculation:
 
 bufferMaxYawHi
 bufferMinYaw(Hi Lo)
+</pre>
 
-<hr>
+<pre>
 So, let's rename:
 
 bufferYaw(Hi Lo) -> bufferOrigin(Hi Lo)
@@ -6196,8 +6557,9 @@ buffersYawHi -> buffersOrigin
 As this one seems pretty clear - it moves the origin from the centre of the
 view to the left edge of the buffer, thus converting yaw angles to buffer
 coordinates
+</pre>
 
-<hr>
+<pre>
 Looking at ConfigureObjBuffer for clues:
 
 bufferYawWidth is width of whole buffer in PIXELS (i.e. 4 * character columns)
@@ -6218,8 +6580,9 @@ bufferYawRight -> xBufferRight
 
 bufferYawLeft -> xBufferLeft
 buffersYawLeft -> xBuffersLeft
+</pre>
 
-<hr>
+<pre>
 Looking at ConfigureObjBuffer for clues:
 
 bufferMinYaw(Hi Lo) is the width of the buffer in yaw angles
@@ -6227,8 +6590,9 @@ bufferMinYaw(Hi Lo) is the width of the buffer in yaw angles
 bufferMaxYawHi = bufferMinYawHi / 2 with bit 7 flipped
 
 I definitely don't understand this part!
+</pre>
 
-<hr>
+<pre>
 Right row buffer is only ever used for drawing polygons on the landscape in
 DrawPolygon, and never for landscape tiles (ConfigureBuffer is only ever called
 for left row or column buffer) or updating objects (ConfigureObjBuffer always
@@ -6236,8 +6600,9 @@ uses column buffer)
 
 FlipBufferType is only ever called from DrawPolygon, and it's the only place
 that the right row buffer is used
+</pre>
 
-<hr>
+<pre>
 bufferMinYaw(Hi Lo) is the width of the buffer in yaw angles
 
 bufferMinYaw(Hi Lo) is only ever used in this comparison:
@@ -6251,8 +6616,9 @@ So is bufferMinYaw(Hi Lo) really the maximum yaw angle, i.e. bufferMaxYaw(Hi
 Lo)?
 
 CONFUSED!
+</pre>
 
-<hr>
+<pre>
 bufferMaxYawHi is always bufferMinYawHi / 2 with bit 7 flipped
 
 It is only ever used in this comparison:
@@ -6262,8 +6628,9 @@ drawViewYawHi >= bufferMaxYawHi: set bit 0 of tileIsOnScreen
 Don't understand this EOR bit flip, I must say...
 
 CONFUSED!
+</pre>
 
-<hr>
+<pre>
 So here's a summary:
 
 Shape             LeftRow  RightRow    Column
@@ -6280,11 +6647,13 @@ xBufferLeft          80      64         96          In pixels?
 xBufferRight        192     176        160          In pixels?
 
 Not exactly solved, but maybe we are getting there slowly?
+</pre>
 
-<hr>
+<pre>
 Added a README to the repository
+</pre>
 
-<hr>
+<pre>
 Will have to leave the rest for later analysis, as I'm a bit stuck on the snag
 list (which is in the spreadsheet)
 
