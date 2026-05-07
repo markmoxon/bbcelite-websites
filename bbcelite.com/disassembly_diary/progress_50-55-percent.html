@@ -1,0 +1,329 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_50-55-percent.html", "Project progress: 50% to 55%", "Project progress: 50% to 55%", "A diary covering progress from 50% to 55% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_50-55-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_45-50-percent.html">Project progress: 45% to 50%</a><a class="next" rel="next" title="Next deep dive" href="progress_55-60-percent.html">Project progress: 55% to 60%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">12 November to 16 November 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-11-12">12 November 2025</a></li>
+							<li><a href="#date-2025-11-13">13 November 2025</a></li>
+							<li><a href="#date-2025-11-14">14 November 2025</a></li>
+							<li><a href="#date-2025-11-15">15 November 2025</a></li>
+							<li><a href="#date-2025-11-16">16 November 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-11-12" class="anchor"></a>12 November 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-11-12&until=2025-11-12">repository commits from this day</a></p>
+
+<pre>
+Document part 2 of GetRowVisibility
+
+So this traces along the vector from the player to the tile corner, working out
+if it bumps into landscape on the way
+
+It works along the sight vector (almost) one tile at a time, and checks whether
+that tile is higher than the ray, and if it is then the ray is obscured
+
+We need to do some renaming, as these vector and coordinate variables appear
+more general than I thought... so:
+
+xSightsVectorHi etc. -> xVectorHi
+xObjCoordHi etc. -> xCoordHi
+sightsYawAngle -> vectorYawAngle
+sightsPitchAngle -> vectorPitchAngle
+
+Also, the whole scale factor thing is about making the trace steps as large as
+possible while still staying within tile boundaries while tracing, so rename
+scaleFactor to traceStepCounter and fix incorrect assumptions in part 1
+</pre>
+
+<pre>
+Rename ExtractTileData -> GetTileAltitude, as I think that's closer to what it
+does
+
+That said, secondAxis in this routine contains two flags that change the
+behaviour, which I'll rename considerObjects (as bit 7 seems to control whether
+we take any notice of objects on the tile)... but there's a bit 6 in there as
+well, so I bet this label changes too 
+</pre>
+
+<pre>
+Also, GetMaxXZCoordLo is checking to see how far a coordinate is from *.5 in
+the x- and z-axes, so it's checking to see how far a point is away from the
+centre of the tile, so rename to CheckForTileCentre
+</pre>
+
+<pre>
+Finish documenting GetTileVisibility
+
+Woah, what on earth is going on in this one? It stores a visibility bit in a
+table, one bit per tile - that's fine.
+
+The table is at L3EC0, so rename to tileVisibility.
+
+But the way that the index is calculated is bonkers. Is this obfuscation? Sure
+feels like it.
+
+Documented it all anyway, so there you go...
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-11-13" class="anchor"></a>13 November 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-11-13&until=2025-11-13">repository commits from this day</a></p>
+
+<pre>
+Start looking at DrawLandscapeView
+
+L003C is used later on in a LDA (L003C),Y instruction, so this looks like an
+address that overlaps with the vectorYawAngleLo variable? Let's go with that,
+anyway, as that means the routine starts with L003C(1 0) = L0C40 rather than a
+weird setting of just an angle's low byte
+
+This variable reuse really makes life hard for hackers like me!
+
+There also appears to be a reuse of processAction at the start, so let's rename
+that one back to L001C as well
+
+Ditto smoothingAction, convert this back to L0066
+
+Might as well do cosSightsPitchLo and cosSightsPitchHi as well - these variable
+names from previous routines aren't helping at all!
+</pre>
+
+<pre>
+Hmm, also should change sinSightsPitchAngle into sinVectorPitchAngle and so on,
+as these variables are pretty generic
+</pre>
+
+<pre>
+DrawLandscapeView starts off by taking the yaw angle of anotherObject (which
+looks like it's the object viewing the landscape) and working out which
+quadrant it is looking in
+
+Let's split this off into a part 1 and document it
+
+L001C -> viewingArcRightYaw
+
+L001B gets added to something to create an offset into the L0180,X table, and
+its value depends on the viewing quadrant as looked up from L27AB, so rename:
+
+L001B -> quadrantOffset (contains &00, &01, &21, &20 for viewing quadrant)
+L27AB -> quadrantOffsets
+
+Also, yTile is a label that simply isn't correct - I wonder where I got that
+from! Switch it back to L0025 as it's just confusing
+
+L0003, L001D gets set to the tile of the viewer for the first quadrant, and
+then to the rotated or reflected version for other quadrants (not sure how this
+works yet!), so let's call them this for now:
+
+L0003 -> xTileViewer
+L001D -> zTileViewer
+</pre>
+
+<pre>
+Add a new category: Drawing the landscape
+</pre>
+
+<pre>
+Following the rabbit hole down documenting as we go...
+
+DrawLandscapeView > sub_C27AF > sub_C2815 > sub_C5567
+
+sub_C27AF gets called for each tile row, calls sub_C2815
+
+sub_C2815 works out delta between the viewer and the tile
+
+sub_C5567 does lots of calculations around the x- and z-axis lengths that boil
+down to finding the smallest angle in the triangle, i.e. the angle of the
+hypotenuse, so rename:
+
+sub_C5567 -> GetHypotenuseAngle
+
+All fairly straightforward except for the bit that sets the quadrant of the
+angle, which always makes my head ache, so I'll mark that as needing work...
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-11-14" class="anchor"></a>14 November 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-11-14&until=2025-11-14">repository commits from this day</a></p>
+
+<pre>
+Clarified the first part of DrawLandscapeView... I think. This analysis might
+need revisiting!
+</pre>
+
+<pre>
+Following the rabbit hole down again, we get...
+
+DrawLandscapeView > sub_C27AF > sub_C2815 > sub_C561D
+
+sub_C2815 is another big one, analysing tiles in some way to extract what look
+like screen coordinates from the viewing arc
+
+Split it into three parts so hopefully we can pull it all together once I've
+worked my way through them
+</pre>
+
+<pre>
+Part 3 calls sub_C561D
+
+sub_C561D does some trigonometry, using a hypotenuse length as one of the
+non-hypotenuse sides in a triangle. This feels a bit like the polar to
+cartesian two-part conversion in GetVectorForAngles, so is this a similar kind
+of analysis?
+
+It returns what looks like the difference between two angles in (L008D L0050),
+subtracting (angleHi angleLo) - pitch angle of object, where (angleHi angleLo)
+is the angle of a hypotenuse.
+
+Can (angleHi angleLo) be a pitch angle too? Maybe of a line of sight that's got
+a hypotenuse of the x- and z-axes as its drop shadow, like the
+GetVectorForAngles diagram?
+
+I need a break, this is heavy stuff, and I'm making a lot of notes without
+really following what's going on. Hopefully I can do an overview soon and spot
+some kind of point to all this! Lol.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-11-15" class="anchor"></a>15 November 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-11-15&until=2025-11-15">repository commits from this day</a></p>
+
+<pre>
+OK, so I've gone through the whole tree, and it seems to be calculating pitch
+and yaw angles for tiles and saving the results into a bunch of tables
+
+The angles are being calculated from the perspective of the viewer, so this is
+a first step in working out where tiles appear in the landscape view on-screen
+
+It'll be interesting to see what happens to these angles, as in Revs the angles
+effectively are the screen coordinates - there isn't a projection like Elite or
+Aviator, but instead the pitch angle = y-coord and yaw angle = x-coord
+
+For now, though, this looks like it's just calculating the angles
+
+So, based on this, let's do some speculative renaming and see if that makes
+things clearer
+
+I'm calling this the "tile view", as it's calculating the tile angles for when
+they appear in the landscape view on the screen.
+
+It works through the landscape one tile at a time in the usual
+back-row-to-front-row, and right to left within each row, but it looks like it
+does this from the perspective of the viewer, so if the viewer is looking
+right, it effectively does the far right column (i.e. the "back row" from the
+perspective of the viewer), working from front to back (i.e. "right to left"
+from the perspective of the viewer), and then it does the next column to the
+left
+
+It calculates angles and returns some kind of visibility check, and I think
+sub_C27AF is working out the left and right edges of the view.
+
+Anyway, let's rename and then continue with the analysis, and if it works, it
+works (and if not, we can rename again!).
+
+sub_C27AF -> GetTileViewEdges
+sub_C2806 -> CheckPreviousTile
+sub_C280E -> CheckNextTile
+sub_C2815 -> GetTileViewAngles
+sub_C561D -> GetPitchAngleDelta
+
+sub_C2815 -> GetTileViewAngles populates the following variables:
+
+L0BA0 -> tileViewYawLo
+L5500 -> tileViewYawHi
+L0180 -> tileViewData
+L0A80 -> tileViewPitchLo
+L0AE0 -> tileViewPitchHi
+
+L007F -> tileIsOnScreen
+
+Last one is a bit of a guess as it seems to contain a bunch of bits depending
+on how the pitch or yaw angles compare to something else, but I'll rename it
+anyway, as it may help identify the variables that we're comparing the angles
+to.
+
+sub_C561D -> GetPitchAngleDelta populates the following variables:
+
+L0050 -> pitchDeltaLo
+L008D -> pitchDeltaHi
+
+Other variables that are pretty key are:
+
+L0032, L0033, L0037, L0038
+
+Not sure what these are yet... but GetTileViewEdges looks like it works out the
+left and right edges of the row of tiles based on visibility, so it might be
+finding the portion of each tile row that's on-screen? Hence the name, anyway,
+we can always rename it later
+
+Looks like sub_C2963 sets a load of variables that are compared at the end of
+GetTileViewEdges, so that's one to analyse.
+</pre>
+
+<pre>
+Worth noting that the tables for storing angles actually contain two tables,
+like oddVisibility and evenVisibility
+
+I won't try adding odd and even as the variable names are confusing enough
+already, but the calculations flip between the two tables using the offset in
+L0005, which I've now called drawingTableOffset
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-11-16" class="anchor"></a>16 November 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-11-16&until=2025-11-16">repository commits from this day</a></p>
+
+<pre>
+Finish off GetPitchAngleDelta, which is like the GetVectorForAngles routine,
+but in reverse (so it fetches the pitch angle from the vector). And it adds a
+subtraction to get a delta too.
+</pre>
+
+<pre>
+>>> Broken through the 55% barrier
+</pre>
+
+<pre>
+Time to add a progress graph! Which shows that we're being reasonably
+consistent with progress
+
+Always a good thing to do when you feel you're being a bit bogged down with a
+tricky bit of the code... like now.
+
+Added to the Progress sheet in its own tab
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_45-50-percent.html">Project progress: 45% to 50%</a><a class="next" rel="next" title="Next deep dive" href="progress_55-60-percent.html">Project progress: 55% to 60%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

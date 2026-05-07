@@ -1,0 +1,239 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_20-25-percent.html", "Project progress: 20% to 25%", "Project progress: 20% to 25%", "A diary covering progress from 20% to 25% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_20-25-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_15-20-percent.html">Project progress: 15% to 20%</a><a class="next" rel="next" title="Next deep dive" href="progress_25-30-percent.html">Project progress: 25% to 30%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">25 September to 3 October 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-09-26">26 September 2025</a></li>
+							<li><a href="#date-2025-09-30">30 September 2025</a></li>
+							<li><a href="#date-2025-10-01">1 October 2025</a></li>
+							<li><a href="#date-2025-10-02">2 October 2025</a></li>
+							<li><a href="#date-2025-10-03">3 October 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-09-26" class="anchor"></a>26 September 2025<br>
+													 =================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-09-26&until=2025-09-26">repository commits from this day</a></p>
+
+<pre>
+sub_C158D gets a list of tile blocks that are at a specific height, so rename
+to GetTilesAtHeight and document
+</pre>
+
+<pre>
+Rename CreateEnemies -> AddEnemiesToTiles as that's what it does ("create" is a
+bit vague, especially as we also have a SpawnEnemies routine already)
+</pre>
+
+<pre>
+Added labels to tile object coordinates from L0900 onwards:
+xTileObject, yTileObject, zTileObject
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-09-30" class="anchor"></a>30 September 2025<br>
+													 =================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-09-30&until=2025-09-30">repository commits from this day</a></p>
+
+<pre>
+SpawnPlayerTrees: split into SpawnPlayer, SpawnTrees and CheckSecretCode
+</pre>
+
+<pre>
+Continue working through AddEnemiesToTiles, the next subroutine to check is
+sub_C1EFF, which adds object to tile (so call it PlaceObjectOnTile)
+
+When the object in slot X gets placed on a tile:
+
+* X-th entry in (xTileObject, yTileObject, zTileObject) = tile 3D coordinate
+where yTileObject is the tile height
+* X-th entry in objectFlags = 0, so bit 7 is clear to indicate that slot X
+contains an object
+* X-th entry in L0A00 = &E0
+* X-th entry in L0140 = &F5
+* X-th entry in L09C0 = random number, multiple of 8
+
+* tileData for the tile is set to the slot number in X in bits 0 to 5, and bits
+6 and 7 are set
+
+So! Because tile height is in the range 0 to 11, this means we have two types
+of data in tileData, one for empty tiles (where bits 6 and 7 are not both set),
+and one for tiles containing objects (where bits 6 and 7 are set).
+
+First one contains tile slope and height, second one contains object slot
+number.
+
+Clever packing of data here.
+</pre>
+
+<pre>
+Also, objectFlags can contain an object slot number, if objects are stacked. We
+can only stack objects on object types 3 and 6, so one of these is presumably
+the boulder. The other is probably the Sentinel's tower?
+</pre>
+
+<pre>
+So xTileObject etc. seem to be object 3D coordinates in space, rather than
+tiles, but obviously objects are on tiles so there is overlap, but (xObject,
+yObject, zObject) is clearer.
+</pre>
+
+<pre>
+During first pass of AddEnemiesToTiles, and looking back at PlaceObjectOnTile,
+it turns out we add the Sentinel after adding an object of type 6, so 6 must be
+the tower and 3 must be the boulder. We already identified the Sentinel as type
+5, so we're getting there. Comments amended!
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-01" class="anchor"></a>1 October 2025<br>
+													 ==============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-01&until=2025-10-01">repository commits from this day</a></p>
+
+<pre>
+Penny dropped, y-axis must have fractional heights as boulders are not as tall
+as a single tile block, so presumably L0A00 = yObjectLo, and yObject must
+really be yObjectHi
+
+Update all uses of yObject to talk about the two-byte value
+</pre>
+
+<pre>
+Picking up the analysis of AddEnemiesToTiles, next subroutine is sub_C196A, not
+sure what that is so skip it to finish the first pass
+</pre>
+
+<pre>
+Big revamp of terminology: we need to talk about altitudes for y-coordinates
+instead of heights. "Object altitude" is its y-coordinate. "Object height" is
+how tall the object is. Boulders, for example, have a height of 0.5
+coordinates, while the Sentinel's tower have a height of 1.0 coordinates, but
+they can be at any altitude. Big manual search and replace to sort this out -
+it's worth it in the end for clarity's sake.
+</pre>
+
+<pre>
+Expand the final set of calculated labels so the only ones in the form Lxxxx =
+Lyyyy + z are code modification labels.
+
+e.g. convert any remaining bits like this:
+
+L49A0                = &49A0
+L49A1                = &49A1
+L49AB                = &49AB
+L49AC                = &49AC
+L49B6                = &49B6
+L49C1                = &49C1
+
+into proper labels and headers
+</pre>
+
+<pre>
+Roll back up the hierarchy to PreviewLandscape, next up is SpawnPlayer.
+
+This calls sub_C1224, which places the player below a specified height, so call
+it PlaceObjectBelow.
+</pre>
+
+<pre>
+Finish off comments in SpawnPlayer.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-02" class="anchor"></a>2 October 2025<br>
+													 ==============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-02&until=2025-10-02">repository commits from this day</a></p>
+
+<pre>
+Next up is SpawnTrees, which is easy to document, but it contains some weird
+code at the end that isn't to do with trees.
+
+It's to do with the showCodeError flag, which controls whether we return to the
+title screen or progress, so it looks like the first half of the routine that
+checks the secret code (the other half is after landscapeColour3, and we
+already identified it as related to the secret code).
+
+So split them off into CheckSecretCode (Part 1 of 2) and Part 2.
+</pre>
+
+<pre>
+Calls sub_C3364 which returns a random number in BCD format, so
+GetRandomNumberBCD.
+</pre>
+
+<pre>
+Rename showCodeError flag -> doNotPlayLandscape, because we don't always show
+the secret code error when this is set (it's also set in another routine,
+sub_C2147, which affects how we return from the call to GenerateLandscape in
+sub_C1A7E)
+
+sub_C1A7E is the only routine that prints the landscape code (it draws it in
+3D) and it seems to add to the current landscape number, so tentatively rename
+this to FinishLandscape.
+
+CheckSecretCode is complicated and designed not to be understood! So slow
+progress here...
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-03" class="anchor"></a>3 October 2025<br>
+													 ==============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-03&until=2025-10-03">repository commits from this day</a></p>
+
+<pre>
+CheckSecretCode is a beast, but I finally understand it
+
+It uses various hacks, including obfuscation of the return address, checking
+the code a second time during gameplay, and never storing the generated secret
+code, but instead only storing the results of comparisons between the generated
+code and entered code
+
+Also using objectFlags (the Sentinel's flags) as a constant %01111111
+
+Very tricky stuff! Glad that's done
+</pre>
+
+<pre>
+>>> Broken through the 25% barrier
+
+>>> THIS IS COOL! The first non-numerical milestone of "one quarter". A big
+event...
+</pre>
+
+<pre>
+Document PreviewLandscape, which is where all this jumping around ends up if
+the codes don't match
+</pre>
+
+<pre>
+Add ??? to all the variables that need documenting properly
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_15-20-percent.html">Project progress: 15% to 20%</a><a class="next" rel="next" title="Next deep dive" href="progress_25-30-percent.html">Project progress: 25% to 30%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

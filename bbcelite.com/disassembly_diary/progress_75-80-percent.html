@@ -1,0 +1,605 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_75-80-percent.html", "Project progress: 75% to 80%", "Project progress: 75% to 80%", "A diary covering progress from 75% to 80% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_75-80-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_70-75-percent.html">Project progress: 70% to 75%</a><a class="next" rel="next" title="Next deep dive" href="progress_80-85-percent.html">Project progress: 80% to 85%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">6 December to 9 December 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-12-10">10 December 2025</a></li>
+							<li><a href="#date-2025-12-11">11 December 2025</a></li>
+							<li><a href="#date-2025-12-12">12 December 2025</a></li>
+							<li><a href="#date-2025-12-13">13 December 2025</a></li>
+							<li><a href="#date-2025-12-14">14 December 2025</a></li>
+							<li><a href="#date-2025-12-15">15 December 2025</a></li>
+							<li><a href="#date-2025-12-16">16 December 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-10" class="anchor"></a>10 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-10&until=2025-12-10">repository commits from this day</a></p>
+
+<pre>
+A big terminology change that will make things simpler (and which I must roll
+out into my other projects).
+
+Thus far I've used terminology like this for multibyte variables:
+
+(hypotenuseHi hypotenuseLo)
+
+while we also have this shorthand:
+
+stashAddr(1 0)
+
+The first one can be shortened to be like the second one with no loss of
+information, but it's much shorter, especially for long label names. So:
+
+(hypotenuseHi hypotenuseLo) -> hypotenuse(Hi Lo)
+
+etc.
+
+This is particularly useful for the likes of:
+
+(xVectorHi xVectorLo xVectorBot) -> xVector(Hi Lo Bot)
+
+This is much shorter and clearer!
+
+Here are the regex replaces (in VSCode) to track down the bits that need
+changing:
+
+\((\w+)Top \1Hi \1Lo \1Bot\)
+$1(Top Hi Lo Bot)
+
+\((\w+)Top \1Hi \1Lo\)
+$1(Top Hi Lo)
+
+\((\w+)Top \1Hi\)
+$1(Top Hi)
+
+\((\w+)Hi \1Lo \1Bot\)
+$1(Hi Lo Bot)
+
+\((\w+)Hi \1Lo\)
+$1(Hi Lo)
+
+\((\w+)Lo \1Bot\)
+$1(Lo Bot)
+
+\(.+Hi\n
+
+\(.+Lo\n
+
+\(.+Top\n
+
+There are still some chunky names in there, such as (xDeltaAbsoluteHi xDeltaLo)
+or (scrollScreenHi+Y scrollScreenLo+Y), but there aren't many, so let's leave
+them
+</pre>
+
+<pre>
+Time to move on to the ProcessGameplay routine and the unexplained subroutines
+therein.
+
+Let's start with sub_C16A8, which looks like a big one in the hierarchy.
+
+It is something to do with enemies, so this might be where we update the enemy
+activity and apply enemy tactics? As this has to happen somewhere and we're
+running out of options!
+
+sub_C16A8 looks like it processes the enemy in enemyObject
+
+enemyObject is only ever changed in sub_C16C9, where it is decremented by one
+and loops around from 7 down to 0 and round again.
+
+So we update the next enemy in sub_C16C9?
+
+Following through the top-level routines, they are quite easy to follow, so
+let's try these names:
+
+sub_C16A8 -> ApplyEnemyTactics
+sub_C16C9 -> MoveOnToNextEnemy
+sub_C16D9 -> ApplyTactics
+sub_C1AEC -> FinishEnemyTactics
+</pre>
+
+<pre>
+ApplyTactics also calls sub_C1A54 and sub_C1871, when the enemy object number
+is no longer associated with an object (so it's been absorbed or something?)
+
+Let's start with sub_C1A54
+
+This appears to drain an enemy of energy and spawn a tree, so name it
+DrainEnemyEnergy
+
+DrainEnemyEnergy calls sub_C1AF3
+
+This appears to control whether we can delete the enemy
+
+We can't delete if we are about to do another pan, otherwise this calls
+sub_C2096
+
+sub_C2096 seems to check whether the object is visible, so rename
+GetObjVisibility
+</pre>
+
+<pre>
+CheckObjVisibility does a bunch of angle calculations that calculate the yaw
+angle of the object in terms of screen
+
+This calls GetPitchAngleDelta to get an angle delta... but it's a yaw angle not
+a pitch angle, so that needs a bit of explaining! (Let's leave the function
+name alone as the whole function does calculate a pitch delta, we're just using
+one of the interim calculations here).
+
+There's also a strange x-coordinate calculation that involves L0CD4 and the
+table at L2107
+
+This populates the opposite side of the triangle... so the L2107 value must be
+the object width? Let's call it objectWidth anyway
+
+So what's L0CD4?
+
+It is used to ensure a minimum width for the object we are checking for
+visibility
+
+It gets set to 104 in sub_C197D for a meanie, which is more than the 74 from
+L2107
+It gets set to 116 in DrainObjectEnergy when draining energy from a boulder
+
+It gets set to 0 in GetObjVisibility once we have finished the visibility
+calculation
+
+Weird, I wonder what it is? Let's call it minObjWidth as that's what it is, and
+we can work it out as we analyse the above bits of code further
+</pre>
+
+<pre>
+Ah! I think I have it. minObjWidth is set to a non-zero value when:
+
+a meanie replaces a tree (minObjWidth = 104)
+
+a tree replaces a boulder (minObjWidth = 116)
+
+why not 114 and 122 in both cases, so we check visibility on the widths of tree
+and boulder???
+
+Hmm, might not be totally correct, but it's something to do with this.
+</pre>
+
+<pre>
+Finished GetObjVisibility but with a lot of questions!
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-11" class="anchor"></a>11 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-11&until=2025-12-11">repository commits from this day</a></p>
+
+<pre>
+OK, I've worked out why doubling a yaw angle converts it into character
+columns. It's obvious - the screen is 20 yaw angles wide and 40 character
+columns wide, you double the yaw to get the number of character columns.
+
+Looks like the vertical equivalent is to multiply by 2/3, as the screen is 36
+pitch angles tall and 24 character rows.
+</pre>
+
+<pre>
+So bufferColumns is set to GetObjVisibility with a maximum value of 20
+
+This is why close-up objects that take up a large amount of space on-screen are
+absorbed in two stages, left then right, as the object it too wide to fit into
+the column buffer's maximum width of 20 character columns, or half a screen
+</pre>
+
+<pre>
+Moving back up the hirearchy, we can rename sub_C1AF3 to CheckObjVisibility and
+finish documenting it
+</pre>
+
+<pre>
+sub_C1AE7 gets the visibility and aborts the enemy tactics if the object could
+be seen on-screen, so rename it to AbortIfVisible and document
+</pre>
+
+<pre>
+Rolling back up the hierarchy, we get back to DrainEnemyEnergy, so finish that
+off as it's almost all commented
+</pre>
+
+<pre>
+The next level up is the top one, ApplyEnemyTactics, so there are two choices
+for the next rabbit hole to dive down: ApplyTactics and sub_C1871.
+
+The first one falls into the second, so let's go for ApplyTactics. Which is
+huge...
+
+It starts by looking at objRotationTimer, which is a timer that ticks down (not
+sure which bit of code does this, but it's obvious from running it in an
+emulator)
+
+Actually, this timer seems to control whether we apply tactics, not rotation as
+such, so rename it to objTacticsTimer
+</pre>
+
+<pre>
+After a bit of logic, we fetch enemyData5 for this enemy
+
+If bit 7 is set it jumps down (so add a header as this feels like a multipart
+routine), but if bit 7 is clear then we set viewingObject to enemyData5
+
+So enemyData5 contains an object number? OK
+
+And what is it? It is set to an object number in sub_C197D here:
+
+ TYA
+ STA enemyData5,X
+
+ LDA #4
+ STA objectTypes,Y
+
+The last two instructions change object #Y into a meanie, and the first two
+stick Y into enemyData5, so this must be where a tree gets morphed into a
+meanie.
+
+So enemyData5 looks like it's recording whether this enemy is a meanie, and it
+contains the object number of the tree that has been morphed into a meanie? I
+think
+
+If bit 7 is set then this enemy is presumably not a meanie
+
+So presumably ApplyTactics is also called for meanies? Must check...
+
+Actually, no, ApplyTactics is definitely only called for Sentinel and sentry
+
+So perhaps the enemy we are processing is the one responsible for turning the
+tree into a meanie? i.e. the one that is only half able to see us. Makes sense.
+
+Anyway, enemyData5 contains the object number of the tree/meanie that the enemy
+has transformed to attack us? OK, so rename enemyData5 -> spawnedMeanie
+
+And that's enough for the day
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-12" class="anchor"></a>12 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-12&until=2025-12-12">repository commits from this day</a></p>
+
+<pre>
+Short day, so continuing with ApplyTactics...
+
+Part 2 of ApplyTactics calls sub_C1882 in the part that thinks about creating a
+meanie
+
+It is called a lot in ApplyTactics, so let's look at it
+
+It is called with an object type in A
+X is preserved using a dedicated variable L1919
+Y parameter is an object - it goes into targetObject
+
+Working through the routine, this is calculating triangles and following a gaze
+vector, so it looks like some kind of "can the enemy see this object" routine?
+
+It seems to set L0014 and L0C76 accordingly...
+</pre>
+
+<pre>
+I got sidelined by trying to work out how the enemy timers are updated, as I
+keep talking about "iterations of the gameplay loop" and that might actually be
+nonsense
+
+By adding  breakpoint to the timers, it turns out that the interrupt handler
+calls sub_C12EE, and it's here that all the enemy timers - three banks of them
+- are decremented
+
+So let's look at sub_C12EE... but next time though, as I'm off for the day
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-13" class="anchor"></a>13 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-13&until=2025-12-13">repository commits from this day</a></p>
+
+<pre>
+sub_C12EE updates three blocks of timers at L0C20, L0C28 and objTacticsTimer
+
+So rename as follows, so these all start with .enemy:
+
+L0C20 -> enemyTimer1
+L0C28 -> enemyTimer2
+objTacticsTimer -> enemyTacticTimer
+
+Ditto for objRotationSpeed, which contains the step that we add to each enemy's
+yaw angle, so:
+
+objRotationSpeed -> enemyYawStep
+
+Also, to keep the .enemy naming convention going:
+
+spawnedMeanie -> enemyMeanieTree
+
+And we'll also rename the routine:
+
+sub_C12EE -> UpdateEnemyTimers
+
+So we now have these enemy timers:
+
+.enemyTimer1
+.enemyTimer2
+.enemyTacticTimer
+
+and these batches of enemy data:
+
+.enemyData1
+.enemyEnergy
+.enemyData3
+.enemyData4
+.enemyMeanieTree
+.enemyData6
+.enemyData7
+.enemyData8
+
+We'll flesh these out as we work through ApplyTactics
+</pre>
+
+<pre>
+Finish off documenting UpdateEnemyTimers, which is pretty simple
+
+The counters tick down from their starting value to 1, and then they stay there
+
+They tick down on one in three calls to UpdateEnemyTimers
+
+UpdateEnemyTimers is called 50 times a second when the game is active
+
+So a timer set to n will count down in N * 0.06 seconds
+</pre>
+
+<pre>
+Anyway, back to sub_C1882 now
+
+So this routine is called to work out whether the current enemy can see a
+specific object of a specific type
+
+It looks like there is a loop at .tact12 that works through every object and
+calls this, so it's a pretty specific routine - it isn't a scan, it's a
+specific question: can the enemy see this object and does it match the given
+type?
+
+So rename sub_C1882 to CheckEnemyGaze? OK for now
+
+L0014 seems to return bits that depend on whether the object is visible, so
+rename L0014 to targetVisibility for now
+
+L0C6E gets bit 7 set if the enemy is looking for a robot, so rename to
+enemyCheckingRobot for now
+
+it looks like enemyCheckingRobot is only used as an argument to the
+FollowGazeVector routine and is ignored otherwise, so we probably need to fix
+the ???s in that routine
+
+L0C76 gets bit 7 set if the enemy can see a tree, so rename to treeVisibility
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-14" class="anchor"></a>14 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-14&until=2025-12-14">repository commits from this day</a></p>
+
+<pre>
+OK, back to ApplyTactics
+
+First, we need to clarify what effect the enemyCheckingRobot parameter has on
+FollowGazeVector and feed this back into CheckEnemyGaze
+
+Looks like setting the enemyCheckingRobot parameter will allow the gaze
+calculation to be a hit even if we are looking up at the target and can't see
+the tile, so this allows us to calculate partial views of targets (so the
+scanner can be half-filled, presumably)
+
+So roll this into the commentary
+</pre>
+
+<pre>
+Back to ApplyTactics, let's keep going with part 2
+
+It's meanie logic and involves enemyData6
+
+enemyData6 contains an object number, as it's used to look up object flags etc.
+
+It's passed to CheckEnemyGaze as the target object in Y, so this is some kind
+of enemy-related target
+
+So enemyData6 -> enemyTarget, let's see if that helps clariry things
+</pre>
+
+<pre>
+It does, so let's keep on trucking with part 2 of ApplyTactics
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-15" class="anchor"></a>15 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-15&until=2025-12-15">repository commits from this day</a></p>
+
+<pre>
+A quick aside about the last bit of ApplyTactics, at tact25, as this gets
+jumped to from lots of places.
+
+It looks like this draws an object into the screen buffer in sub_C1F84, and
+then dithers the result to the screen in sub_C5E5F (as the latter has a lot of
+crossover with the DecayScreenToBlack routine, except it's copying pixels from
+the screen buffer to the screen instead of poking black onto the screen).
+
+So let's rename these speculatively:
+
+sub_C1F84 -> DrawUpdatedObject
+sub_C5E5F -> DitherScreenBuffer
+
+and now we can document calls to tact25 accordingly
+</pre>
+
+<pre>
+Also, call to DrawUpdatedObject uses the following flags to control what it
+does:
+
+L0C4D
+Bit 7 clear = draw landscape behind object (not object)
+Bit 7 set = draw object
+
+L0C6D
+Bit 6 set = dither onto the screen
+Bit 7 set = remove sights before drawing object
+
+So maybe:
+
+L0C4D -> drawOrRemoveObject
+L0C6D -> ditherObjectSights
+</pre>
+
+<pre>
+The final part of the object-drawing hierarchy is sub_C2997, which seems to set
+the same variables as ConfigureBuffer, so this is presumably configuring the
+screen buffer for drawing the object
+
+So sub_C2997 -> ConfigureBufferObj
+</pre>
+
+<pre>
+Anyway... back to ApplyTactics part 2
+
+Need to work out these timers, starting with enemyTimer1
+
+Looks like enemyTimer1 gets set to various values, but the only thing it
+affects is at .tact19, where DrainObjectEnergy is only called when enemyTimer1
+is exactly 1
+
+So this timer ticks down and the enemy can drain its target when it ticks down
+
+Setting it to 0 makes the timer get reset to 120 at tact19
+
+So enemyTimer1 -> enemyDrainTimer
+
+enemyTimer2 is a bit easier to follow, as when it counts down it runs the code
+at tact18 which rotates the enemy through its yaw step
+
+So enemyTimer2 -> enemyRotateTimer
+
+Finish documenting ApplyTactics part 2 and 3
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-16" class="anchor"></a>16 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-16&until=2025-12-16">repository commits from this day</a></p>
+
+<pre>
+As it's called so much from the ApplyTactics routine, let's look at
+DrawUpdatedObject and the routines it calls: ConfigureBufferObj and
+DitherScreenBuffer
+</pre>
+
+<pre>
+First thing is L0C1E, which seems to skip dithering in DitherScreenBuffer
+
+So L0C1E -> doNotDitherObject
+</pre>
+
+<pre>
+Dithering in DitherScreenBuffer is done with an inner and outer loop (with a
+call to the sound routines inbetween)
+
+Inner loop is 255 and is stored in L0CD2
+Outer loop is 25 or 40 and is stored in L2094
+
+So:
+
+L0CD2 -> ditherInnerLoop
+L2094 -> ditherOuterLoop
+</pre>
+
+<pre>
+L2095 is interesting. It's used as a high byte for yawAdjustment(Hi Lo), but
+only in DrawUpdatedObject, so let's call it yawAdjustmentHi.
+
+So this adjusts the viewing object so that the object is drawn alongside the
+left edge of the buffer
+</pre>
+
+<pre>
+ConfigureObjBuffer is as confusing as ConfigureBuffer - lots of unknowns
+
+One more clue, though, as it turns out (L0011 L0029) is a 16-bit value
+
+And it gets added to drawViewYaw(Hi Lo) in sub_C2D36, so it must be a yaw angle
+of some kind
+
+So rename to L0011YawHi and L0011YawLo for now, i.e. L0011Yaw(Hi Lo) in our new
+terminology
+</pre>
+
+<pre>
+Back to DrawUpdatedObject, and L2092 is used to store the screen addresss of
+the object, so:
+
+L2092 -> objScreenAddr
+</pre>
+
+<pre>
+Documented the rest of DrawUpdatedObject - it isn't too complex in the end
+</pre>
+
+<pre>
+>>> Broken through the 80% barrier
+
+This is pretty great - it's starting to feel a bit like the home straight,
+though I have put the polygon-drawing routines off until the end as I always
+find those sorts of routines to be a bit of a drag. That said, there's 4.4% of
+the code marked as not done for the workspaces, and I've been filling those in
+as I've gone along, so in a sense the target is 95.6% rather than 100%, as the
+last 4.4% will slot in quite quickly.
+
+Getting there!
+</pre>
+
+<pre>
+Might as well look at DitherScreenBuffer next, to finish off the whole
+object-updating saga.
+
+There's a bit of an overlap with DrawRandomDots, not surprisingly, so that
+makes some of the renamings a bit easier, as these are like bitMask and
+randomPixel:
+
+L0CCF -> bitMaskDither
+L0CD0 -> randomPixelDither
+
+There's some really weird random number stuff in here - so this might take a
+while!
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_70-75-percent.html">Project progress: 70% to 75%</a><a class="next" rel="next" title="Next deep dive" href="progress_80-85-percent.html">Project progress: 80% to 85%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

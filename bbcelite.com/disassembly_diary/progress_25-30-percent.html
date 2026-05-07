@@ -1,0 +1,615 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_25-30-percent.html", "Project progress: 25% to 30%", "Project progress: 25% to 30%", "A diary covering progress from 25% to 30% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_25-30-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_20-25-percent.html">Project progress: 20% to 25%</a><a class="next" rel="next" title="Next deep dive" href="progress_30-35-percent.html">Project progress: 30% to 35%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">4 October to 16 October 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-10-04">4 October 2025</a></li>
+							<li><a href="#date-2025-10-07">7 October 2025</a></li>
+							<li><a href="#date-2025-10-08">8 October 2025</a></li>
+							<li><a href="#date-2025-10-09">9 October 2025</a></li>
+							<li><a href="#date-2025-10-10">10 October 2025</a></li>
+							<li><a href="#date-2025-10-13">13 October 2025</a></li>
+							<li><a href="#date-2025-10-14">14 October 2025</a></li>
+							<li><a href="#date-2025-10-15">15 October 2025</a></li>
+							<li><a href="#date-2025-10-16">16 October 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-04" class="anchor"></a>4 October 2025<br>
+													 ==============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-04&until=2025-10-04">repository commits from this day</a></p>
+
+<pre>
+So it turns out that the random numbers in the Sentinel aren't - they are
+always seeded sequences used for the landscape and secret code generation, so
+they are always the same for each specific landscape. No random element is
+added (so no timer values or anything like that).
+
+The same is true in the game code; these are all the other "random" number uses
+outside of the landscape generation stage:
+
+* C316C in DrawLetter3D, it looks like anti-tamper code to corrupt secret code
+
+* C16A8 has no effect except to move the sequence on, so it only affects sound
+randomness
+
+* C355A adds random effect to sound - the only time randomness (or, at least,
+non repetitiveness) is required
+
+So let's rename the various GetRandomNumber routines to:
+
+GetNextSeedNumber
+GetNextSeedAsBCD
+GetNextSeed0To22
+GetNextSeed0To30
+
+and SeedLandscape to InitialiseSeeds
+
+That's much clearer, as there isn't any randomness in the Sentinel, only
+predictable sequences of seed numbers.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-07" class="anchor"></a>7 October 2025<br>
+													 ==============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-07&until=2025-10-07">repository commits from this day</a></p>
+
+<pre>
+So far I've been trying to analyse this stuff almost on my own, without looking
+too hard at any anyone else's disassemblies or articles
+
+I've been putting ??? where I don't know what a variable or routine does.
+
+That said, I do have two sources I can turn to when I'm a bit stuck.
+
+The first is an excellent but fairly terse disassembly by Level 7. This is
+super-useful when trying to work out what variables might do, but I'm trying to
+use this only to confirm what I think something does. I like to name my
+variables according to how I see the code, so although this is a fantastic hint
+sheet, I'm trying to use it sparingly, especially as their naming conventions
+are different to mine (I'm trying to stick to the terminology I used for Revs,
+for example).
+
+The second is an email of bullet points from Simon Owen, of Augmentinel fame.
+He got in touch when I analysed Revs to say that the Sentinel used the same
+angle system, and we exchanged a few emails which I've been referring to for
+clues.
+
+What I hadn't realised (or, more likely, had forgotten) was that he'd also put
+together a couple of projects about the landscape generation and code. When
+analysing the secret code checker I wanted some sample secret codes to enter
+into the game, so I could watch various variables to see how they worked
+(particularly the stash variables). A quick web search led to his Python
+landscape code generator here:
+
+https://github.com/simonowen/sentcode/
+
+which contains a full list of all codes. That was really useful.
+
+But I've also discovered this very cool landscape generator:
+
+https://github.com/simonowen/sentland/
+
+I've finished my first pass of the landscape generation code, littering the
+code with ???s, and in this repo is a description of the exact code that I've
+been analysing. This is really useful for filling in some of the blanks, such
+as rotation angles of places enemies and the nuances of the smoothing process.
+
+I'm going to go through my code, looking for ??? and updating it with hints
+from this excellent site. It doesn't seem to extend to the gameplay itself, but
+if I can document as much of the prep work as possible before getting stuck
+into the game, this will help.
+
+Between Level 7 and Simon Owens, I feel I've got some very useful secret entry
+codes of my own. :-)
+</pre>
+
+<pre>
+Simon Owen's resource enabled me to identify the objRotationSpeed,
+objRotationTimer and objectYawAngle variables, and to clarify some of my
+explanations of the landscape generation. Really useful!
+</pre>
+
+<pre>
+Moved on to PlayGame, which contains a game loop, so it makes sense to talk
+about two main loops: the main title loop and the main game loop (so update
+comments accordingly)
+
+Also quitGame, gameInProgress flags are fairly self-evident, so that's PlayGame
+documented
+</pre>
+
+<pre>
+FlushSoundBuffers is an easy win at the start of the main game loop
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-08" class="anchor"></a>8 October 2025<br>
+													 ==============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-08&until=2025-10-08">repository commits from this day</a></p>
+
+<pre>
+Now that we are moving into the gameplay part, the section of memory from &5A00
+to &5C00 is reused for two big tables. So it would be clearer to separate this
+out into two separate bits of code - landscape data and game data. So I've
+added CLEAR and ORG directives to the stripData variable to make this clearer
+and have documented all the landscape variables (I still don't know what L5A00
+and L5B00 are for).
+</pre>
+
+<pre>
+Also added a few more comments to workspace variables that I hadn't filled in,
+and replaced Lxxxx labels with variable names, even if they don't turn out to
+be correct (we can change them later, but it's easier to deal with descriptive
+words than walls of Lxxxx labels).
+</pre>
+
+<pre>
+Another clue: in sub_C1BFF we have these two blocks:
+
+ STA playerYawAngleLo
+ LDA U
+ ADC objectYawAngle,X
+ SEC
+ SBC #&0A
+ STA playerYawAngleHi
+
+...
+
+ STA playerPitchAngleLo
+ STA T
+ LDA U
+ ADC L0140,X
+ CLC
+ ADC #&03
+ STA playerPitchAngleHi
+
+They are pretty similar, one working with yaw angles and the other with pitch
+angles. It seems very likely that L0140 is objectPitchAngle, so that these
+blocks match, so let's put that in as a speculative label, and L150 as
+objectPitchAngle+16 (as that also fits with the surrounding code).
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-09" class="anchor"></a>9 October 2025<br>
+													 ==============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-09&until=2025-10-09">repository commits from this day</a></p>
+
+<pre>
+Time to plug a few holes before moving forward, starting with two maths
+routines.
+
+sub_C0F70 looks up two values in the sin table, with the lookups offset, so
+rename to GetSineAndCosine and document (it's such a simple routine, but so
+complex to explain, fo rme anyway!).
+
+DivideBy16 does what it says.
+</pre>
+
+<pre>
+Also, GetRotationMatrix from Revs only really returns the sine and cosine but
+at 16-bit accuracy, so we could consider renaming it to something like
+GetSineAndCosine16, but let's leave it for now - if it does actually populate a
+rotation matrix, then it might be better left alone.
+
+That said, the label names I've copied from Revs could maybe do with a rename.
+playerYawAngleLo/Hi and playerPitchAngleLo/Hi in Revs denote the direction in
+which the player's car is pointing, but in The Sentinel I'm pretty sure this
+will actually be the direction of the player's gaze, which is in-game as a pair
+of crosshairs (called "sights" in the instructions). So they might be better
+renamed to sightsYawAngle and sightsPitchAngle? Worth a punt.
+
+Also, GetRotationMatrix in revs only rotates yaw angles of cars, but in The
+Sentinel it rotates both pitch and yaw angles, specifically of the vector from
+the player's eyes through the sights (which gets rotated into the 3D world by
+this rotation matrix). So the variable names and comments only talk about yaw
+angles. Should I rename them? Nah, I like leaving this as Revs code, so let's
+just note this difference in the comments for now.
+
+Looks like the GetRotationMatrix generates three pairs of hi/lo bytes from the
+pitch and yaw angles, which is probably a 3D vector, and looking at the
+preceding code it looks like this involves the position of the sights, so let's
+name these xSightsVector etc. to denote the vector of the gaze from the player
+through the sights
+</pre>
+
+<pre>
+Need clues on the sights, so documented key logger
+
+Followed sights-moving keys to identify xSights and ySights for sight
+coordinates, and yes, it looks like they do indeed feed into GetRotationMatrix
+in the angle setup routine in sub_C1BFF
+
+So analyse the angle setup routine in sub_C1BFF, as that passes through to the
+rotations in sub_C1C43 (so this could well be the sights vector)
+
+Depends on what slot X is when calling sub_C1BFF, if it's the player object
+then it looks like we are right
+
+Out of time for the day!
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-10" class="anchor"></a>10 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-10&until=2025-10-10">repository commits from this day</a></p>
+
+<pre>
+More housekeeping.
+
+First, add the effects of the various key presses to the code, to save looking
+it up every time, e.g.
+
+Negative key value for "S"
+->
+Negative key value for "S" (Pan left)
+</pre>
+
+<pre>
+Also this code can be improved in DrawLetter3D:
+
+ LDX #&07
+ LDA L0C6E,X
+ CMP rotm8-1,X
+
+Because X = 7, we can expand those addresses properly, to this:
+
+ LDX #7
+ LDA L0C75-7,X
+ CMP GetAngleInRadians-1-7,X
+
+This is familiar - there was another one of these in part 3 of
+SmoothTileCorners, which I converted to this:
+
+ LDA &5A2E,X            \ X = 32, so this loads from &5A4E (tilesAtAltitude+14)
+ STA &0F1D,X            \ and stores in &0F3D (the operand in the unused LDA #0
+                        \ instruction just before GetAngleInRadians) ???
+
+So it's probably better to do it this way:
+
+ LDA tilesAtAltitude+14-32,X    \ Copy the contents of tilesAtAltitude+14 into
+ STA GetAngleInRadians-1-32,X   \ the operand into GetAngleInRadians-1, which
+                                \ contains an unused LDA #0 instruction ???
+
+Still not entirely sure how this works, but it looks like some kind of
+anti-cracking code around the secret code generation, so added more
+documentation and renamed sub_C316C to CorruptSecretCode. We'll have to come
+back to this, but at least it's starting to make a bit more sense.
+</pre>
+
+<pre>
+Another thing to look at is objectType, which also seems to store key presses
+from the keyLoggerConfig table. Turns out this variable is shared - it is used
+to store key presses, but also object types, as the "create xxx" key presses
+contain the relevant object type in their configuration (e.g. "create robot"
+puts a 0 in the key logger, "create tree" puts a 2 and "create boulder" puts a
+3). So to create something, we simply pass the key logger entry to
+SpawnObject+3. Neat!
+</pre>
+
+<pre>
+Now to follow the trail around calls to ScanKeyboard.
+
+sub_C118B processes f1 (quit game) and SPACE (toggle sights), so this leads to
+the following sight-related routines and a bunch of variables that only they
+use. Speculative naming gives us:
+
+L0C5F -> sightsAreVisible
+sub_C1331 -> SetupSights
+sub_C39D9 -> ShowSights
+L3A8A
+L3A8E
+L3A9A
+sub_C3AA7 -> HideSights
+L3AC7
+L3ACD
+
+Also from the sights-moving analysis yesterday, these are probably good names:
+
+sub_C3927 -> MoveSights
+sub_C3934 -> MoveSightsSideways
+sub_C396B -> MoveSightsUpDown
+
+We can document all these later, but for now categorising and naming them is
+good enough.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-13" class="anchor"></a>13 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-13&until=2025-10-13">repository commits from this day</a></p>
+
+<pre>
+Very short day (10 mins).
+
+Convert "tile slope" to "tile shape", as the different tile shapes include a
+lot that don't slope in one direction - instead, tile shapes can be quite
+complex, so "shape" is a better term. Thank you to Simon Owen's repository for
+that insight.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-14" class="anchor"></a>14 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-14&until=2025-10-14">repository commits from this day</a></p>
+
+<pre>
+Now to trace through all uses of the key logger, to check for all the other key
+press logic.
+
+First, confirm all ScanKeyboard calls are documented (they are).
+
+Next, document code around ScanForGameKeys calls.
+
+Finally, document around all uses of the key logger by looking for keyLogger
+and adding comments. We can then track down all the key press logic and name
+routines accordingly.
+
+sub_C3480 -> ProcessVolumeKeys
+sub_C1B0B -> ProcessActionKeys
+sub_C34E1 -> ProcessPauseKeys
+sub_C118B -> CheckForKeyPresses
+sub_C120F -> CheckForSamePanKey
+L1222 -> spaceKeyDebounce
+sub_C2147 -> PerformHyperspace
+</pre>
+
+<pre>
+Look around OSWORD calls to find the game's sound routines and categorise them:
+
+sub_C343A
+sub_C3440
+sub_C3459
+sub_C3463
+L3478
+L3479
+L34D4
+L34D5
+</pre>
+
+<pre>
+Next up, sub_C342C is called from FinishLandscape before we add to the
+landscape number. The game adds the player's remaining energy to the landscape
+number to get the next landscape, using BCD arithmetic (as landscape numbers
+are BCD), so rename sub_C342C to GetPlayerEnergyBCD.
+
+This also means that L0C0A must be player energy, so we can document
+GetPlayerEnergyBCD and finish off FinishLandscape.
+</pre>
+
+<pre>
+There are lots of flags controlling whether things are done, so these need
+working out somehow. For example:
+
+sub_C1200 sets bit 7 of L0CE4
+
+Bit 7 of L0CE4 controls:
+* if set, skip scanning of keys in the interrupt handler
+* if set, skip similar thing in sub_C1264
+* if set, skip processing volume keys
+
+Bit 7 of L0CDC gets set to the value of L0CE4 in C1208, after CheckKeyPresses
+ends, and it controls:
+* if set, do more key checking in the interrupt handler
+
+So somehow these two are related and control the amount of key press checking
+
+L0CE4 (and therefore L0CDC) is only changed in sub_C1200
+
+sub_C1200 is called from:
+PerformHyperspace
+CheckForKeyPresses when an action key is pressed and when pan keys are pressed
+(fall through from CheckForKeyPresses)
+sub_C1264 (when quitting game, when bit 7 of L0C63 is set, when L0C4E is
+non-zero)
+
+Not quite sure what this all means, though.
+</pre>
+
+<pre>
+So perhaps in the meantime, explore uses of variables we've identified - such
+as playerEnergy.
+
+sub_C19FF subtracts 1 from playerEnergy, but skips around that bit if this
+isn't the player, so this routine probably drains energy from any object -
+rename to DrainObjectEnergy
+
+This also confirms what we thought about L0C4E in the main loop - this records
+whether the player has died, as bit 7 gets set if the player runs out of
+energy, so rename this to playerIsDead
+
+When the player dies, finish_updating_enemy gets called which resets stack, so
+is this some kind of restart routine? Not totally obvious
+
+Out of time for the day, got DrainObjectEnergy and a few more playerEnergy uses
+to investigate next time, plus playerIsDead.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-15" class="anchor"></a>15 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-15&until=2025-10-15">repository commits from this day</a></p>
+
+<pre>
+While looking at DrainEnergy, there's a sound call of some kind. Noted that
+this is quite similar to Revs, and sub_C3459, sub_C3463, sub_C3463 look a bit
+like the Revs sound routines. So some renaming:
+
+End of sub_C3463 -> MakeSoundEnvelope
+sub_C3463 -> DefineEnvelope
+
+This also lets us identify envelopeData, as the envelope data is taken from
+&5028 + envelope number * 14, so L5928 = envelopeData
+
+Ditto sound data is set in sub_C3459 to &5800 + sound number * 8, so L5900 =
+soundData
+
+There's also a mapping from sound number to sound data in L3479, so call that
+soundNumberData.
+</pre>
+
+<pre>
+Back to analysing DrainObjectEnergy, playerEnergy, playerIsDead...
+
+Putting a breakpoint on sub_C36C7, this looks like it updates the player's
+energy details in the top-left of the screen and the scanner box in the
+top-right, so rename to UpdateIconsScanner. And the repeated calls to sub_C373A
+draw each individual icon, so rename to DrawIcon.
+</pre>
+
+<pre>
+Documented UpdateIconsScanner and DrawIcon. Worth noting that this draws into
+an area of memory that isn't screen memory - it's at &5A00, which I've labelled
+iconBuffer. The UpdateIconsScanner routine ends with a jump to sub_C3AEB, which
+might be the code that copies the updated iconBuffer to the screen?
+
+Let's name some variables to see if this works:
+
+(L0063 L0062) = fromAddr(1 0)
+(L0065 L0064) = toAddr(1 0)
+(L0CCB L0CCA) = iconRowAddr(1 0)
+
+iconRowAddr gets set in sub_C3AD3, where we calculate it as (L0CC3 L0CC2) -
+&0140
+
+&140 is 320, which is the size in memory of one character row of screen mode 5,
+so this implies that (L0CC3 L0CC2) must be the screen address of the main game
+screen, just below the icon and scanner row
+
+So let's name it:
+
+(L0CC3 L0CC2) = mainScreenAddr(1 0)
+
+This works pretty well - for example, SetupSights now uses this value when
+calculating the screen address for the sights, so I think we're on the right
+lines here.
+
+So we can also name sub_C3AEB to DisplayIconBuffer. There's probably other
+routines along the same lines for other buffers, e.g. DisplayMainBuffer, or
+DisplayLeftBuffer (assuming the screen movements in-game are drawing to buffers
+and then copying the results to the screen). We'll see.
+
+Added comments to DisplayIconBuffer too. It jumps to sub_C3889, which I suspect
+copies from fromAddr to toAddr, but that analysis is for another day.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-16" class="anchor"></a>16 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-16&until=2025-10-16">repository commits from this day</a></p>
+
+<pre>
+While poking through the code, I realised there's a bit missing in the middle -
+the page of data at &6000 should actually be at &4900 during runtime, as this
+block copy in ConfigureMachine includes data in the last page:
+
+* &4100-&49FF is copied to &5800-&60FF
+
+At the moment the source has only got zeroes in &49xx - we need to rectify
+that!
+
+Need to move the EQUB data from &6000 in the source to &4900, which is
+currently zeroes, and then add an extra COPYBLOCK to duplicate it to &6000 to
+be saved at the end of the game binary.
+</pre>
+
+<pre>
+Also take the opportunity to remove labels and headers from a bunch of blocks
+of unused data in the range L4AE0 to L5520 - it looks like there are lots of
+lookup tables with unused space at the ends, as the labels I've put in aren't
+ever used, so we might as well clear them up. In each case I've removed the
+header and merged them into the preceding routine/variable, adding a comment
+that the bytes appear to be unused.
+</pre>
+
+<pre>
+>>> Broken through the 30% barrier
+</pre>
+
+<pre>
+Also, object slot number seems a bit confusing. Maybe change to "object number"
+so the Sentinel is object 0, the tower is object 63 and so on?
+</pre>
+
+<pre>
+And, looking at AddEnemiesToTiles, it looks like the starting set of enemies
+(Sentinel, sentries) are added from object 0 upwards, i.e. objects 0 to 7 (as
+maximum enemy count is 8)
+
+So L0000 looks like it's an object number for an enemy, as it's always 0 to 7,
+so rename to enemyObject for now.
+
+So the sentry must be object type 1, as that's allocated in AddEnemiesToTiles
+to object numbers 1 to 7 (which I didn't understand as I though meanies would
+end up in higher object numbers, which they don't.
+
+And that means the only remaining object type, 4, must be a meanie, as that's
+the only object type left. Nice!
+
+So the only remaining bit of enemy data is set in sub_C196A, which is called
+for each enemy being added to the landscape. It sets values in four tables, no
+idea what they are, let's rename to enemyData1 through 4 so we at least know
+their vague use (they are L0CA0, L0C90, L0C98, L0C80 and they surround L0C88
+and abut L0CA8, L0CB0 and L0CB8, all of which are the same size, so let's
+rename them all).
+
+Rename sub_C196A to SetEnemyData (we can always rename it later when we know
+what it does).
+</pre>
+
+<pre>
+Now let's move on to something simpler: ProcessVolumeKeys. This hacks the
+envelope data with the updated volume level, and it plays a sound as we change
+it. That is sound #5 and it sounds like a ping, so that's what we'll call it.
+(It's also the error noise, if you press a key that can't be actioned, for
+example.)
+</pre>
+
+<pre>
+Also, L0CDF seems to be a counter that is decremented in the IRQ handler, and
+which gets set to a value before each sound is made (so it's set to 12 for the
+ping sound, and the volume can only be changed once the counter has reached 1
+or less). So this is some kind of sound counter? Let's call it soundCounter for
+now, anyway.
+</pre>
+
+<pre>
+Next up, let's document ProcessPauseKeys. All simple except the calls to
+sub_C162D, which appear to fill the scanner with green (paused) or black
+(unpaused). This is called from elsewhere, with different arguments in A, so is
+it the scanner update routine? Rename it UpdateScanner for now.
+</pre>
+
+<pre>
+Realised I didn't name sub_C3AD3, even though it's been documented, so name it
+GetIconRowAddress (and label inside it) and document all calls to it.
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_20-25-percent.html">Project progress: 20% to 25%</a><a class="next" rel="next" title="Next deep dive" href="progress_30-35-percent.html">Project progress: 30% to 35%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

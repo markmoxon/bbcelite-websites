@@ -1,0 +1,233 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_85-90-percent.html", "Project progress: 85% to 90%", "Project progress: 85% to 90%", "A diary covering progress from 85% to 90% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_85-90-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_80-85-percent.html">Project progress: 80% to 85%</a><a class="next" rel="next" title="Next deep dive" href="progress_90-95-percent.html">Project progress: 90% to 95%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">20 December to 22 December 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-12-20">20 December 2025</a></li>
+							<li><a href="#date-2025-12-22">22 December 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-20" class="anchor"></a>20 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-20&until=2025-12-20">repository commits from this day</a></p>
+
+<pre>
+sub_C2D36 splits into multiple parts
+
+It looks like it analyses the pologon and works out what to plot, but it
+doesn't actually do the drawing - that seems to be sub_C2299, because if I make
+sub_C2299 an RTS, no polygons get drawn at all.
+
+So let's rename:
+
+sub_C2D36 -> AnalysePolygon
+sub_C2299 -> DrawPolygonPixels
+
+Can always rename, as always (the last one isn't great, but I need to
+distinguish it from the top level DrawPolygon)
+</pre>
+
+<pre>
+Also, split off a few subroutines, which may or may not be right, but hey
+
+sub_C2FCC
+sub_C3087
+
+C2D5D looks like a sub in own right, as it is only called from way below
+C2D93 = Part 2 of AnalysePolygon ?
+</pre>
+
+<pre>
+AnalysePolygon starts with code that sets polygonPoint to +4 with the polygon
+point numbers
+
+Already set up for object polygons, but for tile triangle and quadrilateral we
+have some maths to follow
+
+The tile corners are laid out in the drawing tables like this:
+
+   offset x          offset x + 1
+
+   offset 32 + x     offset 32 + x + 1
+
+where x is xTileToDraw
+
+So EOR #32 flips between the two rows
+
++ 1 moves left to right
+
+- 1 moves right to left
+
++ 32 + 1 moves from top-left to bottom-right
+
+Might need to come back to this...
+</pre>
+
+<pre>
+As this is complex, let's try it from the other end: DrawPolygonPixels
+
+This seems a bit simpler and contains a construct from Revs at the end - a
+construct that draws a horizontal line (it's a simplified version of the
+DRAW_BYTE macro from Revs)
+
+So it looks like DrawPolygonPixels draws the polygon one pixel line at a time,
+using the left and right x-coordinates in L5A00 and L5B00 and working from the
+high to low y-coordinate in Y
+
+This might be easier to document, so let's try
+
+L5A00 -> xPolygonLeft
+L5B00 -> xPolygonRight
+
+Looks like tileAltitude is being reused, so add another label L0006
+
+Also L0004 and L0006 seem to contain y-coordinates of some kind, as they are
+combined and used to look up the screen row address
+
+And L0006 gets flipped in direction, so that high y is down the screen, and
+this is the opposite to the pitch angle direction
+
+So this is effectively the screen projection
+
+So L0004 and L0006 look like the pitch angle of the top and bottom of the
+polygon? But in terms of screen coordinates.
+
+OK, so rename:
+
+L0004 -> yPolygonBottom
+L0006 -> yPolygonTop
+
+These may be the wrong way around of course, but we can change that
+
+And the adding and dividing by 2 is finding the middle polygon pixel line?
+</pre>
+
+<pre>
+Self-modifying code too! Lovely....
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-22" class="anchor"></a>22 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-22&until=2025-12-22">repository commits from this day</a></p>
+
+<pre>
+Looking at DrawPolygonPixels further, split it up into four parts
+</pre>
+
+<pre>
+L3E00 and L3E40 are indexed by the value of polygonColours+X
+
+i.e. %00eeff00 + %xx = %00eeffxx
+(which fits, as %00111111 = 63 = &40)
+
+So break the table up into bytes, and convert them into pixel bytes in binary
+as they are poked directly into screen memory
+</pre>
+
+<pre>
+Part 4 of DrawPolygonPixels is a bit like Revs and jumps into a string of fill
+instructions to draw a horizontal line, so this is pretty easy to document
+
+Though the calculation to find the offset into the unrolled loop is
+intriguing...
+</pre>
+
+<pre>
+Part 1 of DrawPolygonPixels is almost done and converts polygon coordinates
+into screen coordinates (i.e. flipping the y-axis)
+
+Polygons are not drawn if left > right, i.e. it's flipped horizontally
+Ditto is bottom > top, i.e. it's flipped vertically
+</pre>
+
+<pre>
+Part 3 is the entry point, does some maths and possibly jumps up to part 2
+
+Looks like it's comparing x-coordinates from the polygon to L0035 and L0061,
+which are set up in the buffer config
+
+We discovered this about the buffer config earlier:
+
+L0036 = L0035 + L0061
+
+and part 2 is subtracting L0035 from an x-coordinate and jumping to part 2 if
+the subtraction underflows
+
+So these are probably some kind of left, right and width coordinates for the
+buffer, so we can calculate whether the line fits into the buffer, or beyond
+the edges
+
+Time to experiment with the buffer variables!
+
+L0036 -> bufferYawRight
+L0035 -> bufferYawLeft
+L0061 -> bufferYawWidth
+
+The last two could be the other way around, but I suspect Crammond would put
+the right and left values together
+</pre>
+
+<pre>
+I think we're dealing with yaw angles here and not x-coordinates, so rename:
+
+xPolygonRight -> polygonYawRight
+xPolygonLeft -> polygonYawLeft
+
+This may not be right, but I think we're still in yaw angle territory for this
+process...
+</pre>
+
+<pre>
+Documented part 3
+</pre>
+
+<pre>
+Getting there slowly, but it's complex stuff, and I'm not sure whether
+polygonYawRight does in fact contain yaw angles, or whether it's a pixel
+coordinate of some kind - I guess we'll have to leave that to when we go back
+to document AnalysePolygon properly
+
+Also, rename:
+
+DrawPolygonPixels -> DrawPolygonLines
+
+It just feels a bit clearer
+</pre>
+
+<pre>
+>>> Broken through the 90% barrier
+
+Wow, 90% done? It's so close... especially as zero page accounts for 1.5% of
+the remaining 10% and that's really close to completion
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_80-85-percent.html">Project progress: 80% to 85%</a><a class="next" rel="next" title="Next deep dive" href="progress_90-95-percent.html">Project progress: 90% to 95%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

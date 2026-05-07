@@ -1,0 +1,421 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_70-75-percent.html", "Project progress: 70% to 75%", "Project progress: 70% to 75%", "A diary covering progress from 70% to 75% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_70-75-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_65-70-percent.html">Project progress: 65% to 70%</a><a class="next" rel="next" title="Next deep dive" href="progress_75-80-percent.html">Project progress: 75% to 80%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">6 December to 16 December 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-12-06">6 December 2025</a></li>
+							<li><a href="#date-2025-12-07">7 December 2025</a></li>
+							<li><a href="#date-2025-12-08">8 December 2025</a></li>
+							<li><a href="#date-2025-12-09">9 December 2025</a></li>
+							<li><a href="#date-2025-12-09">9 December 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-06" class="anchor"></a>6 December 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-06&until=2025-12-06">repository commits from this day</a></p>
+
+<pre>
+objPolygonData - how does this work? Let's pull it apart in a spreadsheet to
+see
+
+Bit 7 is the phase number in which to draw this polygon
+
+Bit 6 = always clear, so unused?
+
+Bits 2-5 = colour data of some kind as it gets put into polygonColour
+
+Bit 6 = always clear, so unused?
+
+Bit 0 is added to 3 to give L0017 = 3 or 4, so this must be the number of sides
+
+L0017 = polygonSides
+
+Chasing down polygonColour, sub_C2299 contains code that swaps bits 2-3 and
+4-5, so it looks like this contains two colours numbers
+
+These numbers get extracted and poked into locations L23C7, L2367 and (with 64
+added) L23A2. This is self-modifying code and the instructions all look like
+ORA L3Exx,X (where xx is the byte being poked - i.e. the colour number).
+
+So there must be two tables, one at &3E00 and the other at &3E40, that map the
+colour numbers in polygonColour into pixel bytes, as the value gets OR'd with
+pixelsToLeft or pixelsToRight.
+
+Looks like L3E3C and L3E7C must contain left-over values somehow, as the low
+byte in ORA L3Exx,X can be anything as it is overwritten.
+
+Ah! This explains why .tileShapeColour starts with this colour:
+
+3 << 2 + 3 << 4
+
+That's two colour 3's.
+
+So what do the two colours signify? Is it polygon colour (fill colour) and line
+colour, maybe, as polygons also have lines around them?
+
+I suspect so. And I suspect that the fill colour is in bits 2-3, as
+tileShapeColour defines the tile colours using << 2 and bits 4-5 are always
+zero.
+
+This feels right, so let's document it all, using a spreadsheet to create the
+commentary and expand the EQUBs into their component parts, so we get this for
+the polygon data, for example:
+
+ EQUB 1 << 7 + 1 << 4 + 2 << 2 + 1  \ Polygon 4 data:
+                                    \
+                                    \   * 1 << 7: Draw polygon in second phase
+                                    \   * 1 << 4: Line colour = 1 (black)
+                                    \   * 2 << 2: Fill colour = 2 (white etc.)
+                                    \   * 1 << 0: Polygon has four sides
+
+That's much clearer than a bunch of hex numbers.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-07" class="anchor"></a>7 December 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-07&until=2025-12-07">repository commits from this day</a></p>
+
+<pre>
+Extracted point coordinate data into comments for objPointYaw, objPointPitch,
+objPointDistance
+
+Using Excel - this is a good example of how to use a spreadsheet to produce
+useful commentary, going from this:
+
+.objPointYaw
+
+ EQUB &CF, &31, &5F, &A1, &D9, &27, &57, &A9
+ EQUB &CB, &00, &35, &55, &AB, &C5, &3B, &52
+ ...
+
+To this:
+
+.objPointYaw
+
+ EQUB 207               \ Point   0: yaw = 207, distance =  20, height = -112
+ EQUB  49               \ Point   1: yaw =  49, distance =  20, height = -112
+ EQUB  95               \ Point   2: yaw =  95, distance =  27, height = -112
+ EQUB 161               \ Point   3: yaw = 161, distance =  27, height = -112
+ EQUB 217               \ Point   4: yaw = 217, distance =  31, height =  -56
+ EQUB  39               \ Point   5: yaw =  39, distance =  31, height =  -56
+ EQUB  87               \ Point   6: yaw =  87, distance =  35, height =  -56
+ EQUB 169               \ Point   7: yaw = 169, distance =  35, height =  -56
+ EQUB 203               \ Point   8: yaw = 203, distance =  42, height =  -56
+ EQUB   0               \ Point   9: yaw =   0, distance =  32, height =  -56
+ EQUB  53               \ Point  10: yaw =  53, distance =  42, height =  -56
+ EQUB  85               \ Point  11: yaw =  85, distance =  48, height =  -56
+ EQUB 171               \ Point  12: yaw = 171, distance =  48, height =  -56
+ EQUB 197               \ Point  13: yaw = 197, distance =  52, height =  -18
+ EQUB  59               \ Point  14: yaw =  59, distance =  52, height =  -18
+ EQUB  82               \ Point  15: yaw =  82, distance =  56, height =  -18
+ ...
+
+Good old Excel, it's a properly useful tool!
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-08" class="anchor"></a>8 December 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-08&until=2025-12-08">repository commits from this day</a></p>
+
+<pre>
+Continue the Excel documentation by adding improved polygon data comments like
+this:
+
+ EQUB %10011001         \ Polygon 4 data:
+                        \
+                        \   * %1xxxxxxx: Draw polygon in second phase
+                        \   * %xx01xxxx: Edge colour = 1 (black)
+                        \   * %xxxx10xx: Fill colour = 2
+(white/yellow/cyan/red)
+                        \   * xxxxxxx01: Polygon has four sides (quadrilateral)
+
+That's much better than the original << shift-based commentary.
+</pre>
+
+<pre>
+Also added comments to the polygon point lists in .objMeaniem to give the
+actual point numbers rather than the object range-relative numbers in the
+EQUBs, so we get this kind of thing
+
+.objMeanie
+
+.objPolygon077
+
+ EQUB 64 + 7            \ Polygon 77 points: 83, 88, 87, 82, 83
+ EQUB 64 + 12
+ EQUB 64 + 11
+ EQUB 64 + 6
+ EQUB 64 + 7
+
+As the meanie point range starts is 76 to 93, so EQUB of 7 maps to 7 + 76 = 83.
+
+All automated in Excel, so it's a relatively simple cut-and-paste from Excel
+into a text editor for some tidy-up work and into the source it goes.
+</pre>
+
+<pre>
+Change the terminology to talk about polygon edges rather than polygon lines,
+as that is clearer
+</pre>
+
+<pre>
+More documenting of DrawObject
+
+L0C7A -> blendPolygonEdges
+
+When bit 7 is set, edges are drawn in the fill colour
+
+Code to do this is just before .C22EF
+
+It copies colour from 2-3 (fill) into 4-5 (edge) to set edge colour to same as
+fill so edges blend in
+</pre>
+
+<pre>
+L0017 -> polygonPointCount
+
+This is one more then the number of sides, as the polygon lists contain the
+first point repeated at the end.
+</pre>
+
+<pre>
+L003C -> drawViewAngles
+
+This address points to the pitch and yaw angles of the tile corners and polygon
+points, relative to the view, so these are effectively the angles that we
+project onto the screen when drawing the view.
+</pre>
+
+<pre>
+Looks like this one is passed to DrawPolygon and determines which part of the
+routine is run, so it's some kind of polygon type:
+
+L003B -> polygonType
+
+It only uses bits 6 and 7, so let's document this as far as we can
+</pre>
+
+<pre>
+It turns out that these tables:
+
+tileViewYawHi tileViewYawLo
+tileViewPitchHi tileViewPitchLo
+
+are also used for storing point angles for objects. I originally added these
+SKIP 0 labels:
+
+pointViewYawHi pointViewYawLo
+pointViewPitchHi pointViewPitchLo
+
+but a cleaner approach is to rename the top lot to this more generic name:
+
+drawViewYawHi drawViewYawLo
+drawViewPitchHi drawViewPitchLo
+
+and remove the point* labels altogether.
+</pre>
+
+<pre>
+Time to see if we can identify all the screen buffers within the code layout,
+as they must be in there somewhere. So add .viewBufferRow0 through 24.
+
+See bufferRowAddrLo for addresses
+
+They all fit except the last one:
+   &49A0 to &49DF for character row 24
+
+This clashes with object data, so presumably this row is never used
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-09" class="anchor"></a>9 December 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-09&until=2025-12-09">repository commits from this day</a></p>
+
+<pre>
+Finish documenting DrawObject
+</pre>
+
+<pre>
+Now that we understand a bit more about drawing objects, let's finish off the
+title screen code in DrawTitleObject.
+
+First a quick clarification for the palettes, of which there are two.
+
+The first palette in colourPalettes gets changed to the game palette, while the
+second one is fixed and is for the title screens.
+
+So let's document this properly.
+</pre>
+
+<pre>
+We should probably rename the title routines, as the 3D text routines don't
+draw the text they create text from 3D objects, and some of the routines I have
+marked as drawing the title screen similarly only spawn 3D objects.
+
+So we have:
+
+DrawLetter3D -> SpawnCharacter3D
+DrawSecretCode -> SpawnSecretCode3D
+sub_C5F80 -> SpawnTitleObject
+
+and these are better names for the routines that actually do the drawing:
+
+DrawTitleObject -> DrawTitleView
+sub_C5FE5 -> DrawTitleObjects
+sub_C5FEE -> DrawTitleObject
+
+The top-level routine is still DrawTitleScreen, which is almost all documented.
+</pre>
+
+<pre>
+DrawTitleView loads a bunch of variables from tables, depending on whether this
+is a title screen or the landscape preview, and almost all of those variables
+get poked into named labels.
+
+So it's easy to name the following, which are used to set up object #16 that's
+used as the viewing object for the large 3D text:
+
+L1403 -> yTextViewer
+L1405 -> textViewerPitch
+L1407 -> xTextViewer
+L140B -> zTextViewer
+L140D -> textViewerYaw
+
+and this one gets copied into xTitleOffset, so we can name it:
+
+L1409 -> titleOffset
+
+So now let's crack on with commenting DrawTitleView
+</pre>
+
+<pre>
+After configuring colours and object #16, DrawTitleView calls DrawTitleObjects,
+which calls DrawTitleObject, which calls SpawnTitleObject, so let's go there
+now.
+
+SpawnTitleObject also grabs config settings from tables, this time for the
+object game over screen (index 0), robot/Sentinel (index 1) or tower (index 2),
+so we can rename the following pretty easily, again according to where these
+bits of title object data get poked.
+
+These set up the object being drawn (the first two are relative to the viewing
+object in object #2):
+
+L5FBC -> zTitleObject
+L5FDC -> yTitleObject
+L5FDF -> titleObjectYaw
+
+and these set up the viewing object itself in object #2:
+
+L5FD9 -> titleViewerPitch
+L5FE2 -> titleViewerYaw
+</pre>
+
+<pre>
+Finish documenting SpawnTitleObject and all the configuration variable tables.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-09" class="anchor"></a>9 December 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-09&until=2025-12-09">repository commits from this day</a></p>
+
+<pre>
+Back to DrawTitleView, which is a relatively easy routine to finish documenting
+</pre>
+
+<pre>
+Next up is SpawnCharacter3D, which creates the text in the landscape as 3D text
+blocks
+
+This is quite straightforward, except the object numbers for the 3D text blocks
+are added to the tile data as 32 + 0, 32 + 7, 32 + 8 and 32 + 9, from the L3248
+table
+
+L3248 -> objBlockNumber
+
+The 32 part gets cleared in DrawTileAndObjects, so that's a bit weird
+</pre>
+
+<pre>
+Also document the relevant bits of DrawTileAndObjects at .tobj1 and polish off
+titleText
+
+And clarify how the block pair objects 7-9 are defined using different point
+ranges.
+</pre>
+
+<pre>
+>>> Broken through the 75% barrier
+
+Three-quarters of the way there! Come on, the end is getting every-so-slightly
+closer...
+</pre>
+
+<pre>
+Explained various ???s in the commentary, just to keep on top of them - every
+little step is a step forward
+</pre>
+
+<pre>
+Bit of a big rename. I've been talking about the icon screen buffer and the
+view screen buffer, to distinguish the two, but the latter is a bit of a
+mouthful, so let's change "view screen buffer" to just "screen buffer" to make
+things simpler
+
+This applies to comments, variables and routine names, so instead of:
+
+.viewBufferRow0
+.viewBufferAddr
+
+we can have:
+
+.screenBufferRow0
+.screenBufferAddr
+
+and so on. This feels a bit cleaner.
+</pre>
+
+<pre>
+Also, move the startup routines in ConfigureMachine and ClearMemory, and the
+original source code in the workspace noise, to the end of the source file, as
+they clash with the game memory structure and are much easier to follow if they
+move elsewhere (along with the CLEAR they need).
+</pre>
+
+<pre>
+Added a number of comments to variables in the workspaces
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_65-70-percent.html">Project progress: 65% to 70%</a><a class="next" rel="next" title="Next deep dive" href="progress_75-80-percent.html">Project progress: 75% to 80%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

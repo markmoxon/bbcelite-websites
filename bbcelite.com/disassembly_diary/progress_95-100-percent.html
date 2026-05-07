@@ -1,0 +1,243 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_95-100-percent.html", "Project progress: 95% to 100%", "Project progress: 95% to 100%", "A diary covering progress from 95% to 100% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_95-100-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_90-95-percent.html">Project progress: 90% to 95%</a><a class="next" rel="next" title="Next deep dive" href="website_and_deep_dives.html">Creating the website and deep dives</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">30 December to 31 December 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-12-30">30 December 2025</a></li>
+							<li><a href="#date-2025-12-31">31 December 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-30" class="anchor"></a>30 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-30&until=2025-12-30">repository commits from this day</a></p>
+
+<pre>
+I've put my back out! The pain isn't exactly conducive, but sitting in an
+upright position seems to help, so who am I to argue?
+
+I'm not writing down the yelps of pain, so nobody will suspect a thing... but
+my notes will be a bit more terse than usual
+</pre>
+
+<pre>
+The TracePolygonEdge tracing routine is essentially multiple Bresenhams, split
+up into 16-bit vs 8-bit x-coordinates, and steep vs shallow, and off-screen vs
+on-screen
+
+So having done part 2 for steep lines that steps along the y-axis, part 3 is
+very similar but steps along the x-axis, and parts 4 and 5 do the same but
+without storing the results
+
+Then parts 6, 7 and 8 do the same for two-byte x-coordinates, so they're just
+another riff on parts 2 to 5
+
+There are a few parts I don't understand - for example, the slope error is a
+bit of a mind-bender that I haven't worked out yet - but if I document it all,
+I can come back and have another read-through once my back has stopped
+spasming.
+
+99.7% coverage now, so definitely getting there...
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-31" class="anchor"></a>31 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-31&until=2025-12-31">repository commits from this day</a></p>
+
+<pre>
+Finish off part 8 of TracePolygonEdge by copying the not-exactly-brilliant
+commentary from part 7 and changing the axis names around
+
+This entire routine needs improving - but that's probably true of every
+Bresenham routine I've ever documented. I have trouble keeping awake during all
+this unrolled duplication. :-)
+</pre>
+
+<pre>
+Rename SetScannerUpdate to SetScannerAndPause, as the pause is the biggest part
+of this routine (and something on my snag list, as I don't know why it's
+there!)
+</pre>
+
+<pre>
+So that's almost everything done... except for the buffer variables. These need
+looking at, as I don't understand them and they feed into code that I suspect I
+have misinterpreted.
+
+Here goes...
+</pre>
+
+<pre>
+Let's look at where the buffer variables are actually used.
+
+These are only ever used in DrawPolygonLines to clip polygons to the buffer:
+
+bufferYawRight
+bufferYawLeft
+bufferYawWidth
+
+These are only ever used in GetPolygonLines, where this is added to the
+drawViewYaw value for each polygon point before plotting (to cater for
+difference in y-axis origin?):
+
+bufferYaw(Hi Lo)
+
+These are only ever used in GetTileViewAngles for the tileIsOnScreen
+calculation:
+
+bufferMaxYawHi
+bufferMinYaw(Hi Lo)
+</pre>
+
+<pre>
+So, let's rename:
+
+bufferYaw(Hi Lo) -> bufferOrigin(Hi Lo)
+
+buffersYawHi -> buffersOrigin
+
+As this one seems pretty clear - it moves the origin from the centre of the
+view to the left edge of the buffer, thus converting yaw angles to buffer
+coordinates
+</pre>
+
+<pre>
+Looking at ConfigureObjBuffer for clues:
+
+bufferYawWidth is width of whole buffer in PIXELS (i.e. 4 * character columns)
+
+bufferYawRight is 128 + bufferYawWidth / 2 (rounded down to a multiple of 4)
+                = (256 + bufferYawWidth) / 2
+
+No idea what this is all about!
+
+bufferYawLeft is bufferYawRight - bufferYawWidth
+
+So let's try renaming them as follows:
+
+bufferYawWidth -> xBufferWidth
+buffersYawWidth -> xBuffersWidth
+
+bufferYawRight -> xBufferRight
+
+bufferYawLeft -> xBufferLeft
+buffersYawLeft -> xBuffersLeft
+</pre>
+
+<pre>
+Looking at ConfigureObjBuffer for clues:
+
+bufferMinYaw(Hi Lo) is the width of the buffer in yaw angles
+
+bufferMaxYawHi = bufferMinYawHi / 2 with bit 7 flipped
+
+I definitely don't understand this part!
+</pre>
+
+<pre>
+Right row buffer is only ever used for drawing polygons on the landscape in
+DrawPolygon, and never for landscape tiles (ConfigureBuffer is only ever called
+for left row or column buffer) or updating objects (ConfigureObjBuffer always
+uses column buffer)
+
+FlipBufferType is only ever called from DrawPolygon, and it's the only place
+that the right row buffer is used
+</pre>
+
+<pre>
+bufferMinYaw(Hi Lo) is the width of the buffer in yaw angles
+
+bufferMinYaw(Hi Lo) is only ever used in this comparison:
+
+drawViewYaw(Hi Lo) >= bufferMinYaw(Hi Lo): set bit 7 of tileIsOnScreen
+
+So when bit 7 of tileIsOnScreen is set, what does this mean? It's to the right
+of the screen buffer?
+
+So is bufferMinYaw(Hi Lo) really the maximum yaw angle, i.e. bufferMaxYaw(Hi
+Lo)?
+
+CONFUSED!
+</pre>
+
+<pre>
+bufferMaxYawHi is always bufferMinYawHi / 2 with bit 7 flipped
+
+It is only ever used in this comparison:
+
+drawViewYawHi >= bufferMaxYawHi: set bit 0 of tileIsOnScreen
+
+Don't understand this EOR bit flip, I must say...
+
+CONFUSED!
+</pre>
+
+<pre>
+So here's a summary:
+
+Shape             LeftRow  RightRow    Column
+
+screenBufferType      0       1          2
+bufferMinYaw(Hi Lo)  20      20          8          buffer width in yaw angles?
+bufferMaxYaw(Hi Lo) 138     138        132          In pixels or yaw angles?
+bufferMinPitch      176     176         48          In pixels?
+bufferMaxPitch      240     240        240          In pixels?
+bufferOrigin(Hi Lo)  10       2         12          Moves origin centre to
+left?
+xBufferWidth        112     112         64          In pixels
+xBufferLeft          80      64         96          In pixels?
+xBufferRight        192     176        160          In pixels?
+
+Not exactly solved, but maybe we are getting there slowly?
+</pre>
+
+<pre>
+Added a README to the repository
+</pre>
+
+<pre>
+Will have to leave the rest for later analysis, as I'm a bit stuck on the snag
+list (which is in the spreadsheet)
+
+But the good news is that we have...
+
+>>> Broken through the 100% barrier
+
+ALL DONE!
+
+A few days short of four months. What an epic project...
+
+So now to make all this public
+
+Phew!
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_90-95-percent.html">Project progress: 90% to 95%</a><a class="next" rel="next" title="Next deep dive" href="website_and_deep_dives.html">Creating the website and deep dives</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

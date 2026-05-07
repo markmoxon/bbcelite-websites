@@ -1,0 +1,197 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_80-85-percent.html", "Project progress: 80% to 85%", "Project progress: 80% to 85%", "A diary covering progress from 80% to 85% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_80-85-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_75-80-percent.html">Project progress: 75% to 80%</a><a class="next" rel="next" title="Next deep dive" href="progress_85-90-percent.html">Project progress: 85% to 90%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">10 December to 19 December 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-12-17">17 December 2025</a></li>
+							<li><a href="#date-2025-12-19">19 December 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-17" class="anchor"></a>17 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-17&until=2025-12-17">repository commits from this day</a></p>
+
+<pre>
+Finish documenting DitherScreenBuffer, though that random stuff is still weird
+(though it's just a way of choosing a random pixel byte from the column buffer)
+</pre>
+
+<pre>
+Back to ApplyTactics part 4
+
+For this short bit of code we need to work out enemyData8, sub_C1AA7 and
+enemyData1
+
+Calls to sub_C1AA7 are controlled by bit 7 of enemyData8, and enemyData1 seems
+to contain a number rather than flags (as it is affected by DEC and INC
+elsewhere)
+
+Probably a good idea to analyse sub_C1AA7 for clues here
+</pre>
+
+<pre>
+sub_C1AA7 iterates through the objects and looks for a tree-on-a-stack or a
+boulder that's exposed on top of a tile and whose tile can be seen by the enemy
+
+In other words, a tree or boulder that the enemy can drain
+
+So sub_C1AA7 -> FindObjectToDrain
+
+And document it, as it's quite straightforward
+</pre>
+
+<pre>
+Back to ApplyTactics, and finish off part 4 (though I still don't understand
+enemyData1)
+</pre>
+
+<pre>
+On to ApplyTactics part 5, which we can split into two (part 5 and 6): looking
+for robots to drain, and rotating
+
+It's all fairly clear, and as a bonus we have now identified all the game's
+sound effects, so I can replace all the ???s in the various sound routines and
+variables with the details.
+
+Document parts 5 and 6 and move on to part 7
+</pre>
+
+<pre>
+ApplyTactics part 7 drains energy from the object it's called with
+
+targetVisibility is put into enemyData7, so rename to enemyVisibility
+
+It's fairly straightforward, draining energy in the usual way unless the target
+is partially obscured, in which case it calls sub_C197D, presumably to think
+about turning a tree into a meanie... but let's have a look
+</pre>
+
+<pre>
+sub_C197D, looks like enemyData1 stores an object number as we scan from 63
+down, looking for a tree that can be turned into a meanie, so:
+
+enemyData1 -> enemyMeanieScan
+
+And as this is looking for trees to turn into meanies, so:
+
+sub_C197D -> ScanForMeanieTree
+
+And
+
+enemyData3 -> enemyFailTarget
+enemyData4 -> enemyFailCounter
+
+as they keep track of failed meanie scans
+</pre>
+
+<pre>
+Also, this makes more sense as all the reset data is meanie-related:
+
+ResetEnemyData -> ResetMeanieScan
+</pre>
+
+<pre>
+Finish ScanForMeanieTree and finish ApplyTactics
+
+Good progress today!
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-19" class="anchor"></a>19 December 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-19&until=2025-12-19">repository commits from this day</a></p>
+
+<pre>
+A quick win here - finishing off the main variable workspace ay &0C00
+
+Just need to convert L0C40 to L0C44 to polygonPoint, as this is where the (up
+to) five polygon points get stashed in the polygon routine... and that's the
+workspace done
+</pre>
+
+<pre>
+>>> Broken through the 85% barrier
+
+A big leap because the workspace is a big one, though in fairness it has been
+updated slowly throughout the project
+</pre>
+
+<pre>
+sub_C191A -> GetPlayerDrain
+
+This works out whether the player is exposed to an enemy and whether they enemy
+can see the player's tile, and it sets the variables accordingly
+
+It doesn't do the actual tile visibility calculation, it just uses the values
+from enemyVisibility etc. so it's pretty simple
+</pre>
+
+<pre>
+On to the final category - drawing polyons (there are some buffer variables
+that I haven't explained yet, but they seem to be tied into the drawing
+routine, so I'll work them out when I get there
+
+First spot is a quick variable change:
+
+ LDA L54A0,Y
+ SEC
+ SBC L54A0,X
+ STA T
+ LDA L0B40,Y
+ SBC L0B40,X
+
+So L54A0 is a low byte and L0B40 is a high byte from a 16-bit value, so let's
+rename:
+
+L0B40 -> L0B40Hi
+L54A0 -> L0B40Lo
+</pre>
+
+<pre>
+DrawPolygon is documented apart from the two calls to sub_C2D36 and sub_C2299,
+and some logic around the values of L002C (for left row buffer) and L002D (for
+right row buffer)
+
+Here's the hierarchy:
+
+DrawPolygon
+    sub_C2D36
+        sub_C2EAE
+            Absolute16Bit
+            sub_C2EAE
+            sub_C316E
+    sub_C2299
+
+Let's look at sub_C2D36 first, which returns the C flag to control the call to
+sub_C2299
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_75-80-percent.html">Project progress: 75% to 80%</a><a class="next" rel="next" title="Next deep dive" href="progress_85-90-percent.html">Project progress: 85% to 90%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

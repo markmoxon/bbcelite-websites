@@ -1,0 +1,472 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_55-60-percent.html", "Project progress: 55% to 60%", "Project progress: 55% to 60%", "A diary covering progress from 55% to 60% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_55-60-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_50-55-percent.html">Project progress: 50% to 55%</a><a class="next" rel="next" title="Next deep dive" href="progress_60-65-percent.html">Project progress: 60% to 65%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">17 November to 20 November 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-11-17">17 November 2025</a></li>
+							<li><a href="#date-2025-11-19">19 November 2025</a></li>
+							<li><a href="#date-2025-11-20">20 November 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-11-17" class="anchor"></a>17 November 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-11-17&until=2025-11-17">repository commits from this day</a></p>
+
+<pre>
+Some slightly clearer names:
+
+CheckNextTile -> GetTileEdgeToRight
+CheckPreviousTile -> GetTileEdgeToLeft
+</pre>
+
+<pre>
+GetTileViewEdges starts at tile corner (L0032 zTile) and keeps checking tile
+corners on that row until it finds the edges of the on-screen view arc
+
+It populates the following variables, so here are some guesses for variable
+names:
+
+L0032 -> xTileViewLeft
+L0033 -> xTileViewRight
+
+L0037 -> xTileViewLeftEdge
+L0038 -> xTileViewRightEdge
+
+L0C48 seems to keep a previous value of L0032, starting from zero, so maybe
+xTileLeftPrevious? Also, starting from zero is why L0032 is left and L0033 is
+right.
+
+These are all guesses, but they feel pretty close.
+</pre>
+
+<pre>
+Gone through the GetTileViewEdges routine, and here's a quick summary:
+
+GetTileViewEdges starts at tile corner (xTileViewLeft zTile) and keeps checking
+tile corners on that row until it finds the edges of the on-screen view arc
+
+It calls GetTileViewAngles/next/prev to do this, which analyses the tile corner
+at (Y, zTile) and calculates the yaw and pitch angles and tileIsOnScreen
+
+Part 1:
+
+xDelta to x-axis delta between viewer and the tile that we are analysing
+
+zDelta to z-axis delta between viewer and the tile that we are analysing
+
+Calls GetHypotenuseAngle then GetHypotenuse to get angle and hypotenuse of this
+triangle which is effectively flat on the ground plane
+
+Set (tileViewYawHi tileViewYawLo) for this tile (to the angle from
+GetHypotenuseAngle)
+
+Part 2:
+
+Get tile data for tile we are analysing (have to work out which tile it is by
+converting tile coords from viewer viewpoint to 3d world so we know which
+tileData to grab)
+
+Part 3:
+
+Check visibility bit
+
+Call GetPitchAngleDelta to get relative pitch angle of tile and put into
+(tileViewPitchHi tileViewPitchLo) for this tile
+
+Check if it's on-screen, set tileIsOnScreen <-- still need to document
+</pre>
+
+<pre>
+So document the rest of GetTileViewAngles
+
+For the last part, it's checking the yaw angle against two limits:
+
+(L0007 L0028)
+(L0012 ?????)
+
+So call these (minYawAngleHi minYawAngleLo) and (maxYawAngleHi ????) for now,
+I'm assuming they are some kind of screen edge or viewing arc edge?
+
+Finish documenting GetTileViewAngles, and in particular tileIsOnScreen, as
+that's used heavily in GetTileViewEdges
+</pre>
+
+<pre>
+Documented GetTileViewEdges, but I have to say it makes little sense. I'm
+worried that my analysis of tileIsOnScreen is wrong, as the logic for working
+along the row of tiles to work out the edges is completely weird, so I suspect
+I have something wrong here.
+
+Part of the problem is that tileIsOnScreen compares yaw angles to
+(minYawAngleHi minYawAngleLo) and maxYawAngleHi, and these appear to be set in
+sub_C2963.
+
+This sets minYawAngleHi to 20 or 8 
+
+And it sets maxYawAngleHi = 138 or 132, i.e. -118 or -124, using this code:
+
+.L2994
+ EQUB &14, &14, &08
+
+ LDA L2994,Y            \ Set minYawAngleHi = 20 or 8
+ STA minYawAngleHi
+
+ LSR A                  \ Set maxYawAngleHi = 138 or 132
+ EOR #%10000000         \                   = -118 or -124
+ STA maxYawAngleHi      \ ???
+
+That EOR of bit 7 isn't negation, it adds 128.
+
+I have no idea what this is all about! That's a yaw angle range of almost half
+a circle, which doesn't sound right - the game's screen is quite small, and
+definitely not this big.
+
+So is maxYawAngleHi actually something else that I'm not understanding?
+
+I don't know, and this part of the commentary is really ropey as a result!
+</pre>
+
+<pre>
+Here's my current tile-edge search logic:
+
+tileIsOnScreen gets set as follows:
+
+Off-screen to left   On-screen      Off-screen to right
+%00000000            %10000000      %10000001
+
+GetTileViewEdges does this:
+
+Set current position to xTileViewLeft
+
+If off to left  -> edge5
+If on-screen    -> edge4
+If off to right -> edge1
+
+.edge1
+xTileViewLeft = current position
+Move right
+If fall off end -> edge3
+If off to right -> edge1
+If on-screen    -> edge3
+If off to left  -> edge2
+
+.edge2
+Move right
+If fall off end -> edge3
+If off to left  -> edge2
+If on-screen    -> edge3
+If off to right -> edge3
+
+.edge3
+xTileViewRight = current position
+END
+
+.edge4
+xTileViewRight = current position
+Move left
+If fall off end -> edge9
+If on-screen    -> edge4
+If off to left  -> edge8 -> edge7
+If off to right -> edge8 -> edge9
+
+.edge5
+Move right
+If fall off end -> edge6
+If off to left  -> edge5
+If on-screen    -> edge6
+If off to right -> edge6
+
+.edge6
+xTileViewRight = current position
+current position = xTileViewLeft
+-> edge7
+
+.edge7
+Move left
+If fall off end -> edge9
+
+.edge8
+If off to left  -> edge7
+
+.edge9
+xTileViewLeft = current position
+END
+</pre>
+
+<pre>
+Also documented DrawTileRow as it's very simple and demonstrates how the
+xTileViewLeftEdge and xTileViewRightEdge variables work.
+
+Now I just have to work out how to populate these properly in
+DrawLandscapeView...
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-11-19" class="anchor"></a>19 November 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-11-19&until=2025-11-19">repository commits from this day</a></p>
+
+<pre>
+Let's put some breakpoints on the landscape-drawing routines and disable the
+blue screen while the title screen and landscape preview is drawn, as this
+might help us name a few routines within the DrawLandscapeView hierarchy - i.e.
+those that do something on-screen (unlike all this preparatory work we've been
+looking at).
+
+So change the JSR SetColourPalette in MainTitleLoop to an argument of LDA #&83
+so the title screen drawing process is revealed, and we discover the following:
+
+sub_C5D33 -> DrawObject
+sub_C2A79 -> DrawPolygon
+
+Latter looks like it's just triangles or quadrilaterals, not quite sure, but
+"polygon" seems like a nice generic term. "Shape" is probably good too, but
+that might confuse with "tile shape".
+
+Doing the same for the landscape preview, the tiles get drawn first and then
+the objects (as a stack), so I think we have:
+
+sub_C219F -> DrawObjectStack
+
+Also, sub_C29E2 and sub_C2A1B seem to draw the blocks on the title screen,
+which Simon Owens tells me are just large tiles drawn as blocks, so I'm
+guessing we have:
+
+sub_C29E2 -> DrawTileAndObjects
+
+This fits into a guess I already made in the comments for the calls to this
+routine, though I'm not sure what sub_C2A1B does yet - maybe it's DrawTile, as
+we already have DrawObjectStack and DrawObject? Maybe not, let's leave it for
+now.
+
+I wonder if there's an easy way to watch the main game drawing the landscape,
+rather than the preview? Hmm.
+
+Anyway, plug these guesses in and let's get back to the landscape drawing
+routine.
+
+Also time to add two more categories:
+
+Drawing polygons
+Drawing objects
+</pre>
+
+<pre>
+Also, totally unrelated, but it's obvious that sub_C5F68, which is called from
+DisplayGameOver, draws black dots over the screen on game over to "decay" it to
+black, so let's also rename:
+
+sub_C5F68 -> DecayScreenToBlack
+</pre>
+
+<pre>
+I'm trying to work out what angle2Hi is in part 1 of DrawLandscapeView, and
+again in GetTileViewAngles (this time with angle2Lo).
+
+These two seem a bit disconnected - sometimes the low byte it used on its own,
+sometimes it's just the high byte.
+
+Anyway, in part 1 of DrawLandscapeView, angle2Hi is set to T - 10, where T is
+the yaw angle of the centre of the viewing arc, so this is 10/256 degrees left
+of centre.
+
+This rings bells from Revs.
+
+Revs also uses yaw and pitch angles, and it translates them pretty directly
+into screen coordinates. It has a field of view of 20 yaw angles in each
+direction, so that's a field of view of 40 yaw angle units. That's equivalent
+to a field of view of 56.25 degrees from left to right.
+
+The Sentinel has a much narrower field of view, but is it exactly half the
+size? If it is, then where DrawLandscapeView is subtracting 10 from the centre,
+it could be getting the yaw angle of the left edge of the screen.
+
+To confirm - look at sub_C10B7, which gets called from the main loop when the
+player is holding down a pan key. It starts by updating the yaw angle of the
+object in anotherObject, so if this is the player (which I think it is because
+the main loop sets it this way), then this would rotate the player by the
+angles in the L38F4 table.
+
+L38F4 contains &14, &F8, &04, &F4
+i.e. +20, -8, +4, -12
+
+These correspond to a pan key of right, left, up, down, so when panning right,
+we add 20 to the player's yaw. But only -8 for left.
+
+Hmm, not sure this is helping, but this is something to look into...
+
+Also, rotating in-game isn't done in fractions of the field of view - the field
+of view is somewhere between 2 and 3 rotations, so maybe 2.5?
+
+If the field of view is 10 in each direction i.e. a total of 20, then if each
+rotation was 8 then this would fit. But it's +20 and -8, so not sure what
+that's all about.
+
+Also, maxYawAngleHi is taken from this table:
+
+.L2994
+ EQUB &14, &14, &08
+
+which is 20, 20, 8
+
+So that's 20 again. It does really feel as if the field of view in the Sentinel
+is half that of Revs.
+</pre>
+
+<pre>
+Also, playing with Revs, it's possible to rotate the car in-place by hacking
+the player's yaw angle in address &0B (playerYawAngleHi)
+
+Doing this shows that the view's perspective does not change if you do this -
+it just scrolls right or left when you change the angle. So it looks like Revs
+and the Sentinel share the same kind of perspective system?
+
+I sense some kind of deep connection here, but those L38F4 figures are
+confusing me a bit. If the right/left panning angles were +8 and -8 then this
+would all make sense... but they aren't.
+
+Hmm. Will have to come back to this.
+</pre>
+
+<pre>
+In the meantime, let's pick off some low-hanging fruit by documenting
+DrawTileAndObjects
+
+This does some simple checking of the tile visibility and contents. For tiles
+with objects it calls sub_C2A1B then DrawObjectStack, and for tiles with no
+objects it calls sub_C2A1B for flat tiles only.
+
+So sub_C2A1B looks like it might be DrawFlatTile. It's also surrounded by other
+tile-drawing entry points that depend on the tile shape, i.e. C2A39 and C2A5A,
+so convert these to sub_Cxxx format.
+</pre>
+
+<pre>
+DrawFlatTile contains cracker-related code
+
+To make it easier to follow all this cracker-related code, I've extracted all
+the code and put it into its own category: Cracker protection
+
+That'll make it easier for the crackers to follow what's going on. :-)
+</pre>
+
+<pre>
+Back to DrawLandscapeView, part 2 is relatively straightforward, and just makes
+sure the correct data is fetched for drawing the tile, so document it
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-11-20" class="anchor"></a>20 November 2025<br>
+													 ================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-11-20&until=2025-11-20">repository commits from this day</a></p>
+
+<pre>
+Some improved categorisation of routines and variables, now that things are
+starting to take shape
+
+CorruptSecretCode -> Cracker protection
+tileVisibility -> Drawing the landscape
+SetEnemyData -> Gameplay
+
+Add to a new "Scanner and energy icons" category
+
+UpdateScanner
+UpdateScannerNow
+scannerStatic
+scannerBlock
+scannerState
+scannerPixelByte
+ClearIconsScanner
+UpdateIconsScanner
+DrawIcon
+GetIconRowAddress
+SetScannerUpdate
+scannerPixelByte
+
+Screen buffer:
+
+DisplayIconBuffer
+DisplayViewBuffer
+DisplayBufferColumn
+DisplayBufferRow
+DisplayBufferBlock
+updateOffsetLo
+updateOffsetHi
+scrollScreenLo
+scrollScreenHi
+viewBufferAddrHi
+viewBufferAddrLo
+SetNumberOfScrolls
+SetViewBufferAddr
+viewBufferLeft
+viewBufferRight
+viewBufferUp
+viewBufferDown
+viewBufferAddr
+
+That should help.
+</pre>
+
+<pre>
+Now to finish off DrawLandscapeView (Part 3), which draws the row containing
+the viewer
+
+This relies on knowing how the tile view data is laid out - tricky stuff, so
+important to explain.
+
+One thing that I think is correct but I'm not sure: it doesn't draw the tile if
+the high byte of the pitch angle is >= 2, so is this an upper bound for the
+pitch angle for the screen edges? Must look closer into the screen bounds
+again...
+</pre>
+
+<pre>
+We can also document L0C1B, which controls whether the landscape drawing
+process aborts when the relevant pan key is released (which happens when
+panning normally, but not when panning because of the sights moving off-screen)
+
+Rename L0C1B to keepCheckingPanKey, as that's what it controls
+</pre>
+
+<pre>
+Document DecayScreenToBlack, for an easy win
+</pre>
+
+<pre>
+>>> Broken through the 60% barrier
+</pre>
+
+<pre>
+Document DisplayGameOver as well, though it does contain a few unknown flags
+and subroutine calls, so it will need revisiting
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_50-55-percent.html">Project progress: 50% to 55%</a><a class="next" rel="next" title="Next deep dive" href="progress_60-65-percent.html">Project progress: 60% to 65%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

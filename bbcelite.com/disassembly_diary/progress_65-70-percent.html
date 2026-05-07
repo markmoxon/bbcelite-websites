@@ -1,0 +1,531 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_65-70-percent.html", "Project progress: 65% to 70%", "Project progress: 65% to 70%", "A diary covering progress from 65% to 70% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_65-70-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_60-65-percent.html">Project progress: 60% to 65%</a><a class="next" rel="next" title="Next deep dive" href="progress_70-75-percent.html">Project progress: 70% to 75%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">2 December to 5 December 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-12-02">2 December 2025</a></li>
+							<li><a href="#date-2025-12-03">3 December 2025</a></li>
+							<li><a href="#date-2025-12-04">4 December 2025</a></li>
+							<li><a href="#date-2025-12-05">5 December 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-02" class="anchor"></a>2 December 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-02&until=2025-12-02">repository commits from this day</a></p>
+
+<pre>
+It's time to investigate the screen buffer and screen memory.
+
+First up, the tables at screenRowAddrLo and screenRowAddrHi contain addresses
+for screen rows. The first 25 entries are for screen memory, but the next 25
+must be for the screen buffer, as the point into memory (and looking at memory
+while the game is running confirms this).
+
+So let's start by splitting the table into screenRowAddrLo/Hi and
+bufferRowAddrLo/Hi, for clarity.
+</pre>
+
+<pre>
+An aside: we can also rename these pixel bit patterns, using some of the same
+names from Revs:
+
+L2283 -> colourPixels
+L2287 -> pixelsToLeft
+L228B -> pixelsToRight
+L228F -> leftPixels
+
+Nothing to do with the screen buffer, but still worth doing
+</pre>
+
+<pre>
+When calling FillScreen, A is the row offset into screenRowAddrLo, so passing
+25 when panning means we draw into the buffer
+
+So reword all calls to FillScreen to make this clearer
+</pre>
+
+<pre>
+We noted before that L0055 is 0 or 25, and it turns out that in sub_C2299 it is
+added to an index into screenRowAddrLo.
+
+So, when L0025 is 0 this looks up screen addresses, and when it's 25 this looks
+up screen buffer addresses.
+
+So rename L0055 -> screenOrBuffer and document uses of it
+</pre>
+
+<pre>
+bufferRowAddrLo/Hi contain hard-coded addresses: &3F00 and &3FA0
+
+Can we make this more readable?
+
+It looks as if the four viewBuffer variables are completely wrong. Instead,
+let's look at the FillScreen routine, which resets the screen buffer when
+called from the PanLandscapeView routine.
+
+When called with A = 0, it clears the screen by looking up row addresses from
+screenRowAddrLo/Hi
+
+When called with A = 25, it clears the screen buffer by looking up row
+addresses from bufferRowAddrLo/Hi
+
+Looking at the way this works, it looks like it fills the screen buffer like
+this when filling the screen-wide up or down row-shaped buffer:
+
+   &3F00 to &403F for character row 0
+   &4040 to &417F for character row 1
+   &4180 to &42BF for character row 2
+   &42C0 to &43FF for character row 3
+   &4400 to &453F for character row 4
+   &4540 to &467F for character row 5
+   &4680 to &47BF for character row 6
+   &47C0 to &48FF for character row 7
+
+or this when filling the screen-high left or right column-shaped buffer:
+
+   &3F00 to &3F3F for character row 0
+   &4040 to &407F for character row 1
+   &4180 to &41BF for character row 2
+   &42C0 to &42FF for character row 3
+   &4400 to &443F for character row 4
+   &4540 to &457F for character row 5
+   &4680 to &46BF for character row 6
+   &47C0 to &47FF for character row 7
+   &4900 to &493F for character row 8
+   &4A40 to &4A7F for character row 9
+   &4B80 to &4BBF for character row 10
+   &4CC0 to &4CFF for character row 11
+   &4E00 to &4E3F for character row 12
+   &4F40 to &4F7F for character row 13
+   &5080 to &50BF for character row 14
+   &51C0 to &51FF for character row 15
+   &3FA0 to &3FDF for character row 16
+   &40E0 to &411F for character row 17
+   &4220 to &425F for character row 18
+   &4360 to &439F for character row 19
+   &44A0 to &43DF for character row 20
+   &45E0 to &461F for character row 21
+   &4720 to &475F for character row 22
+   &4860 to &489F for character row 23
+   &49A0 to &49DF for character row 24
+
+We can see this in action with b2:
+
+Breakpoint on &10D2 for capturing screen fill for panning left or right
+
+Breakpoint on &1115 for capturing screen fill for panning up or down
+
+So that defines the extent of the screen buffer - it's made up of lots of bits,
+spread out in specific blocks of memory between &3F00 and &5200
+
+So the whole .viewBufferLeft thing is wrong in some way.
+</pre>
+
+<pre>
+So where does the screen get drawn when it gets drawn into the buffer?
+
+There's a clue in PanLandscapeView
+
+For scrolling sideways, we call sub_C391E before DrawLandscapeView
+
+For scrolling vertically, we call sub_C3908 before DrawLandscapeView
+
+I wonder if these configure the screen buffer addresses
+
+sub_C391E uses the buffer to the left or right of the screen, which is shaped
+like a column
+
+sub_C3908 uses the buffer above or below the screen, which is shaped like a row
+
+So, speculative naming:
+
+sub_C391E -> UseRowBuffer
+sub_C3908 -> UseColumnBuffer
+
+These both call sub_C2963 with A = 0 or 2, so maybe:
+
+sub_C2963 -> ConfigureBuffer
+
+This also takes A = 1 as an argument, not sure what this is for?
+
+sub_C3923 -> FlipBufferType
+
+This flips between buffer 0 and 1 and is only called from DrawPolygon when we
+are drawing into the row buffer, so is buffer type 1 another type of row
+buffer, like a part 2 or something?
+
+UseRowBuffer and UseColumnBuffer also set up L0051 and L0052, which get
+compared against a pitch angle tileViewPitchLo in C2E60 and against
+vectorPitchAngleLo in sub_C2EAE, so these look like pitch angle restraints
+
+Is this the pitch angle range shown in the buffer? Or a y-coordinate, as they
+are the same thing?
+
+Row buffer looks up values &F0, &B0 (176 to 240)
+Column buffer looks up values &F0, &30 (48 to 240)
+
+So these look like the pitch angle ranges for each buffer shape, probably
+
+Anyway, renaming time:
+
+L0051 -> maxPitchAngle
+
+L0052 -> minPitchAngle
+
+L391A -> maxBufferPitch
+
+L391C -> minBufferPitch
+
+Not sure this is helping identify the structure of the screen buffer, mind you.
+</pre>
+
+<pre>
+SetNumberOfScrolls also sets the view buffer address and starts off a scroll,
+so rename to StartScrollingView
+</pre>
+
+<pre>
+OK, so I think I finally understand viewBufferAddrHi/Lo.
+
+It points to the address in the screen buffer where the interrupt routine
+should grab the next bit of screen content to scroll onto the screen
+
+So it's the leftmost or rightmost column of the buffer when scrolling from the
+side, ot the top or bottom row when scrolling vertically
+
+It's complicated somewhat by incorporating the negative value of
+scrollScreenHi/Lo in the result, as this is added to the value as the first
+step of the scrolling process.
+
+Anyway, viewBufferAddrHi/Lo is now full of information, and I've updated lots
+of the scrolling commentary too.
+</pre>
+
+<pre>
+Let's talk about doNotScanKeyboard. Again.
+
+Bit 7 gets set when an action or panning key is pressed. This stops the
+keyboard from being scanned all the time.
+
+PauseKeyboardScan sets bit 7, and this is the only time this happens.
+
+ProcessGameplay resets it to 0, and this is the only time this happens.
+
+doNotScanKeyboard and previousDoNotScan detect if this state changes, which can
+only be when ProcessGameplay is started, as PauseKeyboardScan sets these to be
+the same.
+
+Would it be better called something like focusOnKeyPress or focusOnKeyAction?
+
+Something to ponder. Again.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-03" class="anchor"></a>3 December 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-03&until=2025-12-03">repository commits from this day</a></p>
+
+<pre>
+OK, some more clues on buffer 1
+
+If I disable the two-buffer drawing approach in DrawPolygon by always jumping
+to poly2 (so that buffer type 0 is drawn but not buffer type 1), then the right
+portion of any full-screen width graphics is not drawn
+
+So it looks as if full-width content (e.g. title, preview, full screen draw at
+the start of the game, up/down buffers) is drawn in two parts: left and right
+
+It looks like this coincides with the high byte of the x-coordinate, so it
+looks like buffer 0 does x-coord addresses 0-255 and buffer 1 does x-coord
+addresses 256-319
+
+I'll document it this way, anyway, as it seems pretty clear:
+
+buffer type 0 = left row buffer
+buffer type 1 = right row buffer
+</pre>
+
+<pre>
+To celebrate, here's a breakdown of the configurations for the three buffer
+types, i.e. the variables set by UseRowBuffer and UseColumnBuffer (and
+ConfigureBuffer)
+
+Shape             LeftRow  RightRow    Column
+screenBufferType      0       1          2
+minYawAngleHi        20      20          8      <- same for both row buffers
+minYawAngleLo         0       0          0                  "
+maxYawAngleHi       138     138        132
+minBufferPitch      176     176         48
+maxBufferPitch      240     240        240
+L0061               112     112         64
+L0029                 0       0          0
+
+L0011                10       2         12      <- not same for both row
+buffers
+L0035                80      64         96                  "
+
+L0036               192     176        160      = L0035 + L0061
+
+Still not quite sure what the Lxxxx variables are all about, but that should
+become clearer (hopefully!)
+
+That said, only L0011 and L0035 are different between the two types of row
+buffer (L0036 too, but only because L0035 is different)
+
+These must be something to do with the x-coordinates, as we're drawing the same
+scene, just the right portion of it
+
+L0011 and L0035 are both smaller for the right row buffer, so presumably they
+aren't margins from the left edge of the view - maybe they are margins from the
+right edge? Not sure, one for later
+</pre>
+
+<pre>
+Let's document DrawObjectStack as that looks like an easy one
+
+This is pretty straightforward, only made complicated by the way we have to
+loop through the object stack if we want to draw it from bottom to top (as the
+object flags store object "links" from top to bottom and not from bottom to
+top).
+
+Still, it's another easy one done. Enjoy them while they last!
+</pre>
+
+<pre>
+>>> Broken through the 66.6% barrier
+
+Nice one! We are now 2/3 of the way. Slowly, slowly, catchy monkey...
+</pre>
+
+<pre>
+Ok, I'm going to experiment with the idea of changing the PauseKeyboardScan
+into something like FocusOnKeyAction, as it seems to be disabling the keyboard
+reading to focus attention on drawing the landscape, processing absorb actions
+etc.
+
+This will either make the commentary clearer, or it will be confusing... like
+it already is. So nothing to lose then, lol.
+
+PauseKeyboardScan -> FocusOnKeyAction
+doNotScanKeyboard -> focusOnKeyAction
+previousDoNotScan -> previousFocus
+
+I've just been setting up focuses on my iPhone. I hope this isn't a case of
+life influencing art.
+</pre>
+
+<pre>
+Actually, I quite like the new focusOnKeyAction documentation. It might be a
+keeper.
+</pre>
+
+<pre>
+Let's move on to look at object drawing, to follow on from documenting
+DrawObjectStack
+
+DrawObject is up next, which draws an object. This should be a long journey...
+</pre>
+
+<pre>
+DrawObject immediately calls sub_C5C01, so let's go there.
+
+It starts by analysing the angle deltas for the vector between the viewer and
+the object being analysed (this routine is called from multiple places, not
+just from DrawObject).
+
+So sub_C5C01 -> GetObjectAngles
+
+Sets a bunch of variables, try these names:
+
+L006F -> objectToAnalyse
+L004C -> objTypeToAnalyse
+
+L0C59 -> objectViewYawHi
+L0C57 -> objectViewYawLo
+
+L0059 -> objectGazeYawLo
+L005A -> objectGazeYawHi
+
+L140F is a flag that changes depending on what we are drawing, it's zero for
+the landscape preview only -> viewType
+
+The resulting distance to the object gives us two sides to the usual
+right-angled triangle with the vector as hypotenuse, so that gives us this:
+
+L0C5D -> objectAdjacentLo
+L0C5E -> objectAdjacentHi
+
+L0C5B -> objectOppositeLo
+L0C5C -> objectOppositeHi
+
+This is very similar to the visibility maths for tiles, so that was easier than
+expected!
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-04" class="anchor"></a>4 December 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-04&until=2025-12-04">repository commits from this day</a></p>
+
+<pre>
+DrawObject calls sub_C5C75 next, so let's go there.
+
+It calculates the pitch and yaw angles for the object points. It's convoluted
+but not too bad, and lets us document a whole bunch of tables too:
+
+L49A0 -> objPointRange
+L4AE0 -> objPointYaw
+L4C20 -> objPointHeight
+L4D60 -> objPointDistance
+
+I must document these properly, as hex numbers will not do.
+
+Object points are stored as polar coordinates (yaw and distance) that are
+extruded up and down by a height
+
+Kinda heavy, but not that bad - just long!
+</pre>
+
+<pre>
+The rest of DrawObject involves lots of tables with lots of data, so I've made
+a first stab at documenting them, but this is incomplete - will have to come
+back to it next time, as that's enough for today!
+
+But here are tody's guesses:
+
+L49A0 -> objPointRange
+L49AB -> objPolygonRange
+L49B6 -> objPolygonPhases
+L4AE0 -> objPointYaw
+L4C20 -> objPointPitch
+L4D60 -> objPointDistance
+L4EA0 -> objPolygonData
+L4FE0 -> L003CLo
+L5120 -> L003CHi
+
+Latter two contain addresses - need to anlyse those next
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-12-05" class="anchor"></a>5 December 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-12-05&until=2025-12-05">repository commits from this day</a></p>
+
+<pre>
+Looks like those address tables point into other tables - this must be the
+object definitions themselves, which are made up of lists polygon numbers (so
+DrawObject just draws those lists of polygons, with some objects having one
+list and some having two lists)
+
+(L003D L003C) is set to the address of the object data, which must contain
+polygon data as it is indexed by the polygon number Y in DrawObject, like this:
+
+ LDA L003CLo,Y
+ STA L003C
+ LDA L003CHi,Y
+ STA L003C+1
+
+So this must be pointing to some kind of sequence of polygon-related data
+
+It is reset to L0C40 for non-object drawing, so that must be something to do
+with non-object drawing - tiles, presumably?
+</pre>
+
+<pre>
+Excel to the rescue! I've assembled the addresses from (L003CHi L003CLo) in a
+spreadsheet and matched them with the ranges of polygon numbers in
+objPolygonRange, so we now have a sequence of addresses for each polygon
+
+These addresses point to sequences of numbers, sometimes five numbers and
+sometimes four numbers. e.g. the object type 0, the robot, points to these
+sequences in the first three entries:
+
+&53B4 = &4B, &4A, &48, &4C, &4B
+&53B9 = &4A, &49, &48, &4A
+&53BD = &54, &53, &52, &55, &54
+
+So the robot object definition is at &53B4 (so call this objRobot for now).
+
+And it's made up of groups of 4 or 5 numbers. What are they?
+</pre>
+
+<pre>
+For now, let's just pull out the starting addresses for each object definition
+from the spreadsheet and give them headers.
+
+Robot = &53B4 -> objRobot
+Sentry = &542F -> objMeanie
+Tree = &5300 -> objTree
+Boulder = &5343 -> objBoulder
+Meanie = &49CD -> objMeanie
+The Sentinel = &5260 -> objSentinel
+The Sentinel's tower = &536D -> objTower
+3D Text Block 1 = &53A0 -> ObjTextBlock
+3D Text Block 2 = &53A0 -> ObjTextBlock
+3D Text Block 3 = &53A0 -> ObjTextBlock
+
+The last three make sense, pointing to the same object definition, as these are
+just rectangular blocks for building the 3D text.
+</pre>
+
+<pre>
+I love this bit - extracting meaning from blocks of data!
+
+Start off with the manual job of breaking the various object definition tables
+up into groups of 4 or 5, as defined by (L003CHi L003CLo), and giving each of
+them a label that we can put into the L003CLo and L003CHi tables
+
+Rename L003CLo -> objPolygonAddrLo
+       L003CHi -> objPolygonAddrHi
+
+As this table contains the address of each polygon definition (a polygon is
+defined as a series of four or five point numbers).
+
+Big job! But very satisfying. :-)
+</pre>
+
+<pre>
+>>> Broken through the 70% barrier
+</pre>
+
+<pre>
+Must come back and extract the point numbers properly, as &40 represents point
+0 within the range of points allocated to the object, &41 is point 1 within the
+range, and so on. So we could change this to 64 + 0, 64 + 1 and so on.
+
+Also the point coordinate tables in objPointYaw, objPointPitch,
+objPointDistance need converting into human-readable data, and so does
+objPolygonData (still need to work out what some of the latter means).
+
+But that's all for another time, as that's what I've just run out of.
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_60-65-percent.html">Project progress: 60% to 65%</a><a class="next" rel="next" title="Next deep dive" href="progress_70-75-percent.html">Project progress: 70% to 75%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

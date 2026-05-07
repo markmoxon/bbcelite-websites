@@ -1,0 +1,224 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_30-35-percent.html", "Project progress: 30% to 35%", "Project progress: 30% to 35%", "A diary covering progress from 30% to 35% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_30-35-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_25-30-percent.html">Project progress: 25% to 30%</a><a class="next" rel="next" title="Next deep dive" href="progress_35-40-percent.html">Project progress: 35% to 40%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">17 October to 21 October 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-10-17">17 October 2025</a></li>
+							<li><a href="#date-2025-10-19">19 October 2025</a></li>
+							<li><a href="#date-2025-10-20">20 October 2025</a></li>
+							<li><a href="#date-2025-10-21">21 October 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-17" class="anchor"></a>17 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-17&until=2025-10-17">repository commits from this day</a></p>
+
+<pre>
+Start documenting PerformHyperspace
+
+This calls sub_C2127, which affects the player's energy, so change to
+UpdatePlayerEnergy. It gets the energy levels for an object type from L2140, so
+rename this to objectTypeEnergy.
+</pre>
+
+<pre>
+Document UpdatePlayerEnergy.
+</pre>
+
+<pre>
+Also, we need to talk about death. There isn't any death in the Sentinel - if
+you lose a level then you get absorbed, but you come back to have another go.
+The instructions don't mention death at all, so let's remove any mention of
+death from the comments, and rename the playerIsDead flag to sentinelHasWon.
+After all, we don't know who's the baddie here; perhaps the player is a virus
+and the Sentinel is a protector? Who knows...
+</pre>
+
+<pre>
+Also in PerformHyperspace we call sub_C1ED8, which deletes an object, so rename
+to DeleteObject and document.
+</pre>
+
+<pre>
+Finish off PerformHyperspace, though there are a few flags and calls in there
+that need explaining: sub_C5FF6, sub_C1200, L0C4C, L0CDE, L0C63.
+
+I'm also unsure of which category to put PerformHyperspace in, same with
+UpdatePlayerEnergy. We might need a new one for "gameplay" or "tactics" or
+something like that.
+</pre>
+
+<pre>
+And I just noticed, while looking through the categories, that I FORGOT to mark
+SetTileShape as done, it's still in there as sub_C2C4E and not done yet. So
+change itto Done... and that means we have reached exactly 33.3%, and have...
+</pre>
+
+<pre>
+>>> Broken through the 33.33% barrier
+
+Nice! That's one-third, a proper milestone. So hust do that agin, twice, and
+we're done.
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-19" class="anchor"></a>19 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-19&until=2025-10-19">repository commits from this day</a></p>
+
+<pre>
+Some variable renaming to make things a bit clearer:
+
+enemyCount -> numberOfEnemies
+maxEnemyCount -> maxNumberOfEnemies
+</pre>
+
+<pre>
+Let's look at IRQHandler next
+
+It gets called exactly 50 times a second, triggered by the User VIA timer 1
+counting down from 19,998 (i.e. from 20,000, as 2 ticks are for the latching
+process)
+
+It does various things:
+
+* Count down the sound timer
+
+* If game is not in progress, stop right there
+* If Sentinel has won, then call sub_C56D9 if bit 7 of L0C4D is set, and stop
+* If game is paused, check for pause keys and stop 
+
+* If game is in progress:
+
+  * If L0CC1 is non-zero then call sub_C37D1 and DisplayIconBuffer
+  * If the Sentinel has been activated, call sub_C12EE and sub_C1623
+  * If bit 7 of L0CE4 is clear, process various game keys
+
+sub_C37D1/sub_C3832/sub_C3889/sub_C38B2 does hardware scrolling of the screen
+by changing the screen address, and it contains various byte-copying code, so
+this looks like it might copy from a buffer into screen memory after scrolling,
+i.e. when panning the screen?
+
+(We already identified sub_C3889 as copying from the buffer to the screen.)
+
+So does non-zero L0CC1 mean "pan screen by one pixel"? And is L0CC1 therefore a
+pixel counter for panning, as sub_C37D1 decrements the value of L0CC1?
+
+This is how the sub_C37D1 and DisplayIconBuffer routines get called:
+
+IRQHandler >
+ sub_C37D1 >
+   sub_C3832 >
+     sub_C3889
+ DisplayIconBuffer >
+   sub_C3889
+
+DisplayIconBuffer is called from other places too, to update the icon row
+
+sub_C3832 is called from just one other place
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-20" class="anchor"></a>20 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-20&until=2025-10-20">repository commits from this day</a></p>
+
+<pre>
+Add some more categories to headers:
+
+DrawTitleObject, category = Title screen
+Also: L140x variables, as they are only mentioned in DrawTitleObject
+</pre>
+
+<pre>
+C28A4 is very close to GetTileData, so copy over the comments
+</pre>
+
+<pre>
+Now look for SHEILA+&xx for hardware scrolling
+SHEILA+&00, SHEILA+&01 set 6845 R12 and R13 registers (screen start address)
+
+sub_C130C sets screen address to &7F80
+
+sub_C37D1 sets screen address to (L006D A) * 8
+
+Add documentation and we'll come back to naming them later
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-21" class="anchor"></a>21 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-21&until=2025-10-21">repository commits from this day</a></p>
+
+<pre>
+Name the routines that scroll the screen and copy the screen buffer into screen
+memory to implement the scrolling player view.
+
+Let's call the buffer for the main screen area the "view screen buffer" (as it
+buffers the screen data for the player's scrolling landscape view)
+
+This is to go alongside the icon screen buffer for the icon/scanner on the top
+row.
+
+So, speculatively renaming the routines, we get:
+
+sub_C130C -> ResetScreenAddress
+sub_C37D1 -> ScrollPlayerView
+sub_C3832 -> DisplayViewBuffer
+C384F -> DisplayBufferColumn (not called, but insert header for clarity)
+sub_C3889 -> DisplayBufferRow
+sub_C38B2 -> DisplayBufferBlock
+
+So the interrupt handler does this to implement the scrolling view:
+
+IRQHandler >
+ ScrollPlayerView >
+   DisplayViewBuffer >
+     DisplayBufferColumn >
+       DisplayBufferBlock
+     DisplayBufferRow >
+        DisplayBufferBlock
+ DisplayIconBuffer >
+   DisplayBufferRow >
+     DisplayBufferBlock
+</pre>
+
+<pre>
+Now we just have to document the routines.
+
+Document DisplayBufferBlock, DisplayBufferRow and DisplayBufferColumn
+</pre>
+
+<pre>
+>>> Broken through the 35% barrier
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_25-30-percent.html">Project progress: 25% to 30%</a><a class="next" rel="next" title="Next deep dive" href="progress_35-40-percent.html">Project progress: 35% to 40%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

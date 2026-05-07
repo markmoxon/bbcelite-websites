@@ -1,0 +1,390 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_35-40-percent.html", "Project progress: 35% to 40%", "Project progress: 35% to 40%", "A diary covering progress from 35% to 40% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_35-40-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_30-35-percent.html">Project progress: 30% to 35%</a><a class="next" rel="next" title="Next deep dive" href="progress_40-45-percent.html">Project progress: 40% to 45%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">22 October to 28 October 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-10-22">22 October 2025</a></li>
+							<li><a href="#date-2025-10-23">23 October 2025</a></li>
+							<li><a href="#date-2025-10-24">24 October 2025</a></li>
+							<li><a href="#date-2025-10-25">25 October 2025</a></li>
+							<li><a href="#date-2025-10-26">26 October 2025</a></li>
+							<li><a href="#date-2025-10-28">28 October 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-22" class="anchor"></a>22 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-22&until=2025-10-22">repository commits from this day</a></p>
+
+<pre>
+Documented ScrollPlayerView, DisplayViewBuffer
+</pre>
+
+<pre>
+Also SetNumberOfScrolls, SetViewBufferAddr
+
+All makes sense bar viewBufferAddr(1 0), which I think is the address in the
+view screen buffer where we buffer (and consequently read) screen data when
+scrolling
+
+It looks like it gets set to a sensible value for the direction of panning in
+SetViewBufferAddr, so there is leeway in the correct direction for buffered
+content (i.e. when panning left, we need to grab content earlier in memory, so
+the address is set to viewBuffer+&80, and when panning up it's viewBuffer+&A00
+for the same reason
+
+Probably need to uncover the code that write into the buffer before this will
+be totally clear.
+</pre>
+
+<pre>
+The view screen buffer is between &3F00 and &52FF, according to the overflow
+check in DisplayBufferColumn. But this clashes with a whole load of what looks
+like read-only lookup data (e.g. L49A0, L49CD, L4FE0, L5120, L5260 etc.)
+
+Perhaps the buffer only uses the "appear to be unused" blocks in this part of
+memory. Shades of Revs and its mad memory usage around the car shape? That
+would be fun!
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-23" class="anchor"></a>23 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-23&until=2025-10-23">repository commits from this day</a></p>
+
+<pre>
+Documented sub_C3699 -> ClearIconsScanner
+</pre>
+
+<pre>
+Analysing L0CE4, when bit 7 is set, it disables various keyboard scans:
+* Disables volume key checks in ProcessVolumeKeys
+* Disables game key presses in IRQHandler
+* Disables key presses in sub_C1264
+So rename to L0CE4 to doNotScanKeyboard
+
+Also L0CDC stores doNotScanKeyboard simply so we can check whether it changes,
+so rename this to previousDoNotScan
+
+Not quite sure why we want to disable key scans - maybe something to do with
+panning and ignoring key presses while the screen is being scrolled?
+</pre>
+
+<pre>
+Let's look at sub_C1264
+
+Starts with L0C51, in which bits 6 and 7 are set and checked with regard to
+U-turns (this flag seems to stop multiple U-turns if "U" is held down, and it
+also controls whether sub_C2463 gets called in MainGameLoop - sub_C2463 does
+not get called if we just did a U-turn). So rename L0C51 to uTurnStatus and
+document as far as we can.
+</pre>
+
+<pre>
+Continuing through sub_C1264, attaching breakpoints implies that sub_C5F24
+displays the "game over" screen with the Sentinel being victorious, so rename
+to DisplayGameOver
+</pre>
+
+<pre>
+L0C63 appears a lot too. This only appears in sub_C1264, ProcessActionKeys and
+PerformHyperspace.
+
+In sub_C1264, bit 7 is only ever cleared and if it's set it affects program
+flow.
+In ProcessActionKeys bit 7 is set after a U-turn, or a transfer.
+In PerformHyperspace bit 7 is set after a hyperspace.
+
+These are all actions that include the player changing tile, so let's
+speculatively name L0C63 to playerHasMovedTile
+</pre>
+
+<pre>
+Continuing to document sub_C1264, alongside ProcessActionKeys and MainGameLoop,
+which between them seem to cover most of the main game loop actions
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-24" class="anchor"></a>24 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-24&until=2025-10-24">repository commits from this day</a></p>
+
+<pre>
+L006E is clearly an object number, though I'm not sure of its significance yet.
+It's a bit like another currentObject - sometimes it's an enemy, sometimes it's
+the player:
+
+Set to object #16 in DrawTitleObject
+Set to enemyData5,X in update_enemies
+Set to enemyObject in consider_creating_meanie
+Set to playerObject in update_enemies, check_if_object_can_be_updated,
+MainGameLoop
+Set to object #2 in sub_C5F80
+
+For now, let's rename it to anotherObject, which we will no doubt change later.
+
+Working out what it represents in ProcessActionKeys, this is the call chain:
+
+MainGameLoop > sub_C1264 > ProcessActionKeys
+
+and MainGameLoop sets it to the player object before calling MainGameLoop, so
+it looks like anotherObject contains the player object by the time we get to
+sub_C1264 and ProcessActionKeys.
+</pre>
+
+<pre>
+Going through ProcessActionKeys is useful - for example, at the end there's
+stuff about meanies, so enemyData5 is something to do with them. But we've left
+a lot of ??? in ProcessActionKeys, so we need to come back to it soon.
+</pre>
+
+<pre>
+Meanwhile, a diversion into the addresses of the view screen buffer, which we
+looked at a couple of days ago. The address where stuff gets buffered is
+weirdly complex, and is this:
+
+(viewBufferAddrHi viewBufferAddrLo) + (updateOffsetHi updateOffsetLo)
+
+with four different values for each of the directions. These are read-only
+values, so they end up like this for each direction:
+
+0 = &3EF8 + &0138 = &4030    block after ClearMemory
+1 = &3F80 + &0000 = &3F80    inside ConfigureMachine
+2 = &4900 + &0000 = &4900    ORG block after ClearMemory
+3 = &3DC0 + &1CC0 = &5A80    block after tilesAtAltitude
+
+e.g. unused stuff at end of .tilesAtAltitude is &5A80, which is actually the
+buffer for pan down, scroll up scrolling
+
+So these are the locations of the view screen buffers for the four directions,
+so let's add them a labels, viewBufferLeft/Right/Up/Down, and get rid of
+viewBuffer as that isn't actually correct
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-25" class="anchor"></a>25 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-25&until=2025-10-25">repository commits from this day</a></p>
+
+<pre>
+Move back up the call chain to sub_C1264. This routine does various things
+around key presses, calling the relevant key routines, as well as calling
+routines that seem to work with objects, such as activating the Sentinel. It's
+almost like a mini game loop that only returns when it's game over, or the
+player has changed tile, or the player has quit, or the keyboard has been
+disabled in the interrupt routine (not sure about this last one!).
+
+Rename it ProcessGameplay for now, as that's what it sort-of does.
+
+Document it, though again leaving a fair number of ???s
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-26" class="anchor"></a>26 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-26&until=2025-10-26">repository commits from this day</a></p>
+
+<pre>
+I'm starting to think that doNotScanKeyboard might need a better name, as it
+seems to denote something beyond keyboard disabling. And in ProcessGameplay, if
+bit 7 is set and panKeyBeingPressed bit 7 is clear (so no pan key is being
+pressed, then we still process action keys (we just don't scan the keyboard for
+new keypresses), so the name is possibly a bit confusing.
+
+Bit 7 is only ever set in one place, sub_C1200, which is reached from:
+
+CheckForKeyPresses (when pan key is being pressed for a scroll but not the
+sights, or any action key is being pressed)
+ProcessGameplay (when Sentinel has won, game is quit, or player has moved to a
+new tile)
+ProcessActionKeys (when transferring into a robot)
+PerformHyperspace (when hyperspacing)
+
+For now let's rename sub_C1200 to PauseKeyboardScan. It also sets L0C1E but I
+don't know what this does yet.
+
+This needs more looking at!
+</pre>
+
+<pre>
+L0CDE is a two-part hyperspace flag in bit 6 & 7
+Call it hyperspaceEndsGame
+
+%10... = hyperspace happened but energy went below zero, so death
+%11... = hyperspace happened from the Sentinel's tower, so game won
+
+Bit 7 set = the player has hyperspaced and won or died
+Bit 6 set = win, clear = die
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-10-28" class="anchor"></a>28 October 2025<br>
+													 ===============</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-10-28&until=2025-10-28">repository commits from this day</a></p>
+
+<pre>
+Over the weekend I scribbled down a quick analysis of the trigonometry in the
+sub_C1BFF and sub_C1C43 routines, which I suspected above were something to do
+with the vector from the player's eyes to the sights, but I needed confirmation
+that the player's vector is fed into sub_C1BFF.
+
+It is indeed, and sub_C1BFF calculates the pitch and yaw angles of the vector
+from the player to the sights.
+
+But what is sub_C1C43 all about? Turns out it's some simple trig, and it
+converts a two-angle vector [sightsYawAngle sightsPitchAngle] into a cartesian
+vector [x y z]
+
+Here's the maths:
+
+ySightsVector = sinSightsPitchAngle / 16
+
+
+                                                 _.-+
+                                             _.-´   |
+   ^                            vector   _.-´       |
+   |                                 _.-´           |
+   y     along vector -->        _.-´               |  sinSightsPitchAngle
+                             _.-´                   |
+                          .-´sightsPitchAngle       |
+-> looking along vector  +--------------------------+
+   view from side             cosSightsPitchAngle
+
+
+zSightsVector = cosSightsPitchAngle * cosSightsYawAngle / 16
+xSightsVector = cosSightsPitchAngle * sinSightsYawAngle / 16
+
+
+                                    cosSightsPitchAngle
+                                    * cosSightsYawAngle
+-> looking into screen          +--------------------------+
+   view from above               `-._ sightsYawAngle       |
+      x     z-->                     `-._                  |
+      |                                  `-._              |
+cosSightsPitchAngle
+      v                                      `-._          | *
+sinSightsYawAngle
+                          cosSightsPitchAngle    `-._      | 
+                                                     `-._  |
+                                                         `-+
+
+So let's rename and document the following:
+
+sub_C1BFF -> GetSightsVector
+
+sub_C1C43 -> GetVectorForAngles
+
+The sight coordinates have (10 0) and (3 32) added to them, so that still needs
+explaining, but at least the difficult geometry is now documented.
+</pre>
+
+<pre>
+Back to DrainObjectEnergy
+
+There are a couple of JSRs that aren't obvious plus a couple of variables, but
+the last part of the routine adds 1 to enemyData2 for the enemyObject, so it
+looks like enemyData2 contains energy levels for enemies... so rename
+enemyData2 to enemyEnergy
+</pre>
+
+<pre>
+Let's return to MainGameLoop
+
+Various flags in the start, including one that controls the scanner, so add
+documentation to L0C09 (renamed as lastScannerState) as it stores the scanner
+state so we can check whether it's changed, rename UpdateScanner to
+UpdateScannerNow, rename sub_1623 to UpdateScanner, L0C04 to scannerUpdate, and
+document them all.
+</pre>
+
+<pre>
+sub_C1090 gets called a fair amount from MainGameLoop, so stick a breakpoint on
+it
+
+If we disable the palette JSR in game1 and put a breakpoint on &1090, then it
+stops just before clearing the screen to the blue-lined sky background, so this
+looks like some kind of ClearScreen routine, so let's name it that for now.
+</pre>
+
+<pre>
+Next up are sub_C2463 and sub_C2624. Doing the same palette and breakpoint
+trick, the latter appears to draw the landscape. So rename sub_C2624 to
+DrawLandscape for now - it's a huge routine, so this feels correct.
+
+The call to sub_C2463 is skipped when we U-turn but is otherwise called.
+Perhaps this routine calculates something for the landscape-drawing process
+that doesn't need to be repeated if we U-turn? I seem to remember Simon Owens
+mentioning in his email how U-turns were slightly quicker because they could
+reuse calculations somewhere, so this could be it?
+</pre>
+
+<pre>
+L0055 is either 0 or 25. Not sure what it does, but it is only used in one
+place, in sub_C2299.
+</pre>
+
+<pre>
+Not sure what initialise_buffer_variables is all about - it doesn't contain any
+matched variable names at this point.
+</pre>
+
+<pre>
+L0CE7 seems to be some kind of flag that repeats calls to sub_C355A until bit 7
+gets set - this happens at game5 and game9. sub_C355A seems to be some kind of
+sound routine, so is L0CE7 some kind of sound counter? It gets incremented in
+sub_C3505, which also looks like a sound routine.
+
+We already have a variable called soundCounter, so call this one soundCounter2
+for now?
+
+And sub_C5FF6 sets the value of this counter, so call it SetSoundCounter2 for
+now.
+
+sub_C355A also checks L0C73, so the latter looks like its sound-related too.
+
+Probably need to hunt down the sound routines and work out what they do -
+they're generally pretty easy routines to fathom.
+</pre>
+
+<pre>
+L0C1B has bit 7 set if sights are not visible during a pan, seems to make
+DrawLandscapeView think that the pan key is being held down even if it isn't.
+</pre>
+
+<pre>
+Anyway, we got to the end MainGameLoop, in a first pass that's left a trail of
+???s
+</pre>
+
+<pre>
+>>> Broken through the 40% barrier
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_30-35-percent.html">Project progress: 30% to 35%</a><a class="next" rel="next" title="Next deep dive" href="progress_40-45-percent.html">Project progress: 40% to 45%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>

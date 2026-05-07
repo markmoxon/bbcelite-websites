@@ -1,0 +1,234 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("disassembly_diary", "progress_10-15-percent.html", "Project progress: 10% to 15%", "Project progress: 10% to 15%", "A diary covering progress from 10% to 15% in my disassembly of The Sentinel on the BBC Micro", "elite", "disassembly_diary", "progress_10-15-percent");
+?>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_5-10-percent.html">Project progress: 5% to 10%</a><a class="next" rel="next" title="Next deep dive" href="progress_15-20-percent.html">Project progress: 15% to 20%</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article fullWidth">
+						<h2 class="articleSubheader deepDive">15 September to 16 September 2025</h2>
+
+						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
+
+						<ul>
+							<li><a href="#date-2025-09-15">15 September 2025</a></li>
+							<li><a href="#date-2025-09-16">16 September 2025</a></li>
+						</ul>
+
+						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
+
+						<h2 class="articleSubheader"><a id="date-2025-09-15" class="anchor"></a>15 September 2025<br>
+													 =================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-09-15&until=2025-09-15">repository commits from this day</a></p>
+
+<pre>
+Continuing to follow the threads from MainLoop, by documenting various small
+number-printing routines:
+
+PrintNumber
+PrintDigit
+Print2DigitBCD
+PrintLandscapeCode
+</pre>
+
+<pre>
+And then following these rabbit holes from MainLoop:
+
+ReadNumber
+PrintInputBuffer
+StringToNumber
+DigitToNumber
+
+SeedLandscape
+Rest of MainLoop
+
+Into a routine that plays the game - let's call it PlayGame for now
+</pre>
+
+<pre>
+There is some kind of return stack shenanigans here, as there's a JSR PlayGame
+that would return to the part of the code that says "wrong secret code", which
+can't be right
+</pre>
+
+<pre>
+Poking through the PlayGame routine, looks like it might be setting the
+landscape heights, a bit like Lander (PlayGame might not be the best routine
+name - might be GenerateLandscape or something)
+</pre>
+
+						<h2 class="articleSubheader"><a id="date-2025-09-16" class="anchor"></a>16 September 2025<br>
+													 =================</h2>
+
+						<p>See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/commits/main/?since=2025-09-16&until=2025-09-16">repository commits from this day</a></p>
+
+<pre>
+sub_C2AF2 is the next subroutine to analyse in PlayGame, and it contains STA
+(L005E),Y
+
+What is this? It's pretty common throughout the game
+
+L005E is zeroed in ResetVariables but is never touched again, while L005F is
+set in two places, like this:
+
+ AND #&03
+ STA T
+ CLC
+ ADC #&04
+ STA L005F
+
+One of these is in sub_C2B78, which is called by sub_C2AF2, so let's analyse
+that first
+</pre>
+
+<pre>
+sub_C2AF2 takes two arguments in L0024 and L0026, and it sets L005E and
+calculates Y, so it sets up the values for the STA (L005E),Y instruction
+
+Turns out that L005F is only ever between 4 and 7, so (L005E) can only be
+&0400, &0500, &0600 or &0700, which means (L005E),Y refers to addresses in the
+L0400 variable
+
+So STA (L005E),Y accesses the table at L0400, what is it?
+
+sub_C2AF2 calls sub_C2B78 with L0026 and L0024 ranging from 0 to &1F in a
+nested loop - surely this is some kind of two-dimensional landscape thing,
+maybe tiles, maybe corner coordinates like Lander?
+</pre>
+
+<pre>
+In MainLoop, the next routine to be called is sub_C2B53, which calls sub_C2B90
+twice, and sub_C2B90 also contains STA (L005E),Y
+
+This comes just after LDA landscapeHeight,X
+
+So it feels like PlayGame might be taking values from landscapeHeight and
+poking them into the L0400 table via the address in (L005F L005E), using
+landscape coordinates to work out where to poke the details - tile data, maybe?
+
+Let's shove in some placeholder variable names, we can revisit them later:
+
+L0400-L0700 = tileData (as the landscape is made up of tiles)
+L005E = tileDataPage (as this contains a page address &xx00 into tileData)
+L005F = tileDataPage+1
+</pre>
+
+<pre>
+>>> Broken through the 15% barrier
+</pre>
+
+<pre>
+Looks like sub_C2B78 is GetTileData, as it returns a value from tileData, with
+the address being calculated from L0024 and L0026 (which ranging from 0 to &1F
+in the nested loop in sub_C2AF2)
+
+So L0024 and L0026 could be:
+
+L0024 = xTile
+The tile number along the x-axis, where the x-axis goes from left to right
+L0026 = zTile
+The tile number along the z-axis, where the z-axis goes into the screen 
+</pre>
+
+<pre>
+Tile data table is made up of sequences of 32-tile columns going into the
+screen, where each column goes from z = 0 to 31 with the same x-coordinate,
+with the columns interleaved in steps of 4 like this:
+
+&0400-&041F = 32-tile column going into the screen at x =  0
+&0420-&043F = 32-tile column going into the screen at x =  4
+&0440-&045F = 32-tile column going into the screen at x =  8
+&0460-&047F = 32-tile column going into the screen at x = 12
+&0480-&049F = 32-tile column going into the screen at x = 16
+&04A0-&04BF = 32-tile column going into the screen at x = 20
+&04C0-&04DF = 32-tile column going into the screen at x = 24
+&04E0-&04FF = 32-tile column going into the screen at x = 28
+
+&0500-&051F = 32-tile column going into the screen at x =  1
+&0520-&053F = 32-tile column going into the screen at x =  5
+&0540-&055F = 32-tile column going into the screen at x =  9
+&0560-&057F = 32-tile column going into the screen at x = 13
+&0580-&059F = 32-tile column going into the screen at x = 17
+&05A0-&05BF = 32-tile column going into the screen at x = 21
+&05C0-&05DF = 32-tile column going into the screen at x = 25
+&05E0-&05FF = 32-tile column going into the screen at x = 29
+
+&0600-&061F = 32-tile column going into the screen at x =  2
+&0620-&063F = 32-tile column going into the screen at x =  6
+&0640-&065F = 32-tile column going into the screen at x = 10
+&0660-&067F = 32-tile column going into the screen at x = 14
+&0680-&069F = 32-tile column going into the screen at x = 18
+&06A0-&06BF = 32-tile column going into the screen at x = 22
+&06C0-&06DF = 32-tile column going into the screen at x = 26
+&06E0-&06FF = 32-tile column going into the screen at x = 30
+
+&0700-&071F = 32-tile column going into the screen at x =  3
+&0720-&073F = 32-tile column going into the screen at x =  7
+&0740-&075F = 32-tile column going into the screen at x = 11
+&0760-&077F = 32-tile column going into the screen at x = 15
+&0780-&079F = 32-tile column going into the screen at x = 19
+&07A0-&07BF = 32-tile column going into the screen at x = 23
+&07C0-&07DF = 32-tile column going into the screen at x = 27
+&07E0-&07FF = 32-tile column going into the screen at x = 31
+
+Weird! I wonder why it's interleaved like this. It's reminiscent of the way the
+Apple II hi-res screen mode interleaves its pixel lines. And that's bonkers!
+</pre>
+
+<pre>
+Next up is sub_C2AF2, which takes an argument in A that performs various
+actions on the tile data (such as zeroing it, setting it to random values,
+swapping nibbles(?) and doing some kind of scaling and capping)
+
+Documented sub_C2AF2 -> ProcessTileData
+
+It contains some very weird multiplication and capping stuff, probably need to
+look at this again later as it seems to be converting random tile data into the
+stepped landscape in the game (i.e. tile data values from 1 to 11)
+</pre>
+
+<pre>
+PlayGame is probably better renamed as GenerateLandscape
+</pre>
+
+<pre>
+More speculative naming:
+
+sub_C2B53
+Works through rows of tiles, starting with rows in and out of the screen
+("columns"?) and then left-to-right rows, calling sub_C2B90 for each strip of
+tiles
+
+sub_C2B90
+Seems to look at the neighbouring values of tiles (+1, +2, +3, +4) and adds
+them and divides by 4 - is it averaging out the heights? Smoothing the
+landscape?
+
+So:
+
+sub_C2B90 -> SmoothTileStrip
+Smooth a row or column of tiles, i.e. a strip of tiles?
+
+sub_C2B53 -> SmoothTileData
+Smooth the whole landscape, strip by strip?
+</pre>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="progress_5-10-percent.html">Project progress: 5% to 10%</a><a class="next" rel="next" title="Next deep dive" href="progress_15-20-percent.html">Project progress: 15% to 20%</a></nav>
+				</div>
+
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+
+?>
+		</div>
+	</body>
+</html>
