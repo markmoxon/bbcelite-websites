@@ -19,10 +19,10 @@
 							<li><a id="talks_others" href="/talks/others.html"><span class="menuTitle">Other talks and videos</span> <span class="menuSummary">Talks by other people who have found my research useful</span></a></li>
 						</ul>
 					</li>
-					<li id="disassembly_maths"><span class="menuTitle">Disassembly diary</span> <span class="menuSummary menuSummarySubmenu">The story of how I documented The Sentinel</span>
+					<li id="disassembly_maths"><span class="menuTitle">Disassembly diary for The Sentinel</span> <span class="menuSummary menuSummarySubmenu">How I documented Geoff Crammond's epic BBC game</span>
 						<ul id="submenu_disassembly_diary">
-							<li class="menuItemHeader">About my disassembly process</li>
-                            <li><a id="disassembly_diary_overview" href="/disassembly_diary/index.html"><span class="menuTitle">Overview of a disassembly project</span> <span class="menuSummary">How I disassembled The Sentinel</span></a></li>
+							<li class="menuItemHeader">About my disassembly projects</li>
+                            <li><a id="disassembly_diary_index" href="/disassembly_diary/index.html"><span class="menuTitle">Project overview</span> <span class="menuSummary">How I documented The Sentinel over seven long months</span></a></li>
                             <li><a id="disassembly_diary_tools" href="/disassembly_diary/tools.html"><span class="menuTitle">The tools I use</span> <span class="menuSummary">Keeping it as simple and as manual as possible</span></a></li>
                             <li><a id="disassembly_diary_keeping_track" href="/disassembly_diary/keeping_track.html"><span class="menuTitle">Keeping track of progress</span> <span class="menuSummary">The documents and philosophy I use to get through such projects</span></a></li>
 							<li class="menuItemHeader">Disassembly diary for The Sentinel</li>
@@ -62,17 +62,6 @@
 							<li><a id="disassembly_websites_code_analysis" href="/disassembly_websites/code_analysis.html"><span class="menuTitle">Scripts that help me manage my websites</span> <span class="menuSummary">Extracting text for spell checks, counting words and validating the library</span></a></li>
 						</ul>
 					</li>
-<!--
-					<li id="the_art_of_disassembly"><span class="menuTitle">The Art of Disassembly</span>
-						<span class="menuSummary menuSummarySubmenu">How to reconstruct source code from game binaries</span>
-						<ul id="submenu_the_art_of_disassembly">
-							<li class="menuItemHeader">The Art of Disassembly</li>
-							<li><a id="the_art_of_disassembly_index" href="/the_art_of_disassembly/"><span class="menuTitle">The Art of Disassembly</span> <span class="menuSummary">An overview of the disassembly process and source code documentation</span></a></li>
-							<li><a id="the_art_of_disassembly_how_i_disassemble" href="/the_art_of_disassembly/how_i_disassemble."><span class="menuTitle">How I do my disassemblies</span> <span class="menuSummary">A step-by-step guide to disassembling game binaries</span></a></li>
-							<li><a id="the_art_of_disassembly_generating_elite" href="/the_art_of_disassembly/generating_images_of_code.html"><span class="menuTitle">Generating images of code</span> <span class="menuSummary">Visualising game binaries as images</span></a></li>
-						</ul>
-					</li>
--->
 					<li id="acornsoft"><span class="menuTitle">Acornsoft box screenshots</span>
 						<span class="menuSummary menuSummarySubmenu">Hand-crafted screenshots from Acorn's game boxes</span>
 						<ul id="submenu_acornsoft">
