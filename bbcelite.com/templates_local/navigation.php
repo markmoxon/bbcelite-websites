@@ -47,7 +47,7 @@
                             <li><a id="disassembly_diary_progress_85-90-percent" href="/disassembly_diary/progress_85-90-percent.html"><span class="menuTitle">Project progress: 85-90%</span> <span class="menuSummary">20 December to 22 December 2025</span></a></li>
                             <li><a id="disassembly_diary_progress_90-95-percent" href="/disassembly_diary/progress_90-95-percent.html"><span class="menuTitle">Project progress: 90-95%</span> <span class="menuSummary">23 December to 29 December 2025</span></a></li>
                             <li><a id="disassembly_diary_progress_95-100-percent" href="/disassembly_diary/progress_95-100-percent.html"><span class="menuTitle">Project progress: 95-100%</span> <span class="menuSummary">30 December to 31 December 2025</span></a></li>
-                            <li><a id="disassembly_diary_website_and_deep_dives" href="/disassembly_diary/website_and_deep_dives.html"><span class="menuTitle">Creating the website and deep dives</span> <span class="menuSummary">1 January to 12 April 2026</span></a></li>
+                            <li><a id="disassembly_diary_website_and_deep_dives" href="/disassembly_diary/website_and_deep_dives.html"><span class="menuTitle">Creating the website and deep dives</span> <span class="menuSummary">2 January to 12 April 2026</span></a></li>
 						</ul>
 					</li>
 					<li id="disassembly_websites"><span class="menuTitle">Creating my disassembly websites</span>
