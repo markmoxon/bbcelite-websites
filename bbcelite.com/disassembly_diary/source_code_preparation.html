@@ -59,7 +59,7 @@ This doesn't get around any copy protection.
 <pre>
 Analyse extracts with crc32 into a spreadsheet to pick out suitable binaries.
 
-See <a href="https://docs.google.com/spreadsheets/d/14xPQt1f9rJHzV3I_B6CUhZWF5K_lynmgfwRszOisORg/edit">crc32 spreadsheet in Google Docs</a>.
+See the <a href="https://docs.google.com/spreadsheets/d/14xPQt1f9rJHzV3I_B6CUhZWF5K_lynmgfwRszOisORg/edit">crc32 spreadsheet in Google Docs</a>.
 </pre>
 
 <pre>
@@ -87,34 +87,46 @@ binary from the PIAS 6 disc.
 </pre>
 
 <pre>
-Create empty git repo.
+Create empty git repository and add standard .git files.
+
+See the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/tree/cfa4ac0">empty repository</a>.
 </pre>
 
 <pre>
-Add skeleton build process that simply adds game binaries to a disc image.
+Add skeleton build process that simply adds game binaries to a disc image to
+create a working game disc.
+
+See the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/tree/4ed82ca446486d747dbb6ea848ed382113f1979d">repository with the skeleton build</a>.
 </pre>
 
 <pre>
-Create a py8dis setup within the repo.
+Create a basic py8dis setup within the repo.
 
-This shows two crc scores that match the py8dis output with the game binary so
-we can start to work on the py8dis output to get it to a point where we can
+This uses py8dis to disassemble the game binary and then reassembles the
+disassembly output from py8dis to recreate the game binary.
+
+It shows two crc32 scores that match the py8dis output with the game binary so
+we can see if any changes we make break the build.
+
+We can then start to work on the py8dis output to get it to a point where we can
 take it and work on it manually.
-</pre>
 
-<pre>
 Start by simply loading the binary at its load address of &amp;1900 and setting an
 entry point of <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/entry.html">&amp;6D00</a> (which we take from the file attributes).
 
-<a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/tree/9d3b2c34702276e67ae58c1fc5caa4d289983472/2-build-files/py8dis">See pydis section in repo</a>.
+See the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/tree/9d3b2c34702276e67ae58c1fc5caa4d289983472/2-build-files/py8dis">basic pydis setup in the repository</a>.
+</pre>
 
-This shows there is a routine at <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/entry.html">&amp;6D00</a> that moves the whole binary down to
-<a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/tiledata.html">&amp;0400</a> and jumps to <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/configuremachine.html">&amp;3F04</a>, so we can update py8dis to load the file at <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/tiledata.html">&amp;0400</a> and
-set an entry point at <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/configuremachine.html">&amp;3F04</a>.
+<pre>
+Look at <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/entry.html">Entry</a> routine in py8dis output.
+
+This shows the first routine at <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/entry.html">&amp;6D00</a> moves the whole binary down to <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/tiledata.html">&amp;0400</a> and
+jumps to <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/configuremachine.html">&amp;3F04</a>, so we can update py8dis to load the file at <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/tiledata.html">&amp;0400</a> and set an
+entry point at <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/configuremachine.html">&amp;3F04</a>.
 
 And suddenly we have quite a good disassembly that we can start to pick apart.
 
-<a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/blob/8b0e5db87b86a19bcd50d45bcb094b018fdb6de4/2-build-files/py8dis/the-sentinel-source.asm">See source in repo</a>.
+See the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/blob/8b0e5db87b86a19bcd50d45bcb094b018fdb6de4/2-build-files/py8dis/the-sentinel-source.asm">disassembled source in the repository</a>.
 </pre>
 
 <pre>
@@ -131,7 +143,7 @@ make sure they look like they are variables (which they are).
 </pre>
 
 <pre>
-In a number of places we suddenly fall from data into code, like this:
+In a number of places we suddenly fall from code into data, like this:
 
 <span class="articleIndented"> LSR L008B                                                            ; 0E70
  ROR L008A                                                            ; 0E72
@@ -200,12 +212,12 @@ Started by trying move() commands in py8dis, which works but because an
 instruction is split across a move boundary, it's complex, so instead I went
 for manually splitting the binary, as with Revs.
 
-<a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/tree/706d311676e1da88cdfaaaa6ac276af45350526d/2-build-files/py8dis/slices">See split files in repo</a>.
+See the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/tree/706d311676e1da88cdfaaaa6ac276af45350526d/2-build-files/py8dis/slices">split files in the repository</a>.
 
-And then added COPYBLOCK commands to move the binary around, see comments in
-py8dis source:
+And then added COPYBLOCK commands to move the binary around, and document with
+comments in the py8dis source as I find COPYBLOCK totally confusing!
 
-<a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/blob/b8550a6b835347046ea29b40f54e1a3630b4800b/2-build-files/py8dis/the-sentinel-source.py">See py8dis source in repo</a>.
+See the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/blob/b8550a6b835347046ea29b40f54e1a3630b4800b/2-build-files/py8dis/the-sentinel-source.py">py8dis source in the repository</a>.
 </pre>
 
 <pre>
