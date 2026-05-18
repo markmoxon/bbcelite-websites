@@ -14,10 +14,10 @@ page_header("disassembly_diary", "progress_0-5-percent.html", "Project progress:
 						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
 
 						<ul>
-							<li><a href="#date-2025-09-06">6 September 2025</a></li>
-							<li><a href="#date-2025-09-07">7 September 2025</a></li>
-							<li><a href="#date-2025-09-09">9 September 2025</a></li>
-							<li><a href="#date-2025-09-10">10 September 2025</a></li>
+							<li><a href="#date-2025-09-06">6 September 2025</a> - Identify maths lookup tables using Excel, convert them from data blocks into FOR loop, convert some of the calculated labels into .Lxxxx labels</li>
+							<li><a href="#date-2025-09-07">7 September 2025</a> - Document the Entry routine (a very short day, but this is the first properly documented routine in the project, so it's the first real step)</li>
+							<li><a href="#date-2025-09-09">9 September 2025</a> - Document ConfigureMachine and ClearMemory, identify main title loop, start trying to identify subroutines called by main title loop (e.g. SetColourPalette, ResetVariables, DrawTitleScreen, DrawObject, SpawnCharacter3D, SpawnSecretCode3D), realise that some code is the same as in Revs (Multiply8x8, GetAngleInRadians) so copy comments over</li>
+							<li><a href="#date-2025-09-10">10 September 2025</a> - Identify more Revs routines (GetRotationMatrix, Multiply8x16, Multiply16x16) and copy comments from Revs, reach 5% progress, identify and comments more Revs code (Absolute16Bit, Negate16Bit, ScanKeyboard, parts of Divide16x16), add arctan and sin labels</li>
 						</ul>
 
 						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
@@ -28,12 +28,14 @@ page_header("disassembly_diary", "progress_0-5-percent.html", "Project progress:
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/61fd5b7...7ce36e4?diff=unified">GitHub commits and diffs for 6 September 2025</a>.</p>
 
 <pre>
-Start by looking for maths lookup tables.
+Let's start by looking for maths lookup tables, as they are normally pretty easy
+to spot.
 
 Good candidates are <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/arctanlo.html">L3B00</a>, L3D00 and <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/sin.html">L5980</a>, as they gradually increase as the
 table goes on, a classic sign of a trigonometric lookup table.
 
-Stick them in Excel, draw graphs and see if anything is familiar...
+Stick them in Excel as <a href="/documents/sentinel_table_lookups.xlsx">sentinel_table_lookups.xlsx</a>, draw some graphs and see if
+anything looks familiar...
 
 <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/sin.html">L5980</a> is clearly sine, it's pretty similar to the sine table from Aviator.
 
@@ -41,11 +43,11 @@ L3C00 looks like arctan, but stepped, but it makes sense if <a class="ref" href=
 byte and the high byte starts at <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/arctanhi.html">L3C01</a>.
 
 L3D00 also seems to start at <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/tanhalfangle.html">L3D02</a>, but it's harder to calculate, poking around
-in Excel has revealed two options, one with cos and <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/sin.html">sin</a> and another with tan,
+in Excel has revealed two options, one with cos and sin and another with tan,
 but I have no idea what's going on as neither of them look particularly useful
 (put both options into the source, let's deal with this one later!)
 
-Convert to FOR loops for calculable tables
+Convert all these tables into FOR loops to create calculable tables.
 </pre>
 
 <pre>
@@ -56,7 +58,7 @@ Remove the need for the likes of:
 L3E3C = <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/edgepixelsleft.html">L3E00</a>+60
 L3EC0 = <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/edgepixelsleft.html">L3E00</a>+192
 
-by inserting labels when they make sense
+by inserting labels when they make sense.
 </pre>
 
 						<h2 class="articleSubheader center"><a id="date-2025-09-07" class="anchor"></a>7 September 2025<br>
@@ -80,63 +82,65 @@ journey starts with a single step...
 Continuing from <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/entry.html">Entry</a> through <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/configuremachine.html">ConfigureMachine</a> and <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/clearmemory.html">ClearMemory</a>
 
 TIL about the addressable latch in the System VIA (used to set the screen
-memory address)
+memory address).
 </pre>
 
 <pre>
 Then into what looks like a main game loop, which contains a lot of JSRs within
-a loop
+a loop.
 
-Call it MainLoop, start to analyse what the JSRs might do by setting
-breakpoints
+Call it <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/maintitleloop.html">MainLoop</a>, start to analyse what the JSRs might do by setting
+breakpoints.
 </pre>
 
 <pre>
-First one is <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/setcolourpalette.html">SetColourPalette</a>, pretty simple VDU stuff
+First one is <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/setcolourpalette.html">SetColourPalette</a>, pretty simple VDU stuff.
 </pre>
 
 <pre>
-Next one zeroes a load of memory blocks, so call it <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/resetvariables.html">ResetVariables</a>
+Next one zeroes a load of memory blocks, so call it <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/resetvariables.html">ResetVariables</a>.
 </pre>
 
 <pre>
 Next one draws the title screen, but if we simply run it the screen stays blue,
 so change the palette to the visible colour scheme (by changing the
-<a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> from A=4 to A=0) and we can see it actually drawing the screen
+<a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/setcolourpalette.html">SetColourPalette</a> from A=4 to A=0) and we can see it actually drawing the screen.
 
-(See Quicktime video Drawing title screen)
+<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+	<source src="https://thesentinel.bbcelite.com/media/title_screen/main_title_screen.mp4" type="video/mp4">
+</video>
 </pre>
 
 <pre>
 Can then dive into the <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitlescreen.html">DrawTitleScreen</a> routine, which draws the title text and
-the Sentinel on the right
+the Sentinel on the right.
 
 The routine takes an argument in A that's 0 or &amp;80; changing this either draws
 the title screen with The Sentinel, or it draws the landscape code screen with
-a robot
+a robot.
 </pre>
 
 <pre>
 Title text is in a variable that's passed to <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">sub_C31CE</a> that draws the letter,
-so name that routine DrawLetter3D
+so name that routine <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">DrawLetter3D</a>.
 </pre>
 
 <pre>
 The Sentinel or robot is drawn by a call to <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">sub_C139B</a>, so call this <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a>
-for now
+for now.
 </pre>
 
 <pre>
-The landscape code is drawn by <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/spawnsecretcode3d.html">sub_C3381</a>, so call this DrawLandscapeCode
+The landscape code is drawn by <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/spawnsecretcode3d.html">sub_C3381</a>, so call this <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/spawnsecretcode3d.html">DrawLandscapeCode</a>.
 </pre>
 
 <pre>
 SPOTTED WHILE EXPLORING:
 
-Turns out that <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/multiply8x8.html">sub_C0D03</a> is the same as <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/multiply8x8.html">Multiply8x8</a> in Revs, so that's a quick
-win
+Turns out that <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/multiply8x8.html">sub_C0D03</a> is the same as <a class="ref" href="https://revs.bbcelite.com/source/main/subroutine/multiply8x8.html">Multiply8x8</a> in Revs, so that's a quick
+win.
 
-And <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/getangleinradians.html">sub_C0F3E</a> is <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/getangleinradians.html">GetAngleInRadians</a> from Revs
+And <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/getangleinradians.html">sub_C0F3E</a> is <a class="ref" href="https://revs.bbcelite.com/source/main/subroutine/getangleinradians.html">GetAngleInRadians</a> from Revs.
 </pre>
 
 						<h2 class="articleSubheader center"><a id="date-2025-09-10" class="anchor"></a>10 September 2025<br>
@@ -148,32 +152,32 @@ And <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine
 Turns out there are more Revs subroutines in The Sentinel, so copy over the
 Revs comments for some quick wins:
 
-<a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/getrotationmatrix_part_1_of_5.html">sub_C0E75</a> is the same as <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/getrotationmatrix_part_1_of_5.html">GetRotationMatrix</a>
+* <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/getrotationmatrix_part_1_of_5.html">sub_C0E75</a> is the same as <a class="ref" href="https://revs.bbcelite.com/source/main/subroutine/getrotationmatrix_part_1_of_5.html">GetRotationMatrix</a> in Revs
 
-<a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/multiply8x16.html">sub_C0F4A</a> is <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/multiply8x16.html">Multiply8x16</a>
+* <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/multiply8x16.html">sub_C0F4A</a> is <a class="ref" href="https://revs.bbcelite.com/source/main/subroutine/multiply8x16.html">Multiply8x16</a> in Revs
 
-<a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/multiply16x16.html">sub_C0F9E</a> is <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/multiply16x16.html">Multiply16x16</a>
+* <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/multiply16x16.html">sub_C0F9E</a> is <a class="ref" href="https://revs.bbcelite.com/source/main/subroutine/multiply16x16.html">Multiply16x16</a> in Revs
 </pre>
 
 <pre>
->>> Broken through the 5% barrier
+>>> I have now broken through the 5% barrier &lt;&lt;&lt;
 </pre>
 
 <pre>
 More Revs code:
 
-<a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/absolute16bit.html">sub_C1007</a> is <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/absolute16bit.html">Absolute16Bit</a>
+* <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/absolute16bit.html">sub_C1007</a> is <a class="ref" href="https://revs.bbcelite.com/source/main/subroutine/absolute16bit.html">Absolute16Bit</a> in Revs
 
-<a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/negate16bit.html">sub_C1009</a> is <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/negate16bit.html">Negate16Bit</a>
+* <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/negate16bit.html">sub_C1009</a> is <a class="ref" href="https://revs.bbcelite.com/source/main/subroutine/negate16bit.html">Negate16Bit</a> in Revs
 
-<a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/scankeyboard.html">sub_C0F62</a> is almost <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/scankeyboard.html">ScanKeyboard</a>
+* <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/scankeyboard.html">sub_C0F62</a> is almost <a class="ref" href="https://revs.bbcelite.com/source/main/subroutine/scankeyboard.html">ScanKeyboard</a> in Revs
 
-<a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/getanglefromcoords_part_1_of_3.html">sub_C0D4A</a> seems to contain chunks of the Divide16x16 routine from Revs, so copy
-that over
+Also <a class="ref" href="https://thesentinel.bbcelite.com/source/main/subroutine/getanglefromcoords_part_1_of_3.html">sub_C0D4A</a> seems to contain chunks of the Divide16x16 routine from Revs, so
+copy that over.
 </pre>
 
 <pre>
-Add labels to arctan and <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/sin.html">sin</a> tables
+Add labels to <a href="https://thesentinel.bbcelite.com/source/main/variable/arctanhi.html">arctan</a> and <a class="ref" href="https://thesentinel.bbcelite.com/source/main/variable/sin.html">sin</a> tables.
 </pre>
 					</div>
 				</div>
