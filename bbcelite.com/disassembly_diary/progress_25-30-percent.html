@@ -16,13 +16,13 @@ page_header("disassembly_diary", "progress_25-30-percent.html", "Project progres
 						<ul>
 							<li><a href="#date-2025-10-04">4 October 2025</a> - Realise that seed numbers aren't random but are predictable, rename routines accordingly</li>
 							<li><a href="#date-2025-10-07">7 October 2025</a> - Mention other sources of information (Simon Owen, Level 7), identify objRotationSpeed, objRotationTimer and objectYawAngle, finish documenting PlayGame, document FlushSoundBuffers</li>
-							<li><a href="#date-2025-10-08">8 October 2025</a></li>
-							<li><a href="#date-2025-10-09">9 October 2025</a></li>
-							<li><a href="#date-2025-10-10">10 October 2025</a></li>
-							<li><a href="#date-2025-10-13">13 October 2025</a></li>
-							<li><a href="#date-2025-10-14">14 October 2025</a></li>
-							<li><a href="#date-2025-10-15">15 October 2025</a></li>
-							<li><a href="#date-2025-10-16">16 October 2025</a></li>
+							<li><a href="#date-2025-10-08">8 October 2025</a> - Separate landscape and game data where memory is reused, add comments to workspace variables, identify objectPitchAngle</li>
+							<li><a href="#date-2025-10-09">9 October 2025</a> - Document GetSineAndCosine and DivideBy16, thoughts on GetRotationMatrix, document key logger, identify sights-related variables, start analysing GetSightsVector</li>
+							<li><a href="#date-2025-10-10">10 October 2025</a> - Start analysing SetCrackerSeed and CorruptSecretCode, work out that objectType can contain key presses, add speculative names to sights routines</li>
+							<li><a href="#date-2025-10-13">13 October 2025</a> - Convert "tile slope" terminology to "tile shape"</li>
+							<li><a href="#date-2025-10-14">14 October 2025</a> - Identify key processing routines, categorise sound routines, document GetPlayerEnergyBCD, finish documenting FinishLandscape, first attempt to understand FocusOnKeyAction, start looking at DrainObjectEnergy</li>
+							<li><a href="#date-2025-10-15">15 October 2025</a> - Identify MakeSoundEnvelope, DefineEnvelope, envelopeData and soundNumberData, document UpdateIconsScanner and DrawIcon, identify iconBuffer and iconRowAddr, document DisplayIconBuffer</li>
+							<li><a href="#date-2025-10-16">16 October 2025</a> - Add another COPYBLOCK to source, remove unused labels, reach 30% progress, finish identifying object numbers, identify enemyData variables, document ProcessVolumeKeys and ProcessPauseKeys, identify GetIconRowAddress</li>
 						</ul>
 
 						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
@@ -41,23 +41,24 @@ added (so no timer values or anything like that).
 The same is true in the game code; these are all the other "random" number uses
 outside of the landscape generation stage:
 
-* <a href="https://thesentinel.bbcelite.com/source/main/subroutine/corruptsecretcode.html">C316C</a> in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">DrawLetter3D</a>, it looks like anti-tamper code to corrupt secret code
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/corruptsecretcode.html">C316C</a> in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">DrawLetter3D</a>, it looks like anti-tamper code to corrupt the secret
+    code
 
-* <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">C16A8</a> has no effect except to move the sequence on, so it only affects sound
-randomness
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">C16A8</a> has no effect except to move the sequence on, so it only affects
+    sound randomness
 
-* <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processsound.html">C355A</a> adds random effect to sound - the only time randomness (or, at least,
-non repetitiveness) is required
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processsound.html">C355A</a> adds random effect to sound - the only time randomness (or, at least,
+    non repetitiveness) is required
 
 So let's rename the various random number routines like this:
 
-* <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseednumber.html">GetRandomNumber</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseednumber.html">GetNextSeedNumber</a>
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseednumber.html">GetRandomNumber</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseednumber.html">GetNextSeedNumber</a>
 
-* <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseedasbcd.html">GetRandomNumberBCD</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseedasbcd.html">GetNextSeedAsBCD</a>
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseedasbcd.html">GetRandomNumberBCD</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseedasbcd.html">GetNextSeedAsBCD</a>
 
-* <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseed0to22.html">GetRandomNumber22</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseed0to22.html">GetNextSeed0To22</a>
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseed0to22.html">GetRandomNumber22</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseed0to22.html">GetNextSeed0To22</a>
 
-* <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseed0to30.html">GetRandomNumber30</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseed0to30.html">GetNextSeed0To30</a>
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseed0to30.html">GetRandomNumber30</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseed0to30.html">GetNextSeed0To30</a>
 
 and rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/initialiseseeds.html">SeedLandscape</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/initialiseseeds.html">InitialiseSeeds</a>.
 
@@ -147,18 +148,22 @@ documented.
 
 <pre>
 Now that we are moving into the gameplay part, the section of memory from <a href="https://thesentinel.bbcelite.com/source/main/variable/xpolygonleft.html">&amp;5A00</a>
-to &amp;5C00 is reused for two big tables. So it would be clearer to separate this
+to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectangles.html">&amp;5C00</a> is reused for two big tables. So it would be clearer to separate this
 out into two separate bits of code - landscape data and game data. So I've
 added CLEAR and ORG directives to the <a href="https://thesentinel.bbcelite.com/source/main/variable/stripdata.html">stripData</a> variable to make this clearer
-and have documented all the landscape variables (I still don't know what <a href="https://thesentinel.bbcelite.com/source/main/variable/xpolygonleft.html">L5A00</a>
-and <a href="https://thesentinel.bbcelite.com/source/main/variable/xpolygonright.html">L5B00</a> are for).
+and have documented all the landscape variables (though I still don't know what
+<a href="https://thesentinel.bbcelite.com/source/main/variable/xpolygonleft.html">L5A00</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/xpolygonright.html">L5B00</a> are for).
 </pre>
 
 <pre>
 Also added a few more comments to workspace variables that I hadn't filled in,
 and replaced Lxxxx labels with variable names, even if they don't turn out to
 be correct (we can change them later, but it's easier to deal with descriptive
-words than walls of Lxxxx labels).
+words than walls of Lxxxx labels and undocumented SKIP directives):
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#playerobject">L000B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#playerobject">playerObjectSlot</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#tilealtitude">L0006</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#tilealtitude">tileAltitude</a> 
 </pre>
 
 <pre>
@@ -169,11 +174,11 @@ Another clue: in <a href="https://thesentinel.bbcelite.com/source/main/subroutin
  ADC objectYawAngle,X
  SEC
  SBC #&amp;0A
- STA playerYawAngleHi</span>
+ STA playerYawAngleHi
 
-...
+ ...
 
-<span class="articleIndented"> STA playerPitchAngleLo
+ STA playerPitchAngleLo
  STA T
  LDA U
  ADC L0140,X
@@ -183,8 +188,8 @@ Another clue: in <a href="https://thesentinel.bbcelite.com/source/main/subroutin
 
 They are pretty similar, one working with yaw angles and the other with pitch
 angles. It seems very likely that <a href="https://thesentinel.bbcelite.com/source/main/workspace/stack_variables.html#objectpitchangle">L0140</a> is <a href="https://thesentinel.bbcelite.com/source/main/workspace/stack_variables.html#objectpitchangle">objectPitchAngle</a>, so that these
-blocks match, so let's put that in as a speculative label, and L0150 as
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/stack_variables.html#objectpitchangle">objectPitchAngle</a>+16 (as that also fits with the surrounding code).
+blocks match, so let's put that in as a speculative label, and <a href="https://thesentinel.bbcelite.com/source/main/workspace/stack_variables.html#objectpitchangle">L0150</a> as
+<a href="https://thesentinel.bbcelite.com/source/main/workspace/stack_variables.html#objectpitchangle">objectPitchAngle+16</a> (as that also fits with the surrounding code).
 </pre>
 
 						<h2 class="articleSubheader center"><a id="date-2025-10-09" class="anchor"></a>9 October 2025<br>
@@ -200,7 +205,7 @@ routines.
 rename to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getsineandcosine.html">GetSineAndCosine</a> and document (it's such a simple routine, but so
 complex to explain, fo rme anyway!).
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/divideby16.html">DivideBy16</a> does what it says.
+<a href="https://thesentinel.bbcelite.com/source/main/subroutine/divideby16.html">DivideBy16</a> does what it says, so document it.
 </pre>
 
 <pre>
@@ -214,34 +219,47 @@ playerYawAngleLo/Hi and playerPitchAngleLo/Hi in Revs denote the direction in
 which the player's car is pointing, but in The Sentinel I'm pretty sure this
 will actually be the direction of the player's gaze, which is in-game as a pair
 of crosshairs (called "sights" in the instructions). So they might be better
-renamed to sightsYawAngle and sightsPitchAngle? Worth a punt.
+renamed to <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#vectoryawanglelo">sightsYawAngle</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#vectorpitchanglelo">sightsPitchAngle</a>? Worth a punt.
 
-Also, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrotationmatrix_part_1_of_5.html">GetRotationMatrix</a> in revs only rotates yaw angles of cars, but in The
+Also, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrotationmatrix_part_1_of_5.html">GetRotationMatrix</a> in Revs only rotates yaw angles of cars, but in The
 Sentinel it rotates both pitch and yaw angles, specifically of the vector from
 the player's eyes through the sights (which gets rotated into the 3D world by
 this rotation matrix). So the variable names and comments only talk about yaw
 angles. Should I rename them? Nah, I like leaving this as Revs code, so let's
 just note this difference in the comments for now.
 
-Looks like the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrotationmatrix_part_1_of_5.html">GetRotationMatrix</a> generates three pairs of hi/lo bytes from the
+Looks like <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrotationmatrix_part_1_of_5.html">GetRotationMatrix</a> generates three pairs of hi/lo bytes from the
 pitch and yaw angles, which is probably a 3D vector, and looking at the
 preceding code it looks like this involves the position of the sights, so let's
-name these xSightsVector etc. to denote the vector of the gaze from the player
+name these <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorlo">xSightsVectorLo</a> etc. to denote the vector of the gaze from the player
 through the sights
 </pre>
 
 <pre>
-Need clues on the sights, so documented key logger
+Need some clues on the sights, so let's document the key logger.
+
+<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#keylogger">L0CE8</a> stores key presses in some way, so rename to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#keylogger">keyLogger</a>.
+
+Document <a href="https://thesentinel.bbcelite.com/source/main/subroutine/scanforgamekeys.html">sub_C1353</a> and rename to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/scanforgamekeys.html">ScanForGameKeys</a>.
+
+<a href="https://thesentinel.bbcelite.com/source/main/variable/keyloggerconfig.html">L138C</a> contains game key config, so document and rename to <a href="https://thesentinel.bbcelite.com/source/main/variable/keyloggerconfig.html">keyLoggerConfig</a>.
+
+Looks like we already documented <a href="https://thesentinel.bbcelite.com/source/main/variable/gamekeys.html">gameKeys</a>, can't remember doing that!
+</pre>
+
+<pre>
+Now we have the key logger documented, we can follow key presses through the
+code.
 
 Followed sights-moving keys to identify <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#xsights">xSights</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ysights">ySights</a> for sight
 coordinates, and yes, it looks like they do indeed feed into <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrotationmatrix_part_1_of_5.html">GetRotationMatrix</a>
-in the angle setup routine in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getsightsvector.html">sub_C1BFF</a>
+in the angle setup routine in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getsightsvector.html">sub_C1BFF</a>.
 
 So analyse the angle setup routine in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getsightsvector.html">sub_C1BFF</a>, as that passes through to the
-rotations in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getvectorforangles.html">sub_C1C43</a> (so this could well be the sights vector)
+rotations in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getvectorforangles.html">sub_C1C43</a> (so this could well be the sights vector).
 
 Depends on what slot X is when calling <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getsightsvector.html">sub_C1BFF</a>, if it's the player object
-then it looks like we are right
+then it looks like we are right.
 
 Out of time for the day!
 </pre>
@@ -257,36 +275,36 @@ More housekeeping.
 First, add the effects of the various key presses to the code, to save looking
 it up every time, e.g.
 
-Negative key value for "<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#s">S</a>"
+Negative key value for "S"
 ->
-Negative key value for "<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#s">S</a>" (Pan left)
+Negative key value for "S" (Pan left)
 </pre>
 
 <pre>
 Also this code can be improved in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">DrawLetter3D</a>:
 
- LDX #&amp;07
+<span class="articleIndented"> LDX #&amp;07
  LDA L0C6E,X
- CMP rotm8-1,X
+ CMP rotm8-1,X</span>
 
 Because X = 7, we can expand those addresses properly, to this:
 
- LDX #7
+<span class="articleIndented"> LDX #7
  LDA L0C75-7,X
- CMP GetAngleInRadians-1-7,X
+ CMP GetAngleInRadians-1-7,X</span>
 
-This is familiar - there was another one of these in part 3 of
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/smoothtilecorners_part_1_of_4.html">SmoothTileCorners</a>, which I converted to this:
+This is familiar - there was another one of these in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/setcrackerseed.html">part 3 of
+SmoothTileCorners</a>, which I converted to this:
 
- LDA &amp;5A2E,X            \ X = 32, so this loads from &amp;5A4E (tilesAtAltitude+14)
+<span class="articleIndented"> LDA &amp;5A2E,X            \ X = 32, so this loads from &amp;5A4E (tilesAtAltitude+14)
  STA &amp;0F1D,X            \ and stores in &amp;0F3D (the operand in the unused LDA #0
-                        \ instruction just before GetAngleInRadians) ???
+                        \ instruction just before GetAngleInRadians) ???</span>
 
 So it's probably better to do it this way:
 
- LDA tilesAtAltitude+14-32,X    \ Copy the contents of tilesAtAltitude+14 into
+<span class="articleIndented"> LDA tilesAtAltitude+14-32,X    \ Copy the contents of tilesAtAltitude+14 into
  STA GetAngleInRadians-1-32,X   \ the operand into GetAngleInRadians-1, which
-                                \ contains an unused LDA #0 instruction ???
+                                \ contains an unused LDA #0 instruction ???</span>
 
 Still not entirely sure how this works, but it looks like some kind of
 anti-cracking code around the secret code generation, so added more
@@ -296,12 +314,16 @@ back to this, but at least it's starting to make a bit more sense.
 
 <pre>
 Another thing to look at is <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objecttype">objectType</a>, which also seems to store key presses
-from the <a href="https://thesentinel.bbcelite.com/source/main/variable/keyloggerconfig.html">keyLoggerConfig</a> table. Turns out this variable is shared - it is used
-to store key presses, but also object types, as the "create xxx" key presses
-contain the relevant object type in their configuration (e.g. "create robot"
-puts a 0 in the key logger, "create tree" puts a 2 and "create boulder" puts a
-3). So to create something, we simply pass the key logger entry to
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectnumber.html">SpawnObject</a>+3. Neat!
+from the <a href="https://thesentinel.bbcelite.com/source/main/variable/keyloggerconfig.html">keyLoggerConfig</a> table.
+
+Turns out this variable is shared - it is used to store key presses, but also
+object types, as the "create xxx" key presses contain the relevant object type
+in their configuration (e.g. "create robot" puts a 0 in the key logger, "create
+tree" puts a 2 and "create boulder" puts a 3).
+
+So to create something, we simply pass the key logger entry to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectnumber.html">SpawnObject</a>+3.
+
+Neat!
 </pre>
 
 <pre>
@@ -311,21 +333,33 @@ Now to follow the trail around calls to <a href="https://thesentinel.bbcelite.co
 the following sight-related routines and a bunch of variables that only they
 use. Speculative naming gives us:
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#sightsarevisible">L0C5F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#sightsarevisible">sightsAreVisible</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/initialisesights.html">sub_C1331</a> -> SetupSights
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawsights.html">sub_C39D9</a> -> ShowSights
-<a href="https://thesentinel.bbcelite.com/source/main/variable/pixelbytecolour2.html">L3A8A</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/xsightsstep.html">L3A8E</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/ysightsstep.html">L3A9A</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/removesights.html">sub_C3AA7</a> -> HideSights
-<a href="https://thesentinel.bbcelite.com/source/main/variable/sightsmoveaddrlo.html">L3AC7</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/sightsmoveaddrhi.html">L3ACD</a>
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#sightsarevisible">L0C5F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#sightsarevisible">sightsAreVisible</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/initialisesights.html">sub_C1331</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/initialisesights.html">SetupSights</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawsights.html">sub_C39D9</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawsights.html">ShowSights</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/removesights.html">sub_C3AA7</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/removesights.html">HideSights</a>
+
+They use these variables but I don't know what for yet:
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/variable/pixelbytecolour2.html">L3A8A</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/variable/xsightsstep.html">L3A8E</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/variable/ysightsstep.html">L3A9A</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/variable/sightsmoveaddrlo.html">L3AC7</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/variable/sightsmoveaddrhi.html">L3ACD</a>
 
 Also from the sights-moving analysis yesterday, these are probably good names:
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesights.html">sub_C3927</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesights.html">MoveSights</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesightssideways.html">sub_C3934</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesightssideways.html">MoveSightsSideways</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesightsupdown.html">sub_C396B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesightsupdown.html">MoveSightsUpDown</a>
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesights.html">sub_C3927</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesights.html">MoveSights</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesightssideways.html">sub_C3934</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesightssideways.html">MoveSightsSideways</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesightsupdown.html">sub_C396B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/movesightsupdown.html">MoveSightsUpDown</a>
 
 We can document all these later, but for now categorising and naming them is
 good enough.
@@ -341,8 +375,9 @@ Very short day (10 mins).
 
 Convert "tile slope" to "tile shape", as the different tile shapes include a
 lot that don't slope in one direction - instead, tile shapes can be quite
-complex, so "shape" is a better term. Thank you to Simon Owen's repository for
-that insight.
+complex, so "shape" is a better term.
+
+Thank you to <a href="https://github.com/simonowen/sentland/">Simon Owen's repository</a> for that insight!
 </pre>
 
 						<h2 class="articleSubheader center"><a id="date-2025-10-14" class="anchor"></a>14 October 2025<br>
@@ -362,30 +397,44 @@ Finally, document around all uses of the key logger by looking for <a href="http
 and adding comments. We can then track down all the key press logic and name
 routines accordingly.
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/processvolumekeys.html">sub_C3480</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processvolumekeys.html">ProcessVolumeKeys</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/processactionkeys_part_1_of_2.html">sub_C1B0B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys</a>
-sub_C34E1 -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processpausekeys.html">ProcessPauseKeys</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforkeypresses.html">sub_C118B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforsamepankey.html">sub_C120F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforsamepankey.html">CheckForSamePanKey</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/spacekeydebounce.html">L1222</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/spacekeydebounce.html">spaceKeyDebounce</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/performhyperspace.html">sub_C2147</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/performhyperspace.html">PerformHyperspace</a>
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processvolumekeys.html">sub_C3480</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processvolumekeys.html">ProcessVolumeKeys</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processactionkeys_part_1_of_2.html">sub_C1B0B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processpausekeys.html">sub_C34E1</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processpausekeys.html">ProcessPauseKeys</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforkeypresses.html">sub_C118B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforsamepankey.html">sub_C120F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforsamepankey.html">CheckForSamePanKey</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/variable/spacekeydebounce.html">L1222</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/spacekeydebounce.html">spaceKeyDebounce</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/performhyperspace.html">sub_C2147</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/performhyperspace.html">PerformHyperspace</a>
 </pre>
 
 <pre>
-Look around OSWORD calls to find the game's sound routines and categorise them:
+Look around OSWORD calls to find the game's sound routines and categorise them
+in their headers (with "Category: Sound"):
 
-sub_C343A
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/makesound.html">sub_C3440</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/makesound.html#soun2">sub_C3459</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/defineenvelope.html">sub_C3463</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/astoreenvelope.html">L3478</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/soundnumberdata.html">L3479</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/volumelevel.html">L34D4</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/envelopevolumes.html">L34D5</a>
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/makesound.html">sub_C343A</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/makesound.html">sub_C3440</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/makesound.html#soun2">sub_C3459</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/defineenvelope.html">sub_C3463</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/variable/astoreenvelope.html">L3478</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/variable/soundnumberdata.html">L3479</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/variable/volumelevel.html">L34D4</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/variable/envelopevolumes.html">L34D5</a>
 </pre>
 
 <pre>
-Next up, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getplayerenergybcd.html">sub_C342C</a> is called from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/finishlandscape.html">FinishLandscape</a> before we add to the
+Next up, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getplayerenergybcd.html">sub_C342C</a> is called from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/finishlandscape.html">FinishLandscape</a> before we add something to the
 landscape number. The game adds the player's remaining energy to the landscape
 number to get the next landscape, using BCD arithmetic (as landscape numbers
 are BCD), so rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getplayerenergybcd.html">sub_C342C</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getplayerenergybcd.html">GetPlayerEnergyBCD</a>.
@@ -398,27 +447,36 @@ This also means that <a href="https://thesentinel.bbcelite.com/source/main/works
 There are lots of flags controlling whether things are done, so these need
 working out somehow. For example:
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">sub_C1200</a> sets bit 7 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">L0CE4</a>
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">sub_C1200</a> sets bit 7 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">L0CE4</a>
 
-Bit 7 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">L0CE4</a> controls:
-* if set, skip scanning of keys in the interrupt handler
-* if set, skip similar thing in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">sub_C1264</a>
-* if set, skip processing volume keys
+So what are <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">sub_C1200</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">L0CE4</a>?
 
-Bit 7 of <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#previousfocus">L0CDC</a> gets set to the value of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">L0CE4</a> in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html#focu1">C1208</a>, after CheckKeyPresses
-ends, and it controls:
-* if set, do more key checking in the interrupt handler
+Bit 7 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">L0CE4</a> controls the following:
 
-So somehow these two are related and control the amount of key press checking
+  * If set, skip scanning of keys in the interrupt handler
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">L0CE4</a> (and therefore <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#previousfocus">L0CDC</a>) is only changed in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">sub_C1200</a>
+  * If set, skip similar thing in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">sub_C1264</a>
+
+  * If set, skip processing volume keys
+
+Bit 7 of <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#previousfocus">L0CDC</a> gets set to the value of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">L0CE4</a> in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html#focu1">C1208</a>, after <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a>
+ends, and it controls the following:
+
+  * If set, do more key checking in the interrupt handler
+
+So somehow these two are related and control the amount of key press checking.
+
+<a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">L0CE4</a> (and therefore <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#previousfocus">L0CDC</a>) is only changed in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">sub_C1200</a>.
 
 <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">sub_C1200</a> is called from:
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/performhyperspace.html">PerformHyperspace</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a> when an action key is pressed and when pan keys are pressed
-(fall through from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a>)
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">sub_C1264</a> (when quitting game, when bit 7 of <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#playerhasmovedtile">L0C63</a> is set, when <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#sentinelhaswon">L0C4E</a> is
-non-zero)
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/performhyperspace.html">PerformHyperspace</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a> when an action key is pressed and when pan keys are
+    pressed (fall through from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkforkeypresses.html">CheckForKeyPresses</a>)
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">sub_C1264</a> (when quitting game, when bit 7 of <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#playerhasmovedtile">L0C63</a> is set, when <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#sentinelhaswon">L0C4E</a> is
+    non-zero)
 
 Not quite sure what this all means, though.
 </pre>
@@ -429,17 +487,17 @@ as <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable
 
 <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">sub_C19FF</a> subtracts 1 from <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#playerenergy">playerEnergy</a>, but skips around that bit if this
 isn't the player, so this routine probably drains energy from any object -
-rename to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a>
+rename to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a>.
 
 This also confirms what we thought about <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#sentinelhaswon">L0C4E</a> in the main loop - this records
 whether the player has died, as bit 7 gets set if the player runs out of
-energy, so rename this to playerIsDead
+energy, so rename this to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#sentinelhaswon">playerIsDead</a>.
 
 When the player dies, finish_updating_enemy gets called which resets stack, so
-is this some kind of restart routine? Not totally obvious
+is this some kind of restart routine? Not totally obvious.
 
 Out of time for the day, got <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a> and a few more <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#playerenergy">playerEnergy</a> uses
-to investigate next time, plus playerIsDead.
+to investigate next time, plus <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#sentinelhaswon">playerIsDead</a>.
 </pre>
 
 						<h2 class="articleSubheader center"><a id="date-2025-10-15" class="anchor"></a>15 October 2025<br>
@@ -448,30 +506,35 @@ to investigate next time, plus playerIsDead.
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/7e1f009...c5b42b8?diff=unified">GitHub commits and diffs for 15 October 2025</a>.</p>
 
 <pre>
-While looking at DrainEnergy, there's a sound call of some kind. Noted that
+While looking at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a>, there's a sound call of some kind. Note that
 this is quite similar to Revs, and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/makesound.html#soun2">sub_C3459</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/defineenvelope.html">sub_C3463</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/defineenvelope.html">sub_C3463</a> look a bit
-like the Revs sound routines. So some renaming:
+like the Revs sound routines.
 
-End of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/defineenvelope.html">sub_C3463</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/makesoundenvelope.html">MakeSoundEnvelope</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/defineenvelope.html">sub_C3463</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/defineenvelope.html">DefineEnvelope</a>
+So some renaming:
+
+  * End of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/defineenvelope.html">sub_C3463</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/makesoundenvelope.html">MakeSoundEnvelope</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/subroutine/defineenvelope.html">sub_C3463</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/defineenvelope.html">DefineEnvelope</a>
 
 This also lets us identify <a href="https://thesentinel.bbcelite.com/source/main/variable/envelopedata.html">envelopeData</a>, as the envelope data is taken from
-&amp;5028 + envelope number * 14, so <a href="https://thesentinel.bbcelite.com/source/main/variable/envelopedata.html">L5928</a> = <a href="https://thesentinel.bbcelite.com/source/main/variable/envelopedata.html">envelopeData</a>
+<a href="https://thesentinel.bbcelite.com/source/main/variable/envelopedata.html">&amp;5928</a> + envelope number * 14, so <a href="https://thesentinel.bbcelite.com/source/main/variable/envelopedata.html">L5928</a> = <a href="https://thesentinel.bbcelite.com/source/main/variable/envelopedata.html">envelopeData</a>.
 
 Ditto sound data is set in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/makesound.html#soun2">sub_C3459</a> to &amp;5800 + sound number * 8, so <a href="https://thesentinel.bbcelite.com/source/main/variable/sounddata.html">L5900</a> =
-<a href="https://thesentinel.bbcelite.com/source/main/variable/sounddata.html">soundData</a>
+<a href="https://thesentinel.bbcelite.com/source/main/variable/sounddata.html">soundData</a>.
 
 There's also a mapping from sound number to sound data in <a href="https://thesentinel.bbcelite.com/source/main/variable/soundnumberdata.html">L3479</a>, so call that
 <a href="https://thesentinel.bbcelite.com/source/main/variable/soundnumberdata.html">soundNumberData</a>.
 </pre>
 
 <pre>
-Back to analysing <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#playerenergy">playerEnergy</a>, playerIsDead...
+Back to analysing <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#playerenergy">playerEnergy</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#sentinelhaswon">playerIsDead</a>...
 
 Putting a breakpoint on <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateiconsscanner.html">sub_C36C7</a>, this looks like it updates the player's
 energy details in the top-left of the screen and the scanner box in the
-top-right, so rename to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a>. And the repeated calls to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawicon.html">sub_C373A</a>
-draw each individual icon, so rename to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawicon.html">DrawIcon</a>.
+top-right, so rename to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateiconsscanner.html">UpdateIconsScanner</a>.
+
+And the repeated calls to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawicon.html">sub_C373A</a> draw each individual icon, so rename to
+<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawicon.html">DrawIcon</a>.
 </pre>
 
 <pre>
@@ -482,31 +545,34 @@ might be the code that copies the updated <a href="https://thesentinel.bbcelite.
 
 Let's name some variables to see if this works:
 
-(L0063 <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#fromaddr">L0062</a>) = <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#fromaddr">fromAddr</a>(1 0)
-(L0065 <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#toaddr">L0064</a>) = <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#toaddr">toAddr</a>(1 0)
-(L0CCB <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#iconrowaddr">L0CCA</a>) = <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#iconrowaddr">iconRowAddr</a>(1 0)
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#fromaddr">L0062</a>(1 0) = <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#fromaddr">fromAddr</a>(1 0)
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#iconrowaddr">iconRowAddr</a> gets set in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/geticonrowaddress.html">sub_C3AD3</a>, where we calculate it as (L0CC3 <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#viewscreenaddr">L0CC2</a>) -
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/stack_variables.html#objectpitchangle">&amp;0140</a>
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#toaddr">L0064</a>(1 0) = <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#toaddr">toAddr</a>(1 0)
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#iconrowaddr">L0CCA</a>(1 0) = <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#iconrowaddr">iconRowAddr</a>(1 0)
+
+<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#iconrowaddr">iconRowAddr</a> gets set in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/geticonrowaddress.html">sub_C3AD3</a>, where we calculate it as <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#viewscreenaddr">L0CC2</a>(1 0) - &amp;140.
 
 &amp;140 is 320, which is the size in memory of one character row of screen mode 5,
-so this implies that (L0CC3 <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#viewscreenaddr">L0CC2</a>) must be the screen address of the main game
-screen, just below the icon and scanner row
+so this implies that <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#viewscreenaddr">L0CC2</a>(1 0) must be the screen address of the main game
+screen, just below the icon and scanner row.
 
 So let's name it:
 
-(L0CC3 <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#viewscreenaddr">L0CC2</a>) = mainScreenAddr(1 0)
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#viewscreenaddr">L0CC2</a>(1 0) = mainScreenAddr(1 0)
 
-This works pretty well - for example, SetupSights now uses this value when
+This works pretty well - for example, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/initialisesights.html">SetupSights</a> now uses this value when
 calculating the screen address for the sights, so I think we're on the right
 lines here.
+</pre>
 
-So we can also name <a href="https://thesentinel.bbcelite.com/source/main/subroutine/showiconbuffer.html">sub_C3AEB</a> to DisplayIconBuffer. There's probably other
-routines along the same lines for other buffers, e.g. DisplayMainBuffer, or
-DisplayLeftBuffer (assuming the screen movements in-game are drawing to buffers
+<pre>
+So we can also rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/showiconbuffer.html">sub_C3AEB</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/showiconbuffer.html">DisplayIconBuffer</a>. There are probably other
+routines along the same lines for other buffers, e.g. <a href="https://thesentinel.bbcelite.com/source/main/subroutine/showscreenbuffer.html">DisplayMainBuffer</a>, or
+<a href="https://thesentinel.bbcelite.com/source/main/subroutine/showbuffercolumn.html">DisplayLeftBuffer</a> (assuming the screen movements in-game are drawing to buffers
 and then copying the results to the screen). We'll see.
 
-Added comments to DisplayIconBuffer too. It jumps to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/showbufferrow.html">sub_C3889</a>, which I suspect
+Added comments to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/showiconbuffer.html">DisplayIconBuffer</a> too. It jumps to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/showbufferrow.html">sub_C3889</a>, which I suspect
 copies from <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#fromaddr">fromAddr</a> to <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#toaddr">toAddr</a>, but that analysis is for another day.
 </pre>
 
@@ -520,7 +586,7 @@ While poking through the code, I realised there's a bit missing in the middle -
 the page of data at &amp;6000 should actually be at <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow8.html">&amp;4900</a> during runtime, as this
 block copy in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configuremachine.html">ConfigureMachine</a> includes data in the last page:
 
-* &amp;4100-&amp;49FF is copied to &amp;5800-&amp;60FF
+  * &amp;4100-&amp;49FF is copied to &amp;5800-&amp;60FF
 
 At the moment the source has only got zeroes in &amp;49xx - we need to rectify
 that!
@@ -544,14 +610,16 @@ that the bytes appear to be unused.
 </pre>
 
 <pre>
-Also, object slot number seems a bit confusing. Maybe change to "object number"
-so the Sentinel is object 0, the tower is object 63 and so on?
+Also, "object slot number" seems a bit of a confusing term.
+
+Maybe change to "object number" so the Sentinel is object 0, the tower is
+object 63 and so on?
 </pre>
 
 <pre>
 And, looking at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/addenemiestotiles.html">AddEnemiesToTiles</a>, it looks like the starting set of enemies
 (Sentinel, sentries) are added from object 0 upwards, i.e. objects 0 to 7 (as
-maximum enemy count is 8)
+maximum enemy count is 8).
 
 So <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#enemyobject">L0000</a> looks like it's an object number for an enemy, as it's always 0 to 7,
 so rename to <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#enemyobject">enemyObject</a> for now.
@@ -562,15 +630,28 @@ end up in higher object numbers, which they don't.
 
 And that means the only remaining object type, 4, must be a meanie, as that's
 the only object type left. Nice!
+</pre>
 
+<pre>
 So the only remaining bit of enemy data is set in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/resetmeaniescan.html">sub_C196A</a>, which is called
 for each enemy being added to the landscape. It sets values in four tables, no
-idea what they are, let's rename to enemyData1 through 4 so we at least know
-their vague use (they are <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">L0CA0</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyfailtarget">L0C90</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyfailcounter">L0C98</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeaniescan">L0C80</a> and they surround <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyenergy">L0C88</a>
-and abut <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytarget">L0CA8</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyvisibility">L0CB0</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydrainscan">L0CB8</a>, all of which are the same size, so let's
-rename them all).
+idea what they are, let's rename to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData1</a> through <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeaniescan">enemyData4</a> so we at least
+know their vague use.
 
-Rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/resetmeaniescan.html">sub_C196A</a> to SetEnemyData (we can always rename it later when we know
+They are:
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">L0CA0</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyfailtarget">L0C90</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyfailcounter">L0C98</a>
+
+  * <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeaniescan">L0C80</a>
+
+And they surround <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyenergy">L0C88</a> and abut <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytarget">L0CA8</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyvisibility">L0CB0</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydrainscan">L0CB8</a>, all of which are the
+same size, so let's rename them all, giving us <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData1</a> through <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydrainscan">enemyData8</a>.
+
+Rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/resetmeaniescan.html">sub_C196A</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/resetmeaniescan.html">SetEnemyData</a> (we can always rename it later when we know
 what it does).
 </pre>
 
