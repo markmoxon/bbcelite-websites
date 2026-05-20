@@ -25,135 +25,129 @@ page_header("disassembly_diary", "progress_5-10-percent.html", "Project progress
 
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/027b48e...b52e538?diff=unified">GitHub commits and diffs for 11 September 2025</a>.</p>
 
-<pre>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getanglefromcoords_part_1_of_3.html">sub_C0D4A</a> contains a lot more code than the simple division part we copied from
-Revs yesterday, so document it as <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getanglefromcoords_part_1_of_3.html">GetAngleFromCoords</a>.
+						<div class="diary">
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/getanglefromcoords_part_1_of_3.html">sub_C0D4A</a> contains a lot more code than the simple division part we copied from Revs yesterday, so document it as <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getanglefromcoords_part_1_of_3.html">GetAngleFromCoords</a>.</p>
+						</div>
+
+						<div class="diary">
+							<p>So it looks like the weird tan/sin/cos lookup table at <a href="https://thesentinel.bbcelite.com/source/main/variable/tanhalfangle.html">L3D02</a> is used in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethypotenuse.html">sub_C565F</a> to calculate a the hypotenuse.</p>
+
+							<p>I worked out the maths last night on the sofa by drawing it out on my iPad:</p>
+
+							<img class="titleImage lightBorder" style="width: 330px" src="/images/diary/hypotenuse_calculation.jpg" alt="The hypotenuse calculation in The Sentinel">
+
+							<p>and here are my notes:</p>
+
+<pre class="articleIndented">
+    |`.       (1)                |`.                     (2)
+    |t `.                        |t `.
+    |    `. a                    |    `. a      h
+  a |      `.                  a |      `.   ,´
+    |      p `.                  |        `.´
+    | p ___--´                   |    ___--´`.  c
+    +--´                         +--´---------`+
+                                     b
+  
+                          __+
+                     __--´   \         (3)
+                __--´        |  c
+           __--´              \
+      __--´ 90-p           90 |
+    +´------------------------+
+                  b
+  
+  
+  
+  t = theta, our triangle's angle
+  p = phi
+  a, b = sides of the triangle (e.g. coordinates)
+  
+  We want to find h
+  
+  Extend circle arc (1) into a triangle (2), and for small angles we get
+  
+  h =~ a + c
+  
+  So what is c?
+  
+  Focus in on right-angled triangle (3)
+  
+  For small theta, the angle in the bottom-right tends towards a right angle
+  
+          180 - theta
+  phi  =  -----------  =  90 - theta/2
+               2
+  
+  So:
+  
+  90 - phi = 90 - (90 - theta/2)
+           = theta/2
+  
+  From (3):
+  
+  tan(90 - phi) = c / b
+  
+  So
+  
+  c = b * tan(90 - phi)
+    = b * tan(theta / 2)
+  
+  So 
+  
+  h =~ a + c
+    =~ a + b * tan(theta / 2)
+  
+  So the table contains the hypotenuse for angle theta
+  and triangle sides a and b
 </pre>
 
-<pre>
-So it looks like the weird tan/sin/cos lookup table at <a href="https://thesentinel.bbcelite.com/source/main/variable/tanhalfangle.html">L3D02</a> is used in
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethypotenuse.html">sub_C565F</a> to calculate a the hypotenuse.
+							<p>This looks pretty good, so document all this as <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethypotenuse.html">GetHypotenuse</a> and rename <a href="https://thesentinel.bbcelite.com/source/main/variable/tanhalfangle.html">L3D02</a> to <a href="https://thesentinel.bbcelite.com/source/main/variable/tanhalfangle.html">tanHalfAngle</a>.</p>
+						</div>
 
-I worked out the maths last night on the sofa by drawing it out on my iPad:
+						<div class="diary">
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/multiplycoords.html">sub_C1C6C</a> is close to <a href="https://revs.bbcelite.com/source/main/subroutine/multiplycoords.html">MultiplyCoords</a> in Revs, so copy over the relevant commentary.</p>
+						</div>
 
-<img class="titleImage lightBorder" style="width: 330px" src="/images/diary/hypotenuse_calculation.jpg" alt="The hypotenuse calculation in The Sentinel">
+						<div class="diary">
+							<p>Go through and document all JSR calls to the Revs-based routines above.</p>
+						</div>
 
-and here are my notes:
+						<div class="diary">
+							<p>Lay out zero page and workspaces so each variable has its own comment.</p>
+						</div>
 
-<span class="articleIndented">
-  |`.       (1)                |`.                     (2)
-  |t `.                        |t `.
-  |    `. a                    |    `. a      h
-a |      `.                  a |      `.   ,´
-  |      p `.                  |        `.´
-  | p ___--´                   |    ___--´`.  c
-  +--´                         +--´---------`+
-                                   b
+						<div class="diary">
+							<p>Identified <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseednumber.html">GetRandomNumber</a> routine - it appears to be a linear feedback shift register with EOR feedback, see <a href="https://www.nesdev.org/wiki/Random_number_generator/Linear_feedback_shift_register_(advanced)#Overlapped_24_and_32_bit_LFSR">NES Dev</a>.</p>
+						</div>
 
-                        __+
-                   __--´   \         (3)
-              __--´        |  c
-         __--´              \
-    __--´ 90-p           90 |
-  +´------------------------+
-                b
-
-
-
-t = theta, our triangle's angle
-p = phi
-a, b = sides of the triangle (e.g. coordinates)
-
-We want to find h
-
-Extend circle arc (1) into a triangle (2), and for small angles we get
-
-h =~ a + c
-
-So what is c?
-
-Focus in on right-angled triangle (3)
-
-For small theta, the angle in the bottom-right tends towards a right angle
-
-        180 - theta
-phi  =  -----------  =  90 - theta/2
-             2
-
-So:
-
-90 - phi = 90 - (90 - theta/2)
-         = theta/2
-
-From (3):
-
-tan(90 - phi) = c / b
-
-So
-
-c = b * tan(90 - phi)
-  = b * tan(theta / 2)
-
-So 
-
-h =~ a + c
-  =~ a + b * tan(theta / 2)
-
-So the table contains the hypotenuse for angle theta and triangle sides a and b</span>
-
-This looks pretty good, so document all this as <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethypotenuse.html">GetHypotenuse</a> and rename <a href="https://thesentinel.bbcelite.com/source/main/variable/tanhalfangle.html">L3D02</a>
-to <a href="https://thesentinel.bbcelite.com/source/main/variable/tanhalfangle.html">tanHalfAngle</a>.
-</pre>
-
-<pre>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/multiplycoords.html">sub_C1C6C</a> is close to <a href="https://revs.bbcelite.com/source/main/subroutine/multiplycoords.html">MultiplyCoords</a> in Revs, so copy over the relevant
-commentary.
-</pre>
-
-<pre>
-Go through and document all JSR calls to the Revs-based routines above.
-</pre>
-
-<pre>
-Lay out zero page and workspaces so each variable has its own comment.
-</pre>
-
-<pre>
-Identified <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseednumber.html">GetRandomNumber</a> routine - it appears to be a linear feedback shift
-register with EOR feedback, see <a href="https://www.nesdev.org/wiki/Random_number_generator/Linear_feedback_shift_register_(advanced)#Overlapped_24_and_32_bit_LFSR">NES Dev</a>.
-</pre>
-
-<pre>
-Really starting to feel like I'm unpeeling a Geoff Crammond game now, with such
-a clear development path from Revs.
-</pre>
+						<div class="diary">
+							<p>Really starting to feel like I'm unpeeling a Geoff Crammond game now, with such a clear development path from Revs.</p>
+						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-09-14" class="anchor"></a>14 September 2025<br>
 													 =================</h2>
 
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/b52e538...082ca97?diff=unified">GitHub commits and diffs for 14 September 2025</a>.</p>
 
-<pre>
-Documented <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseednumber.html">GetRandomNumber</a>.
-</pre>
+						<div class="diary">
+							<p>Documented <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getnextseednumber.html">GetRandomNumber</a>.</p>
+						</div>
 
-<pre>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/printtexttoken.html">sub_C36AD</a> prints text on-screen, takes a token argument in X -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/printtexttoken.html">PrintTextToken</a>.
-</pre>
+						<div class="diary">
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/printtexttoken.html">sub_C36AD</a> prints text on-screen, takes a token argument in X -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/printtexttoken.html">PrintTextToken</a>.</p>
+						</div>
 
-<pre>
-There's a token lookup table at <a href="https://thesentinel.bbcelite.com/source/main/variable/tokenoffset.html">L5784</a>.
+						<div class="diary">
+							<p>There's a token lookup table at <a href="https://thesentinel.bbcelite.com/source/main/variable/tokenoffset.html">L5784</a>.</p>
 
-Tokens end in &amp;FF, so insert <a href="https://thesentinel.bbcelite.com/source/main/variable/token0.html#token0">token0</a>, <a href="https://thesentinel.bbcelite.com/source/main/variable/token1.html#token1">token1</a> labels after each &amp;FF and replace
-lookups with calculated offsets to tokens.
+							<p>Tokens end in &amp;FF, so insert <a href="https://thesentinel.bbcelite.com/source/main/variable/token0.html#token0">token0</a>, <a href="https://thesentinel.bbcelite.com/source/main/variable/token1.html#token1">token1</a> labels after each &amp;FF and replace lookups with calculated offsets to tokens.</p>
 
-Turns out tokens are recursive, with characters 200+token expanding into
-recursive tokens.
-</pre>
+							<p>Turns out tokens are recursive, with characters 200+token expanding into recursive tokens.</p>
+						</div>
 
-<pre>
->>> I have now broken through the 10% barrier &lt;&lt;&lt;
-</pre>
+						<div class="diary">
+							<p>>>> I have now broken through the 10% barrier &lt;&lt;&lt;</p>
+						</div>
 					</div>
 				</div>
 
