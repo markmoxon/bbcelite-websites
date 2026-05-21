@@ -22,8 +22,8 @@
 					<li id="disassembly_maths"><span class="menuTitle">Disassembly diary for The Sentinel</span> <span class="menuSummary menuSummarySubmenu">How I documented Geoff Crammond's epic BBC game</span>
 						<ul id="submenu_disassembly_diary">
 							<li class="menuItemHeader">About my disassembly projects</li>
-                            <li><a id="disassembly_diary_index" href="/disassembly_diary/index.html"><span class="menuTitle">Project overview</span> <span class="menuSummary">How I documented The Sentinel over seven long months</span></a></li>
-                            <li><a id="disassembly_diary_tools" href="/disassembly_diary/tools.html"><span class="menuTitle">The tools I use</span> <span class="menuSummary">Keeping it as simple and as manual as possible</span></a></li>
+                            <li><a id="disassembly_diary_index" href="/disassembly_diary/index.html"><span class="menuTitle">Exploring the disassembly diary</span> <span class="menuSummary">How I documented The Sentinel over seven long months</span></a></li>
+                            <li><a id="disassembly_diary_tools" href="/disassembly_diary/tools.html"><span class="menuTitle">The tools I use</span> <span class="menuSummary">Keeping it uncomplicated and doing everything by hand</span></a></li>
                             <li><a id="disassembly_diary_keeping_track" href="/disassembly_diary/keeping_track.html"><span class="menuTitle">Keeping track of progress</span> <span class="menuSummary">The documents and philosophy I use to get through such projects</span></a></li>
 							<li class="menuItemHeader">Disassembly diary for The Sentinel</li>
 							<li><a id="disassembly_diary_source_code_preparation" href="/disassembly_diary/source_code_preparation.html"><span class="menuTitle">Preparing source code from the binaries</span> <span class="menuSummary">3 September to 5 September 2025</span></a></li>

@@ -14,11 +14,11 @@ page_header("disassembly_diary", "progress_45-50-percent.html", "Project progres
 						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
 
 						<ul>
-							<li><a href="#date-2025-11-04">4 November 2025</a></li>
-							<li><a href="#date-2025-11-05">5 November 2025</a></li>
-							<li><a href="#date-2025-11-06">6 November 2025</a></li>
-							<li><a href="#date-2025-11-10">10 November 2025</a></li>
-							<li><a href="#date-2025-11-11">11 November 2025</a></li>
+							<li><a href="#date-2025-11-04">4 November 2025</a> - Document ClearScreen, identify screenRowAddrHi and screenRowAddrLo, document FillScreen and GetRandomNumber</li>
+							<li><a href="#date-2025-11-05">5 November 2025</a> - Document DrawRandomDots, SetScannerAndPause and UpdateScannerNow</li>
+							<li><a href="#date-2025-11-06">6 November 2025</a> - Document GetVerticalDelta and GetHorizontalDelta, create a hierarchy sheet</li>
+							<li><a href="#date-2025-11-10">10 November 2025</a> - Start analysing GetTileAltitude and CheckForTileCentre, identify xCoord, yCoord and zCoord, musings around top, high, low and bottom byte naming</li>
+							<li><a href="#date-2025-11-11">11 November 2025</a> - Identify GetObjectCoords, extract CheckSecretStash from GetRowVisibility, start documenting GetRowVisibility, identify GetTileVisibility, reach 50% progress</li>
 						</ul>
 
 						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
@@ -29,119 +29,119 @@ page_header("disassembly_diary", "progress_45-50-percent.html", "Project progres
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/738275c...5d49bb3?diff=unified">GitHub commits and diffs for 4 November 2025</a>.</p>
 
 						<div class="diary">
-Turns out "arpeggiated chord" is the technical term for a chord that's played
-with each note kicking in in a sequence with the notes being held, so update
-commentary for the game over music (it isn't a "discrete glissando").
+							<p>Turns out "arpeggiated chord" is the technical term for a chord that's played with each note kicking in in a sequence with the notes being held, so update commentary for the game over music (it isn't a "discrete glissando").</p>
 						</div>
 
 						<div class="diary">
-Now to look at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearscreen.html">ClearScreen</a> and its subroutines
+							<p>Now to look at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearscreen.html">ClearScreen</a> and its subroutines.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearscreen.html">ClearScreen</a> is relatively simple. It sets up screen addresses, clears the
-scanner row, and then:
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearscreen.html">ClearScreen</a> is relatively simple. It sets up screen addresses, clears the scanner row, and then:</p>
 
-calls initialise_buffer_variables
-calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a>
-if <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#screenbackground">L0C4C</a>=3, it calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">sub_C56D5</a>
+							<ul>
+								<li>Calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">sub_C2963</a></li>
+
+								<li>Calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a></li>
+
+								<li>If <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#screenbackground">L0C4C</a> = 3, it calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">sub_C56D5</a></li>
+							</ul>
+
+							<p>Let's work through these subroutine calls.</p>
 						</div>
 
 						<div class="diary">
-Starting with initialise_buffer_variables, this sets up a bunch of variables
-depending on the argument A:
+							<p>Starting with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">sub_C2963</a>, this sets up a bunch of variables depending on the argument A:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenbuffertype">L0010</a> (is set to argument A)
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferminyawhi">L0007</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#buffermaxyawhi">L0012</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginhi">L0011</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferwidth">L0061</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferleft">L0035</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferright">L0036</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferminyawlo">L0028</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginlo">L0029</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenbuffertype">L0010</a> (is set to argument A)</li>
 
-Looking through the code, A can be 0, 1 or 2, which is used as an index to get
-values from the variables: <a href="https://thesentinel.bbcelite.com/source/main/variable/buffersorigin.html">L298B</a>, <a href="https://thesentinel.bbcelite.com/source/main/variable/xbuffersleft.html">L298E</a>, <a href="https://thesentinel.bbcelite.com/source/main/variable/xbufferswidth.html">L2991</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferminyawhi">L0007</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#buffermaxyawhi">L0012</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginhi">L0011</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferwidth">L0061</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferleft">L0035</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferright">L0036</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferminyawlo">L0028</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginlo">L0029</a></li>
+							</ul>
 
-A = 0 when called from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearscreen.html">ClearScreen</a>, initialise_wide_buffer
-A = 0 or 1 when called from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/flipbuffertype.html">sub_C295D</a> (this flips the value)
-A = 2 from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/maingameloop_part_1_of_2.html">MainGameLoop</a>, initialise_tall_buffer
+							<p>Looking through the code, A can be 0, 1 or 2, which is used as an index to get values from the variables: <a href="https://thesentinel.bbcelite.com/source/main/variable/buffersorigin.html">L298B</a>, <a href="https://thesentinel.bbcelite.com/source/main/variable/xbuffersleft.html">L298E</a>, <a href="https://thesentinel.bbcelite.com/source/main/variable/xbufferswidth.html">L2991</a>.</p>
 
-Not sure where these variables are used, presumably in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a>
+							<ul>
+								<li>A = 0 when called from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearscreen.html">ClearScreen</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">sub_C3908</a></li>
+
+								<li>A = 0 or 1 when called from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/flipbuffertype.html">sub_C295D</a> (this flips the value)</li>
+
+								<li>A = 2 from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/maingameloop_part_1_of_2.html">MainGameLoop</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">sub_C391E</a></li>
+							</ul>
+
+							<p>Not sure where these variables are used, presumably in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a> as that's called next?</p>
 						</div>
 
 						<div class="diary">
-Next call is to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a>, which takes arguments in A, X, Y
+							<p>Next call is to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a>, which takes arguments in A, X, Y.</p>
 
-In <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a> we have a loop at .<a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html#fill5">C2238</a> that pokes 8 bytes, presumably into a
-character block (as this is a screen clearing routine)
+							<p>In <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a> we have a loop at .<a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html#fill5">C2238</a> that pokes 8 bytes, presumably into a character block (as this is a screen clearing routine).</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#t">T</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#u">U</a> are the bytes to poke, (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#q">Q</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#p">P</a>) is the address to poke into, X is the
-character count
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#t">T</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#u">U</a> are the bytes to poke, (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#q">Q</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#p">P</a>) is the address to poke into, X is the character count.</p>
 
-Address is set up by this bit:
+							<p>Address is set up by this bit:</p>
 
- LDA <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">L3D83</a>,X
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#p">P</a>
- LDA <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrhi.html">L3DB5</a>,X
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#q">Q</a>
+<pre class="articleIndented">
+  LDA L3D83,X
+  STA P
+  LDA L3DB5,X
+  STA Q
+</pre>
 
-So <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">L3D83</a> contains low byte of address, <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrhi.html">L3DB5</a> contains high byte
+							<p>So <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">L3D83</a> contains low byte of address, <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrhi.html">L3DB5</a> contains high byte.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztile">zTile</a> is used as storage for the index in X, starts at argument A and
-increments, and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearscreen.html">ClearScreen</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a> with A = 0, so for clearing the
-whole screen, we work through the addresses from these tables like this:
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztile">zTile</a> is used as storage for the index in X, starts at argument A and increments, and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearscreen.html">ClearScreen</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a> with A = 0, so for clearing the whole screen, we work through the addresses from these tables like this:</p>
 
-&amp;60C0
-&amp;6200
-&amp;6340
-&amp;6480
+<pre class="articleIndented">
+  &amp;60C0
+  &amp;6200
+  &amp;6340
+  &amp;6480
+</pre>
 
-i.e. in increments of &amp;140, or 320
+							<p>i.e. in increments of &amp;140, or 320.</p>
 
-So these tables contain the addresses of character rows in screen memory,
-though the tables do wrap around from &amp;7EC0 to <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow0.html">&amp;3F00</a> and then keep going, so
-this looks like it includes a whole bunch of other memory - overflow for the
-panning, used by the hardware scrolling maybe?
+							<p>So these tables contain the addresses of character rows in screen memory, though the tables do wrap around from &amp;7EC0 to <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow0.html">&amp;3F00</a> and then keep going, so this looks like it includes a whole bunch of other memory - overflow for the panning, used by the hardware scrolling maybe? Hmm.</p>
 
-Anyway, we can change them into FOR loops and rename them to <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrhi.html">screenRowAddrHi</a>
-and Lo, as they appear to point to rows in screen memory (the view screen
-address is &amp;60C0, as per <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#viewscreenaddr">viewScreenAddr</a>)
+							<p>Anyway, we can change them into FOR loops and rename them to <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrhi.html">screenRowAddrHi</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a>, as they appear to point to rows in screen memory (the view screen address is &amp;60C0, as per <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#viewscreenaddr">viewScreenAddr</a>).</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztile">zTile</a> and yTile are used here, but this has nothing to do with tiles, so rename
-them with a shared label. <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztile">zTile</a> is some kind of row number, and yTile might be
-columns? Rename them like this for now
+							<p>Variables <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztile">zTile</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#columncounter">yTile</a> are used in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a>, but this has nothing to do with tiles, so rename them with a shared label. <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztile">zTile</a> is some kind of row number, so rename to <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#fillrownumber">screenRowNumber</a>, and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#columncounter">yTile</a> might be columns, so try <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#columncounter">columnCounter</a>? Rename them like this for now anyway.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#screenbackground">L0C4C</a> contains a value that is used to fetch the fill bytes <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#u">U</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#t">T</a>, so this
-must define the fill (0-3)
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#screenbackground">L0C4C</a> contains a value that is used to fetch the fill bytes <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#u">U</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#t">T</a>, so this must define the fill (0-3).</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundeven.html">L2277</a> = fill with colour 0, colour 0, colour 3/0/3/0, colour 1
-<a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundodd.html">L227B</a> = fill with colour 1, colour 0, colour 0/3/0/3, colour 1
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundeven.html">L2277</a> = fill with colour 0, colour 0, colour 3/0/3/0, colour 1</li>
 
-So rename <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#screenbackground">L0C4C</a> to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#screenbackground">screenBackground</a>, as this is what it defines
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundodd.html">L227B</a> = fill with colour 1, colour 0, colour 0/3/0/3, colour 1</li>
+							</ul>
 
-And <a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundeven.html">L2277</a> to <a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundeven.html">backgroundEven</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundodd.html">L227B</a> to <a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundodd.html">backgroundOdd</a>
+							<p>So rename <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#screenbackground">L0C4C</a> to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#screenbackground">screenBackground</a>, as this is what it defines.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a> clearly fills the screen, so call it <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">FillScreen</a> and finish the
-documentation
+							<p>And:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundeven.html">L2277</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundeven.html">backgroundEven</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundodd.html">L227B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/backgroundodd.html">backgroundOdd</a></li>
+							</ul>
+
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">sub_C2202</a> clearly fills the screen, so call it <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">FillScreen</a> and finish the documentation.</p>
 						</div>
 
 						<div class="diary">
-Interestingly, the call to initialise_buffer_variables doesn't set any
-variables that are used in the screen-clearing routine, so those variable
-aren't related to that aspect.
+							<p>Interestingly, the call to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">sub_C2963</a> doesn't set any variables that are used in the screen-clearing routine, so those variable aren't related to that aspect. I wonder what they are?</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearscreen.html">ClearScreen</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">sub_C56D5</a> for background type 3 only (solid black background)
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearscreen.html">ClearScreen</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">sub_C56D5</a> for background type 3 only (solid black background).</p>
 
-Looks like <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">sub_C56D5</a> draws lots of dots on the screen, so this must draw the
-stars on the background of the landscape preview and secret code screens
+							<p>Looks like <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">sub_C56D5</a> draws lots of dots on the screen, so this must draw the stars on the background of the landscape preview and secret code screens.</p>
 
-Rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">sub_C56D5</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">DrawStars</a>, and amalgamate <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawblackdots.html">sub_C56D9</a> as an entry point, as
-it just sets a flag differently that controls an EOR instruction later on
+							<p>Rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">sub_C56D5</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">DrawStars</a>, and amalgamate <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawblackdots.html">sub_C56D9</a> as an entry point, as it just sets a flag differently that controls an EOR instruction later on.</p>
 
-There's also a call to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrandomnumber.html">sub_C568E</a> on each star iteration that seems to manage
-its own random number generator - presumably so it doesn't screw up the
-landscape seeds
+							<p>There's also a call to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrandomnumber.html">sub_C568E</a> on each star iteration that seems to manage its own random number generator - presumably so it doesn't screw up the landscape seeds.</p>
 
-So rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrandomnumber.html">sub_C568E</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrandomnumber.html">GetRandomNumber</a> and the seed bytes to <a href="https://thesentinel.bbcelite.com/source/main/variable/randomgenerator.html">randomGenerator</a>
-and <a href="https://thesentinel.bbcelite.com/source/main/variable/shiftgenerator.html">shiftGenerator</a>, and document the routine
+							<p>So rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrandomnumber.html">sub_C568E</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrandomnumber.html">GetRandomNumber</a> and the seed bytes to <a href="https://thesentinel.bbcelite.com/source/main/variable/randomgenerator.html">randomGenerator</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/shiftgenerator.html">shiftGenerator</a>, and document the routine.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-11-05" class="anchor"></a>5 November 2025<br>
@@ -150,19 +150,17 @@ and <a href="https://thesentinel.bbcelite.com/source/main/variable/shiftgenerato
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/5d49bb3...cb1cce2?diff=unified">GitHub commits and diffs for 5 November 2025</a>.</p>
 
 						<div class="diary">
-Turns out <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">DrawStars</a> can draw both black dots and stars, so split it up into
-three routines: <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">DrawStars</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawblackdots.html">DrawBlackDots</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawrandomdots.html">DrawRandomDots</a>
+							<p>Turns out <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">DrawStars</a> can draw both black dots and stars, so split it up into three routines: <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawstars.html">DrawStars</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawblackdots.html">DrawBlackDots</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawrandomdots.html">DrawRandomDots</a>.</p>
 
-Finish documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawrandomdots.html">DrawRandomDots</a>
+							<p>Finish documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawrandomdots.html">DrawRandomDots</a>.</p>
 						</div>
 
 						<div class="diary">
-Documented SetScannerUpdate, which contains a delay loop that adds a pause when
-transferring to a new tile
+							<p>Documented <a href="https://thesentinel.bbcelite.com/source/main/subroutine/setscannerandpause.html">SetScannerUpdate</a>, which contains a delay loop that adds a pause when transferring to a new tile.</p>
 						</div>
 
 						<div class="diary">
-Documented <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updatescannernow.html">UpdateScannerNow</a> and associated variables
+							<p>Documented <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updatescannernow.html">UpdateScannerNow</a> and associated variables.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-11-06" class="anchor"></a>6 November 2025<br>
@@ -171,52 +169,55 @@ Documented <a href="https://thesentinel.bbcelite.com/source/main/subroutine/upda
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/cb1cce2...7c780c1?diff=unified">GitHub commits and diffs for 6 November 2025</a>.</p>
 
 						<div class="diary">
-Now for <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethorizontaldelta.html">sub_C5DC4</a>, which calculates the difference (delta) between
-y-coordinates and stores it in (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltahi">L0084</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltalo">L0081</a>), so rename:
+							<p>Now for <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethorizontaldelta.html">sub_C5DC4</a>, which calculates the difference (delta) between y-coordinates and stores it in (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltahi">L0084</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltalo">L0081</a>), so rename:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethorizontaldelta.html">sub_C5DC4</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getverticaldelta.html">GetVerticalDelta</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltalo">L0081</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltalo">yDeltaLo</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltahi">L0084</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltahi">yDeltaHi</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethorizontaldelta.html">sub_C5DC4</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getverticaldelta.html">GetVerticalDelta</a></li>
 
-Ditto <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getverticaldelta.html">sub_C5DF5</a>, which does the same for X- and z-coordinates, except it
-calculates both a signed and delta and an absolute delta:
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltalo">L0081</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltalo">yDeltaLo</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getverticaldelta.html">sub_C5DF5</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethorizontaldelta.html">GetHorizontalDelta</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltahi">L0084</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltahi">yDeltaHi</a></li>
+							</ul>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltalo">L0080</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltalo">xDeltaLo</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltaabsolutehi">L0083</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltaabsolutehi">xDeltaAbsoluteHi</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltahi">L0086</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltahi">xDeltaHi</a>
+							<p>Ditto <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getverticaldelta.html">sub_C5DF5</a>, which does the same for X- and z-coordinates, except it calculates both a signed and delta and an absolute delta:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltalo">L0082</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltalo">zDeltaLo</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltaabsolutehi">L0085</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltaabsolutehi">zDeltaAbsoluteHi</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltahi">L0088</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltahi">zDeltaHi</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/getverticaldelta.html">sub_C5DF5</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethorizontaldelta.html">GetHorizontalDelta</a></li>
 
-There is also an x-coordinate offset that's non-zero when drawing the title
-screens and zero during gameplay, so let's name this as follows:
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltalo">L0080</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltalo">xDeltaLo</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#xtitleoffset">L0C78</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#xtitleoffset">xTitleOffset</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltaabsolutehi">L0083</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltaabsolutehi">xDeltaAbsoluteHi</a></li>
 
-Document <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getverticaldelta.html">GetVerticalDelta</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethorizontaldelta.html">GetHorizontalDelta</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltahi">L0086</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltahi">xDeltaHi</a></li>
 
-This doesn't lay out the variables in quite the correct way in zero page - it
-feels as if <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltahi">L0084</a> should be yDeltaAbsoluteHi and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#yvectorhi">L0087</a> should be <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltahi">yDeltaHi</a> - but
-that arrangement isn't borne out by the routines, so let's leave them as-is for
-now, and maybe a penny will drop later...
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltalo">L0082</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltalo">zDeltaLo</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltaabsolutehi">L0085</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltaabsolutehi">zDeltaAbsoluteHi</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltahi">L0088</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zdeltahi">zDeltaHi</a></li>
+							</ul>
+
+							<p>There is also an x-coordinate offset that's non-zero when drawing the title screens and zero during gameplay, so let's name this as follows:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#xtitleoffset">L0C78</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#xtitleoffset">xTitleOffset</a></li>
+							</ul>
+
+							<p>Document <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getverticaldelta.html">GetVerticalDelta</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gethorizontaldelta.html">GetHorizontalDelta</a>.</p>
+
+							<p>This doesn't lay out the variables in quite the correct way in zero page - it feels as if <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltahi">L0084</a> should be yDeltaAbsoluteHi and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#yvectorhi">L0087</a> should be <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ydeltahi">yDeltaHi</a> - but that arrangement isn't borne out by the routines, so let's leave them as-is for now, and maybe a penny will drop later...</p>
 						</div>
 
 						<div class="diary">
-Time to create a hierarchy sheet!
+							<p>Time to create a hierarchy sheet!</p>
 
-Just from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/maingameloop_part_1_of_2.html">MainGameLoop</a> down, all done manually in this case (for Revs I did it
-with regexes)
+							<p>Just from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/maingameloop_part_1_of_2.html">MainGameLoop</a> down, all done manually in this case (for Revs I did it with regexes). Just take source, replace JSR with tab, insert a tab before "Name:" line, remove all comments, remove all lines that don't start with a tab, remove tab from before Name:, remove double blank lines and there's the call hierarchy, ready to be manually massaged into shape.</p>
 
-This gives us a structure to work down, from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/maingameloop_part_1_of_2.html">MainGameLoop</a> through
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">ProcessGameplay</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys</a>
+							<p>This gives us a structure to work down, from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/maingameloop_part_1_of_2.html">MainGameLoop</a> through <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">ProcessGameplay</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processactionkeys_part_1_of_2.html">ProcessActionKeys</a>.</p>
 
-See <a href="https://docs.google.com/spreadsheets/d/1FeMxBknR5juLAjSnHarZBCnGqj1zCDNfqRbo9_qd4-A/edit">version 1.0 of the sheet in Google Docs</a>
+							<p>See <a href="https://docs.google.com/spreadsheets/d/1FeMxBknR5juLAjSnHarZBCnGqj1zCDNfqRbo9_qd4-A/edit">version 1.0 of the sheet in Google Docs</a>.</p>
 
-So now we can follow the subroutines down from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/maingameloop_part_1_of_2.html">MainGameLoop</a>, documenting them
-until the whole game is done...
+							<p>So now we can follow the subroutines down from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/maingameloop_part_1_of_2.html">MainGameLoop</a>, documenting them. until the whole game is done...</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-11-10" class="anchor"></a>10 November 2025<br>
@@ -225,153 +226,164 @@ until the whole game is done...
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/7c780c1...772b8f8?diff=unified">GitHub commits and diffs for 10 November 2025</a>.</p>
 
 						<div class="diary">
-Follow subroutines down from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/maingameloop_part_1_of_2.html">MainGameLoop</a>, starting with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a>, which leads
-to this hierarchy:
+							<p>Follow subroutines down from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/maingameloop_part_1_of_2.html">MainGameLoop</a>, starting with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a>, which leads to this hierarchy:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitude.html">sub_C1DE6</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitudes.html">sub_C25C3</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkfortilecentre.html">sub_C1E98</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a>
+<pre class="articleIndented">
+  <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a> > <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitudes.html">sub_C25C3</a> > <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitude.html">sub_C1DE6</a> > <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkfortilecentre.html">sub_C1E98</a>
+</pre>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitude.html">sub_C1DE6</a> extracts the tile shape and altitude from the tile data, so rename to
-ExtractTileData
+							<p>As well as this hierarchy:</p>
+
+<pre class="articleIndented">
+  <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a> > <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a>
+</pre>
 						</div>
 
 						<div class="diary">
-This calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkfortilecentre.html">sub_C1E98</a>, which calculates max(|<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> - 128|, |<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">L0039</a> - 128|)
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitude.html">sub_C1DE6</a> extracts the tile shape and altitude from the tile data, so rename to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitude.html">ExtractTileData</a>.</p>
 						</div>
 
 						<div class="diary">
-What are <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">L0039</a>?
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitude.html">ExtractTileData</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkfortilecentre.html">sub_C1E98</a>.</p>
 
-From <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a>, we have a big clue in this bit of code, which is a 24-bit
-addition:
+							<p>This calculates max(|<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> - 128|, |<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">L0039</a> - 128|).</p>
 
- LDA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">L0034</a>,X
- ADC xSightsVectorLo,X
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">L0034</a>,X
+							<p>So what are <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">L0039</a>?</p>
 
-.<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_2_of_2.html#rvis8">C2589</a>
+							<p>From <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a>, we have a big clue in this bit of code, which is a 24-bit addition:</p>
 
- LDA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a>,X
- ADC xSightsVectorHi,X
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a>,X
- LDA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">L003A</a>,X
- ADC <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltahi">xDeltaHi</a>,X
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">L003A</a>,X
+<pre class="articleIndented">
+  LDA L0034,X
+  ADC xSightsVectorLo,X
+  STA L0034,X
 
-This is slightly problematic. It implies that <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">L0034</a> is some kind of xLo and
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> is some kind of xHi, but it also implies that <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">L003A</a> is some kind of xHi
-as well, so it's possible that the latter is actually xTop (or that xLo is
-actually xBot).
+ .C2589
 
-Depends on how the scales relate to each other, but at least we know that <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a>
-through <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">L003C</a> contain three 24-bit coordinate values, so let's rename them
-generically for now:
+  LDA L0037,X
+  ADC xSightsVectorHi,X
+  STA L0037,X
+  LDA L003A,X
+  ADC xDeltaHi,X
+  STA L003A,X
+</pre>
 
-(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">L003A</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">L0034</a>) = (xCoordTop <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a>)
-(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">L003B</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordlo">L0038</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordbot">L0035</a>) = (yCoordTop <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">yCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordlo">yCoordLo</a>)
-(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">L003C</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">L0039</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordbot">L0036</a>) = (zCoordTop <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">zCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">zCoordLo</a>)
+							<p>This is slightly problematic. It implies that <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">L0034</a> is some kind of xLo and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> is some kind of xHi, but it also implies that <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">L003A</a> is some kind of xHi as well, so it's possible that the latter is actually xTop (or that xLo is actually xBot).</p>
 
-I'm not sure if these are coordinates, but it's an unused generic name, so
-let's roll with it for now.
+							<p>It depends on how the scales relate to each other, but at least we know that <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> through <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">L003C</a> contain three 24-bit coordinate values, so let's rename them generically for now:</p>
 
-Also, I suspect these variables are used differently in different parts of the
-code - for example, .<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getpolygonlines_part_5_of_6.html#gpol10">C2DCE</a> contains this where Y is zero:
+							<ul>
+								<li>(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">L003A</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">L0034</a>) = (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordTop</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">xCoordLo</a>)</li>
 
- LDA (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">L003C</a>),Y
+								<li>(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">L003B</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordlo">L0038</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordbot">L0035</a>) = (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">yCoordTop</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordlo">yCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordbot">yCoordLo</a>)</li>
 
-And that doesn't tally with this usage, so let's just stick to renaming these
-variables within the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a> hierarchy
+								<li>(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">L003C</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">L0039</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordbot">L0036</a>) = (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">zCoordTop</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">zCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordbot">zCoordLo</a>)</li>
+							</ul>
+
+							<p>I'm not sure if these are actually coordinates, but it's an unused generic name, so let's roll with it for now.</p>
+
+							<p>Also, I suspect these variables are used differently in different parts of the code - for example, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getpolygonlines_part_5_of_6.html#gpol10">C2DCE</a> contains this where Y is zero:</p>
+
+<pre class="articleIndented">
+  LDA (L003C),Y
+</pre>
+
+							<p>And that doesn't tally with this usage, so let's just stick to renaming these variables within the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a> hierarchy.</p>
 						</div>
 
 						<div class="diary">
-Actually, doing these substitutions gives this code:
+							<p>Actually, doing these substitutions also gives us this code:</p>
 
-.<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectcoords.html">sub_C1EB5</a>
+<pre class="articleIndented">
+ .sub_C1EB5
 
- LDA #0
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a>
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordlo">yCoordLo</a>
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">zCoordLo</a>
- LDA #&amp;80
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a>
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">zCoordHi</a>
- LDA <a href="https://thesentinel.bbcelite.com/source/main/variable/yobjectlo.html">yObjectLo</a>,X
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">yCoordHi</a>
- LDA <a href="https://thesentinel.bbcelite.com/source/main/variable/xobject.html">xObject</a>,X
- STA xCoordTop
- LDA <a href="https://thesentinel.bbcelite.com/source/main/variable/yobjecthi.html">yObjectHi</a>,X
- STA yCoordTop
- LDA <a href="https://thesentinel.bbcelite.com/source/main/variable/zobject.html">zObject</a>,X
- STA zCoordTop
- RTS
+  LDA #0
+  STA xCoordLo
+  STA yCoordLo
+  STA zCoordLo
+  LDA #&amp;80
+  STA xCoordHi
+  STA zCoordHi
+  LDA yObjectLo,X
+  STA yCoordHi
+  LDA xObject,X
+  STA xCoordTop
+  LDA yObjectHi,X
+  STA yCoordTop
+  LDA zObject,X
+  STA zCoordTop
+  RTS
+</pre>
 
-Which means:
+							<p>Which means:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/yobjectlo.html">yObjectLo</a> is copied into <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">yCoordHi</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/yobjecthi.html">yObjectHi</a> is copied into yCoordTop
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/yobjectlo.html">yObjectLo</a> is copied into <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">yCoordHi</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/xobject.html">xObject</a> is copied into xCoordTop
-<a href="https://thesentinel.bbcelite.com/source/main/variable/zobject.html">zObject</a> is copied into zCoordTop
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/yobjecthi.html">yObjectHi</a> is copied into <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">yCoordTop</a></li>
 
-So maybe (<a href="https://thesentinel.bbcelite.com/source/main/variable/yobjecthi.html">yObjectHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/yobjectlo.html">yObjectLo</a>) should be (yObjectTop <a href="https://thesentinel.bbcelite.com/source/main/variable/yobjecthi.html">yObjectHi</a>) to fit in?
-Though there are only two bytes for the y-coordinate, so hmm, maybe (xCoordTop
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a>) should be (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">xCoordBot</a>) instead?
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/xobject.html">xObject</a> is copied into <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordTop</a></li>
 
-That sounds a bit better, maybe, so let's go for this instead:
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/zobject.html">zObject</a> is copied into <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">zCoordTop</a></li>
+							</ul>
 
-(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">L003A</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">L0034</a>) = (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">xCoordBot</a>)
-(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">L003B</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordlo">L0038</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordbot">L0035</a>) = (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">yCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordlo">yCoordLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordbot">yCoordBot</a>)
-(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">L003C</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">L0039</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordbot">L0036</a>) = (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">zCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">zCoordLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordbot">zCoordBot</a>)
 
-Then we also need to change (xSightsVectorHi xSightsVectorLo) to
-(xSightsVectorLo xSightsVectorBot), to fix this mismatch:
+							<p>So maybe (<a href="https://thesentinel.bbcelite.com/source/main/variable/yobjecthi.html">yObjectHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/yobjectlo.html">yObjectLo</a>) should be renamed (<a href="https://thesentinel.bbcelite.com/source/main/variable/yobjecthi.html">yObjectTop</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/yobjectlo.html">yObjectHi</a>) to fit in?</p>
 
- LDA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">xCoordBot</a>,X
- ADC xSightsVectorLo,X
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">xCoordBot</a>,X
+							<p>Though there are only two bytes for the y-coordinate, so hmm, maybe (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordTop</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">xCoordLo</a>) should be (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">xCoordBot</a>) instead?</p>
 
-.<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_2_of_2.html#rvis8">C2589</a>
+							<p>That sounds a bit better, maybe, so let's go for this instead:</p>
 
- LDA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a>,X
- ADC xSightsVectorHi,X
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a>,X
- LDA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a>,X
- ADC <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltahi">xDeltaHi</a>,X
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a>,X
+							<ul>
+								<li>(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">L003A</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">L0037</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">L0034</a>) = (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordbot">xCoordBot</a>)</li>
 
-And then I think we are done and everything matches Hi to Hi, Lo to Lo and Bot
-to Bot.
+								<li>(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">L003B</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordlo">L0038</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordbot">L0035</a>) = (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordhi">yCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordlo">yCoordLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ycoordbot">yCoordBot</a>)</li>
 
-Aviator ended up with (xPlaneTop xPlaneHi xPlaneLo xPlaneBot), so this does
-have precedent.
+								<li>(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">L003C</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">L0039</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordbot">L0036</a>) = (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordhi">zCoordHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">zCoordLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordbot">zCoordBot</a>)</li>
+							</ul>
+
+							<p>Then it looks like we also need to change (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorhi">xSightsVectorHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorlo">xSightsVectorLo</a>) to (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorhi">xSightsVectorLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorlo">xSightsVectorBot</a>), to fix this mismatch:</p>
+
+<pre class="articleIndented">
+  LDA xCoordBot,X
+  ADC xSightsVectorLo,X
+  STA xCoordBot,X
+
+ .C2589
+
+  LDA xCoordLo,X
+  ADC xSightsVectorHi,X
+  STA xCoordLo,X
+  LDA xCoordHi,X
+  ADC xDeltaHi,X
+  STA xCoordHi,X
+</pre>
+
+							<p>And then I think we are done and everything matches Hi to Hi, Lo to Lo and Bot to Bot.</p>
+
+							<p>Aviator ended up with (xPlaneTop xPlaneHi xPlaneLo xPlaneBot), so this does have precedent.</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkfortilecentre.html">sub_C1E98</a> calculates max(|<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a> - 128|, |<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">zCoordLo</a> - 128|), but what is
-xCoord and zCoord at this point? Not sure, so call this routine GetMaxXZCoordLo
-for now.
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkfortilecentre.html">sub_C1E98</a> calculates max(|<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoordLo</a> - 128|, |<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">zCoordLo</a> - 128|), but what are <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoord</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zcoordlo">zCoord</a> at this point? Not sure, so call this routine <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkfortilecentre.html">GetMaxXZCoordLo</a> for now.</p>
 						</div>
 
 						<div class="diary">
-ExtractTileData extracts different levels of tile data depending on bit 7 of
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#secondaxis">secondAxis</a> (which probably needs a new name for this usage). Anyway, for the
-call to ExtractTileData from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitudes.html">sub_C25C3</a>, bit 7 is clear, so most of
-ExtractTileData isn't used, and instead this just gets the tile altitude.
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitude.html">ExtractTileData</a> extracts different levels of tile data depending on bit 7 of <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#secondaxis">secondAxis</a> (which probably needs a new name for this usage). Anyway, for the call to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitude.html">ExtractTileData</a> from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitudes.html">sub_C25C3</a>, bit 7 is clear, so most of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitude.html">ExtractTileData</a> isn't used, and instead this just gets the tile altitude.</p>
 
-And bit 6 of this byte is also used, as this code appears elsewhere:
+							<p>And bit 6 of this byte is also used, as this code appears elsewhere:</p>
 
- BIT <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#secondaxis">secondAxis</a>
- BVS <a href="https://thesentinel.bbcelite.com/source/main/subroutine/followgazevector_part_1_of_5.html#gaze4">C1D33</a>
+<pre class="articleIndented">
+ BIT secondAxis
+ BVS C1D33
+</pre>
 
-So the whole xCoord saga is for another usage of ExtractTileData, for when bit
-7 is set, so let's park that as xCoord isn't relevant yet.
+							<p>So the whole <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoord</a> saga is for another usage of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitude.html">ExtractTileData</a>, for when bit 7 is set, so let's park that as <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordlo">xCoord</a> isn't relevant yet.</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitudes.html">sub_C25C3</a> works through the landscape, calculating tile corner altitudes and
-maximum tile altitudes for tiles and sticking them in screen memory as a cache
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitudes.html">sub_C25C3</a> works through the landscape, calculating tile corner altitudes and maximum tile altitudes for tiles and sticking them in screen memory as a cache.</p>
 
-So call it <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> and document it (it's relatively straightforward
-code)
+							<p>So call it <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a> and document it (it's relatively straightforward code).</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-11-11" class="anchor"></a>11 November 2025<br>
@@ -380,85 +392,75 @@ code)
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/772b8f8...dad1aa0?diff=unified">GitHub commits and diffs for 11 November 2025</a>.</p>
 
 						<div class="diary">
-Some terminology changes, because this routine should clearly be named as
-follows:
+							<p>Some terminology changes, because this routine should clearly be named as follows:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectcoords.html">sub_C1EB5</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectcoords.html">GetObjectCoords</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectcoords.html">sub_C1EB5</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectcoords.html">GetObjectCoords</a></li>
+							</ul>
 
-So we should also rename the following, as these variables are always used for
-object coordinates:
+							<p>So we should also rename the following, as these variables are always used for object coordinates:</p>
 
-xCoord etc. -> xObjCoord
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xCoordHi</a> etc. -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xcoordhi">xObjCoordHi</a></li>
+							</ul>
 						</div>
 
 						<div class="diary">
-Back to analysing <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a> and down, the next routine to be called is
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a>
+							<p>Back to analysing <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a> and down, the next routine to be called is <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a>.</p>
 
-Gets called with what looks like a tile coordinate in <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztilerow">L001A</a> (it's set to 31, so
-it looks like a tile corner number or something)
+							<p>Gets called with what looks like a tile coordinate in <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztilerow">L001A</a> (it's set to 31, so it looks like a tile corner number or something).</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztilerow">L001A</a> must be a row number, as the first thing <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a> is add it to the high
-byte of &amp;6000, which matches the storage layout from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a>, and
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xtilerow">L0018</a> must be a column number, so rename:
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztilerow">L001A</a> must be a row number, as the first thing <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a> is add it to the high byte of &amp;6000, which matches the storage layout from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilealtitudes.html">GetTileAltitudes</a>, and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xtilerow">L0018</a> must be a column number, so rename:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztilerow">L001A</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztilerow">zTileRow</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xtilerow">L0018</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xtilerow">xTileRow</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztilerow">L001A</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#ztilerow">zTileRow</a></li>
 
-(though note that these are shared variables with <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zblock">zBlock</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xblock">xBlock</a>, amongst
-others)
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xtilerow">L0018</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xtilerow">xTileRow</a></li>
+							</ul>
+
+							<p>(Though note that these are shared variables with <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#zblock">zBlock</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xblock">xBlock</a>, amongst others.)</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a> is actually three parts, with a part in the middle that checks the
-secret stash (we already documented this part).
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a> is actually three parts, with a part in the middle that checks the secret stash (we already documented this part).</p>
 
-So split into three separate subroutines, calling the middle part
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/checksecretstash.html">CheckSecretStash</a>
+							<p>So split into three separate subroutines, calling the middle part <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checksecretstash.html">CheckSecretStash</a>.</p>
 
-Also, it's pretty clear that <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a> is working through a row of tile
-corners, and working out the vector from the player to the tile corner to work
-out whether the tile is potentially visible to the player, so let's rename
+							<p>Also, it's pretty clear that <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a> is working through a row of tile corners, and working out the vector from the player to the tile corner to work out whether the tile is potentially visible to the player, so let's rename.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a></li>
+							</ul>
 
-Also, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a> loops through all the rows and calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a>, so this feels
-correct too:
+							<p>Also, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a> loops through all the rows and calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">sub_C24EA</a>, so this feels correct too:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">sub_C2463</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/gettilevisibility.html">GetTileVisibility</a></li>
+							</ul>
 
-As always, we can change this later if need be.
+							<p>As always, we can change this later if need be.</p>
 						</div>
 
 						<div class="diary">
-Document part 1 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a>, which sets up variables and scales various
-values
+							<p>Document part 1 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a>, which sets up variables and scales various values.</p>
 						</div>
 
 						<div class="diary">
->>> I have now broken through the 50% barrier &lt;&lt;&lt;
+							<p>>>> I have now broken through the 50% barrier &lt;&lt;&lt;</p>
 
-HALF WAY! All downhill from here, lol.
+							<p>HALF WAY! It's all downhill from here, lol.</p>
 						</div>
 
 						<div class="diary">
-That excellent YouTuber Martin Piper has just released a video looking at how
-the C64 version of the Sentinel works! It's interesting how similar and
-different it is at the same time - it uses character definitions to implement
-the Beeb's hardware scrolling.
+							<p>That excellent YouTuber Martin Piper has just released a video looking at <a href="https://www.youtube.com/watch?v=iZ1sNaTLD5Q">how the C64 version of the Sentinel works</a>! It's interesting how similar and different it is at the same time - it uses character definitions to implement the Beeb's hardware scrolling.</p>
 
-I also love this different approach to archaeology - looking for graphical
-clues in the memory heatmap to track down the raycasting in the visibility
-routines. It's uncanny how we are looking at the exact same part of the exact
-same game at the exact same time, and here I am not telling anyone about it...
-yet. :-)
+							<p>I also love this different approach to archaeology - looking for graphical clues in the memory heatmap to track down the raycasting in the visibility routines. It's uncanny how we are looking at the exact same part of the exact same game at the exact same time, and here I am not telling anyone about it... yet. :-)</p>
 
-I might have to add the C64 version to my site, but I've got to finish this one
-first!
+							<p>I might have to add the C64 version to my site, but I've got to finish this one first!</p>
 						</div>
 
 						<div class="diary">
-Start documenting part 2 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_1_of_2.html">GetRowVisibility</a>
+							<p>Start documenting part 2 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getrowvisibility_part_2_of_2.html">GetRowVisibility</a>.</p>
 						</div>
 					</div>
 				</div>
