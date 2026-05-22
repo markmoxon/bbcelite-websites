@@ -14,11 +14,11 @@ page_header("disassembly_diary", "progress_70-75-percent.html", "Project progres
 						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
 
 						<ul>
-							<li><a href="#date-2025-12-06">6 December 2025</a></li>
-							<li><a href="#date-2025-12-07">7 December 2025</a></li>
-							<li><a href="#date-2025-12-08">8 December 2025</a></li>
-							<li><a href="#date-2025-12-09">9 December 2025</a></li>
-							<li><a href="#date-2025-12-10">10 December 2025</a></li>
+							<li><a href="#date-2025-12-06">6 December 2025</a> - Document objPolygonData and polygonColours</li>
+							<li><a href="#date-2025-12-07">7 December 2025</a> - Document objPointYaw, objPointPitch and objPointDistance</li>
+							<li><a href="#date-2025-12-08">8 December 2025</a> - Better objPolygonData comments, change terminology to "polygon edges" rather than "polygon lines", document blendPolygonEdges, identify polygonEdgeCount, drawViewAngles, polygonType, drawViewYaw(Hi Lo) and drawViewPitch(Hi Lo), add labels to all the screen buffers</li>
+							<li><a href="#date-2025-12-09">9 December 2025</a> - Finish documenting DrawObject, document DrawTitleObject, identify SpawnTitleObject, DrawTitleObjects and DrawTitleObject, document yTextViewer, textViewerPitch, xTextViewer, zTextViewer, textViewerYaw, titleOffset, zTitleObject, yTitleObject, titleObjectYaw, titleViewerPitch and titleViewerYaw, document SpawnTitleObject</li>
+							<li><a href="#date-2025-12-10">10 December 2025</a> - Document DrawTitleView, identify objBlockNumber, document titleText, reach 75% progress, rename screen buffers to final names (screenBufferRow0, screenBufferAddr etc.), tidy up startup code and tackle a number of "???"s</li>
 						</ul>
 
 						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
@@ -29,60 +29,56 @@ page_header("disassembly_diary", "progress_70-75-percent.html", "Project progres
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/e18cf16...b57da21?diff=unified">GitHub commits and diffs for 6 December 2025</a>.</p>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygondata.html">objPolygonData</a> - how does this work? Let's pull it apart in a spreadsheet to
-see
+							<p><a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygondata.html">objPolygonData</a> - how does this work? Let's pull it apart in a spreadsheet to see (in the "Polygon data" tab in the <a href="/documents/object_analysis.xlsx">sentinel_table_lookups.xlsx</a> Excel spreadsheet).</p>
 
-Bit 7 is the phase number in which to draw this polygon
+							<ul>
+								<li>Bit 7 is the phase number in which to draw this polygon</li>
 
-Bit 6 = always clear, so unused?
+								<li>Bit 6 = always clear, so unused?</li>
 
-Bits 2-5 = colour data of some kind as it gets put into polygonColour
+								<li>Bits 2-5 = colour data of some kind as it gets put into <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygoncolours">polygonColour</a></li>
 
-Bit 6 = always clear, so unused?
+								<li>Bit 6 = always clear, so unused?</li>
 
-Bit 0 is added to 3 to give <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygonedgecount">L0017</a> = 3 or 4, so this must be the number of sides
+								<li>Bit 0 is added to 3 to give <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygonedgecount">L0017</a> = 3 or 4, so this must be the number of sides, so <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygonedgecount">L0017</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygonedgecount">polygonSides</a></li>
+							</ul>
+						</div>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygonedgecount">L0017</a> = polygonSides
+						<div class="diary">
+							<p>Chasing down <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygoncolours">polygonColour</a>, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygonlines_part_1_of_4.html">sub_C2299</a> contains code that swaps bits 2-3 and 4-5, so it looks like this contains two colours numbers... so rename it to <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygoncolours">polygonColours</a>.</p>
 
-Chasing down polygonColour, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygonlines_part_1_of_4.html">sub_C2299</a> contains code that swaps bits 2-3 and
-4-5, so it looks like this contains two colours numbers
+							<p>These numbers get extracted and poked into locations L23C7, L2367 and (with 64 added) L23A2. This is self-modifying code and the instructions all look like ORA L3Exx,X (where xx is the byte being poked - i.e. the colour number).</p>
 
-These numbers get extracted and poked into locations L23C7, L2367 and (with 64
-added) L23A2. This is self-modifying code and the instructions all look like
-ORA L3Exx,X (where xx is the byte being poked - i.e. the colour number).
+							<p>So there must be two tables, one at <a href="https://thesentinel.bbcelite.com/source/main/variable/edgepixelsleft.html">&amp;3E00</a> and the other at <a href="https://thesentinel.bbcelite.com/source/main/variable/edgepixelsright.html">&amp;3E40</a>, that map the colour numbers in <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygoncolours">polygonColours</a> into pixel bytes, as the value gets OR'd with <a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoleft.html">pixelsToLeft</a> or <a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoright.html">pixelsToRight</a>.</p>
 
-So there must be two tables, one at <a href="https://thesentinel.bbcelite.com/source/main/variable/edgepixelsleft.html">&amp;3E00</a> and the other at <a href="https://thesentinel.bbcelite.com/source/main/variable/edgepixelsright.html">&amp;3E40</a>, that map the
-colour numbers in polygonColour into pixel bytes, as the value gets OR'd with
-<a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoleft.html">pixelsToLeft</a> or <a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoright.html">pixelsToRight</a>.
+							<p>Looks like L3E3C and L3E7C must contain left-over values somehow, as the low byte in ORA L3Exx,X can be anything as it is overwritten.</p>
 
-Looks like L3E3C and L3E7C must contain left-over values somehow, as the low
-byte in ORA L3Exx,X can be anything as it is overwritten.
+							<p>Ah! This explains why <a href="https://thesentinel.bbcelite.com/source/main/variable/tileshapecolour.html">tileShapeColour</a> starts with this colour:</p>
 
-Ah! This explains why .<a href="https://thesentinel.bbcelite.com/source/main/variable/tileshapecolour.html">tileShapeColour</a> starts with this colour:
+<pre class="articleIndented">
+  3 &lt;&lt; 2 + 3 &lt;&lt; 4
+</pre>
 
-3 << 2 + 3 << 4
+							<p>That's two colour 3's.</p>
 
-That's two colour 3's.
+							<p>So what do the two colours signify? Is it polygon colour (fill colour) and line colour, maybe, as polygons also have lines around them?</p>
 
-So what do the two colours signify? Is it polygon colour (fill colour) and line
-colour, maybe, as polygons also have lines around them?
+							<p>I suspect so. And I suspect that the fill colour is in bits 2-3, as <a href="https://thesentinel.bbcelite.com/source/main/variable/tileshapecolour.html">tileShapeColour</a> defines the tile colours using &lt;&lt; 2 and bits 4-5 are always zero.</p>
+						</div>
 
-I suspect so. And I suspect that the fill colour is in bits 2-3, as
-<a href="https://thesentinel.bbcelite.com/source/main/variable/tileshapecolour.html">tileShapeColour</a> defines the tile colours using << 2 and bits 4-5 are always
-zero.
+						<div class="diary">
+							<p>This feels right, so let's document it all, using a spreadsheet to create the commentary and expand the EQUBs into their component parts, so we get this for the polygon data, for example:</p>
 
-This feels right, so let's document it all, using a spreadsheet to create the
-commentary and expand the EQUBs into their component parts, so we get this for
-the polygon data, for example:
-
- EQUB 1 << 7 + 1 << 4 + 2 << 2 + 1  \ Polygon 4 data:
+<pre class="articleIndented">
+ EQUB 1 &lt;&lt; 7 + 1 &lt;&lt; 4 + 2 &lt;&lt; 2 + 1  \ Polygon 4 data:
                                     \
-                                    \   * 1 << 7: Draw polygon in second phase
-                                    \   * 1 << 4: Line colour = 1 (black)
-                                    \   * 2 << 2: Fill colour = 2 (white etc.)
-                                    \   * 1 << 0: Polygon has four sides
+                                    \   * 1 &lt;&lt; 7: Draw polygon in second phase
+                                    \   * 1 &lt;&lt; 4: Line colour = 1 (black)
+                                    \   * 2 &lt;&lt; 2: Fill colour = 2 (white etc.)
+                                    \   * 1 &lt;&lt; 0: Polygon has four sides
+</pre>
 
-That's much clearer than a bunch of hex numbers.
+							<p>That's much clearer than a bunch of hex numbers.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-07" class="anchor"></a>7 December 2025<br>
@@ -91,41 +87,44 @@ That's much clearer than a bunch of hex numbers.
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/b57da21...8667f90?diff=unified">GitHub commits and diffs for 7 December 2025</a>.</p>
 
 						<div class="diary">
-Extracted point coordinate data into comments for <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">objPointYaw</a>, objPointPitch,
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">objPointDistance</a>
+							<p>Extracted point coordinate data into comments for <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">objPointYaw</a>, <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointheight.html">objPointPitch</a>, <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">objPointDistance</a>.</p>
 
-Using Excel - this is a good example of how to use a spreadsheet to produce
-useful commentary, going from this:
+							<p>I'm using Excel - this is a good example of how to use a spreadsheet to produce useful commentary, going from this:</p>
 
-.<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">objPointYaw</a>
-
- EQUB &amp;CF, &amp;31, &amp;5F, &A1, &amp;D9, &amp;27, &amp;57, &A9
- EQUB &amp;CB, &amp;00, &amp;35, &amp;55, &AB, &amp;C5, &amp;3B, &amp;52
- ...
+<pre class="articleIndented">
+ .objPointYaw
+ 
+  EQUB &amp;CF, &amp;31, &amp;5F, &A1, &amp;D9, &amp;27, &amp;57, &A9
+  EQUB &amp;CB, &amp;00, &amp;35, &amp;55, &AB, &amp;C5, &amp;3B, &amp;52
+  ...
+</pre>
 
 To this:
+<pre class="articleIndented">
+ .objPointYaw
+ 
+  EQUB 207               \ Point   0: yaw = 207, distance =  20, height = -112
+  EQUB  49               \ Point   1: yaw =  49, distance =  20, height = -112
+  EQUB  95               \ Point   2: yaw =  95, distance =  27, height = -112
+  EQUB 161               \ Point   3: yaw = 161, distance =  27, height = -112
+  EQUB 217               \ Point   4: yaw = 217, distance =  31, height =  -56
+  EQUB  39               \ Point   5: yaw =  39, distance =  31, height =  -56
+  EQUB  87               \ Point   6: yaw =  87, distance =  35, height =  -56
+  EQUB 169               \ Point   7: yaw = 169, distance =  35, height =  -56
+  EQUB 203               \ Point   8: yaw = 203, distance =  42, height =  -56
+  EQUB   0               \ Point   9: yaw =   0, distance =  32, height =  -56
+  EQUB  53               \ Point  10: yaw =  53, distance =  42, height =  -56
+  EQUB  85               \ Point  11: yaw =  85, distance =  48, height =  -56
+  EQUB 171               \ Point  12: yaw = 171, distance =  48, height =  -56
+  EQUB 197               \ Point  13: yaw = 197, distance =  52, height =  -18
+  EQUB  59               \ Point  14: yaw =  59, distance =  52, height =  -18
+  EQUB  82               \ Point  15: yaw =  82, distance =  56, height =  -18
+  ...
+</pre>
 
-.<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">objPointYaw</a>
+							<p>See <a href="/documents/object_analysis.xlsx">sentinel_table_lookups.xlsx</a> for the Excel spreadsheet itself.</p>
 
- EQUB 207               \ Point   0: yaw = 207, distance =  20, height = -112
- EQUB  49               \ Point   1: yaw =  49, distance =  20, height = -112
- EQUB  95               \ Point   2: yaw =  95, distance =  27, height = -112
- EQUB 161               \ Point   3: yaw = 161, distance =  27, height = -112
- EQUB 217               \ Point   4: yaw = 217, distance =  31, height =  -56
- EQUB  39               \ Point   5: yaw =  39, distance =  31, height =  -56
- EQUB  87               \ Point   6: yaw =  87, distance =  35, height =  -56
- EQUB 169               \ Point   7: yaw = 169, distance =  35, height =  -56
- EQUB 203               \ Point   8: yaw = 203, distance =  42, height =  -56
- EQUB   0               \ Point   9: yaw =   0, distance =  32, height =  -56
- EQUB  53               \ Point  10: yaw =  53, distance =  42, height =  -56
- EQUB  85               \ Point  11: yaw =  85, distance =  48, height =  -56
- EQUB 171               \ Point  12: yaw = 171, distance =  48, height =  -56
- EQUB 197               \ Point  13: yaw = 197, distance =  52, height =  -18
- EQUB  59               \ Point  14: yaw =  59, distance =  52, height =  -18
- EQUB  82               \ Point  15: yaw =  82, distance =  56, height =  -18
- ...
-
-Good old Excel, it's a properly useful tool!
+							<p>Good old Excel, it's a properly useful tool!</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-08" class="anchor"></a>8 December 2025<br>
@@ -134,113 +133,124 @@ Good old Excel, it's a properly useful tool!
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/8667f90...1a8505a?diff=unified">GitHub commits and diffs for 8 December 2025</a>.</p>
 
 						<div class="diary">
-Continue the Excel documentation by adding improved polygon data comments like
-this:
+							<p>Continue the Excel documentation by adding improved polygon data comments like this:</p>
 
- EQUB %10011001         \ Polygon 4 data:
-                        \
-                        \   * %1xxxxxxx: Draw polygon in second phase
-                        \   * %xx01xxxx: Edge colour = 1 (black)
-                        \   * %xxxx10xx: Fill colour = 2
-(white/yellow/cyan/red)
-                        \   * xxxxxxx01: Polygon has four sides (quadrilateral)
+<pre class="articleIndented">
+  EQUB %10011001         \ Polygon 4 data:
+                         \
+                         \   * %1xxxxxxx: Draw polygon in second phase
+                         \   * %xx01xxxx: Edge colour = 1 (black)
+                         \   * %xxxx10xx: Fill colour = 2 (white/yellow/cyan/red)
+                         \   * xxxxxxx01: Polygon has four sides (quadrilateral)
+</pre>
 
-That's much better than the original << shift-based commentary.
+							<p>That's much better than the original &lt;&lt; shift-based commentary.</p>
 						</div>
 
 						<div class="diary">
-Also added comments to the polygon point lists in .objMeaniem to give the
-actual point numbers rather than the object range-relative numbers in the
-EQUBs, so we get this kind of thing
+							<p>Also added comments to the polygon point lists in .objMeaniem to give the actual point numbers rather than the object range-relative numbers in the EQUBs, so we get this kind of thing.</p>
 
-.<a href="https://thesentinel.bbcelite.com/source/main/variable/objmeanie.html">objMeanie</a>
+<pre class="articleIndented">
+ .objMeanie
 
-.<a href="https://thesentinel.bbcelite.com/source/main/variable/objmeanie.html#objpolygon077">objPolygon077</a>
+ .objPolygon077
 
- EQUB 64 + 7            \ Polygon 77 points: 83, 88, 87, 82, 83
- EQUB 64 + 12
- EQUB 64 + 11
- EQUB 64 + 6
- EQUB 64 + 7
+  EQUB 64 + 7            \ Polygon 77 points: 83, 88, 87, 82, 83
+  EQUB 64 + 12
+  EQUB 64 + 11
+  EQUB 64 + 6
+  EQUB 64 + 7
+</pre>
 
-As the meanie point range starts is 76 to 93, so EQUB of 7 maps to 7 + 76 = 83.
+							<p>As the meanie point range starts is 76 to 93, so EQUB of 7 maps to 7 + 76 = 83.</p>
 
-All automated in Excel, so it's a relatively simple cut-and-paste from Excel
-into a text editor for some tidy-up work and into the source it goes.
+							<p>All automated in Excel, so it's a relatively simple cut-and-paste from Excel into a text editor for some tidy-up work and into the source it goes.</p>
 						</div>
 
 						<div class="diary">
-Change the terminology to talk about polygon edges rather than polygon lines,
-as that is clearer
+							<p>Change the terminology to talk about polygon edges rather than polygon lines, as that is clearer.</p>
 						</div>
 
 						<div class="diary">
-More documenting of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a>
+							<p>More documenting of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a>.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#blendpolygonedges">L0C7A</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#blendpolygonedges">blendPolygonEdges</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#blendpolygonedges">L0C7A</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#blendpolygonedges">blendPolygonEdges</a></li>
+							</ul>
 
-When bit 7 is set, edges are drawn in the fill colour
+							<p>When bit 7 is set, edges are drawn in the fill colour.</p>
 
-Code to do this is just before .<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygonlines_part_1_of_4.html#dpol1">C22EF</a>
+							<p>Code to do this is just before <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygonlines_part_1_of_4.html#dpol1">C22EF</a>.</p>
 
-It copies colour from 2-3 (fill) into 4-5 (edge) to set edge colour to same as
-fill so edges blend in
+							<p>It copies colour from 2-3 (fill) into 4-5 (edge) to set edge colour to same as fill so edges blend in.</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygonedgecount">L0017</a> -> polygonPointCount
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygonedgecount">L0017</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygonedgecount">polygonPointCount</a></li>
+							</ul>
 
-This is one more then the number of sides, as the polygon lists contain the
-first point repeated at the end.
+							<p>This is one more then the number of sides, as the polygon lists contain the first point repeated at the end.</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#drawviewangles">L003C</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#drawviewangles">drawViewAngles</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#drawviewangles">L003C</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#drawviewangles">drawViewAngles</a></li>
+							</ul>
 
-This address points to the pitch and yaw angles of the tile corners and polygon
-points, relative to the view, so these are effectively the angles that we
-project onto the screen when drawing the view.
+							<p>This address points to the pitch and yaw angles of the tile corners and polygon points, relative to the view, so these are effectively the angles that we project onto the screen when drawing the view.</p>
 						</div>
 
 						<div class="diary">
-Looks like this one is passed to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygon.html">DrawPolygon</a> and determines which part of the
-routine is run, so it's some kind of polygon type:
+							<p>Looks like this one is passed to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygon.html">DrawPolygon</a> and determines which part of the routine is run, so it's some kind of polygon type:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygontype">L003B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygontype">polygonType</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygontype">L003B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#polygontype">polygonType</a></li>
+							</ul>
 
-It only uses bits 6 and 7, so let's document this as far as we can
+							<p>It only uses bits 6 and 7, so let's document this as far as we can.</p>
 						</div>
 
 						<div class="diary">
-It turns out that these tables:
+							<p>It turns out that these tables:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawhi.html">tileViewYawHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawlo.html">tileViewYawLo</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchhi.html">tileViewPitchHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchlo.html">tileViewPitchLo</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawhi.html">tileViewYawHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawlo.html">tileViewYawLo</a></li>
 
-are also used for storing point angles for objects. I originally added these
-SKIP 0 labels:
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchhi.html">tileViewPitchHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchlo.html">tileViewPitchLo</a></li>
+							</ul>
 
-pointViewYawHi pointViewYawLo
-pointViewPitchHi pointViewPitchLo
+							<p>are also used for storing point angles for objects. I originally added these as SKIP 0 labels:</p>
 
-but a cleaner approach is to rename the top lot to this more generic name:
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawhi.html">pointViewYawHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawlo.html">pointViewYawLo</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawhi.html">drawViewYawHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawlo.html">drawViewYawLo</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchhi.html">drawViewPitchHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchlo.html">drawViewPitchLo</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchhi.html">pointViewPitchHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchlo.html">pointViewPitchLo</a></li>
+							</ul>
 
-and remove the point* labels altogether.
+							<p>but a cleaner approach is to rename the top lot to this more generic name:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawhi.html">drawViewYawHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawlo.html">drawViewYawLo</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchhi.html">drawViewPitchHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchlo.html">drawViewPitchLo</a></li>
+							</ul>
+
+							<p>and remove the point* labels altogether.</p>
 						</div>
 
 						<div class="diary">
-Time to see if we can identify all the screen buffers within the code layout,
-as they must be in there somewhere. So add .viewBufferRow0 through 24.
+							<p>Time to see if we can identify all the screen buffers within the code layout, as they must be in there somewhere. So add <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow0.html">viewBufferRow0</a> through <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow24.html">viewBufferRow24</a>.</p>
 
-See <a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrlo.html">bufferRowAddrLo</a> for addresses
+							<p>See <a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrlo.html">bufferRowAddrLo</a> for addresses.</p>
 
-They all fit except the last one:
-   <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">&amp;49A0</a> to &amp;49DF for character row 24
+							<p>They all fit except the last one:</p>
 
-This clashes with object data, so presumably this row is never used
+<pre class="articleIndented">
+  <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">&amp;49A0</a> to &amp;49DF for character row 24
+</pre>
+
+							<p>This clashes with object data, so presumably this row is never used.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-09" class="anchor"></a>9 December 2025<br>
@@ -249,87 +259,101 @@ This clashes with object data, so presumably this row is never used
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/1a8505a...6f8b734?diff=unified">GitHub commits and diffs for 9 December 2025</a>.</p>
 
 						<div class="diary">
-Finish documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a>
+							<p>Finish documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a>.</p>
 						</div>
 
 						<div class="diary">
-Now that we understand a bit more about drawing objects, let's finish off the
-title screen code in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobject.html">DrawTitleObject</a>.
+							<p>Now that we understand a bit more about drawing objects, let's finish off the title screen code in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobject.html">DrawTitleObject</a>.</p>
 
-First a quick clarification for the palettes, of which there are two.
+							<p>First a quick clarification for the palettes, of which there are two.</p>
 
-The first palette in <a href="https://thesentinel.bbcelite.com/source/main/variable/colourpalettes.html">colourPalettes</a> gets changed to the game palette, while the
-second one is fixed and is for the title screens.
+							<p>The first palette in <a href="https://thesentinel.bbcelite.com/source/main/variable/colourpalettes.html">colourPalettes</a> gets changed to the game palette, while the second one is fixed and is for the title screens.</p>
 
-So let's document this properly.
+							<p>So let's document this properly.</p>
 						</div>
 
 						<div class="diary">
-We should probably rename the title routines, as the 3D text routines don't
-draw the text they create text from 3D objects, and some of the routines I have
-marked as drawing the title screen similarly only spawn 3D objects.
+							<p>We should probably rename the title routines, as the 3D text routines don't draw the text they create text from 3D objects, and some of the routines I have marked as drawing the title screen similarly only spawn 3D objects.</p>
 
-So we have:
+							<p>So we have:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">DrawLetter3D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">SpawnCharacter3D</a>
-DrawSecretCode -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawnsecretcode3d.html">SpawnSecretCode3D</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawntitleobject.html">sub_C5F80</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">DrawLetter3D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">SpawnCharacter3D</a></li>
 
-and these are better names for the routines that actually do the drawing:
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawnsecretcode3d.html">DrawSecretCode</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawnsecretcode3d.html">SpawnSecretCode3D</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobject.html">DrawTitleObject</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">DrawTitleView</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobjects.html">sub_C5FE5</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobjects.html">DrawTitleObjects</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobject.html">sub_C5FEE</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobject.html">DrawTitleObject</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawntitleobject.html">sub_C5F80</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a></li>
+							</ul>
 
-The top-level routine is still <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitlescreen.html">DrawTitleScreen</a>, which is almost all documented.
+							<p>and these are better names for the routines that actually do the drawing:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobject.html">DrawTitleObject</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">DrawTitleView</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobjects.html">sub_C5FE5</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobjects.html">DrawTitleObjects</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobject.html">sub_C5FEE</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobject.html">DrawTitleObject</a></li>
+							</ul>
+
+							<p>The top-level routine is still <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitlescreen.html">DrawTitleScreen</a>, which is almost all documented.</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">DrawTitleView</a> loads a bunch of variables from tables, depending on whether this
-is a title screen or the landscape preview, and almost all of those variables
-get poked into named labels.
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">DrawTitleView</a> loads a bunch of variables from tables, depending on whether this is a title screen or the landscape preview, and almost all of those variables get poked into named labels.</p>
 
-So it's easy to name the following, which are used to set up object #16 that's
-used as the viewing object for the large 3D text:
+							<p>So it's easy to name the following, which are used to set up object #16 that's used as the viewing object for the large 3D text:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/ytextviewer.html">L1403</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/ytextviewer.html">yTextViewer</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/textviewerpitch.html">L1405</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/textviewerpitch.html">textViewerPitch</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/xtextviewer.html">L1407</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/xtextviewer.html">xTextViewer</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/ztextviewer.html">L140B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/ztextviewer.html">zTextViewer</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/textvieweryaw.html">L140D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/textvieweryaw.html">textViewerYaw</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/ytextviewer.html">L1403</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/ytextviewer.html">yTextViewer</a></li>
 
-and this one gets copied into <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#xtitleoffset">xTitleOffset</a>, so we can name it:
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/textviewerpitch.html">L1405</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/textviewerpitch.html">textViewerPitch</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/titleoffset.html">L1409</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/titleoffset.html">titleOffset</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/xtextviewer.html">L1407</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/xtextviewer.html">xTextViewer</a></li>
 
-So now let's crack on with commenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">DrawTitleView</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/ztextviewer.html">L140B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/ztextviewer.html">zTextViewer</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/textvieweryaw.html">L140D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/textvieweryaw.html">textViewerYaw</a></li>
+							</ul>
+
+
+							<p>and this one gets copied into <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#xtitleoffset">xTitleOffset</a>, so we can name it:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/titleoffset.html">L1409</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/titleoffset.html">titleOffset</a></li>
+							</ul>
+
+
+							<p>So now let's crack on with commenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">DrawTitleView</a>.</p>
 						</div>
 
 						<div class="diary">
-After configuring colours and object #16, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">DrawTitleView</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobjects.html">DrawTitleObjects</a>,
-which calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobject.html">DrawTitleObject</a>, which calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a>, so let's go there
-now.
+							<p>After configuring colours and object #16, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">DrawTitleView</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobjects.html">DrawTitleObjects</a>, which calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleobject.html">DrawTitleObject</a>, which calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a>, so let's go there now.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> also grabs config settings from tables, this time for the
-object game over screen (index 0), robot/Sentinel (index 1) or tower (index 2),
-so we can rename the following pretty easily, again according to where these
-bits of title object data get poked.
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> also grabs config settings from tables, this time for the object game over screen (index 0), robot/Sentinel (index 1) or tower (index 2), so we can rename the following pretty easily, again according to where these bits of title object data get poked.</p>
 
-These set up the object being drawn (the first two are relative to the viewing
-object in object #2):
+							<p>These set up the object being drawn (the first two are relative to the viewing object in object #2):</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/ztitleobject.html">L5FBC</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/ztitleobject.html">zTitleObject</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/ytitleobject.html">L5FDC</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/ytitleobject.html">yTitleObject</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/titleobjectyaw.html">L5FDF</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/titleobjectyaw.html">titleObjectYaw</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/ztitleobject.html">L5FBC</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/ztitleobject.html">zTitleObject</a></li>
 
-and these set up the viewing object itself in object #2:
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/ytitleobject.html">L5FDC</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/ytitleobject.html">yTitleObject</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/titleviewerpitch.html">L5FD9</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/titleviewerpitch.html">titleViewerPitch</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/titlevieweryaw.html">L5FE2</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/titlevieweryaw.html">titleViewerYaw</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/titleobjectyaw.html">L5FDF</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/titleobjectyaw.html">titleObjectYaw</a></li>
+							</ul>
+
+
+							<p>and these set up the viewing object itself in object #2:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/titleviewerpitch.html">L5FD9</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/titleviewerpitch.html">titleViewerPitch</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/titlevieweryaw.html">L5FE2</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/titlevieweryaw.html">titleViewerYaw</a></li>
+							</ul>
+
 						</div>
 
 						<div class="diary">
-Finish documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> and all the configuration variable tables.
+							<p>Finish documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawntitleobject.html">SpawnTitleObject</a> and all the configuration variable tables.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-10" class="anchor"></a>10 December 2025<br>
@@ -338,70 +362,63 @@ Finish documenting <a href="https://thesentinel.bbcelite.com/source/main/subrout
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/6f8b734...0cec0b5?diff=unified">GitHub commits and diffs for 10 December 2025</a>.</p>
 
 						<div class="diary">
-Back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">DrawTitleView</a>, which is a relatively easy routine to finish documenting
+							<p>Back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtitleview.html">DrawTitleView</a>, which is a relatively easy routine to finish documenting.</p>
 						</div>
 
 						<div class="diary">
-Next up is <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">SpawnCharacter3D</a>, which creates the text in the landscape as 3D text
-blocks
+							<p>Next up is <a href="https://thesentinel.bbcelite.com/source/main/subroutine/spawncharacter3d_part_1_of_2.html">SpawnCharacter3D</a>, which creates the text in the landscape as 3D text blocks.</p>
 
-This is quite straightforward, except the object numbers for the 3D text blocks
-are added to the tile data as 32 + 0, 32 + 7, 32 + 8 and 32 + 9, from the <a href="https://thesentinel.bbcelite.com/source/main/variable/objblocknumber.html">L3248</a>
-table
+							<p>This is quite straightforward, except the object numbers for the 3D text blocks are added to the tile data as 32 + 0, 32 + 7, 32 + 8 and 32 + 9, from the <a href="https://thesentinel.bbcelite.com/source/main/variable/objblocknumber.html">L3248</a> table.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objblocknumber.html">L3248</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objblocknumber.html">objBlockNumber</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objblocknumber.html">L3248</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objblocknumber.html">objBlockNumber</a></li>
+							</ul>
 
-The 32 part gets cleared in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a>, so that's a bit weird
+							<p>The 32 part gets cleared in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a>, so that's a bit weird.</p>
 						</div>
 
 						<div class="diary">
-Also document the relevant bits of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a> at .<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtileandobjects.html#tobj1">tobj1</a> and polish off
-<a href="https://thesentinel.bbcelite.com/source/main/variable/titletext.html">titleText</a>
+							<p>Also document the relevant bits of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtileandobjects.html">DrawTileAndObjects</a> at .<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawtileandobjects.html#tobj1">tobj1</a> and polish off <a href="https://thesentinel.bbcelite.com/source/main/variable/titletext.html">titleText</a>.</p>
 
-And clarify how the block pair objects 7-9 are defined using different point
-ranges.
+							<p>And clarify how the block pair objects 7-9 are defined using different point ranges.</p>
 						</div>
 
 						<div class="diary">
->>> I have now broken through the 75% barrier &lt;&lt;&lt;
+							<p>>>> I have now broken through the 75% barrier &lt;&lt;&lt;</p>
 
-Three-quarters of the way there! Come on, the end is getting every-so-slightly
-closer...
+							<p>Three-quarters of the way there! Come on, the end is getting every-so-slightly closer...</p>
 						</div>
 
 						<div class="diary">
-Explained various ???s in the commentary, just to keep on top of them - every
-little step is a step forward
+							<p>Explained various ???s in the commentary, just to keep on top of them - every little step is a step forward.</p>
 						</div>
 
 						<div class="diary">
-Bit of a big rename. I've been talking about the icon screen buffer and the
-view screen buffer, to distinguish the two, but the latter is a bit of a
-mouthful, so let's change "view screen buffer" to just "screen buffer" to make
-things simpler
+							<p>Bit of a big rename. I've been talking about the icon screen buffer and the view screen buffer, to distinguish the two, but the latter is a bit of a mouthful, so let's change "view screen buffer" to just "screen buffer" to make things simpler.</p>
 
-This applies to comments, variables and routine names, so instead of:
+							<p>This applies to comments, variables and routine names, so instead of:</p>
 
-.viewBufferRow0
-.<a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferaddr.html">viewBufferAddr</a>
+<pre class="articleIndented">
+  .viewBufferRow0
+  .viewBufferAddr
+</pre>
 
-we can have:
+							<p>we can have:</p>
 
-.<a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow0.html">screenBufferRow0</a>
-.<a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferaddr.html">screenBufferAddr</a>
+<pre class="articleIndented">
+  .screenBufferRow0
+  .screenBufferAddr
+</pre>
 
-and so on. This feels a bit cleaner.
+							<p>and so on. This feels a bit cleaner.</p>
 						</div>
 
 						<div class="diary">
-Also, move the startup routines in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configuremachine.html">ConfigureMachine</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearmemory.html">ClearMemory</a>, and the
-original source code in the workspace noise, to the end of the source file, as
-they clash with the game memory structure and are much easier to follow if they
-move elsewhere (along with the CLEAR they need).
+							<p>Also, move the startup routines in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configuremachine.html">ConfigureMachine</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/clearmemory.html">ClearMemory</a>, and the original source code in the workspace noise, to the end of the source file, as they clash with the game memory structure and are much easier to follow if they move elsewhere (along with the CLEAR they need).</p>
 						</div>
 
 						<div class="diary">
-Added a number of comments to variables in the workspaces
+							<p>Added a number of comments to variables in the workspaces.</p>
 						</div>
 					</div>
 				</div>

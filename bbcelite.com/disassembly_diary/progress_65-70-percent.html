@@ -14,10 +14,10 @@ page_header("disassembly_diary", "progress_65-70-percent.html", "Project progres
 						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
 
 						<ul>
-							<li><a href="#date-2025-12-02">2 December 2025</a></li>
-							<li><a href="#date-2025-12-03">3 December 2025</a></li>
-							<li><a href="#date-2025-12-04">4 December 2025</a></li>
-							<li><a href="#date-2025-12-05">5 December 2025</a></li>
+							<li><a href="#date-2025-12-02">2 December 2025</a> - Document screenRowAddr(Hi Lo), bufferRowAddr(Hi Lo), identify colourPixels, pixelsToLeft, pixelsToRight and leftPixels, document screenOrBuffer, discover that my analysis of viewBuffer is all wrong, identify UseRowBuffer, UseColumnBuffer, ConfigureBuffer, FlipBufferType, maxPitchAngle, minPitchAngle, bufferMaxPitch and bufferMinPitch, finally understand viewBufferAddr, more failed attempts to understand focusOnKeyAction</li>
+							<li><a href="#date-2025-12-03">3 December 2025</a> - Work out left and right row buffers, document DrawObjectStack, reach two-thirds progress, finally settle on names for focusOnKeyAction and previousFocus, back to analysing DrawObject, identify GetObjectAngles, objectToAnalyse, objTypeToAnalyse, objectViewYaw(Hi Lo), objectGazeYaw(Hi Lo), viewType, objectAdjacent(Hi Lo), objectOpposite(Hi Lo)</li>
+							<li><a href="#date-2025-12-04">4 December 2025</a> - Identify objPointRange, objPointYaw, objPointHeight, objPointDistance, objPointRange, objPolygonRange, objPolygonPhases, objPointYaw, objPointHeight, objPointDistance and objPolygonData</li>
+							<li><a href="#date-2025-12-05">5 December 2025</a> - Document objRobot, objSentry, objTree, objBoulder, objMeanie, objSentinel, objTower and objTextBlock, identify objPolygonAddr(Hi Lo), reach 70% progress</li>
 						</ul>
 
 						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
@@ -28,64 +28,56 @@ page_header("disassembly_diary", "progress_65-70-percent.html", "Project progres
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/b3c931a...0afd98b?diff=unified">GitHub commits and diffs for 2 December 2025</a>.</p>
 
 						<div class="diary">
-It's time to investigate the screen buffer and screen memory.
+							<p>It's time to investigate the screen buffer and screen memory.</p>
 
-First up, the tables at <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrhi.html">screenRowAddrHi</a> contain addresses
-for screen rows. The first 25 entries are for screen memory, but the next 25
-must be for the screen buffer, as the point into memory (and looking at memory
-while the game is running confirms this).
+							<p>First up, the tables at <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrhi.html">screenRowAddrHi</a> contain addresses for screen rows. The first 25 entries are for screen memory, but the next 25 must be for the screen buffer, as the point into memory (and looking at memory while the game is running confirms this).</p>
 
-So let's start by splitting the table into <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a>/Hi and
-<a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrlo.html">bufferRowAddrLo</a>/Hi, for clarity.
+							<p>So let's start by splitting the table into <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a>/<a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrhi.html">screenRowAddrHi</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrlo.html">bufferRowAddrLo</a>/<a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrhi.html">bufferRowAddrHi</a>, for clarity.</p>
 						</div>
 
 						<div class="diary">
-An aside: we can also rename these pixel bit patterns, using some of the same
-names from Revs:
+							<p>An aside: we can also rename these pixel bit patterns, using some of the same names from Revs:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/colourpixels.html">L2283</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/colourpixels.html">colourPixels</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoleft.html">L2287</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoleft.html">pixelsToLeft</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoright.html">L228B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoright.html">pixelsToRight</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/leftpixels.html">L228F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/leftpixels.html">leftPixels</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/colourpixels.html">L2283</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/colourpixels.html">colourPixels</a></li>
 
-Nothing to do with the screen buffer, but still worth doing
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoleft.html">L2287</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoleft.html">pixelsToLeft</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoright.html">L228B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/pixelstoright.html">pixelsToRight</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/leftpixels.html">L228F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/leftpixels.html">leftPixels</a></li>
+							</ul>
+
+							<p>Nothing to do with the screen buffer, but still worth doing.</p>
 						</div>
 
 						<div class="diary">
-When calling <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">FillScreen</a>, A is the row offset into <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a>, so passing
-25 when panning means we draw into the buffer
+							<p>When calling <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">FillScreen</a>, A is the row offset into <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a>, so passing 25 when panning means we draw into the buffer.</p>
 
-So reword all calls to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">FillScreen</a> to make this clearer
+							<p>So reword all calls to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">FillScreen</a> to make this clearer.</p>
 						</div>
 
 						<div class="diary">
-We noted before that <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenorbuffer">L0055</a> is 0 or 25, and it turns out that in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygonlines_part_1_of_4.html">sub_C2299</a> it is
-added to an index into <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a>.
+							<p>We noted before that <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenorbuffer">L0055</a> is 0 or 25, and it turns out that in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygonlines_part_1_of_4.html">sub_C2299</a> it is added to an index into <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a>.</p>
 
-So, when <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenorbuffer">L0055</a> is 0 this looks up screen addresses, and when it's 25 this looks
-up screen buffer addresses.
+							<p>So, when <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenorbuffer">L0055</a> is 0 this looks up screen addresses, and when it's 25 this looks up screen buffer addresses.</p>
 
-So rename <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenorbuffer">L0055</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenorbuffer">screenOrBuffer</a> and document uses of it
-						</div>
+							<p>So rename <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenorbuffer">L0055</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenorbuffer">screenOrBuffer</a> and document uses of it. </div></p>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrlo.html">bufferRowAddrLo</a>/Hi contain hard-coded addresses: <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow0.html">&amp;3F00</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow16.html">&amp;3FA0</a>
+							<p><a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrlo.html">bufferRowAddrLo</a>/<a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrhi.html">bufferRowAddrHi</a> contain hard-coded addresses: <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow0.html">&amp;3F00</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow16.html">&amp;3FA0</a>.</p>
 
-Can we make this more readable?
+							<p>Can we make this more readable?</p>
 
-It looks as if the four viewBuffer variables are completely wrong. Instead,
-let's look at the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">FillScreen</a> routine, which resets the screen buffer when
-called from the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/panlandscapeview.html">PanLandscapeView</a> routine.
+							<p>It looks as if the four viewBuffer variables are completely wrong. Instead, let's look at the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/fillscreen.html">FillScreen</a> routine, which resets the screen buffer when called from the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/panlandscapeview.html">PanLandscapeView</a> routine.</p>
 
-When called with A = 0, it clears the screen by looking up row addresses from
-<a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a>/Hi
+							<p>When called with A = 0, it clears the screen by looking up row addresses from <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrlo.html">screenRowAddrLo</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/screenrowaddrhi.html">screenRowAddrHi</a>.</p>
 
-When called with A = 25, it clears the screen buffer by looking up row
-addresses from <a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrlo.html">bufferRowAddrLo</a>/Hi
+							<p>When called with A = 25, it clears the screen buffer by looking up row addresses from <a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrlo.html">bufferRowAddrLo</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/bufferrowaddrhi.html">bufferRowAddrHi</a>.</p>
 
-Looking at the way this works, it looks like it fills the screen buffer like
-this when filling the screen-wide up or down row-shaped buffer:
+							<p>Looking at the way this works, it looks like it fills the screen buffer like this when filling the screen-wide up or down row-shaped buffer:</p>
 
+<pre class="articleIndented">
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow0.html">&amp;3F00</a> to &amp;403F for character row 0
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow1.html">&amp;4040</a> to &amp;417F for character row 1
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow2.html">&amp;4180</a> to &amp;42BF for character row 2
@@ -94,9 +86,11 @@ this when filling the screen-wide up or down row-shaped buffer:
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow5.html">&amp;4540</a> to &amp;467F for character row 5
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow6.html">&amp;4680</a> to &amp;47BF for character row 6
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow7.html">&amp;47C0</a> to &amp;48FF for character row 7
+</pre>
 
-or this when filling the screen-high left or right column-shaped buffer:
+							<p>or this when filling the screen-high left or right column-shaped buffer:</p>
 
+<pre class="articleIndented">
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow0.html">&amp;3F00</a> to &amp;3F3F for character row 0
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow1.html">&amp;4040</a> to &amp;407F for character row 1
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow2.html">&amp;4180</a> to &amp;41BF for character row 2
@@ -122,116 +116,123 @@ or this when filling the screen-high left or right column-shaped buffer:
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow22.html">&amp;4720</a> to &amp;475F for character row 22
    <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow23.html">&amp;4860</a> to &amp;489F for character row 23
    <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">&amp;49A0</a> to &amp;49DF for character row 24
+</pre>
 
-We can see this in action with b2:
+							<p>We can see this in action with the b2 emulator, by adding:</p>
 
-Breakpoint on &amp;10D2 for capturing screen fill for panning left or right
+							<ul>
+								<li>Breakpoint on &amp;10D2 for capturing screen fill for panning left or right</li>
 
-Breakpoint on &amp;1115 for capturing screen fill for panning up or down
+								<li>Breakpoint on &amp;1115 for capturing screen fill for panning up or down</li>
+							</ul>
 
-So that defines the extent of the screen buffer - it's made up of lots of bits,
-spread out in specific blocks of memory between <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow0.html">&amp;3F00</a> and &amp;5200
+							<p>So that defines the extent of the screen buffer - it's made up of lots of bits, spread out in specific blocks of memory between <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferrow0.html">&amp;3F00</a> and &amp;5200.</p>
 
-So the whole .viewBufferLeft thing is wrong in some way.
+							<p>So the whole viewBufferLeft thing is wrong in some way.</p>
 						</div>
 
 						<div class="diary">
-So where does the screen get drawn when it gets drawn into the buffer?
+							<p>So where does the screen get drawn when it gets drawn into the buffer?</p>
 
-There's a clue in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/panlandscapeview.html">PanLandscapeView</a>
+							<p>There's a clue in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/panlandscapeview.html">PanLandscapeView</a>.</p>
 
-For scrolling sideways, we call <a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">sub_C391E</a> before <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView</a>
+							<ul>
+								<li>For scrolling sideways, we call <a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">sub_C391E</a> before <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView</a>.</li>
 
-For scrolling vertically, we call <a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">sub_C3908</a> before <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView</a>
+								<li>For scrolling vertically, we call <a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">sub_C3908</a> before <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawlandscapeview_part_1_of_3.html">DrawLandscapeView</a>.</li>
+							</ul>
 
-I wonder if these configure the screen buffer addresses
+							<p>I wonder if these configure the screen buffer addresses.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">sub_C391E</a> uses the buffer to the left or right of the screen, which is shaped
-like a column
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">sub_C391E</a> uses the buffer to the left or right of the screen, which is shaped like a column.</li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">sub_C3908</a> uses the buffer above or below the screen, which is shaped like a row
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">sub_C3908</a> uses the buffer above or below the screen, which is shaped like a row.</li>
+							</ul>
 
-So, speculative naming:
+							<p>So, speculative naming:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">sub_C391E</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">UseRowBuffer</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">sub_C3908</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">UseColumnBuffer</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">sub_C391E</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">UseRowBuffer</a></li>
 
-These both call <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">sub_C2963</a> with A = 0 or 2, so maybe:
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">sub_C3908</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">UseColumnBuffer</a></li>
+							</ul>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">sub_C2963</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">ConfigureBuffer</a>
+							<p>These both call <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">sub_C2963</a> with A = 0 or 2, so maybe:</p>
 
-This also takes A = 1 as an argument, not sure what this is for?
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">sub_C2963</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">ConfigureBuffer</a></li>
+							</ul>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/setcolumnbuffermax.html">sub_C3923</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/flipbuffertype.html">FlipBufferType</a>
+							<p>This also takes A = 1 as an argument, not sure what this is for?</p>
 
-This flips between buffer 0 and 1 and is only called from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygon.html">DrawPolygon</a> when we
-are drawing into the row buffer, so is buffer type 1 another type of row
-buffer, like a part 2 or something?
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/setcolumnbuffermax.html">sub_C3923</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/flipbuffertype.html">FlipBufferType</a></li>
+							</ul>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">UseRowBuffer</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">UseColumnBuffer</a> also set up <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#maxpitchangle">L0051</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#minpitchangle">L0052</a>, which get
-compared against a pitch angle <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchlo.html">tileViewPitchLo</a> in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getpolygonlines_part_5_of_6.html#gpol16">C2E60</a> and against
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#vectorpitchanglelo">vectorPitchAngleLo</a> in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/tracepolygonedge_part_1_of_8.html">sub_C2EAE</a>, so these look like pitch angle restraints
-
-Is this the pitch angle range shown in the buffer? Or a y-coordinate, as they
-are the same thing?
-
-Row buffer looks up values &amp;F0, &amp;B0 (176 to 240)
-Column buffer looks up values &amp;F0, &amp;30 (48 to 240)
-
-So these look like the pitch angle ranges for each buffer shape, probably
-
-Anyway, renaming time:
-
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#maxpitchangle">L0051</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#maxpitchangle">maxPitchAngle</a>
-
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#minpitchangle">L0052</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#minpitchangle">minPitchAngle</a>
-
-<a href="https://thesentinel.bbcelite.com/source/main/variable/buffermaxpitch.html">L391A</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/buffermaxpitch.html">maxBufferPitch</a>
-
-<a href="https://thesentinel.bbcelite.com/source/main/variable/bufferminpitch.html">L391C</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/bufferminpitch.html">minBufferPitch</a>
-
-Not sure this is helping identify the structure of the screen buffer, mind you.
+							<p>This flips between buffer 0 and 1 and is only called from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygon.html">DrawPolygon</a> when we are drawing into the row buffer, so is buffer type 1 another type of row buffer, like a part 2 or something?</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/startscrollingview.html">SetNumberOfScrolls</a> also sets the view buffer address and starts off a scroll,
-so rename to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/startscrollingview.html">StartScrollingView</a>
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">UseRowBuffer</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">UseColumnBuffer</a> also set up <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#maxpitchangle">L0051</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#minpitchangle">L0052</a>, which get compared against a pitch angle <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewpitchlo.html">tileViewPitchLo</a> in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getpolygonlines_part_5_of_6.html#gpol16">C2E60</a> and against <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#vectorpitchanglelo">vectorPitchAngleLo</a> in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/tracepolygonedge_part_1_of_8.html">sub_C2EAE</a>, so these look like pitch angle restraints.</p>
+
+							<p>Is this the pitch angle range shown in the buffer? Or a y-coordinate, as they are the same thing?</p>
+
+							<ul>
+								<li>Row buffer looks up values &amp;F0, &amp;B0 (176 to 240)</li>
+
+								<li>Column buffer looks up values &amp;F0, &amp;30 (48 to 240)</li>
+							</ul>
+
+							<p>So these look like the pitch angle ranges for each buffer shape, probably</p>
+
+							<p>Anyway, renaming time:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#maxpitchangle">L0051</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#maxpitchangle">maxPitchAngle</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#minpitchangle">L0052</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#minpitchangle">minPitchAngle</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/buffermaxpitch.html">L391A</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/buffermaxpitch.html">maxBufferPitch</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/bufferminpitch.html">L391C</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/bufferminpitch.html">minBufferPitch</a></li>
+							</ul>
+
+							<p>Not sure this is helping identify the structure of the screen buffer, mind you.</p>
 						</div>
 
 						<div class="diary">
-OK, so I think I finally understand <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferaddr.html">viewBufferAddr</a>(1 0).
-
-It points to the address in the screen buffer where the interrupt routine
-should grab the next bit of screen content to scroll onto the screen
-
-So it's the leftmost or rightmost column of the buffer when scrolling from the
-side, ot the top or bottom row when scrolling vertically
-
-It's complicated somewhat by incorporating the negative value of
-<a href="https://thesentinel.bbcelite.com/source/main/variable/scrollscreenhi.html">scrollScreenHi</a>/Lo in the result, as this is added to the value as the first
-step of the scrolling process.
-
-Anyway, <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferaddr.html">viewBufferAddr</a>(1 0) is now full of information, and I've updated lots
-of the scrolling commentary too.
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/startscrollingview.html">SetNumberOfScrolls</a> also sets the view buffer address and starts off a scroll, so rename to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/startscrollingview.html">StartScrollingView</a>.</p>
 						</div>
 
 						<div class="diary">
-Let's talk about <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">doNotScanKeyboard</a>. Again.
+							<p>OK, so I think I finally understand <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferaddr.html">viewBufferAddr</a>(1 0).</p>
 
-Bit 7 gets set when an action or panning key is pressed. This stops the
-keyboard from being scanned all the time.
+							<p>It points to the address in the screen buffer where the interrupt routine should grab the next bit of screen content to scroll onto the screen.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">PauseKeyboardScan</a> sets bit 7, and this is the only time this happens.
+							<p>So it's the leftmost or rightmost column of the buffer when scrolling from the side, ot the top or bottom row when scrolling vertically.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">ProcessGameplay</a> resets it to 0, and this is the only time this happens.
+							<p>It's complicated somewhat by incorporating the negative value of <a href="https://thesentinel.bbcelite.com/source/main/variable/scrollscreenhi.html">scrollScreenHi</a>/Lo in the result, as this is added to the value as the first step of the scrolling process.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">doNotScanKeyboard</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#previousfocus">previousDoNotScan</a> detect if this state changes, which can
-only be when <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">ProcessGameplay</a> is started, as <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">PauseKeyboardScan</a> sets these to be
-the same.
+							<p>Anyway, <a href="https://thesentinel.bbcelite.com/source/main/variable/screenbufferaddr.html">viewBufferAddr</a>(1 0) is now full of information, and I've updated lots of the scrolling commentary too.</p>
+						</div>
 
-Would it be better called something like focusOnKeyPress or <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">focusOnKeyAction</a>?
+						<div class="diary">
+							<p>Let's talk about <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">doNotScanKeyboard</a>. Again.</p>
 
-Something to ponder. Again.
+							<p>Bit 7 gets set when an action or panning key is pressed. This stops the keyboard from being scanned all the time.</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">PauseKeyboardScan</a> sets bit 7, and this is the only time this happens.</li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">ProcessGameplay</a> resets it to 0, and this is the only time this happens.</li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">doNotScanKeyboard</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#previousfocus">previousDoNotScan</a> detect if this state changes, which can only be when <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">ProcessGameplay</a> is started, as <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">PauseKeyboardScan</a> sets these to be the same.</li>
+							</ul>
+
+							<p>Would it be better called something like focusOnKeyPress or <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">focusOnKeyAction</a>?</p>
+
+							<p>Something to ponder. Again.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-03" class="anchor"></a>3 December 2025<br>
@@ -240,30 +241,27 @@ Something to ponder. Again.
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/0afd98b...e18a2e3?diff=unified">GitHub commits and diffs for 3 December 2025</a>.</p>
 
 						<div class="diary">
-OK, some more clues on buffer 1
+							<p>OK, some more clues on buffer 1.</p>
 
-If I disable the two-buffer drawing approach in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygon.html">DrawPolygon</a> by always jumping
-to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygon.html#poly2">poly2</a> (so that buffer type 0 is drawn but not buffer type 1), then the right
-portion of any full-screen width graphics is not drawn
+							<p>If I disable the two-buffer drawing approach in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygon.html">DrawPolygon</a> by always jumping to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygon.html#poly2">poly2</a> (so that buffer type 0 is drawn but not buffer type 1), then the right portion of any full-screen width graphics is not drawn.</p>
 
-So it looks as if full-width content (e.g. title, preview, full screen draw at
-the start of the game, up/down buffers) is drawn in two parts: left and right
+							<p>So it looks as if full-width content (e.g. title, preview, full screen draw at the start of the game, up/down buffers) is drawn in two parts: left and right.</p>
 
-It looks like this coincides with the high byte of the x-coordinate, so it
-looks like buffer 0 does x-coord addresses 0-255 and buffer 1 does x-coord
-addresses 256-319
+							<p>It looks like this coincides with the high byte of the x-coordinate, so it looks like buffer 0 does x-coord addresses 0-255 and buffer 1 does x-coord addresses 256-319.</p>
 
-I'll document it this way, anyway, as it seems pretty clear:
+							<p>I'll document it this way, anyway, as it seems pretty clear:</p>
 
-buffer type 0 = left row buffer
-buffer type 1 = right row buffer
+							<ul>
+								<li>Buffer type 0 = left row buffer</li>
+
+								<li>Buffer type 1 = right row buffer</li>
+							</ul>
 						</div>
 
 						<div class="diary">
-To celebrate, here's a breakdown of the configurations for the three buffer
-types, i.e. the variables set by <a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">UseRowBuffer</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">UseColumnBuffer</a> (and
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">ConfigureBuffer</a>)
+							<p>To celebrate, here's a breakdown of the configurations for the three buffer types, i.e. the variables set by <a href="https://thesentinel.bbcelite.com/source/main/subroutine/userowbuffer.html">UseRowBuffer</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/usecolumnbuffer.html">UseColumnBuffer</a> (and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">ConfigureBuffer</a>).</p>
 
+<pre class="articleIndented">
 Shape             LeftRow  RightRow    Column
 <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#screenbuffertype">screenBufferType</a>      0       1          2
 <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferminyawhi">minYawAngleHi</a>        20      20          8      <- same for both row buffers
@@ -279,101 +277,99 @@ buffers
 <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferleft">L0035</a>                80      64         96                  "
 
 <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferright">L0036</a>               192     176        160      = <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferleft">L0035</a> + <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferwidth">L0061</a>
+</pre>
 
-Still not quite sure what the Lxxxx variables are all about, but that should
-become clearer (hopefully!)
+							<p>Still not quite sure what the Lxxxx variables are all about, but that should become clearer (hopefully!).</p>
 
-That said, only <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginhi">L0011</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferleft">L0035</a> are different between the two types of row
-buffer (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferright">L0036</a> too, but only because <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferleft">L0035</a> is different)
+							<p>That said, only <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginhi">L0011</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferleft">L0035</a> are different between the two types of row buffer (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferright">L0036</a> too, but only because <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferleft">L0035</a> is different).</p>
 
-These must be something to do with the x-coordinates, as we're drawing the same
-scene, just the right portion of it
+							<p>These must be something to do with the x-coordinates, as we're drawing the same scene, just the right portion of it.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginhi">L0011</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferleft">L0035</a> are both smaller for the right row buffer, so presumably they
-aren't margins from the left edge of the view - maybe they are margins from the
-right edge? Not sure, one for later
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginhi">L0011</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xbufferleft">L0035</a> are both smaller for the right row buffer, so presumably they aren't margins from the left edge of the view - maybe they are margins from the right edge? Not sure, one for later.</p>
 						</div>
 
 						<div class="diary">
-Let's document <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a> as that looks like an easy one
+							<p>Let's document <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a> as that looks like an easy one.</p>
 
-This is pretty straightforward, only made complicated by the way we have to
-loop through the object stack if we want to draw it from bottom to top (as the
-object flags store object "links" from top to bottom and not from bottom to
-top).
+							<p>This is pretty straightforward, only made complicated by the way we have to loop through the object stack if we want to draw it from bottom to top (as the object flags store object "links" from top to bottom and not from bottom to top).</p>
 
-Still, it's another easy one done. Enjoy them while they last!
+							<p>Still, it's another easy one done. Enjoy them while they last!</p>
 						</div>
 
 						<div class="diary">
->>> I have now broken through the 66.6% barrier &lt;&lt;&lt;
+							<p>>>> I have now broken through the 66.6% barrier &lt;&lt;&lt;</p>
 
-Nice one! We are now 2/3 of the way. Slowly, slowly, catchy monkey...
+							<p>Nice one! We are now 2/3 of the way. Slowly, slowly, catchy monkey...</p>
 						</div>
 
 						<div class="diary">
-Ok, I'm going to experiment with the idea of changing the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">PauseKeyboardScan</a>
-into something like <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">FocusOnKeyAction</a>, as it seems to be disabling the keyboard
-reading to focus attention on drawing the landscape, processing absorb actions
-etc.
+							<p>Ok, I'm going to experiment with the idea of changing the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">PauseKeyboardScan</a> into something like <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">FocusOnKeyAction</a>, as it seems to be disabling the keyboard reading to focus attention on drawing the landscape, processing absorb actions etc.</p>
 
-This will either make the commentary clearer, or it will be confusing... like
-it already is. So nothing to lose then, lol.
+							<p>This will either make the commentary clearer, or it will be confusing... like it already is. So nothing to lose then, lol.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">PauseKeyboardScan</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">FocusOnKeyAction</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">doNotScanKeyboard</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">focusOnKeyAction</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#previousfocus">previousDoNotScan</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#previousfocus">previousFocus</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">PauseKeyboardScan</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">FocusOnKeyAction</a></li>
 
-I've just been setting up focuses on my iPhone. I hope this isn't a case of
-life influencing art.
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">doNotScanKeyboard</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">focusOnKeyAction</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#previousfocus">previousDoNotScan</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#previousfocus">previousFocus</a></li>
+							</ul>
+
+							<p>I've just been setting up focuses on my iPhone. I hope this isn't a case of life influencing art.</p>
 						</div>
 
 						<div class="diary">
-Actually, I quite like the new <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">focusOnKeyAction</a> documentation. It might be a
-keeper.
+							<p>Actually, I quite like the new <a href="https://thesentinel.bbcelite.com/source/main/subroutine/focusonkeyaction.html">focusOnKeyAction</a> documentation. It might be a keeper.</p>
 						</div>
 
 						<div class="diary">
-Let's move on to look at object drawing, to follow on from documenting
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a>
+							<p>Let's move on to look at object drawing, to follow on from documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobjectstack.html">DrawObjectStack</a>.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a> is up next, which draws an object. This should be a long journey...
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a> is up next, which draws an object. This should be a long journey...</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a> immediately calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectangles.html">sub_C5C01</a>, so let's go there.
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a> immediately calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectangles.html">sub_C5C01</a>, so let's go there.</p>
 
-It starts by analysing the angle deltas for the vector between the viewer and
-the object being analysed (this routine is called from multiple places, not
-just from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a>).
+							<p>It starts by analysing the angle deltas for the vector between the viewer and the object being analysed (this routine is called from multiple places, not just from <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a>).</p>
 
-So <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectangles.html">sub_C5C01</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectangles.html">GetObjectAngles</a>
+							<p>So <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectangles.html">sub_C5C01</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjectangles.html">GetObjectAngles</a>.</p>
 
-Sets a bunch of variables, try these names:
+							<p>It sets a bunch of variables, try these names:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objecttoanalyse">L006F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objecttoanalyse">objectToAnalyse</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objtypetoanalyse">L004C</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objtypetoanalyse">objTypeToAnalyse</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objecttoanalyse">L006F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objecttoanalyse">objectToAnalyse</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectviewyawlo">L0C59</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectviewyawhi">objectViewYawHi</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectviewyawhi">L0C57</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectviewyawlo">objectViewYawLo</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objtypetoanalyse">L004C</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objtypetoanalyse">objTypeToAnalyse</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objectgazeyawlo">L0059</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objectgazeyawlo">objectGazeYawLo</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objectgazeyawhi">L005A</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objectgazeyawhi">objectGazeYawHi</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectviewyawlo">L0C59</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectviewyawhi">objectViewYawHi</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/viewtype.html">L140F</a> is a flag that changes depending on what we are drawing, it's zero for
-the landscape preview only -> <a href="https://thesentinel.bbcelite.com/source/main/variable/viewtype.html">viewType</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectviewyawhi">L0C57</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectviewyawlo">objectViewYawLo</a></li>
 
-The resulting distance to the object gives us two sides to the usual
-right-angled triangle with the vector as hypotenuse, so that gives us this:
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objectgazeyawlo">L0059</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objectgazeyawlo">objectGazeYawLo</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectadjacentlo">L0C5D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectadjacentlo">objectAdjacentLo</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectadjacenthi">L0C5E</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectadjacenthi">objectAdjacentHi</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objectgazeyawhi">L005A</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#objectgazeyawhi">objectGazeYawHi</a></li>
+							</ul>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectoppositelo">L0C5B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectoppositelo">objectOppositeLo</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectoppositehi">L0C5C</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectoppositehi">objectOppositeHi</a>
+							<p><a href="https://thesentinel.bbcelite.com/source/main/variable/viewtype.html">L140F</a> is a flag that changes depending on what we are drawing, it's zero for the landscape preview only, so:</p>
 
-This is very similar to the visibility maths for tiles, so that was easier than
-expected!
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/viewtype.html">L140F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/viewtype.html">viewType</a></li>
+							</ul>
+
+							<p>The resulting distance to the object gives us two sides to the usual right-angled triangle with the vector as hypotenuse, so that gives us this:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectadjacentlo">L0C5D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectadjacentlo">objectAdjacentLo</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectadjacenthi">L0C5E</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectadjacenthi">objectAdjacentHi</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectoppositelo">L0C5B</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectoppositelo">objectOppositeLo</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectoppositehi">L0C5C</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#objectoppositehi">objectOppositeHi</a></li>
+							</ul>
+
+							<p>This is very similar to the visibility maths for tiles, so that was easier than expected!</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-04" class="anchor"></a>4 December 2025<br>
@@ -382,42 +378,53 @@ expected!
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/e18a2e3...ea33fde?diff=unified">GitHub commits and diffs for 4 December 2025</a>.</p>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjpointangles.html">sub_C5C75</a> next, so let's go there.
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjpointangles.html">sub_C5C75</a> next, so let's go there.</p>
 
-It calculates the pitch and yaw angles for the object points. It's convoluted
-but not too bad, and lets us document a whole bunch of tables too:
+							<p>It calculates the pitch and yaw angles for the object points. It's convoluted but not too bad, and lets us document a whole bunch of tables too:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">L49A0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">objPointRange</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">L4AE0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">objPointYaw</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointheight.html">L4C20</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointheight.html">objPointHeight</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">L4D60</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">objPointDistance</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">L49A0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">objPointRange</a></li>
 
-I must document these properly, as hex numbers will not do.
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">L4AE0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">objPointYaw</a></li>
 
-Object points are stored as polar coordinates (yaw and distance) that are
-extruded up and down by a height
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpointheight.html">L4C20</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointheight.html">objPointHeight</a></li>
 
-Kinda heavy, but not that bad - just long!
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">L4D60</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">objPointDistance</a></li>
+							</ul>
+
+							<p>I must document these properly, as hex numbers will not do.</p>
+
+							<p>Object points are stored as polar coordinates (yaw and distance) that are extruded up and down by a height.</p>
+
+							<p>Kinda heavy, but not that bad - just long!</p>
 						</div>
 
 						<div class="diary">
-The rest of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a> involves lots of tables with lots of data, so I've made
-a first stab at documenting them, but this is incomplete - will have to come
-back to it next time, as that's enough for today!
+							<p>The rest of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a> involves lots of tables with lots of data, so I've made a first stab at documenting them, but this is incomplete - will have to come back to it next time, as that's enough for today!</p>
 
-But here are tody's guesses:
+							<p>But here are tody's guesses:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">L49A0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">objPointRange</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonrange.html">L49AB</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonrange.html">objPolygonRange</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonphases.html">L49B6</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonphases.html">objPolygonPhases</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">L4AE0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">objPointYaw</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointheight.html">L4C20</a> -> objPointPitch
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">L4D60</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">objPointDistance</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygondata.html">L4EA0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygondata.html">objPolygonData</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrlo.html">L4FE0</a> -> L003CLo
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrhi.html">L5120</a> -> L003CHi
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">L49A0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointrange.html">objPointRange</a></li>
 
-Latter two contain addresses - need to anlyse those next
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonrange.html">L49AB</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonrange.html">objPolygonRange</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonphases.html">L49B6</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonphases.html">objPolygonPhases</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">L4AE0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">objPointYaw</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpointheight.html">L4C20</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointheight.html">objPointPitch</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">L4D60</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">objPointDistance</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygondata.html">L4EA0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygondata.html">objPolygonData</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrlo.html">L4FE0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrlo.html">L003CLo</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrhi.html">L5120</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrhi.html">L003CHi</a></li>
+							</ul>
+
+							<p>Latter two contain addresses - need to anlyse those next.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-05" class="anchor"></a>5 December 2025<br>
@@ -426,92 +433,99 @@ Latter two contain addresses - need to anlyse those next
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/ea33fde...e18cf16?diff=unified">GitHub commits and diffs for 5 December 2025</a>.</p>
 
 						<div class="diary">
-Looks like those address tables point into other tables - this must be the
-object definitions themselves, which are made up of lists polygon numbers (so
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a> just draws those lists of polygons, with some objects having one
-list and some having two lists)
+							<p>Looks like those address tables point into other tables - this must be the object definitions themselves, which are made up of lists polygon numbers (so <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a> just draws those lists of polygons, with some objects having one list and some having two lists).</p>
 
-(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#drawviewangles">L003D</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#drawviewangles">L003C</a>) is set to the address of the object data, which must contain
-polygon data as it is indexed by the polygon number Y in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a>, like this:
+							<p>(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#drawviewangles">L003D</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#drawviewangles">L003C</a>) is set to the address of the object data, which must contain polygon data as it is indexed by the polygon number Y in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawobject.html">DrawObject</a>, like this:</p>
 
- LDA L003CLo,Y
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#drawviewangles">L003C</a>
- LDA L003CHi,Y
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#drawviewangles">L003C</a>+1
+<pre class="articleIndented">
+  LDA L003CLo,Y
+  STA L003C
+  LDA L003CHi,Y
+  STA L003C+1
+</pre>
 
-So this must be pointing to some kind of sequence of polygon-related data
+							<p>So this must be pointing to some kind of sequence of polygon-related data</p>
 
-It is reset to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#polygonpoint">L0C40</a> for non-object drawing, so that must be something to do
-with non-object drawing - tiles, presumably?
+							<p>It is reset to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#polygonpoint">L0C40</a> for non-object drawing, so that must be something to do with non-object drawing - tiles, presumably?</p>
 						</div>
 
 						<div class="diary">
-Excel to the rescue! I've assembled the addresses from (L003CHi L003CLo) in a
-spreadsheet and matched them with the ranges of polygon numbers in
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonrange.html">objPolygonRange</a>, so we now have a sequence of addresses for each polygon
+							<p>Excel to the rescue! I've assembled the addresses from (<a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrhi.html">L003CHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrlo.html">L003CLo</a>) in a spreadsheet and matched them with the ranges of polygon numbers in <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonrange.html">objPolygonRange</a>, so we now have a sequence of addresses for each polygon.</p>
 
-These addresses point to sequences of numbers, sometimes five numbers and
-sometimes four numbers. e.g. the object type 0, the robot, points to these
-sequences in the first three entries:
+							<p>See <a href="/documents/object_analysis.xlsx">sentinel_table_lookups.xlsx</a> for the Excel spreadsheet (see the "Polygon data" tab).</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html">&amp;53B4</a> = &amp;4B, &amp;4A, &amp;48, &amp;4C, &amp;4B
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html#objpolygon001">&amp;53B9</a> = &amp;4A, &amp;49, &amp;48, &amp;4A
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html#objpolygon002">&amp;53BD</a> = &amp;54, &amp;53, &amp;52, &amp;55, &amp;54
+							<p>These addresses point to sequences of numbers, sometimes five numbers and sometimes four numbers. e.g. the object type 0, the robot, points to these sequences in the first three entries:</p>
 
-So the robot object definition is at <a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html">&amp;53B4</a> (so call this <a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html">objRobot</a> for now).
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html">&amp;53B4</a> = &amp;4B, &amp;4A, &amp;48, &amp;4C, &amp;4B</li>
 
-And it's made up of groups of 4 or 5 numbers. What are they?
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html#objpolygon001">&amp;53B9</a> = &amp;4A, &amp;49, &amp;48, &amp;4A</li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html#objpolygon002">&amp;53BD</a> = &amp;54, &amp;53, &amp;52, &amp;55, &amp;54</li>
+							</ul>
+
+
+							<p>So the robot object definition is at <a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html">&amp;53B4</a> (so call this <a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html">objRobot</a> for now).</p>
+
+							<p>And it's made up of groups of 4 or 5 numbers. What are they?</p>
 						</div>
 
 						<div class="diary">
-For now, let's just pull out the starting addresses for each object definition
-from the spreadsheet and give them headers.
+							<p>For now, let's just pull out the starting addresses for each object definition from the spreadsheet and give them headers.</p>
 
-Robot = <a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html">&amp;53B4</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html">objRobot</a>
-Sentry = <a href="https://thesentinel.bbcelite.com/source/main/variable/objsentry.html">&amp;542F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objmeanie.html">objMeanie</a>
-Tree = <a href="https://thesentinel.bbcelite.com/source/main/variable/objtree.html">&amp;5300</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objtree.html">objTree</a>
-Boulder = <a href="https://thesentinel.bbcelite.com/source/main/variable/objboulder.html">&amp;5343</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objboulder.html">objBoulder</a>
-Meanie = <a href="https://thesentinel.bbcelite.com/source/main/variable/objmeanie.html">&amp;49CD</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objmeanie.html">objMeanie</a>
-The Sentinel = <a href="https://thesentinel.bbcelite.com/source/main/variable/objsentinel.html">&amp;5260</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objsentinel.html">objSentinel</a>
-The Sentinel's tower = <a href="https://thesentinel.bbcelite.com/source/main/variable/objtower.html">&amp;536D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objtower.html">objTower</a>
-3D Text Block 1 = <a href="https://thesentinel.bbcelite.com/source/main/variable/objtextblock.html">&amp;53A0</a> -> ObjTextBlock
-3D Text Block 2 = <a href="https://thesentinel.bbcelite.com/source/main/variable/objtextblock.html">&amp;53A0</a> -> ObjTextBlock
-3D Text Block 3 = <a href="https://thesentinel.bbcelite.com/source/main/variable/objtextblock.html">&amp;53A0</a> -> ObjTextBlock
+							<ul>
+								<li>Robot = <a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html">&amp;53B4</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objrobot.html">objRobot</a></li>
 
-The last three make sense, pointing to the same object definition, as these are
-just rectangular blocks for building the 3D text.
+								<li>Sentry = <a href="https://thesentinel.bbcelite.com/source/main/variable/objsentry.html">&amp;542F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objsentry.html">objSentry</a></li>
+
+								<li>Tree = <a href="https://thesentinel.bbcelite.com/source/main/variable/objtree.html">&amp;5300</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objtree.html">objTree</a></li>
+
+								<li>Boulder = <a href="https://thesentinel.bbcelite.com/source/main/variable/objboulder.html">&amp;5343</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objboulder.html">objBoulder</a></li>
+
+								<li>Meanie = <a href="https://thesentinel.bbcelite.com/source/main/variable/objmeanie.html">&amp;49CD</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objmeanie.html">objMeanie</a></li>
+
+								<li>The Sentinel = <a href="https://thesentinel.bbcelite.com/source/main/variable/objsentinel.html">&amp;5260</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objsentinel.html">objSentinel</a></li>
+
+								<li>The Sentinel's tower = <a href="https://thesentinel.bbcelite.com/source/main/variable/objtower.html">&amp;536D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objtower.html">objTower</a></li>
+
+								<li>3D Text Block 1 = <a href="https://thesentinel.bbcelite.com/source/main/variable/objtextblock.html">&amp;53A0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objtextblock.html">objTextBlock</a></li>
+
+								<li>3D Text Block 2 = <a href="https://thesentinel.bbcelite.com/source/main/variable/objtextblock.html">&amp;53A0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objtextblock.html">objTextBlock</a></li>
+
+								<li>3D Text Block 3 = <a href="https://thesentinel.bbcelite.com/source/main/variable/objtextblock.html">&amp;53A0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objtextblock.html">objTextBlock</a></li>
+							</ul>
+
+							<p>The last three make sense, pointing to the same object definition, as these are just rectangular blocks for building the 3D text.</p>
 						</div>
 
 						<div class="diary">
-I love this bit - extracting meaning from blocks of data!
+							<p>I love this bit - extracting meaning from blocks of data! See <a href="/documents/object_analysis.xlsx">sentinel_table_lookups.xlsx</a> for the Excel spreadsheet I'm doing this in.</p>
 
-Start off with the manual job of breaking the various object definition tables
-up into groups of 4 or 5, as defined by (L003CHi L003CLo), and giving each of
-them a label that we can put into the L003CLo and L003CHi tables
+							<p>Start off with the manual job of breaking the various object definition tables up into groups of 4 or 5, as defined by (<a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrhi.html">L003CHi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrlo.html">L003CLo</a>), and giving each of them a label that we can put into the <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrlo.html">L003CLo</a> and <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrhi.html">L003CHi</a> tables.</p>
 
-Rename L003CLo -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrlo.html">objPolygonAddrLo</a>
-       L003CHi -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrhi.html">objPolygonAddrHi</a>
+							<p>Rename:</p>
 
-As this table contains the address of each polygon definition (a polygon is
-defined as a series of four or five point numbers).
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrlo.html">L003CLo</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrlo.html">objPolygonAddrLo</a></li>
 
-Big job! But very satisfying. :-)
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrhi.html">L003CHi</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygonaddrhi.html">objPolygonAddrHi</a></li>
+							</ul>
+
+							<p>As this table contains the address of each polygon definition (a polygon is defined as a series of four or five point numbers).</p>
+
+							<p>Big job! But very satisfying. :-)</p>
 						</div>
 
 						<div class="diary">
->>> I have now broken through the 70% barrier &lt;&lt;&lt;
+							<p>>>> I have now broken through the 70% barrier &lt;&lt;&lt;</p>
 						</div>
 
 						<div class="diary">
-Must come back and extract the point numbers properly, as &amp;40 represents point
-0 within the range of points allocated to the object, &amp;41 is point 1 within the
-range, and so on. So we could change this to 64 + 0, 64 + 1 and so on.
+							<p>Must come back and extract the point numbers properly, as &amp;40 represents point 0 within the range of points allocated to the object, &amp;41 is point 1 within the range, and so on. So we could change this to 64 + 0, 64 + 1 and so on.</p>
 
-Also the point coordinate tables in <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">objPointYaw</a>, objPointPitch,
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">objPointDistance</a> need converting into human-readable data, and so does
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygondata.html">objPolygonData</a> (still need to work out what some of the latter means).
+							<p>Also the point coordinate tables in <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointyaw.html">objPointYaw</a>, <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointheight.html">objPointPitch</a>, <a href="https://thesentinel.bbcelite.com/source/main/variable/objpointdistance.html">objPointDistance</a> need converting into human-readable data, and so does <a href="https://thesentinel.bbcelite.com/source/main/variable/objpolygondata.html">objPolygonData</a> (still need to work out what some of the latter means).</p>
 
-But that's all for another time, as that's what I've just run out of.
+							<p>But that's all for another time, as that's what I've just run out of.</p>
 						</div>
 					</div>
 				</div>
