@@ -14,13 +14,13 @@ page_header("disassembly_diary", "progress_75-80-percent.html", "Project progres
 						<p>Here's my disassembly diary for this part of my project to document The Sentinel on the BBC Micro. You can click on the following links to jump to a specific day in the diary:</p>
 
 						<ul>
-							<li><a href="#date-2025-12-11">11 December 2025</a></li>
-							<li><a href="#date-2025-12-12">12 December 2025</a></li>
-							<li><a href="#date-2025-12-13">13 December 2025</a></li>
-							<li><a href="#date-2025-12-14">14 December 2025</a></li>
-							<li><a href="#date-2025-12-15">15 December 2025</a></li>
-							<li><a href="#date-2025-12-16">16 December 2025</a></li>
-							<li><a href="#date-2025-12-17">17 December 2025</a></li>
+							<li><a href="#date-2025-12-11">11 December 2025</a> - Add new multibyte terminology, identify ApplyEnemyTactics, MoveOnToNextEnemy, ApplyTactics, FinishEnemyTactics, ExpendEnemyEnergy, GetObjVisibility, objectHalfWidth, minObjWidth, document GetObjVisibility</li>
+							<li><a href="#date-2025-12-12">12 December 2025</a>Document bufferColumns, CheckObjVisibility, AbortWhenVisible and ExpendEnemyEnergy, start analysing ApplyTactics, identify objTacticsTimer and spawnedMeanie</li>
+							<li><a href="#date-2025-12-13">13 December 2025</a> - Start analysing CheckEnemyGaze, discover that enemy timers are interrupt driven</li>
+							<li><a href="#date-2025-12-14">14 December 2025</a> - Rename enemy timers to start with "enemy", rename enemyTacticTimer, enemyYawStep and enemyMeanieTree, document UpdateEnemyTimers, identify CheckEnemyGaze, targetVisibility, enemyCheckingRobot and treeVisibility</li>
+							<li><a href="#date-2025-12-15">15 December 2025</a> - Continue analysing ApplyTactics, identify enemyTarget</li>
+							<li><a href="#date-2025-12-16">16 December 2025</a> - Identify DrawUpdatedObject and DitherScreenBuffer, document tact25 in ApplyTactics, drawLandscape and ditherObjectSights, identify ConfigureObjBuffer, rename enemyDrainTimer and enemyRotateTimer, document parts 2 and 3 of ApplyTactics</li>
+							<li><a href="#date-2025-12-17">17 December 2025</a> - Identify doNotDitherObject, ditherInnerLoop, ditherOuterLoop and yawAdjustmentHi, analyse bufferOrigin(Hi Lo), identify objScreenAddr, document DrawUpdatedObject, reach 80% progress, identify bitMaskDither and randomPixelDither</li>
 						</ul>
 
 						<p>Please note that this diary is a dump of my thoughts as I disassembled and documented The Sentinel, and as such it contains lots of mistakes and dead ends and misinterpretations. This diary is all about the journey, rather than the destination; for the latter, see the <a href="https://thesentinel.bbcelite.com/">finished product</a>.</p>
@@ -31,154 +31,147 @@ page_header("disassembly_diary", "progress_75-80-percent.html", "Project progres
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/0cec0b5...8e9a1c6?diff=unified">GitHub commits and diffs for 11 December 2025</a>.</p>
 
 						<div class="diary">
-A big terminology change that will make things simpler (and which I must roll
-out into my other projects).
+							<p>I'm making a big terminology change that will make things simpler (and which I must roll out into my other projects).</p>
 
-Thus far I've used terminology like this for multibyte variables:
+							<p>Thus far I've used terminology like this for multibyte variables:</p>
 
-(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#hypotenusehi">hypotenuseHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#hypotenuselo">hypotenuseLo</a>)
+<pre class="articleIndented">
+  (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#hypotenusehi">hypotenuseHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#hypotenuselo">hypotenuseLo</a>)
+</pre>
 
-while we also have this shorthand:
+							<p>while we also have this shorthand:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#stashaddr">stashAddr</a>(1 0)
+<pre class="articleIndented">
+  <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#stashaddr">stashAddr</a>(1 0)
+</pre>
 
-The first one can be shortened to be like the second one with no loss of
-information, but it's much shorter, especially for long label names. So:
+							<p>The first one can be shortened to be like the second one with no loss of information, but it's much shorter, especially for long label names. So:</p>
 
-(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#hypotenusehi">hypotenuseHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#hypotenuselo">hypotenuseLo</a>) -> hypotenuse(Hi Lo)
+							<ul>
+								<li>(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#hypotenusehi">hypotenuseHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#hypotenuselo">hypotenuseLo</a>) -> hypotenuse(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#hypotenusehi">Hi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#hypotenuselo">Lo</a>)</li>
+							</ul>
 
-etc.
+							<p>etc.</p>
 
-This is particularly useful for the likes of:
+							<p>This is particularly useful for the likes of:</p>
 
-(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorhi">xVectorHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorlo">xVectorLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorbot">xVectorBot</a>) -> xVector(Hi Lo Bot)
+							<ul>
+								<li>(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorhi">xVectorHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorlo">xVectorLo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorbot">xVectorBot</a>) -> xVector(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorhi">Hi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorlo">Lo</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xvectorbot">Bot</a>)</li>
+							</ul>
 
-This is much shorter and clearer!
+							<p>This is much shorter and clearer!</p>
 
-Here are the regex replaces (in VSCode) to track down the bits that need
-changing:
+							<p>Here are the regex replaces (in VSCode) to track down the bits that need changing:</p>
 
-\((\w+)Top \1Hi \1Lo \1Bot\)
-$1(Top Hi Lo Bot)
+<pre class="articleIndented">
+  \((\w+)Top \1Hi \1Lo \1Bot\)
+  $1(Top Hi Lo Bot)
 
-\((\w+)Top \1Hi \1Lo\)
-$1(Top Hi Lo)
+  \((\w+)Top \1Hi \1Lo\)
+  $1(Top Hi Lo)
 
-\((\w+)Top \1Hi\)
-$1(Top Hi)
+  \((\w+)Top \1Hi\)
+  $1(Top Hi)
 
-\((\w+)Hi \1Lo \1Bot\)
-$1(Hi Lo Bot)
+  \((\w+)Hi \1Lo \1Bot\)
+  $1(Hi Lo Bot)
 
-\((\w+)Hi \1Lo\)
-$1(Hi Lo)
+  \((\w+)Hi \1Lo\)
+  $1(Hi Lo)
 
-\((\w+)Lo \1Bot\)
-$1(Lo Bot)
+  \((\w+)Lo \1Bot\)
+  $1(Lo Bot)
 
-\(.+Hi\n
+  \(.+Hi\n
 
-\(.+Lo\n
+  \(.+Lo\n
 
-\(.+Top\n
+  \(.+Top\n
+</pre>
 
-There are still some chunky names in there, such as (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltaabsolutehi">xDeltaAbsoluteHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltalo">xDeltaLo</a>)
-or (<a href="https://thesentinel.bbcelite.com/source/main/variable/scrollscreenhi.html">scrollScreenHi</a>+Y <a href="https://thesentinel.bbcelite.com/source/main/variable/scrollscreenlo.html">scrollScreenLo</a>+Y), but there aren't many, so let's leave
-them
+							<p>There are still some chunky names in there, such as (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltaabsolutehi">xDeltaAbsoluteHi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#xdeltalo">xDeltaLo</a>) or (<a href="https://thesentinel.bbcelite.com/source/main/variable/scrollscreenhi.html">scrollScreenHi</a>+Y <a href="https://thesentinel.bbcelite.com/source/main/variable/scrollscreenlo.html">scrollScreenLo</a>+Y), but there aren't many, so let's leave them.</p>
 						</div>
 
 						<div class="diary">
-Time to move on to the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">ProcessGameplay</a> routine and the unexplained subroutines
-therein.
+							<p>Time to move on to the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/processgameplay.html">ProcessGameplay</a> routine and the unexplained subroutines therein.</p>
 
-Let's start with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">sub_C16A8</a>, which looks like a big one in the hierarchy.
+							<p>Let's start with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">sub_C16A8</a>, which looks like a big one in the hierarchy.</p>
 
-It is something to do with enemies, so this might be where we update the enemy
-activity and apply enemy tactics? As this has to happen somewhere and we're
-running out of options!
+							<p>It is something to do with enemies, so this might be where we update the enemy activity and apply enemy tactics? As this has to happen somewhere and we're running out of options!</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">sub_C16A8</a> looks like it processes the enemy in <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#enemyobject">enemyObject</a>
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">sub_C16A8</a> looks like it processes the enemy in <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#enemyobject">enemyObject</a>.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#enemyobject">enemyObject</a> is only ever changed in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/moveontonextenemy.html">sub_C16C9</a>, where it is decremented by one
-and loops around from 7 down to 0 and round again.
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#enemyobject">enemyObject</a> is only ever changed in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/moveontonextenemy.html">sub_C16C9</a>, where it is decremented by one and loops around from 7 down to 0 and round again.</p>
 
-So we update the next enemy in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/moveontonextenemy.html">sub_C16C9</a>?
+							<p>So we update the next enemy in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/moveontonextenemy.html">sub_C16C9</a>?</p>
 
-Following through the top-level routines, they are quite easy to follow, so
-let's try these names:
+							<p>Following through the top-level routines, they are quite easy to follow, so let's try these names:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">sub_C16A8</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">ApplyEnemyTactics</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/moveontonextenemy.html">sub_C16C9</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/moveontonextenemy.html">MoveOnToNextEnemy</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">sub_C16D9</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/finishenemytactics.html">sub_C1AEC</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/finishenemytactics.html">FinishEnemyTactics</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">sub_C16A8</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">ApplyEnemyTactics</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/moveontonextenemy.html">sub_C16C9</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/moveontonextenemy.html">MoveOnToNextEnemy</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">sub_C16D9</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/finishenemytactics.html">sub_C1AEC</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/finishenemytactics.html">FinishEnemyTactics</a></li>
+							</ul>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> also calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/expendenemyenergy.html">sub_C1A54</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_10_of_10.html#tact25">sub_C1871</a>, when the enemy object number
-is no longer associated with an object (so it's been absorbed or something?)
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> also calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/expendenemyenergy.html">sub_C1A54</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_10_of_10.html#tact25">sub_C1871</a>, when the enemy object number is no longer associated with an object (so it's been absorbed or something?).</p>
 
-Let's start with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/expendenemyenergy.html">sub_C1A54</a>
+							<p>Let's start with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/expendenemyenergy.html">sub_C1A54</a>.</p>
 
-This appears to drain an enemy of energy and spawn a tree, so name it
-DrainEnemyEnergy
+							<p>This appears to drain an enemy of energy and spawn a tree, so name it <a href="https://thesentinel.bbcelite.com/source/main/subroutine/expendenemyenergy.html">DrainEnemyEnergy</a>.</p>
 
-DrainEnemyEnergy calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkobjvisibility.html">sub_C1AF3</a>
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/expendenemyenergy.html">DrainEnemyEnergy</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkobjvisibility.html">sub_C1AF3</a>.</p>
 
-This appears to control whether we can delete the enemy
+							<p>This appears to control whether we can delete the enemy.</p>
 
-We can't delete if we are about to do another pan, otherwise this calls
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">sub_C2096</a>
+							<p>We can't delete if we are about to do another pan, otherwise this calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">sub_C2096</a>.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">sub_C2096</a> seems to check whether the object is visible, so rename
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a>
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">sub_C2096</a> seems to check whether the object is visible, so rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a>.</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkobjvisibility.html">CheckObjVisibility</a> does a bunch of angle calculations that calculate the yaw
-angle of the object in terms of screen
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkobjvisibility.html">CheckObjVisibility</a> does a bunch of angle calculations that calculate the yaw angle of the object in terms of screen.</p>
 
-This calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getpitchangledelta.html">GetPitchAngleDelta</a> to get an angle delta... but it's a yaw angle not
-a pitch angle, so that needs a bit of explaining! (Let's leave the function
-name alone as the whole function does calculate a pitch delta, we're just using
-one of the interim calculations here).
+							<p>This calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getpitchangledelta.html">GetPitchAngleDelta</a> to get an angle delta... but it's a yaw angle not a pitch angle, so that needs a bit of explaining! (Let's leave the function name alone as the whole function does calculate a pitch delta, we're just using one of the interim calculations here).</p>
 
-There's also a strange x-coordinate calculation that involves <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">L0CD4</a> and the
-table at <a href="https://thesentinel.bbcelite.com/source/main/variable/objecthalfwidth.html">L2107</a>
+							<p>There's also a strange x-coordinate calculation that involves <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">L0CD4</a> and the table at <a href="https://thesentinel.bbcelite.com/source/main/variable/objecthalfwidth.html">L2107</a>.</p>
 
-This populates the opposite side of the triangle... so the <a href="https://thesentinel.bbcelite.com/source/main/variable/objecthalfwidth.html">L2107</a> value must be
-the object width? Let's call it objectWidth anyway
+							<p>This populates the opposite side of the triangle... so the <a href="https://thesentinel.bbcelite.com/source/main/variable/objecthalfwidth.html">L2107</a> value must be the object width? Let's call it <a href="https://thesentinel.bbcelite.com/source/main/variable/objecthalfwidth.html">objectWidth</a> anyway.</p>
 
-So what's <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">L0CD4</a>?
+							<p>So what's <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">L0CD4</a>?</p>
 
-It is used to ensure a minimum width for the object we are checking for
-visibility
+							<p>It is used to ensure a minimum width for the object we are checking for visibility.</p>
 
-It gets set to 104 in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/scanformeanietree.html">sub_C197D</a> for a meanie, which is more than the 74 from
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objecthalfwidth.html">L2107</a>
-It gets set to 116 in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a> when draining energy from a boulder
+							<p>It gets set to 104 in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/scanformeanietree.html">sub_C197D</a> for a meanie, which is more than the 74 from <a href="https://thesentinel.bbcelite.com/source/main/variable/objecthalfwidth.html">L2107</a>.</p>
 
-It gets set to 0 in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> once we have finished the visibility
-calculation
+							<p>It gets set to 116 in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a> when draining energy from a boulder.</p>
 
-Weird, I wonder what it is? Let's call it <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">minObjWidth</a> as that's what it is, and
-we can work it out as we analyse the above bits of code further
+							<p>It gets set to 0 in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> once we have finished the visibility calculation.</p>
+
+							<p>Weird, I wonder what it is? Let's call it <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">minObjWidth</a> as that's what it is, and we can work it out as we analyse the above bits of code further.</p>
 						</div>
 
 						<div class="diary">
-Ah! I think I have it. <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">minObjWidth</a> is set to a non-zero value when:
+							<p>Ah! I think I have it. <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">minObjWidth</a> is set to a non-zero value when:</p>
 
-a meanie replaces a tree (<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">minObjWidth</a> = 104)
+							<ul>
+								<li>A meanie replaces a tree (<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">minObjWidth</a> = 104)</li>
 
-a tree replaces a boulder (<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">minObjWidth</a> = 116)
+								<li>A tree replaces a boulder (<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#minobjwidth">minObjWidth</a> = 116)</li>
+							</ul>
 
-why not 114 and 122 in both cases, so we check visibility on the widths of tree
-and boulder???
+							<p>Why not 114 and 122 in both cases, so we check visibility using the same widths as the tree and boulder?</p>
 
-Hmm, might not be totally correct, but it's something to do with this.
+							<p>Hmm, might not be totally correct, but it's something like this.</p>
 						</div>
 
 						<div class="diary">
-Finished <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> but with a lot of questions!
+							<p>Finished <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> but with a lot of questions!</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-12" class="anchor"></a>12 December 2025<br>
@@ -187,89 +180,75 @@ Finished <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobj
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/8e9a1c6...7311731?diff=unified">GitHub commits and diffs for 12 December 2025</a>.</p>
 
 						<div class="diary">
-OK, I've worked out why doubling a yaw angle converts it into character
-columns. It's obvious - the screen is 20 yaw angles wide and 40 character
-columns wide, you double the yaw to get the number of character columns.
+							<p>OK, I've worked out why doubling a yaw angle converts it into character columns. It's obvious - the screen is 20 yaw angles wide and 40 character columns wide, you double the yaw to get the number of character columns.</p>
 
-Looks like the vertical equivalent is to multiply by 2/3, as the screen is 36
-pitch angles tall and 24 character rows.
+							<p>Looks like the vertical equivalent is to multiply by 2/3, as the screen is 36 pitch angles tall and 24 character rows.</p>
 						</div>
 
 						<div class="diary">
-So <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#buffercolumns">bufferColumns</a> is set to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> with a maximum value of 20
+							<p>So <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#buffercolumns">bufferColumns</a> is set in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getobjvisibility.html">GetObjVisibility</a> to a maximum value of 20.</p>
 
-This is why close-up objects that take up a large amount of space on-screen are
-absorbed in two stages, left then right, as the object it too wide to fit into
-the column buffer's maximum width of 20 character columns, or half a screen
+							<p>This is why close-up objects that take up a large amount of space on-screen are absorbed in two stages, left then right, as the object it too wide to fit into the column buffer's maximum width of 20 character columns, or half a screen.</p>
 						</div>
 
 						<div class="diary">
-Moving back up the hirearchy, we can rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkobjvisibility.html">sub_C1AF3</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkobjvisibility.html">CheckObjVisibility</a> and
-finish documenting it
+							<p>Moving back up the hierarchy, we can rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkobjvisibility.html">sub_C1AF3</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkobjvisibility.html">CheckObjVisibility</a> and finish documenting it.</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/abortwhenvisible.html">sub_C1AE7</a> gets the visibility and aborts the enemy tactics if the object could
-be seen on-screen, so rename it to AbortIfVisible and document
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/abortwhenvisible.html">sub_C1AE7</a> gets the visibility and aborts the enemy tactics if the object could be seen on-screen, so rename it to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/abortwhenvisible.html">AbortIfVisible</a> and document.</p>
 						</div>
 
 						<div class="diary">
-Rolling back up the hierarchy, we get back to DrainEnemyEnergy, so finish that
-off as it's almost all commented
+							<p>Rolling back up the hierarchy, we get back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/expendenemyenergy.html">DrainEnemyEnergy</a>, so finish that off as it's almost all commented.</p>
 						</div>
 
 						<div class="diary">
-The next level up is the top one, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">ApplyEnemyTactics</a>, so there are two choices
-for the next rabbit hole to dive down: <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_10_of_10.html#tact25">sub_C1871</a>.
+							<p>The next level up is the top one, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applyenemytactics.html">ApplyEnemyTactics</a>, so there are two choices for the next rabbit hole to dive down: <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_10_of_10.html#tact25">sub_C1871</a>.</p>
 
-The first one falls into the second, so let's go for <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>. Which is
-huge...
+							<p>The first one falls into the second, so let's go for <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>. Which is huge...</p>
 
-It starts by looking at <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">objRotationTimer</a>, which is a timer that ticks down (not
-sure which bit of code does this, but it's obvious from running it in an
-emulator)
+							<p>It starts by looking at <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">objRotationTimer</a>, which is a timer that ticks down (not sure which bit of code does this, but it's obvious from running it in an emulator).</p>
 
-Actually, this timer seems to control whether we apply tactics, not rotation as
-such, so rename it to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">objTacticsTimer</a>
+							<p>Actually, this timer seems to control whether we apply tactics, not rotation as such, so rename it to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">objTacticsTimer</a>.</p>
 						</div>
 
 						<div class="diary">
-After a bit of logic, we fetch <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a> for this enemy
+							<p>After a bit of logic, we fetch <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a> for this enemy.</p>
 
-If bit 7 is set it jumps down (so add a header as this feels like a multipart
-routine), but if bit 7 is clear then we set <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#viewingobject">viewingObject</a> to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a>
+							<p>If bit 7 is set it jumps down (so add a header as this feels like a multipart routine), but if bit 7 is clear then we set <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#viewingobject">viewingObject</a> to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a>.</p>
 
-So <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a> contains an object number? OK
+							<p>So <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a> contains an object number? OK.</p>
 
-And what is it? It is set to an object number in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/scanformeanietree.html">sub_C197D</a> here:
+							<p>And what is it? It is set to an object number in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/scanformeanietree.html">sub_C197D</a> here:</p>
 
+<pre class="articleIndented">
  TYA
- STA <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a>,X
+ STA enemyData5,X
 
  LDA #4
- STA <a href="https://thesentinel.bbcelite.com/source/main/variable/objecttypes.html">objectTypes</a>,Y
+ STA objectTypes,Y
+</pre>
 
-The last two instructions change object #Y into a meanie, and the first two
-stick Y into <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a>, so this must be where a tree gets morphed into a
-meanie.
+							<p>The last two instructions change object #Y into a meanie, and the first two stick Y into <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a>, so this must be where a tree gets morphed into a meanie.</p>
 
-So <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a> looks like it's recording whether this enemy is a meanie, and it
-contains the object number of the tree that has been morphed into a meanie? I
-think
+							<p>So <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a> looks like it's recording whether this enemy is a meanie, and it contains the object number of the tree that has been morphed into a meanie? I think.</p>
 
-If bit 7 is set then this enemy is presumably not a meanie
+							<p>If bit 7 is set then this enemy is presumably not a meanie.</p>
 
-So presumably <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> is also called for meanies? Must check...
+							<p>So presumably <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> is also called for meanies? Must check...</p>
 
-Actually, no, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> is definitely only called for Sentinel and sentry
+							<p>Actually, no, <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> is definitely only called for Sentinel and sentry.</p>
 
-So perhaps the enemy we are processing is the one responsible for turning the
-tree into a meanie? i.e. the one that is only half able to see us. Makes sense.
+							<p>So perhaps the enemy we are processing is the one responsible for turning the tree into a meanie? i.e. the one that is only half able to see us. Makes sense.</p>
 
-Anyway, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a> contains the object number of the tree/meanie that the enemy
-has transformed to attack us? OK, so rename <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">spawnedMeanie</a>
+							<p>Anyway, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a> contains the object number of the tree/meanie that the enemy has transformed to attack us? OK, so rename:</p>
 
-And that's enough for the day
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyData5</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">spawnedMeanie</a></li>
+							</ul>
+
+							<p>And that's enough for the day.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-13" class="anchor"></a>13 December 2025<br>
@@ -278,33 +257,31 @@ And that's enough for the day
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/7311731...e0a57ec?diff=unified">GitHub commits and diffs for 13 December 2025</a>.</p>
 
 						<div class="diary">
-Short day, so continuing with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>...
+							<p>Short day, so continuing with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>...</p>
 
-Part 2 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">sub_C1882</a> in the part that thinks about creating a
-meanie
+							<p>Part 2 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">sub_C1882</a> in the part that thinks about creating a meanie.</p>
 
-It is called a lot in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>, so let's look at it
+							<p>It is called a lot in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>, so let's look at it.</p>
 
-It is called with an object type in A
-X is preserved using a dedicated variable <a href="https://thesentinel.bbcelite.com/source/main/variable/xstoreenemygaze.html">L1919</a>
-Y parameter is an object - it goes into <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#targetobject">targetObject</a>
+							<ul>
+								<li>It is called with an object type in A.</li>
 
-Working through the routine, this is calculating triangles and following a gaze
-vector, so it looks like some kind of "can the enemy see this object" routine?
+								<li>X is preserved using a dedicated variable <a href="https://thesentinel.bbcelite.com/source/main/variable/xstoreenemygaze.html">L1919</a>.</li>
 
-It seems to set <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#targetvisibility">L0014</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#treevisibility">L0C76</a> accordingly...
+								<li>Y parameter is an object - it goes into <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#targetobject">targetObject</a>.</li>
+							</ul>
+
+							<p>Working through the routine, this is calculating triangles and following a gaze vector, so it looks like some kind of "can the enemy see this object" routine?</p>
+
+							<p>It seems to set <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#targetvisibility">L0014</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#treevisibility">L0C76</a> accordingly...</p>
 						</div>
 
 						<div class="diary">
-I got sidelined by trying to work out how the enemy timers are updated, as I
-keep talking about "iterations of the gameplay loop" and that might actually be
-nonsense
+							<p>I got sidelined by trying to work out how the enemy timers are updated, as I keep talking about "iterations of the gameplay loop" and that might actually be nonsense.</p>
 
-By adding  breakpoint to the timers, it turns out that the interrupt handler
-calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">sub_C12EE</a>, and it's here that all the enemy timers - three banks of them
-- are decremented
+							<p>By adding  breakpoint to the timers, it turns out that the interrupt handler calls <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">sub_C12EE</a>, and it's here that all the enemy timers - three banks of them - are decremented.</p>
 
-So let's look at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">sub_C12EE</a>... but next time though, as I'm off for the day
+							<p>So let's look at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">sub_C12EE</a>... but next time though, as I'm off for the day.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-14" class="anchor"></a>14 December 2025<br>
@@ -313,83 +290,89 @@ So let's look at <a href="https://thesentinel.bbcelite.com/source/main/subroutin
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/e0a57ec...c785c1d?diff=unified">GitHub commits and diffs for 14 December 2025</a>.</p>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">sub_C12EE</a> updates three blocks of timers at <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">L0C20</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyrotatetimer">L0C28</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">objTacticsTimer</a>
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">sub_C12EE</a> updates three blocks of timers at <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">L0C20</a>, <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyrotatetimer">L0C28</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">objTacticsTimer</a>.</p>
 
-So rename as follows, so these all start with .enemy:
+							<p>So rename as follows, so these names all start with "enemy":</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">L0C20</a> -> enemyTimer1
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyrotatetimer">L0C28</a> -> enemyTimer2
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">objTacticsTimer</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">enemyTacticTimer</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">L0C20</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyTimer1</a></li>
 
-Ditto for <a href="https://thesentinel.bbcelite.com/source/main/variable/enemyyawstep.html">objRotationSpeed</a>, which contains the step that we add to each enemy's
-yaw angle, so:
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyrotatetimer">L0C28</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyrotatetimer">enemyTimer2</a></li>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/enemyyawstep.html">objRotationSpeed</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/enemyyawstep.html">enemyYawStep</a>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">objTacticsTimer</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">enemyTacticTimer</a></li>
+							</ul>
 
-Also, to keep the .enemy naming convention going:
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">spawnedMeanie</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyMeanieTree</a>
+							<p>Ditto for <a href="https://thesentinel.bbcelite.com/source/main/variable/enemyyawstep.html">objRotationSpeed</a>, which contains the step that we add to each enemy's yaw angle, so:</p>
 
-And we'll also rename the routine:
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/enemyyawstep.html">objRotationSpeed</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/enemyyawstep.html">enemyYawStep</a></li>
+							</ul>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">sub_C12EE</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a>
+							<p>Also, to keep the "enemy" naming convention going:</p>
 
-So we now have these enemy timers:
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">spawnedMeanie</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyMeanieTree</a></li>
+							</ul>
 
-.enemyTimer1
-.enemyTimer2
-.<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytactictimer">enemyTacticTimer</a>
+							<p>And we'll also rename the routine:</p>
 
-and these batches of enemy data:
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">sub_C12EE</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a></li>
+							</ul>
 
-.enemyData1
-.<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyenergy">enemyEnergy</a>
-.enemyData3
-.enemyData4
-.<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemymeanietree">enemyMeanieTree</a>
-.enemyData6
-.enemyData7
-.enemyData8
+							<p>So we now have these enemy timers:</p>
 
-We'll flesh these out as we work through <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>
+<pre class="articleIndented">
+  .enemyTimer1
+  .enemyTimer2
+  .enemyTacticTimer
+</pre>
+
+							<p>and these batches of enemy data:</p>
+
+<pre class="articleIndented">
+  .enemyData1
+  .enemyEnergy
+  .enemyData3
+  .enemyData4
+  .enemyMeanieTree
+  .enemyData6
+  .enemyData7
+  .enemyData8
+</pre>
+
+							<p>We'll flesh these out as we work through <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>.</p>
 						</div>
 
 						<div class="diary">
-Finish off documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a>, which is pretty simple
+							<p>Finish off documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a>, which is pretty simple.</p>
 
-The counters tick down from their starting value to 1, and then they stay there
+							<p>The counters tick down from their starting value to 1, and then they stay there.</p>
 
-They tick down on one in three calls to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a>
+							<p>They tick down on one in three calls to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a>.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a> is called 50 times a second when the game is active
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/updateenemytimers.html">UpdateEnemyTimers</a> is called 50 times a second when the game is active.</p>
 
-So a timer set to n will count down in N * 0.06 seconds
+							<p>So a timer set to n will count down in N * 0.06 seconds.</p>
 						</div>
 
 						<div class="diary">
-Anyway, back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">sub_C1882</a> now
+							<p>Anyway, back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">sub_C1882</a> now.</p>
 
-So this routine is called to work out whether the current enemy can see a
-specific object of a specific type
+							<p>So this routine is called to work out whether the current enemy can see a specific object of a specific type.</p>
 
-It looks like there is a loop at .<a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_5_of_10.html#tact12">tact12</a> that works through every object and
-calls this, so it's a pretty specific routine - it isn't a scan, it's a
-specific question: can the enemy see this object and does it match the given
-type?
+							<p>It looks like there is a loop at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_5_of_10.html#tact12">tact12</a> that works through every object and calls this, so it's a pretty specific routine - it isn't a scan, it's a specific question: can the enemy see this object and does it match the given type?</p>
 
-So rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">sub_C1882</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a>? OK for now
+							<p>So rename <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">sub_C1882</a> to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a>? OK for now.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#targetvisibility">L0014</a> seems to return bits that depend on whether the object is visible, so
-rename <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#targetvisibility">L0014</a> to <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#targetvisibility">targetVisibility</a> for now
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#targetvisibility">L0014</a> seems to return bits that depend on whether the object is visible, so rename <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#targetvisibility">L0014</a> to <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#targetvisibility">targetVisibility</a> for now.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemycheckingrobot">L0C6E</a> gets bit 7 set if the enemy is looking for a robot, so rename to
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemycheckingrobot">enemyCheckingRobot</a> for now
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemycheckingrobot">L0C6E</a> gets bit 7 set if the enemy is looking for a robot, so rename to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemycheckingrobot">enemyCheckingRobot</a> for now.</p>
 
-it looks like <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemycheckingrobot">enemyCheckingRobot</a> is only used as an argument to the
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector</a> routine and is ignored otherwise, so we probably need to fix
-the ???s in that routine
+							<p>It looks like <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemycheckingrobot">enemyCheckingRobot</a> is only used as an argument to the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector</a> routine and is ignored otherwise, so we probably need to fix the "???"s in that routine.</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#treevisibility">L0C76</a> gets bit 7 set if the enemy can see a tree, so rename to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#treevisibility">treeVisibility</a>
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#treevisibility">L0C76</a> gets bit 7 set if the enemy can see a tree, so rename to <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#treevisibility">treeVisibility</a>.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-15" class="anchor"></a>15 December 2025<br>
@@ -398,34 +381,35 @@ the ???s in that routine
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/c785c1d...1d70733?diff=unified">GitHub commits and diffs for 15 December 2025</a>.</p>
 
 						<div class="diary">
-OK, back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>
+							<p>OK, back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>.</p>
 
-First, we need to clarify what effect the <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemycheckingrobot">enemyCheckingRobot</a> parameter has on
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector</a> and feed this back into <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a>
+							<p>First, we need to clarify what effect the <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemycheckingrobot">enemyCheckingRobot</a> parameter has on <a href="https://thesentinel.bbcelite.com/source/main/subroutine/followgazevector_part_1_of_5.html">FollowGazeVector</a> and feed this back into <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a>.</p>
 
-Looks like setting the <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemycheckingrobot">enemyCheckingRobot</a> parameter will allow the gaze
-calculation to be a hit even if we are looking up at the target and can't see
-the tile, so this allows us to calculate partial views of targets (so the
-scanner can be half-filled, presumably)
+							<p>Looks like setting the <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemycheckingrobot">enemyCheckingRobot</a> parameter will allow the gaze calculation to be a hit even if we are looking up at the target and can't see the tile, so this allows us to calculate partial views of targets (so the scanner can be half-filled, presumably).</p>
 
-So roll this into the commentary
+							<p>So roll this into the commentary.</p>
 						</div>
 
 						<div class="diary">
-Back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>, let's keep going with part 2
+							<p>Back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>, let's keep going with part 2.</p>
 
-It's meanie logic and involves enemyData6
+							<p>It's meanie logic and involves <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytarget">enemyData6</a>.</p>
 
-enemyData6 contains an object number, as it's used to look up object flags etc.
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytarget">enemyData6</a> contains an object number, as it's used to look up object flags etc.</p>
 
-It's passed to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a> as the target object in Y, so this is some kind
-of enemy-related target
+							<p>It's passed to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/checkenemygaze_part_1_of_2.html">CheckEnemyGaze</a> as the target object in Y, so this is some kind of enemy-related target.</p>
 
-So enemyData6 -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytarget">enemyTarget</a>, let's see if that helps clariry things
+							<p>So:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytarget">enemyData6</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemytarget">enemyTarget</a></li>
+							</ul>
+
+							<p>Let's see if that helps clarify things.</p>
 						</div>
 
 						<div class="diary">
-It does, so let's keep on trucking with part 2 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>
+							<p>It does, so let's keep on trucking with part 2 of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a></p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-16" class="anchor"></a>16 December 2025<br>
@@ -434,69 +418,85 @@ It does, so let's keep on trucking with part 2 of <a href="https://thesentinel.b
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/1d70733...3242011?diff=unified">GitHub commits and diffs for 16 December 2025</a>.</p>
 
 						<div class="diary">
-A quick aside about the last bit of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>, at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_10_of_10.html#tact25">tact25</a>, as this gets
-jumped to from lots of places.
+							<p>A quick aside about the last bit of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a>, at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_10_of_10.html#tact25">tact25</a>, as this gets jumped to from lots of places.</p>
 
-It looks like this draws an object into the screen buffer in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">sub_C1F84</a>, and
-then dithers the result to the screen in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">sub_C5E5F</a> (as the latter has a lot of
-crossover with the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/decayscreentoblack.html">DecayScreenToBlack</a> routine, except it's copying pixels from
-the screen buffer to the screen instead of poking black onto the screen).
+							<p>It looks like this draws an object into the screen buffer in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">sub_C1F84</a>, and then dithers the result to the screen in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">sub_C5E5F</a> (as the latter has a lot of crossover with the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/decayscreentoblack.html">DecayScreenToBlack</a> routine, except it's copying pixels from the screen buffer to the screen instead of poking black onto the screen).</p>
 
-So let's rename these speculatively:
+							<p>So let's rename these speculatively:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">sub_C1F84</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a>
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">sub_C5E5F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">sub_C1F84</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a></li>
 
-and now we can document calls to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_10_of_10.html#tact25">tact25</a> accordingly
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">sub_C5E5F</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a></li>
+							</ul>
+
+							<p>and now we can document calls to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_10_of_10.html#tact25">tact25</a> accordingly.</p>
 						</div>
 
 						<div class="diary">
-Also, call to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> uses the following flags to control what it
-does:
+							<p>Also, call to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> uses the following flags to control what it does:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#drawlandscape">L0C4D</a>
-Bit 7 clear = draw landscape behind object (not object)
-Bit 7 set = draw object
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#drawlandscape">L0C4D</a>:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherobjectsights">L0C6D</a>
-Bit 6 set = dither onto the screen
-Bit 7 set = remove sights before drawing object
+							<ul>
+								<li>Bit 7 clear = draw landscape behind object (not object)</li>
 
-So maybe:
+								<li>Bit 7 set = draw object</li>
+							</ul>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#drawlandscape">L0C4D</a> -> drawOrRemoveObject
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherobjectsights">L0C6D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherobjectsights">ditherObjectSights</a>
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherobjectsights">L0C6D</a>:</p>
+
+							<ul>
+								<li>Bit 6 set = dither onto the screen</li>
+
+								<li>Bit 7 set = remove sights before drawing object</li>
+							</ul>
+
+							<p>So maybe:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#drawlandscape">L0C4D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#drawlandscape">drawOrRemoveObject</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherobjectsights">L0C6D</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherobjectsights">ditherObjectSights</a></li>
+							</ul>
 						</div>
 
 						<div class="diary">
-The final part of the object-drawing hierarchy is <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configureobjbuffer.html">sub_C2997</a>, which seems to set
-the same variables as <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">ConfigureBuffer</a>, so this is presumably configuring the
-screen buffer for drawing the object
+							<p>The final part of the object-drawing hierarchy is <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configureobjbuffer.html">sub_C2997</a>, which seems to set the same variables as <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">ConfigureBuffer</a>, so this is presumably configuring the screen buffer for drawing the object.</p>
 
-So <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configureobjbuffer.html">sub_C2997</a> -> ConfigureBufferObj
+							<p>So:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/subroutine/configureobjbuffer.html">sub_C2997</a> -> <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configureobjbuffer.html">ConfigureBufferObj</a></li>
+							</ul>
 						</div>
 
 						<div class="diary">
-Anyway... back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> part 2
+							<p>Anyway... back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> part 2.</p>
 
-Need to work out these timers, starting with enemyTimer1
+							<p>Need to work out these timers, starting with <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyTimer1</a>.</p>
 
-Looks like enemyTimer1 gets set to various values, but the only thing it
-affects is at .<a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_8_of_10.html#tact19">tact19</a>, where <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a> is only called when enemyTimer1
-is exactly 1
+							<p>Looks like <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyTimer1</a> gets set to various values, but the only thing it affects is at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_8_of_10.html#tact19">tact19</a>, where <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drainobjectenergy.html">DrainObjectEnergy</a> is only called when <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyTimer1</a> is exactly 1.</p>
 
-So this timer ticks down and the enemy can drain its target when it ticks down
+							<p>So this timer ticks down and the enemy can drain its target when it ticks down.</p>
 
-Setting it to 0 makes the timer get reset to 120 at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_8_of_10.html#tact19">tact19</a>
+							<p>Setting it to 0 makes the timer get reset to 120 at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_8_of_10.html#tact19">tact19</a>.</p>
 
-So enemyTimer1 -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyDrainTimer</a>
+							<p>So:</p>
 
-enemyTimer2 is a bit easier to follow, as when it counts down it runs the code
-at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_7_of_10.html#tact18">tact18</a> which rotates the enemy through its yaw step
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyTimer1</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemydraintimer">enemyDrainTimer</a></li>
+							</ul>
 
-So enemyTimer2 -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyrotatetimer">enemyRotateTimer</a>
+							<p><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyrotatetimer">enemyTimer2</a> is a bit easier to follow, as when it counts down it runs the code at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_7_of_10.html#tact18">tact18</a> which rotates the enemy through its yaw step.</p>
 
-Finish documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> part 2 and 3
+							<p>So:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyrotatetimer">enemyTimer2</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#enemyrotatetimer">enemyRotateTimer</a></li>
+							</ul>
+
+							<p>Finish documenting <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> part 2 and 3.</p>
 						</div>
 
 						<h2 class="articleSubheader center"><a id="date-2025-12-17" class="anchor"></a>17 December 2025<br>
@@ -505,87 +505,80 @@ Finish documenting <a href="https://thesentinel.bbcelite.com/source/main/subrout
 						<p class="center">See all the <a href="https://github.com/markmoxon/the-sentinel-source-code-bbc-micro/compare/3242011...3f6d4db?diff=unified">GitHub commits and diffs for 17 December 2025</a>.</p>
 
 						<div class="diary">
-As it's called so much from the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> routine, let's look at
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> and the routines it calls: ConfigureBufferObj and
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a>
+							<p>As it's called so much from the <a href="https://thesentinel.bbcelite.com/source/main/subroutine/applytactics_part_1_of_10.html">ApplyTactics</a> routine, let's look at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> and the routines it calls: <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configureobjbuffer.html">ConfigureBufferObj</a> and <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a>.</p>
 						</div>
 
 						<div class="diary">
-First thing is <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#donotditherobject">L0C1E</a>, which seems to skip dithering in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a>
+							<p>First thing is <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#donotditherobject">L0C1E</a>, which seems to skip dithering in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a>.</p>
 
-So <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#donotditherobject">L0C1E</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#donotditherobject">doNotDitherObject</a>
+							<p>So:</p>
+
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#donotditherobject">L0C1E</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#donotditherobject">doNotDitherObject</a></li>
+							</ul>
 						</div>
 
 						<div class="diary">
-Dithering in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a> is done with an inner and outer loop (with a
-call to the sound routines inbetween)
+							<p>Dithering in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a> is done with an inner and outer loop (with a call to the sound routines inbetween).</p>
 
-Inner loop is 255 and is stored in <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherinnerloop">L0CD2</a>
-Outer loop is 25 or 40 and is stored in <a href="https://thesentinel.bbcelite.com/source/main/variable/ditherouterloop.html">L2094</a>
+							<p>Inner loop is 255 and is stored in <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherinnerloop">L0CD2</a> Outer loop is 25 or 40 and is stored in <a href="https://thesentinel.bbcelite.com/source/main/variable/ditherouterloop.html">L2094</a>.</p>
 
-So:
+							<p>So:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherinnerloop">L0CD2</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherinnerloop">ditherInnerLoop</a>
-<a href="https://thesentinel.bbcelite.com/source/main/variable/ditherouterloop.html">L2094</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/ditherouterloop.html">ditherOuterLoop</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherinnerloop">L0CD2</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherinnerloop">ditherInnerLoop</a></li>
+
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/ditherouterloop.html">L2094</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/ditherouterloop.html">ditherOuterLoop</a></li>
+							</ul>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/variable/yawadjustmenthi.html">L2095</a> is interesting. It's used as a high byte for yawAdjustment(Hi Lo), but
-only in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a>, so let's call it <a href="https://thesentinel.bbcelite.com/source/main/variable/yawadjustmenthi.html">yawAdjustmentHi</a>.
+							<p><a href="https://thesentinel.bbcelite.com/source/main/variable/yawadjustmenthi.html">L2095</a> is interesting. It's used as a high byte for yawAdjustment(Hi Lo), but only in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a>, so let's call it <a href="https://thesentinel.bbcelite.com/source/main/variable/yawadjustmenthi.html">yawAdjustmentHi</a>.</p>
 
-So this adjusts the viewing object so that the object is drawn alongside the
-left edge of the buffer
+							<p>So this adjusts the viewing object so that the object is drawn alongside the left edge of the buffer.</p>
 						</div>
 
 						<div class="diary">
-<a href="https://thesentinel.bbcelite.com/source/main/subroutine/configureobjbuffer.html">ConfigureObjBuffer</a> is as confusing as <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">ConfigureBuffer</a> - lots of unknowns
+							<p><a href="https://thesentinel.bbcelite.com/source/main/subroutine/configureobjbuffer.html">ConfigureObjBuffer</a> is as confusing as <a href="https://thesentinel.bbcelite.com/source/main/subroutine/configurebuffer.html">ConfigureBuffer</a> - lots of unknowns.</p>
 
-One more clue, though, as it turns out (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginhi">L0011</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginlo">L0029</a>) is a 16-bit value
+							<p>One more clue, though, as it turns out (<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginhi">L0011</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginlo">L0029</a>) is a 16-bit value.</p>
 
-And it gets added to drawViewYaw(Hi Lo) in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getpolygonlines_part_2_of_6.html">sub_C2D36</a>, so it must be a yaw angle
-of some kind
+							<p>And it gets added to drawViewYaw(<a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawhi.html">Hi</a> <a href="https://thesentinel.bbcelite.com/source/main/variable/drawviewyawlo.html">Lo</a>) in <a href="https://thesentinel.bbcelite.com/source/main/subroutine/getpolygonlines_part_2_of_6.html">sub_C2D36</a>, so it must be a yaw angle of some kind.</p>
 
-So rename to L0011YawHi and L0011YawLo for now, i.e. L0011Yaw(Hi Lo) in our new
-terminology
+							<p>So rename to <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginhi">L0011YawHi</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginlo">L0011YawLo</a> for now, i.e. L0011Yaw(<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginhi">Hi</a> <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bufferoriginlo">Lo</a>) in our new terminology.</p>
 						</div>
 
 						<div class="diary">
-Back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a>, and <a href="https://thesentinel.bbcelite.com/source/main/variable/objscreenaddr.html">L2092</a> is used to store the screen addresss of
-the object, so:
+							<p>Back to <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a>, and <a href="https://thesentinel.bbcelite.com/source/main/variable/objscreenaddr.html">L2092</a> is used to store the screen addresss of the object, so:</p>
 
-<a href="https://thesentinel.bbcelite.com/source/main/variable/objscreenaddr.html">L2092</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objscreenaddr.html">objScreenAddr</a>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/variable/objscreenaddr.html">L2092</a> -> <a href="https://thesentinel.bbcelite.com/source/main/variable/objscreenaddr.html">objScreenAddr</a></li>
+							</ul>
 						</div>
 
 						<div class="diary">
-Documented the rest of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> - it isn't too complex in the end
+							<p>Documented the rest of <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawupdatedobject.html">DrawUpdatedObject</a> - it isn't too complex in the end. </div></p>
+
+						<div class="diary">
+							<p>>>> I have now broken through the 80% barrier &lt;&lt;&lt;</p>
+
+							<p>This is pretty great - it's starting to feel a bit like the home straight, though I have put the polygon-drawing routines off until the end as I always find those sorts of routines to be a bit of a drag. That said, there's 4.4% of the code marked as not done for the workspaces, and I've been filling those in as I've gone along, so in a sense the target is 95.6% rather than 100%, as the last 4.4% will slot in quite quickly.</p>
+
+							<p>Getting there!</p>
 						</div>
 
 						<div class="diary">
->>> I have now broken through the 80% barrier &lt;&lt;&lt;
+							<p>Might as well look at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a> next, to finish off the whole object-updating saga.</p>
 
-This is pretty great - it's starting to feel a bit like the home straight,
-though I have put the polygon-drawing routines off until the end as I always
-find those sorts of routines to be a bit of a drag. That said, there's 4.4% of
-the code marked as not done for the workspaces, and I've been filling those in
-as I've gone along, so in a sense the target is 95.6% rather than 100%, as the
-last 4.4% will slot in quite quickly.
+							<p>There's a bit of an overlap with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawrandomdots.html">DrawRandomDots</a>, not surprisingly, so that makes some of the renamings a bit easier, as these are like <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bitmask">bitMask</a> and <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#randompixel">randomPixel</a>:</p>
 
-Getting there!
-						</div>
+							<ul>
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#bitmaskdither">L0CCF</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#bitmaskdither">bitMaskDither</a></li>
 
-						<div class="diary">
-Might as well look at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/ditherscreenbuffer.html">DitherScreenBuffer</a> next, to finish off the whole
-object-updating saga.
+								<li><a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherrandom">L0CD0</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherrandom">randomPixelDither</a></li>
+							</ul>
 
-There's a bit of an overlap with <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawrandomdots.html">DrawRandomDots</a>, not surprisingly, so that
-makes some of the renamings a bit easier, as these are like <a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#bitmask">bitMask</a> and
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/zero_page.html#randompixel">randomPixel</a>:
-
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#bitmaskdither">L0CCF</a> -> <a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#bitmaskdither">bitMaskDither</a>
-<a href="https://thesentinel.bbcelite.com/source/main/workspace/main_variable_workspace.html#ditherrandom">L0CD0</a> -> randomPixelDither
-
-There's some really weird random number stuff in here - so this might take a
-while!
+							<p>There's some really weird random number stuff in here - so this might take a while!</p>
 						</div>
 					</div>
 				</div>
