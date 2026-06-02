@@ -143,7 +143,7 @@
 							<li id="deep_dives_drawing_lines"><span class="menuTitle">Drawing lines</span> <span class="menuSummary menuSummarySubmenu">Line-drawing algorithms and efficient clipping</span>
 								<ul id="submenu_deep_dives_drawing_lines">
 									<li class="menuItemHeader">Drawing lines</li>
-									<li><a id="deep_dives_drawing_lines_bresenhams_line_algorithm" href="/deep_dives/bresenhams_line_algorithm.html"><span class="menuTitle">Bresenham's line algorithm</span> <span class="menuSummary">The main line-drawing algorithm used to draw non-horizontal lines</span></a></li>
+									<li><a id="deep_dives_drawing_lines_elites_line-drawing_algorithm" href="/deep_dives/elites_line-drawing_algorithm.html"><span class="menuTitle">Elite's line-drawing algorithm</span> <span class="menuSummary">The main line-drawing algorithm used to draw non-horizontal lines</span></a></li>
 									<li><a id="deep_dives_drawing_lines_line-clipping" href="/deep_dives/line-clipping.html"><span class="menuTitle">Line-clipping</span> <span class="menuSummary">Efficiently clipping an extended line to the part that's on-screen</span></a></li>
 									<li><a id="deep_dives_drawing_lines_drawing_lines_in_the_nes_version" href="/deep_dives/drawing_lines_in_the_nes_version.html"><span class="menuTitle">Drawing lines in the NES version</span> <span class="menuSummary">Using tiles as stepping stones when drawing lines on the NES</span></a></li>
 								</ul>
