@@ -131,11 +131,34 @@ page_header("deep_dives", "drawing_filled_polygons.html", "Drawing filled polygo
 
 						<p>If bit 7 of blendPolygonEdges is set, then the routine is configured not to draw polygon edges in different colours, so we set the edge colour to be the same colour as the polygon body (i.e. we set it to be the same as the fill colour). This makes the edges blend into the body, which we want to do for distant objects (see the deep dive on <a href="drawing_3d_objects.html">drawing 3D objects</a> for details).</p>
 
-						<p>Once everything is configured, we jump to <a href="/source/main/subroutine/drawpolygonlines_part_3_of_4.html">part 3</a> to start the drawing. The drawing loop spans parts 2, 3 and 4, and part 3 draws the left and right edges of the polygon line, making sure to merge the results into the existing screen contents along the edges. We then fall into <a href="/source/main/subroutine/drawpolygonlines_part_4_of_4.html">part 4</a> to draw the horizontal line between the two edges using an unrolled loop of store operations into which we jump using a modified branch instruction. This ensures that we draw the correct number of pixel bytes, drawing from right to left, starting from the branch entry point and drawing to the left end of the line. Interestingly, this approach is inherited from the track-drawing routines in Revs, which features a similar list of unrolled drawing code into which we jump to draw the correct length of horizontal line; see the Revs deep dive on <a href="https://revs.bbcelite.com/deep_dives/drawing_the_track_view.html">drawing the track view</a> for details.</p>
+						<p>Once everything is configured, we jump to <a href="/source/main/subroutine/drawpolygonlines_part_3_of_4.html">part 3</a> to start the drawing. The drawing loop spans parts 2, 3 and 4, and part 3 draws the left and right edges of the polygon line, ensuring the line fits within the screen buffer we are drawing into (see the next section), and making sure to merge the results into the existing screen contents along the edges. We then fall into <a href="/source/main/subroutine/drawpolygonlines_part_4_of_4.html">part 4</a> to draw the horizontal line between the two edges using an unrolled loop of store operations into which we jump using a modified branch instruction. This ensures that we draw the correct number of pixel bytes, drawing from right to left, starting from the branch entry point and drawing to the left end of the line. Interestingly, this approach is inherited from the track-drawing routines in Revs, which features a similar list of unrolled drawing code into which we jump to draw the correct length of horizontal line; see the Revs deep dive on <a href="https://revs.bbcelite.com/deep_dives/drawing_the_track_view.html">drawing the track view</a> for details.</p>
 
 						<p>Once the line has been drawn, we loop back to <a href="/source/main/subroutine/drawpolygonlines_part_2_of_4.html">part 2</a> to move on to the next polygon line, moving down into a new character row if required. We also analyse the line to see if it's overflowing the sides of the buffer, and if it is we set either the <a href="/source/main/workspace/zero_page.html#polygongoesleft">polygonGoesLeft</a> or <a href="/source/main/workspace/zero_page.html#polygongoesright">polygonGoesRight</a> variables so the DrawPolygon routine can decide whether it needs to draw a second part of the polygon, Finally, we check whether the new line fits into one pixel byte, in which case we draw it, otherwise we fall into part 3 to draw the line in full.</p>
 
 						<p>This process gets repeated for every polygon line in the polygon, until we have drawn a filled 3D polygon onto the screen.</p>
+
+						<h2 class="articleSubheader">Clipping polygons<br>
+													 -----------------</h2>
+
+						<p>You may be wondering how The Sentinel clips all its lines and polygons to fit the shape of the current screen buffer, so it can draw them cleanly and without spilling over into neighbouring memory outside the screen buffer. Elite, for example, has a sophisticated line-clipping routine that takes line coordinates, some of which may be off-screen, and calculates the coordinates of any on-screen portions before passing them on to the line-drawing routines (see the Elite deep dive on <a href="https://elite.bbcelite.com/deep_dives/line-clipping.html">line-clipping</a> for details). So where is the equivalent in The Sentinel?</p>
+
+						<p>Well, there isn't one, at least not in the sophisticated manner in which Elite clips its lines. This is perhaps not that surprising, because as we mentioned above, absolutely everything you see in the landscape view in The Sentinel is a polygon. It sometimes looks like there are lines, but they aren't actually lines; every single shape, from tiles to robots, is a polygon.</p>
+
+						<p>As we've also seen, all these polygons - even those that are only partially on-screen - are drawn by tracing the polygon's outline and producing a set of horizontal polygon lines, each of which is stored as a left and right x-coordinate for each particular y-coordinate.</p>
+
+						<p>It's at this point that the horizontal polygon lines are drawn. As part of the drawing code, we check whether the line goes past the left or right edges of the screen buffer, so that we can do things like drawing wide objects in two halves. And this bit of code doubles as a clipping mechanism, because if the line does go past the edge of the screen buffer, we simply update the x-coordinate for that end of the line to match the edge of the buffer, so we only draw the part of the line that is inside the buffer.</p>
+
+						<p>That's it - it's not really an algorithm in the sense of Elite's sophisticated line-clipping process, it's just a simple application of maximum and minimum values to the x-coordinates. Here's where this "clipping" process is done:</p>
+
+						<ul>
+							<li>The left and right edges of each polygon line are drawn in part 3 of DrawPolygonLines at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygonlines_part_3_of_4.html#dpol15">dpol15</a>, which checks the coordinates against the edges of the screen buffer.</li>
+
+							<li>If the right end of the polygon line goes past the right edge of the buffer, it is clipped at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygonlines_part_2_of_4.html#dpol7">dpol7</a> in part 2 of DrawPolygonLines.</li>
+
+							<li>If the left end of the polygon line goes past the left edge of the buffer, it is clipped at <a href="https://thesentinel.bbcelite.com/source/main/subroutine/drawpolygonlines_part_2_of_4.html#dpol8">dpol8</a> in part 2 of DrawPolygonLines.</li>
+						</ul>
+
+						<p>And that's it; as clipping processes go, it's about as simple as it gets.</p>
 
 						<h2 class="articleSubheader">Back-face culling<br>
 													 -----------------</h2>
