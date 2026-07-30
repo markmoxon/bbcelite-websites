@@ -12,10 +12,10 @@ function initialiseElitePage(ajaxMenu) {
 	if (ajaxMenu) {
 
 		// Set up navigation menus
-		$.getScript('/javascript/20260730/jquery.mmenu.min.js', function () {
+		$.getScript('/javascript/20260727/jquery.mmenu.min.js', function () {
 
 			// Fetch code section of navigation
-			$('#navigation_code').load( "/templates_local/20260730/navigation_code.html" , function() {
+			$('#navigation_code').load( "/templates_local/20260727/navigation_code.html" , function() {
 
 				// Remove the navigation_code div and move the content up one level
 				$("#navigation_code > li").unwrap();
@@ -44,7 +44,7 @@ function initialiseElitePage(ajaxMenu) {
 	} else {
 
 		// Set up navigation menus
-		$.getScript('/javascript/20260730/jquery.mmenu.min.js', function () {
+		$.getScript('/javascript/20260727/jquery.mmenu.min.js', function () {
 
 			// Clone navigation to burger menu
 			$("#navigation").mmenu({}, { "clone": true });
