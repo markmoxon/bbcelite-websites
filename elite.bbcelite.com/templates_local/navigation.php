@@ -346,7 +346,7 @@
 							<li id="hacks_two-player_elite"><span class="menuTitle">Two-player Elite</span> <span class="menuSummary menuSummarySubmenu">The classic version of BBC Micro Elite, converted for two players</span>
 								<ul id="submenu_hacks_two-player_elite">
 									<li class="menuItemHeader">Two-player Elite</li>
-									<li><a id="hacks_two-player_elite_index" href="/hacks/two-player_elite/"><span class="menuTitle">About two-player Elite</span> <span class="menuSummary">A hacked version of the classic BBC Micro game for two players on one machine</span></a></li>
+									<li><a id="hacks_two-player_elite_index" href="/hacks/two-player_elite/"><span class="menuTitle">About two-player Elite</span> <span class="menuSummary">The classic BBC Micro game, updated for two-player action on just one machine</span></a></li>
 									<li><a id="hacks_two-player_elite_downloads" href="/hacks/two-player_elite/downloads.html"><span class="menuTitle">Playing two-player Elite</span> <span class="menuSummary">How to download and play two-player Elite</span></a></li>
 									<li><a id="hacks_two-player_elite_instructions" href="/hacks/two-player_elite/instructions.html"><span class="menuTitle">Instructions for two-player Elite</span> <span class="menuSummary">Full instructions for two-player Elite on the BBC Micro</span></a></li>
 									<li><a id="hacks_two-player_elite_technical_information" href="/hacks/two-player_elite/technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">How I converted BBC Micro Elite into a two-player game</span></a></li>
