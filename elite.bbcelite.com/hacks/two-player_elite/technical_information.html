@@ -12,7 +12,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>Under the bonnet, BBC Micro Elite is a stubbornly single-player game. This makes perfect sense, as that's how it was designed. But it does mean it's a bit of a challenge for anyone wanting to coax a second player out of Bell and Braben's elegant code.</p>
 
-						<p>This article describes the main elements of two-player Elite. I've split it up into the following categories; click on any of the following to jump down to the relevant section:</p>
+						<p>This article describes how I built two-player Elite. I've split it up into a numer of sections that broadly cover the development process in the order in which I tackled them; click on them to jump down to the relevant section:</p>
 
 						<ul class="tightList">
 							<li><a href="#overview">A very quick overview</a></li>
@@ -26,7 +26,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 							<li><a href="#misc">Miscellaneous</a></li>
 						</ul>
 
-						<p>As with all my hacks, two-player Elite takes the original game's source code and modifies it; it is not a brand new game, it is a hack of the original. In the case of two-player Elite, the original game is the 6502 Second Processor version of Elite, just with various modifications to add a second player.</p>
+						<p>As with all my hacks, two-player Elite takes the original game's source code and modifies it; it is not a brand new game, it is a hack of the original. In the case of two-player Elite, the original game is the <a href="/6502sp/">6502 Second Processor version of Elite</a>, with the <a href="/hacks/flicker-free_elite/">flicker-free hack</a> applied, and all the various modifications required to add a second player on top of that.</p>
 
 						<p>You can see all the code changes in the <a href="https://github.com/markmoxon/elite-two-player-6502-second-processor">project's GitHub repository</a>. If you search the source code for "Mod:" then you will find every change I've made to the original 6502 Second Processor version of Elite. The changes are split between the <a href="https://github.com/markmoxon/elite-two-player-6502-second-processor/blob/main/1-source-files/main-sources/elite-source.asm">parasite</a> and <a href="https://github.com/markmoxon/elite-two-player-6502-second-processor/blob/main/1-source-files/main-sources/elite-z.asm">I/O processor</a> sources, as appropriate.</p>
 
@@ -37,23 +37,27 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>There's a clever conceit at the heart of 8-bit Elite that makes life considerably simpler for anyone working with the game code. It is this: the player is always at the centre of the universe.</p>
 
-						<p>For example, when the player moves forwards, they don't actually move; instead, everything in the local bubble moves backwards. And when a player rolls to the right, they don't actually rotate; instead, everything in the local bubble rotates to the left around them. You can read all about this in the deep dive on <a href="/deep_dives/rotating_the_universe.html">rotating the universe</a>.</p>
+						<p>For example, when the player moves forwards, they don't actually move at all; instead, everything else in the local bubble moves backwards. And when a player rolls to the right, they don't actually rotate; instead, everything in the local bubble rotates to the left around them. You can read all about this in the deep dive on <a href="/deep_dives/rotating_the_universe.html">rotating the universe</a>.</p>
 
-						<p>Always having the player at the origin makes certain aspects of the game code a lot simpler. For example, it's almost trivial to work out if an enemy ship is in the player's laser sights; we first check whether the enemy is in front of the player (i.e. z > 0), and if it is, we check whether it is close enough to the z-axis to be within the ship's targetable area. (i.e. x^2 + y^2 &gt; t). Because the z-axis points straight out of the front of the player's ship, out of the ship's nose and along the laser lines, we don't need to care about rotation or orientation, we just do some simple multiplication and the result is very accurate. You can read all about this in the deep dive on being <a href="/deep_dives/in_the_crosshairs.html">in the crosshairs</a>.</p>
+						<p>Always having the player at the origin makes certain aspects of the game code a lot simpler. For example, it's almost trivial to work out if an enemy ship is in the player's laser sights; we first check whether the enemy is in front of the player (i.e. z &gt; 0 for the enemy's z-coordinate), and if it is, we check whether it is close enough to the z-axis to be within the enemy ship's targetable area (i.e. x^2 + y^2 &lt; t for the enemy's x- and y-coordinates, with t being the targetable area from the enemy ship's blueprint). Because the z-axis points straight out of the front of the player's ship, out of the ship's nose and directly along the laser lines, we don't need to care about rotation or orientation, we just do some simple multiplication and the result is very accurate. You can read all about this in the deep dive on being <a href="/deep_dives/in_the_crosshairs.html">in the crosshairs</a>.</p>
 
 						<p>Unfortunately, this conceit makes it pretty difficult to simply add a second player to Elite. If the whole universe is centred on one player, then it can't also be centred on another player, so how do we address this?</p>
 
 						<p>One approach might be to run two separate instances of Elite, one for each ship, and have them talk to each other somehow; in essence, building a networked version of Elite, just within the same machine. This might work, but it would require a lot of memory and a lot of CPU power, and it would get pretty complicated pretty quickly.</p>
 
-						<p>Instead, two-player Elite fully embraces the player-centric conceit at the heart of the original game, and effectively bolts a second player onto this tried and trusted game engine. The local bubble is centred on player 1, and the top space view is player 1's view; in a very real sense, the top view is effectively standard Elite, just cropped into a smaller part of the screen (this cropping is discussed in the section on <a href="#splitview">splitting the space view</a>). When player 1 rotates or accelerates, they don't move, but the whole local bubble moves around them instead. The top space view is normal Elite in pretty much every way.</p>
+						<p>Instead, two-player Elite fully embraces the player-centric conceit at the heart of the original game, and effectively bolts a second player onto this tried and trusted game engine. Let's consider the in-game two-player Elite screen:</p>
+
+						<img class="titleImage" src="/images/two-player_elite/gameplay.png" alt="Two-player Elite">
+
+						<p>The local bubble is still centred on the player - let's call them player 1 - and the top space view is player 1's view; in a very real sense, the top view is effectively standard Elite, just cropped into a smaller part of the screen (this cropping is discussed in the section on <a href="#splitview">splitting the space view</a>). When player 1 rotates or accelerates, they don't move, but the whole local bubble moves around them instead. The top space view is normal Elite in pretty much every way that matters.</p>
 
 						<p>Player 2, then, is simply another ship that is spawned into player 1's universe. Player 2 isn't at the centre of the universe; they are just like an NPC ship in the original game, so when player 1 rotates or moves, player 2's ship rotates and moves in the opposite direction, just like all the non-player ships in the original.</p>
 
-						<p>The difference is that player 2's ship is not controlled by the game's tactics routine - it is controlled by player 2. So when player two rotates or moves, player 2's ship also rotates or moves. It doesn't rotate the universe around itself, it just moves in space as you would expect.</p>
+						<p>The difference is that player 2's ship is not controlled by the game's tactics routine - it is controlled by player 2's joystick and secondary flight keys on the keyboard. So when the human player 2 rotates the joystick or presses the "go faster" button, player 2's ship rotates or moves within player 1's local bubble. Player 2's ship doesn't rotate the universe around itself, it just moves in space as you would expect.</p>
 
-						<p>This isn't too much of a leap - after all, NPC ships in the original game work in this way, so moving NPC ships by joystick rather than by algorithm isn't too hard to imagine. Indeed, you can configure player 2 to be an AI Pilot in two-player Elite, in which case player 2's just switches its movement back to the original tactics routines rather than the joystick.</p>
+						<p>This isn't too much of a leap - after all, NPC ships in the original game work in this way, so moving NPC ships by joystick rather than by algorithm isn't too hard to imagine. Indeed, you can configure player 2 to be an AI Pilot in two-player Elite, in which case the code controlling player 2's ship just switches back to the original tactics routines rather than reading the joystick and keyboard.</p>
 
-						<p>The real challenge, of course, is drawing all of this. Player 1's space view is easy enough, as player 2 is just another ship in the local bubble, so we draw it as normal. But drawing player 2's space view is the core challenge of this hack, so I've split it down into sections.</p>
+						<p>So we have a model that is familiar, in that we have a player 1-centric universe that contains the planet, the sun, player 2's ship and any other objects like missiles. Player 1's space view is easy enough to draw, as player 2 is just another ship in the local bubble, so we draw it as normal. But the real challenge is how to draw all of this for player 2; this is the core of the two-player Elite hack, so I've split it up into sections.</p>
 
 						<ul>
 							<li>In order to draw player 2's view, we first create duplicates of the sun, planet, ships and missiles in the local bubble. This is described in the section on <a href="#duplicating">duplicating the universe for player 2</a>.</li>
@@ -65,7 +69,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 							<li>Finally, all is not what it seems... of course. Accuracy and speed are constant challenges when working with floating point geometry on an 8-bit CPU, and I confess to using some smoke and mirrors to make things appear a bit more stable than they actually are. I describe these in the section on <a href="#sunplanet">cheating with the sun and planet</a>, but please don't tell anyone.</li>
 						</ul>
 
-						<p>There are also sections on some of the more straightforward aspects, such as the <a href="#splitview">split space view</a>, the <a href="#dashboard">shared dashboard</a> and the <a href="#controls">responsive control system</a>, as well as a <a href="#misc">miscellaneous</a> section for anything I've missed.</p>
+						<p>There are also sections on some of the more straightforward aspects, such as the <a href="#splitview">split space view</a>, the <a href="#dashboard">shared dashboard</a> and the <a href="#controls">responsive control system</a>, as well as a <a href="#misc">miscellaneous</a> section for anything else worth noting.</p>
 
 						<p>On with the show!</p>
 
