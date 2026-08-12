@@ -10,17 +10,128 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How I converted BBC Micro Elite into a two-player game</h2>
 
+						<p>Under the bonnet, BBC Micro Elite is a stubbornly single-player game. This makes perfect sense, as that's how it was designed. But it does mean it's a bit of a challenge for anyone wanting to coax a second player out of Bell and Braben's elegant code.</p>
+
+						<p>This article describes the main elements of two-player Elite. I've split it up into the following categories; click on any of the following to jump down to the relevant section:</p>
+
+						<ul class="tightList">
+							<li><a href="#overview">A very quick overview</a></li>
+							<li><a href="#splitview">Splitting the space view</a></li>
+							<li><a href="#duplicating">Duplicating the universe for player 2</a></li>
+							<li><a href="#maths">The matrix maths behind two-player Elite</a></li>
+							<li><a href="#targets">Target calculations</a></li>
+							<li><a href="#sunplanet">Cheating with the sun and planet</a></li>
+							<li><a href="#controls">Responsive controls for two players</a></li>
+							<li><a href="#dashboard">Sharing the scanner and dashboard</a></li>
+							<li><a href="#misc">Miscellaneous</a></li>
+						</ul>
+
+						<p>As with all my hacks, two-player Elite takes the original game's source code and modifies it; it is not a brand new game, it is a hack of the original. In the case of two-player Elite, the original game is the 6502 Second Processor version of Elite, just with various modifications to add a second player.</p>
+
+						<p>You can see all the code changes in the <a href="https://github.com/markmoxon/elite-two-player-6502-second-processor">project's GitHub repository</a>. If you search the source code for "Mod:" then you will find every change I've made to the original 6502 Second Processor version of Elite. The changes are split between the <a href="https://github.com/markmoxon/elite-two-player-6502-second-processor/blob/main/1-source-files/main-sources/elite-source.asm">parasite</a> and <a href="https://github.com/markmoxon/elite-two-player-6502-second-processor/blob/main/1-source-files/main-sources/elite-z.asm">I/O processor</a> sources, as appropriate.</p>
+
+						<p>I hope you enjoy reading about two-player Elite as much as I enjoyed hacking it into existence.</p>
+
+						<h2 class="articleSubheader"><a id="overview" class="anchor"></a>A very quick overview<br>
+													 ---------------------</h2>
+
+						<p>There's a clever conceit at the heart of 8-bit Elite that makes life considerably simpler for anyone working with the game code. It is this: the player is always at the centre of the universe.</p>
+
+						<p>For example, when the player moves forwards, they don't actually move; instead, everything in the local bubble moves backwards. And when a player rolls to the right, they don't actually rotate; instead, everything in the local bubble rotates to the left around them. You can read all about this in the deep dive on <a href="/deep_dives/rotating_the_universe.html">rotating the universe</a>.</p>
+
+						<p>Always having the player at the origin makes certain aspects of the game code a lot simpler. For example, it's almost trivial to work out if an enemy ship is in the player's laser sights; we first check whether the enemy is in front of the player (i.e. z > 0), and if it is, we check whether it is close enough to the z-axis to be within the ship's targetable area. (i.e. x^2 + y^2 &gt; t). Because the z-axis points straight out of the front of the player's ship, out of the ship's nose and along the laser lines, we don't need to care about rotation or orientation, we just do some simple multiplication and the result is very accurate. You can read all about this in the deep dive on being <a href="/deep_dives/in_the_crosshairs.html">in the crosshairs</a>.</p>
+
+						<p>Unfortunately, this conceit makes it pretty difficult to simply add a second player to Elite. If the whole universe is centred on one player, then it can't also be centred on another player, so how do we address this?</p>
+
+						<p>One approach might be to run two separate instances of Elite, one for each ship, and have them talk to each other somehow; in essence, building a networked version of Elite, just within the same machine. This might work, but it would require a lot of memory and a lot of CPU power, and it would get pretty complicated pretty quickly.</p>
+
+						<p>Instead, two-player Elite fully embraces the player-centric conceit at the heart of the original game, and effectively bolts a second player onto this tried and trusted game engine. The local bubble is centred on player 1, and the top space view is player 1's view; in a very real sense, the top view is effectively standard Elite, just cropped into a smaller part of the screen (this cropping is discussed in the section on <a href="#splitview">splitting the space view</a>). When player 1 rotates or accelerates, they don't move, but the whole local bubble moves around them instead. The top space view is normal Elite in pretty much every way.</p>
+
+						<p>Player 2, then, is simply another ship that is spawned into player 1's universe. Player 2 isn't at the centre of the universe; they are just like an NPC ship in the original game, so when player 1 rotates or moves, player 2's ship rotates and moves in the opposite direction, just like all the non-player ships in the original.</p>
+
+						<p>The difference is that player 2's ship is not controlled by the game's tactics routine - it is controlled by player 2. So when player two rotates or moves, player 2's ship also rotates or moves. It doesn't rotate the universe around itself, it just moves in space as you would expect.</p>
+
+						<p>This isn't too much of a leap - after all, NPC ships in the original game work in this way, so moving NPC ships by joystick rather than by algorithm isn't too hard to imagine. Indeed, you can configure player 2 to be an AI Pilot in two-player Elite, in which case player 2's just switches its movement back to the original tactics routines rather than the joystick.</p>
+
+						<p>The real challenge, of course, is drawing all of this. Player 1's space view is easy enough, as player 2 is just another ship in the local bubble, so we draw it as normal. But drawing player 2's space view is the core challenge of this hack, so I've split it down into sections.</p>
+
+						<ul>
+							<li>In order to draw player 2's view, we first create duplicates of the sun, planet, ships and missiles in the local bubble. This is described in the section on <a href="#duplicating">duplicating the universe for player 2</a>.</li>
+
+							<li>Once we've got our duplicates, we need to transform each of them from player 1's frame of reference (i.e. with player 1 at the origin) into player 2's frame of reference (i.e. with player 2 at the origin). This is the core part of two-player Elite, and is described in the section on <a href="#maths">the matrix maths behind two-player Elite</a>.</li>
+
+							<li>A pretty vital aspect of dogfighting in space is the ability to target and shoot your opponent. As discussed above, this is pretty easy for player 1, but it's a bit more involved for player 2, as described in the section on <a href="#targets">target calculations</a></li>
+
+							<li>Finally, all is not what it seems... of course. Accuracy and speed are constant challenges when working with floating point geometry on an 8-bit CPU, and I confess to using some smoke and mirrors to make things appear a bit more stable than they actually are. I describe these in the section on <a href="#sunplanet">cheating with the sun and planet</a>, but please don't tell anyone.</li>
+						</ul>
+
+						<p>There are also sections on some of the more straightforward aspects, such as the <a href="#splitview">split space view</a>, the <a href="#dashboard">shared dashboard</a> and the <a href="#controls">responsive control system</a>, as well as a <a href="#misc">miscellaneous</a> section for anything I've missed.</p>
+
+						<p>On with the show!</p>
+
+						<h2 class="articleSubheader"><a id="splitview" class="anchor"></a>Splitting the space view<br>
+													 ------------------------</h2>
+
 						<p>xxx</p>
 
     Two views, line clipping, view clearing, duplicate sights/messages
+
+
+						<h2 class="articleSubheader"><a id="duplicating" class="anchor"></a>Duplicating the universe for player 2<br>
+													 -------------------------------------</h2>
+
+						<p>xxx</p>
+
+    Slot duplication, don't blindly share INWK+31, ship line heaps -&2000
+
     Stardust, duplicate planet heap, split sun heap
-    Slot duplication, don't blindly share INWK+31, line heaps
-    Sun/planet cheats, on-screen movements
+
+						<h2 class="articleSubheader"><a id="maths" class="anchor"></a>The matrix maths behind two-player Elite<br>
+													 ----------------------------------------</h2>
+
+						<p>xxx</p>
+
     DrawPlayer2View, matrix maths, arithmetic routines
+
+						<h2 class="articleSubheader"><a id="targets" class="anchor"></a>Target calculations<br>
+													 -------------------</h2>
+
+						<p>xxx</p>
+
     Target calculations and where they happen, missiles, explosions
+
+						<h2 class="articleSubheader"><a id="sunplanet" class="anchor"></a>Cheating with the sun and planet<br>
+													 --------------------------------</h2>
+
+						<p>xxx</p>
+
+    Sun/planet cheats, on-screen movements
+
+						<h2 class="articleSubheader"><a id="controls" class="anchor"></a>Responsive controls for two players<br>
+													 -----------------------------------</h2>
+
+						<p>xxx</p>
+
     Keyboard rollover for two players, twin joysticks, Delta 14B
-    Text tokens, simplify the main flight loop
+
+						<h2 class="articleSubheader"><a id="dashboard" class="anchor"></a>Sharing the scanner and dashboard<br>
+													 ---------------------------------</h2>
+
+						<p>xxx</p>
+
     Scanner/dials sharing, zoom in scanner
+
+
+
+
+
+						<h2 class="articleSubheader"><a id="misc" class="anchor"></a>Miscellaneous<br>
+													 -------------</h2>
+
+						<p>xxx</p>
+
+    Text tokens, simplify the main flight loop
+
 
 					</div>
 				</div>

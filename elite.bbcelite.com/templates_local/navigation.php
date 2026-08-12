@@ -330,7 +330,7 @@
 							</li>
 						</ul>
 					<li id="hacks"><span class="menuTitle">Elite hacks</span>
-						<span class="menuSummary menuSummarySubmenu">Universe editor, flicker-free, teletext and more</span>
+						<span class="menuSummary menuSummarySubmenu">Two-player Elite, teletext, 3D, music and more</span>
 						<ul id="submenu_hacks">
 							<li class="menuItemHeader">Index</li>
 							<li><a id="hacks_index" href="/hacks/"><span class="menuTitle">Index of all Elite hacks</span><span class="menuSummary">A list of all the Elite hacks on this site</span></a></li>
