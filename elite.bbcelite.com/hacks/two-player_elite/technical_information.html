@@ -15,9 +15,10 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<p>This article describes how I built two-player Elite. I've split it up into a numer of sections that broadly cover the development process in the order in which I tackled them; click on them to jump down to the relevant section:</p>
 
 						<ul class="tightList">
-							<li><a href="#overview">A very quick overview</a></li>
+							<li><a href="#overview">An overview of the changes</a></li>
 							<li><a href="#splitview">Splitting the space view</a></li>
-							<li><a href="#duplicating">Duplicating the universe for player 2</a></li>
+							<li><a href="#player1">Drawing player 1's space view</a></li>
+							<li><a href="#player2">Drawing player 2's space view</a></li>
 							<li><a href="#maths">The matrix maths behind two-player Elite</a></li>
 							<li><a href="#targets">Target calculations</a></li>
 							<li><a href="#sunplanet">Cheating with the sun and planet</a></li>
@@ -32,8 +33,8 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>I hope you enjoy reading about two-player Elite as much as I enjoyed hacking it into existence.</p>
 
-						<h2 class="articleSubheader"><a id="overview" class="anchor"></a>A very quick overview<br>
-													 ---------------------</h2>
+						<h2 class="articleSubheader"><a id="overview" class="anchor"></a>An overview of the changes<br>
+													 --------------------------</h2>
 
 						<p>There's a clever conceit at the heart of 8-bit Elite that makes life considerably simpler for anyone working with the game code. It is this: the player is always at the centre of the universe.</p>
 
@@ -49,7 +50,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<img class="titleImage" src="/images/two-player_elite/gameplay.png" alt="Two-player Elite">
 
-						<p>The local bubble is still centred on the player - let's call them player 1 - and the top space view is player 1's view; in a very real sense, the top view is effectively standard Elite, just cropped into a smaller part of the screen (this cropping is discussed in the section on <a href="#splitview">splitting the space view</a>). When player 1 rotates or accelerates, they don't move, but the whole local bubble moves around them instead. The top space view is normal Elite in pretty much every way that matters.</p>
+						<p>The local bubble is still centred on the player - let's call them player 1 - and the top space view is player 1's view; in a very real sense, the top view is effectively standard Elite, just <a href="#splitview">cropped into a smaller part of the screen</a>. When player 1 rotates or accelerates, they don't move, but the whole local bubble moves around them instead. The top space view is normal Elite in pretty much every way that matters.</p>
 
 						<p>Player 2, then, is simply another ship that is spawned into player 1's universe. Player 2 isn't at the centre of the universe; they are just like an NPC ship in the original game, so when player 1 rotates or moves, player 2's ship rotates and moves in the opposite direction, just like all the non-player ships in the original.</p>
 
@@ -57,43 +58,304 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>This isn't too much of a leap - after all, NPC ships in the original game work in this way, so moving NPC ships by joystick rather than by algorithm isn't too hard to imagine. Indeed, you can configure player 2 to be an AI Pilot in two-player Elite, in which case the code controlling player 2's ship just switches back to the original tactics routines rather than reading the joystick and keyboard.</p>
 
-						<p>So we have a model that is familiar, in that we have a player 1-centric universe that contains the planet, the sun, player 2's ship and any other objects like missiles. Player 1's space view is easy enough to draw, as player 2 is just another ship in the local bubble, so we draw it as normal. But the real challenge is how to draw all of this for player 2; this is the core of the two-player Elite hack, so I've split it up into sections.</p>
+						<p>So we have a model that is familiar, in that we have a player 1-centric universe that contains the planet, the sun, player 2's ship and up to two missiles. Player 1's space view is easy enough to draw, as player 2 is just another ship in the local bubble, so we can draw the whole scene as normal (just with the required cropping).</p>
+
+						<p>This defines the main challenge of the two-player Elite hack: how do we draw all of this into the bottom space view, so that everything is from the point of view of player 2. This is where the complexity arrives, so I've split it up into sections:</p>
 
 						<ul>
-							<li>In order to draw player 2's view, we first create duplicates of the sun, planet, ships and missiles in the local bubble. This is described in the section on <a href="#duplicating">duplicating the universe for player 2</a>.</li>
+							<li>We start by talking about how to draw player 1's view, as we can we use the same process as single-player Elite. See the section on <a href="#player1">drawing player 1's space view</a> for details.</li>
 
-							<li>Once we've got our duplicates, we need to transform each of them from player 1's frame of reference (i.e. with player 1 at the origin) into player 2's frame of reference (i.e. with player 2 at the origin). This is the core part of two-player Elite, and is described in the section on <a href="#maths">the matrix maths behind two-player Elite</a>.</li>
+							<li>In order to draw player 2's view, we first create duplicates of the sun, planet, ships and missiles in the local bubble. This is described in the section on <a href="#player2">drawing player 2's space view</a>.</li>
 
-							<li>A pretty vital aspect of dogfighting in space is the ability to target and shoot your opponent. As discussed above, this is pretty easy for player 1, but it's a bit more involved for player 2, as described in the section on <a href="#targets">target calculations</a></li>
+							<li>Once we've got our duplicates, we need to transform each of them from player 1's frame of reference (i.e. with player 1 at the origin and the axes aligned with player 1's ship) into player 2's frame of reference (i.e. with player 2 at the origin and the axes aligned with player 2's ship). This is the core part of two-player Elite, and is detailed in the section on <a href="#maths">the matrix maths behind two-player Elite</a>.</li>
 
-							<li>Finally, all is not what it seems... of course. Accuracy and speed are constant challenges when working with floating point geometry on an 8-bit CPU, and I confess to using some smoke and mirrors to make things appear a bit more stable than they actually are. I describe these in the section on <a href="#sunplanet">cheating with the sun and planet</a>, but please don't tell anyone.</li>
+							<li>A pretty vital aspect of dogfighting in space is the ability to target and shoot your opponent. As discussed above, this is pretty easy for player 1, but it's a bit more involved for player 2, so this is explained in the section on <a href="#targets">target calculations</a></li>
+
+							<li>Finally, all is not what it seems... of course. Accuracy and speed are constant challenges when working with floating point geometry on an 8-bit CPU, and I confess to using some smoke and mirrors to make things appear a bit more stable than they actually are. I talk about these in the section on <a href="#sunplanet">cheating with the sun and planet</a>, but please don't tell anyone.</li>
 						</ul>
 
-						<p>There are also sections on some of the more straightforward aspects, such as the <a href="#splitview">split space view</a>, the <a href="#dashboard">shared dashboard</a> and the <a href="#controls">responsive control system</a>, as well as a <a href="#misc">miscellaneous</a> section for anything else worth noting.</p>
+						<p>There are also sections on some of the more straightforward aspects, such as the <a href="#splitview">split space view</a>, the <a href="#dashboard">shared dashboard</a> and the <a href="#controls">responsive control system</a>, and to round it off there's a <a href="#misc">miscellaneous</a> section for anything else worth talking about.</p>
 
-						<p>On with the show!</p>
+						<p>Let's start with a look at splitting the space view in two, which was the first thing I tackled.</p>
 
 						<h2 class="articleSubheader"><a id="splitview" class="anchor"></a>Splitting the space view<br>
 													 ------------------------</h2>
 
-						<p>xxx</p>
+						<p>Compared to some of the other challenges in two-player Elite, splitting the screen into two players is relatively easy. I added two variables, splitScreen and drawPlayerView, as follows:</p>
 
-    Two views, line clipping, view clearing, duplicate sights/messages
+						<ul>
+							<li><span class="highlight">splitScreen</span> controls the split-screen effect:
+								<ul>
+									<li>Bit 7 set = draw the space view as a split screen</li>
 
+									<li>Bit 7 clear = full screen</li>
+								</ul>
+							</li>
 
-						<h2 class="articleSubheader"><a id="duplicating" class="anchor"></a>Duplicating the universe for player 2<br>
-													 -------------------------------------</h2>
+							<li><span class="highlight">drawPlayerView</span> determines which player's view to draw in the split screen:
+								<ul>
+									<li>Bit 7 set = draw player 1's view (top)/li>
 
-						<p>xxx</p>
+									<li>Bit 7 clear = draw player 2's view (bottom)</li>
+								</ul>
+							</li>
+						</ul>
 
-    Slot duplication, don't blindly share INWK+31, ship line heaps -&2000
+						<p>You'll notice that these variables use bit 7 to store their state. This approach isn't that popular in Elite - Bell and Braben's code tends to prefer flags that are either zero or non-zero, and which can be tested with an LDA and BEQ combination. For my own coding I've been more influenced by Geoff Crammond, who over the course of Aviator, Revs and The Sentinel, moved to using bit 7 as the flag (and possibly bit 6 as well). The advantage of using bit 7 is that we can get away without using any registers, as the BIT instruction sets the N and V flags to bits 7 and 6 of its operand. So instead of testing whether our flag variable is non-zero, like this:</p>
 
-    Stardust, duplicate planet heap, split sun heap
+<pre class="articleIndented">
+  LDA flagVariable
+  BNE flagIsSet
+</pre>
+
+						<p>or zero, like this:</p>
+
+<pre class="articleIndented">
+  LDA flagVariable
+  BEQ flagIsNotSet
+</pre>
+
+						<p>we can do the following to test bit 7 being set:</p>
+
+<pre class="articleIndented">
+  BIT flagVariable
+  BMI flagIsSet
+</pre>
+
+						<p>or this to test bit 7 being clear:</p>
+
+<pre class="articleIndented">
+  BIT flagVariable
+  BPL flagIsNotSet
+</pre>
+
+						<p>Similarly, we can do the following to test bit 6 being set:</p>
+
+<pre class="articleIndented">
+  BIT flagVariable
+  BVS flagIsSet
+</pre>
+
+						<p>or this to test bit 6 being clear:</p>
+
+<pre class="articleIndented">
+  BIT flagVariable
+  BVC flagIsNotSet
+</pre>
+
+						<p>Not only that, but we can set the flag in bit 7 without needing to use any registers, like this:</p>
+
+<pre class="articleIndented">
+  SEC
+  ROR flagVariable
+</pre>
+
+						<p>and we can clear it in a similar fashion like this:</p>
+
+<pre class="articleIndented">
+  CLC
+  ROR flagVariable
+</pre>
+
+						<p>And because we are running the main game code on the 6502 Second Processor with its 65C02 CPU, we can clear both flags in just one instruction, like this:
+
+<pre class="articleIndented">
+  STZ flagVariable
+</pre>
+
+						<p>I digress, but Geoff Crammond clearly knew a thing or two about efficient 6502 assembly coding, and you will see this kind of flag logic throughout the modifications for two-player Elite, so it's probably worth mentioning.</p>
+
+						<p>Given our two flag variables in splitScreen and drawPlayerView, we can update any drawing calculations to draw into the correct half of the screen. If splitScreen is set then we need to update the y-coordinate of the pixel that we are drawing, according to the value of drawPlayerView. To do this we can use the configuration variable Y, which is set to half the height of the space view (i.e. 96 pixels, as the full space view is 192 pixels high); I will refer to this variable as #Y to avoid confusing it with the 6502's Y register. We can then calculate the following:</p>
+
+						<ul>
+							<li>If we are drawing player 1's view in the top part of the space view, then subtract #Y/2 from the y-coordinate, to move the whole scene upwards so the centre of the view (at the laser sights) is in the middle of the top half. Then check whether the pixel fits into the top half of the screen (i.e. into the range 0 &lt;= y &lt; #Y/2) and if it does, plot it.</li>
+
+							<li>If we are drawing player 2's view in the bottom part of the space view, then add #Y/2 to the y-coordinate, to move the whole scene down so the centre of the view (at the laser sights) is in the middle of the bottom half. Then check whether the pixel fits into the bottom half of the screen (i.e. into the range #Y/2 &lt;= y &lt; #Y) and if it does, plot it.</li>
+						</ul>
+
+						<p>This calculation occurs in a number of routines:</p>
+
+						<ul>
+							<li>PIXEL2 for drawing stardust</li>
+
+							<li>LASLI for drawing laser lines</li>
+
+							<li>DOEXP for drawing explosions</li>
+
+							<li>PLANET for drawing the planet</li>
+
+							<li>SUN for drawing the sun</li>
+
+							<li>SHPPT for drawing distant ships</li>
+
+							<li>SIGHT for drawing the laser crosshairs</li>
+
+							<li>LL145 for line-clipping</p>
+						</ul>
+
+						<p>The last routine is worth explaining a bit further, as the line-clipping routine at LL145 is applied to every line that's drawn as part of a ship wireframe or a circle, so it's a key part of drawing ships, planets, launch tunnels and so on. You can read all about how it works in the deep dive on <a href="/deep_dives/line-clipping.html">line-clipping</a>, but suffice to say it's fairly complicated and involves some relatively slow arithmetic.</p>
+
+						<p>For two-player Elite, we need to extend LL145 to cope with two scenarios: we still need the original, full-screen line-clipping routine in case we want to display full-screen ships on the title screen or circles in the launch tunnel or chart screens; and we need a new version that clips lines to either one of the two-player views, so we can draw ships and planets in just one half of the space view.</p>
+
+						<p>I did briefly try reworking LL145 to cope with the split-screen player views, but it didn't go too well, so to avoid getting bogged down, I added a cheeky hack that worked so well I kept it. Here's how it works.</p>
+
+						<p>If the screen is normal and not split into two player views (i.e. when bit 7 of splitScreen is clear) then we run LL145 as normal. But if the screen is split then we use the following approach to move the line up the screen to be centred in player 1's space view, where we clip the line to the half-height view, and then if we are drawing player 2's view, we move the clipped line down into the bottom half of the split screen. As the line's coordinates are 16-bit signed numbers that use the game's <a href="/deep_dives/extended_screen_coordinates.html">extended screen coordinates</a>, we can move the line up the screen using normal SBC instructions using the carry flag.</p>
+
+						<p>This is how the algorithm works:</p>
+
+						<ul>
+							<li>We start by subtracting #Y/2 from the line's 16-bit y-coordinates to move the line up the screen by half the height of player 1's space view, so the line is now in the correct position for player 1's space view (though it hasn't been clipped yet).</li>
+
+							<li>We now want to clip this newly positioned line to the top half of the space view, so that's the range 0 to #Y/2. The standard LL145 routine clips to the range 0 to #Y, so we do the following:
+
+								<ul>
+									<li>Double the line's 16-bit y-coordinates with a simple left-shift, which stretches the line in the y-axis to make it double the height on-screen. The top of the screen is the zero y-coordinate, so this is a bit like drawing our line on a stretchy sheet of rubber that's the same size as player 1's space view, and then gripping the sheet at the top and bottom and pulling the bottom down until the sheet is double height, i.e. the height of the full, two-player space view.</li>
+
+									<li>We then run LL145 as normal, to clip the lines to 0 &lt;= y &lt; #Y and 0 &lt;= x &lt; 256. This clips our double-height line to the bounds of the full space view, so that's twice the height of the player 1 space view. If you like, this is clipping our line to the edges of the stretched sheet of rubber.</li>
+
+									<li>Finally we halve the line's 16-bit y-coordinates with a simple right-shift, which is like us letting the bottom part of the rubber sheet go so it goes back to being the same shape as player 1's space view, just with the line clipped to the top half of the full, two-player space view.</li>
+								</ul>
+							</li>
+
+							<li>If we are drawing player 2's view (i.e. bit 7 of drawPlayerView is set), we finish off by adding #Y to the y-coordinates of the clipped line to move it down into the bottom half of the space view.</li>
+						</ul>
+
+						<p>The overhead of this code is relatively minor, as it only requires addition, subtraction and shifting, and it leaves us with a line-clipping routine that works in both the original screen and the split screen without needing to change the original LL145 routine at all.</p>
+
+						<p>There are a few other areas where we need to cater for the split screen. In the original game, whenever we change the space view (front, rear, left, right) or switch to an information screen like the charts or status mode screen, then the TTX66 routine clears the whole top part of the screen, draws the yellow border and then displays the relevant information. This can't happen in two-player Elite, as otherwise one player changing views would affect the other player's view, so we need to extend TTX66 to cater for this; the easiest way is to add a couple more text control codes to the TT26 text-printing routine in the I/O processor, so control code 14 clears player 1's view and control code 15 clears player 2's view.</p>
+
+						<p>Finally, we also need to update the in-flight messaging system to cater for messages in both player views. As there are a few variables used to store the current message details (so it can be easily erased), it was easier just to duplicate the MESS routine into Player2MESS, so MESS prints in-flight messages in player 1's view, and Player2MESS does the same for player 2. I ended up duplicating quite a few aspects of the game for player 2 in this way; see the <a href="#misc">miscellaneous</a> section for more details.</p>
+
+						<p>Now that we have our two split-screen player views, let's talk about how we can draw them.</p>
+
+						<h2 class="articleSubheader"><a id="player1" class="anchor"></a>Drawing player 1's space view<br>
+													 -----------------------------</h2>
+
+						<p>As discussed in the <a href="#overview">overview</a>, the heart of two-player Elite is the exact same player-centric local bubble model as in the original single-player game, with player 1 at the centre of the universe. Drawing the top space view for player 1 is therefore fairly easy, at least in concept; we just draw the game screen as usual, showing everything from the perspective of player 1, and all we need to do is clip what we draw so it fist into the half-height space view at the top of the screen. This makes it sound a lot easier than it is in practice, but the concept shouldn't be too difficult to grasp.</p>
+
+						<p>The challenge, then, is to draw player 2's space view, which needs to show the same local bubble, but from the perspective of player 2's ship. It also needs to support its own set of stardust that moves with player 2's movements, and it needs to show not only ships, but also the planet and the sun.</p>
+
+						<p>Before describing how two-player Elite works, let's recap how single-player Elite stores its environment, and in particular the ships and other objects in the local bubble of universe that we want to draw in the space view. This is all described in detail in the deep dives on <a href="/deep_dives/the_local_bubble_of_universe.html">the local bubble of universe</a> <a href="/deep_dives/ship_data_blocks.html">ship data blocks</a>, but here's a brief summary.</p>
+
+						<p>The game has a fixed number of ship slots, with 12 in the BBC Micro version and 20 in the 6502 Second Processor version (two-player Elite is based on the latter). Each object in the local bubble occupies one slot, with the planet in slot #0, either the sun or the space station in slot #1, and then all the various ships and missiles and asteroids in slots #2 and up.</p>
+
+						<p>Each slot is managed via the FRIN table, which contains one byte per slot; a 0 indicates an empty slot, while a non-zero entry indicates either a ship, planet, sun or station. Each occupied slot also has an associated ship data block, which lives in the K% workspace, and one of those bits of data is the address of the ship's line heap, which is used to store the coordinates of the ship's wireframe lines on-screen, so they can quickly be redrawn using EOR logic to remove a ship from the screen.</p>
+
+						<p>All space coordinates in single-player Elite are relative to the player, who lives at the origin with coordinates (0, 0, 0). The z-axis goes into the screen, so that's pointing straight out of the nose of the player's ship, while the x-axis goes from left to right and the y-axis points up. (Note that the BBC Micro's screen y-coordinates go the other way and increase as you move down the screen, but we're talking about 3D space coordinates here, and they increase as you move up in space.)</p>
+
+						<p>Finally, note that in this context, "ship" is used to refer to anything with a slot, so that includes the sun, the planet, the station or non-ship objects like asteroids or cargo canisters. It's a lot easier to say "ship" than "ship, planet, sun, station etc.".</p>
+
+						<p>We keep this model for two-player Elite, but in a reduced manner. Because two-player Elite is a deep space dogfighting game, we don't come across any space stations, so slot #1 is always allocated to the sun. And we also strictly limit the number of objects to avoid slow-downs, with a maximum of one in-flight missile per player giving a limit of two in-flight missiles at any one time.</p>
+
+						<p>The ship slots in two-player Elite therefore look like this, with player 1 at the centre of the universe:</p>
+
+						<ul>
+							<li>Slot #0 = Planet</li>
+							<li>Slot #1 = Sun</li>
+							<li>Slot #2 = Player 2's ship</li>
+							<li>Slot #3 = Missile 1</li>
+							<li>Slot #4 = Missile 2</li>
+						</ul>
+
+						<p>That's it - that's the local bubble of universe for two-player Elite. We may anything from 0 to 2 missiles spawned, but we always have the planet, the sun and player 2's ship.</p>
+
+						<p>This bubble works for drawing player 1's space view, as all the space coordinates are relative to player 1 at the origin, just as in the original single-player game. But how do we take this bubble structure and use it to draw player 2's space view?</p>
+
+						<p>That's a simple question with a complicated answer, so let's look at how player 1's view is drawn and see if that helps. The details can be found in the deep dive on <a href="/deep_dives/program_flow_of_the_main_game_loop.html">program flow of the main game loop</a>, but to save you wading through all that, let's concentrate on the ship-processing code at the heart of the game loop.</p>
+
+						<p>Every iteration of the main loop, the game works through each of the ship slots, one slot at a time, and it applies movement and rotation to the ship we are processing (the "current ship"). This movement is affected not only by how the player is moving in space, but also by the current ship's own rotation, speed and acceleration. Tactics are also applied at this point, so pirates will attack and traders will mind their own business, for example. Once the current ship has been updated, then the new data is stored in the ship's data block, and the ship is redrawn on-screen. This latter step is done in two parts, first by redrawing the existing lines on-screen using EOR logic and the coordinates in the ship line heap, and then by drawing the new lines on-screen (again using EOR logic to merge with the existing screen contents) and storing the new coordinates in the ship line heap.</p>
+
+						<p>This ship-drawing loop manages the ships, suns and planets in the space view in single-player Elite, with the actual drawing being done by the LL9 routine. This is called in part 12 of the main flight loop, and it caters for the planet, the sun and the ships, so LL9 ends up being called once for each populated ship slot. Once we've finished going through the ship slots, the game calls the STARS routine to update the stardust, and that's how the space view is drawn in single-player Elite.</p>
+
+						<p>For two-player Elite, then, we can use the same loop for drawing player 1's space view, with LL9 and STARS taking care of the ships and the stardust. We now need a similar system for drawing player 2's view, ideally without adding too much overhead.</p>
+
+						<p>Let's take a look at that next.</p>
+
+						<h2 class="articleSubheader"><a id="player2" class="anchor"></a>Drawing player 2's space view<br>
+													 -----------------------------</h2>
+
+						<p>The core approach in two-player Elite is to treat ship slots #0 to #4 as the single source of truth for the local bubble, and to draw that same bubble from the perspective of player 2. To keep the flight loop as unchanged as possible, we add a new rouine, DrawPlayer2View, which we call for each ship slot, just after LL9 has drawn that ship in player 1's space view. DrawPlayer2View, as its name suggests, draws the current ship, but it does it in player 2's view and from the point of view of player 2. DrawPlayer2View is the core of two-player Elite, and you can <a href="https://raw.githubusercontent.com/markmoxon/elite-two-player-6502-second-processor/refs/heads/main/1-source-files/main-sources/elite-source.asm">see it in the raw source</a> by searching for ".DrawPlayer2View".</p>
+
+						<p>To simplify things a bit, you can think of DrawPlayer2View as a large, six-part wrapper around yet another call to LL9 to draw the current ship, but before drawing the ship, we convert the current ship's data block from the default perspective (i.e. the view from player 1's ship) into a different frame of reference (i.e. the view from player 2's ship). The call to LL9 then draws the current ship into player 2's space view.</p>
+
+						<p>DrawPlayer2View is split into six parts:</p>
+
+						<ul>
+							<li>Part 1 processes byte #31 of the ship data block, as this contains data that isn't necessarily the same for each ship in the two different player views. For example, a ship might be visible in one view but not visible in another, and as that is stored in bit 3 of byte #31, we need to manage this bit of data differently in each view.</li>
+
+							<li>Part 2 applies special rules to the planet and sun when they are on-screen, as described in the section on <a href="#sunplanet">cheating with the sun and planet</a>.</li>
+
+							<li>Part 3 is the most important part of two-player Elite, as it calculates the current ship's coordinates and orientation in player 2's frame of reference, so it can be drawn in player 2's space view. We'll talk about this in the remainder of this section, and we'll explore the maths further in the section on <a href="#maths">the matrix maths behind two-player Elite</a>.</li>
+
+							<li>Part 4 is nice and short, but it's important, as it draws the current ship in player 2's space view. It starts by setting bit 7 of drawPlayerView to ensure the ship is drawn in the correct view. It then calls PLUT to switch to the correct space view, just as we do in single-player Elite (see the deep dive on <a href="/deep_dives/flipping_axes_between_space_views.html">flipping axes between space views</a> for details). And finally it calls LL9 to draw the current ship in player 2's view.</li>
+
+							<li>Part 5 deals with lasers and targeting, as described in the section on <a href="#targets">target calculations</a>.</li>
+
+							<li>Part 6 returns to the ship data to the state it was in when we called DrawPlayer2View, so the main loop can continue on as if nothing has happened.</li>
+						</ul>
+
+						<p>This approach makes sense until we needs to draw the ship in slot #2. Slot #2 contains player 2's ship, but player 2 can't see their own ship, so there's nothing to draw. So when we are processing the current ship in slot #2, DrawPlayer2View instead draws player 1's ship from the perspective of player 2, as player 1's ship doesn't actually have a ship slot (as in the local bubble, player 1 is always at the origin and is always aligned with the axes, so we don't need to store its coordinates, orientation and so on). It turns out that the two player ships have a special mathematical relationship, so this works pretty well; see the section on <a href="#maths">the matrix maths behind two-player Elite</a> for more on this.</p>
+
+						<p>For the rest of this section, let's examine part 3 in more detail, as this is where the magic lives. By this point in DrawPlayer2View, we are processing the current ship and have drawn it in player 1's view. The slots are set up as follows:
+
+						<ul>
+							<li>Slot #0 = Planet</li>
+							<li>Slot #1 = Sun</li>
+							<li>Slot #2 = Player 2's ship</li>
+							<li>Slot #3 = Missile 1</li>
+							<li>Slot #4 = Missile 2</li>
+						</ul>
+
+						<p>So given the ship data for the current ship, we now we need to draw the ship from the perspective of player 2, and in player 2's space view.</p>
+
+						<p>If you look at the ship data for a typical ship, it's mostly coordinates and orientation vectors; see the deep dive on <a href="/deep_dives/ship_data_blocks.html">ship data blocks</a> for details. The coordinates are the (x, y, z) space coordinates of the ship relative to player 1, while the orientation vectors define the direction in which the ship is pointing, stored as three orthonormal vectors - nosev, roofv and sidev - that point out of the nose, roof and right side of the ship respectively (see the deep dives on <a href="/deep_dives/orientation_vectors.html">orientation vectors</a> and <a href="/deep_dives/tidying_orthonormal_vectors.html">tidying orthonormal vectors</a> for more on these).</p>
+
+						<p>Indeed, the first 27 bytes of each ship block define the ship's position and orientation in space, all of them from the perspective of player 1. As player 1 and player 2 can't be at the same point in space, we know that these 27 bytes will be different for this ship when viewed from the perspective of player 2.</p>
+
+						<p>We'll look at exactly how they differ in the next section, but in terms of DrawPlayer2View, our first step is to make a copy of the ship data for the ship we are trying to draw, because we're going to have to change most of it when drawing that ship in player 2's view. To make things simple, we can duplicate the current ship's data from slot #n into slot #n+10, like this:</p>
+
+						<ul>
+							<li>Slot #10 = Planet from player 2's perspective</li>
+							<li>Slot #11 = Sun from player 2's perspective</li>
+							<li>Slot #12 = Player 1's ship from player 2's perspective</li>
+							<li>Slot #13 = Missile 1 from player 2's perspective</li>
+							<li>Slot #14 = Missile 2 from player 2's perspective</li>
+						</ul>
+
+						<p>So, for example, when we are processing slot #1 in the main game loop, which contains the sun, DrawPlayer2View copies the sun's ship data into slot #11; similarly, player 2's ship gets copied into slot #12 for processing in DrawPlayer2View, and so on. This duplication process means we can apply our transformation maths to the copy to get the current ship's coordinates and orientation for player 2's view, and we can simply pass this higher slot number to LL9 to draw the ship, and it will all just work. Skip to the section on <a href="#maths">the matrix maths behind two-player Elite</a> to read about this transformation process, as it deserves a section all of its own.</p>
+
+						<p>The ship data in the higher slot number does get used once more after the ship is drawn, but it isn't until the next time the main loop processes this slot, when we need to update the ship in player 2's view. Before the higher slot ship data is overwritten, part 1 of DrawPlayer2View uses it to remove the ship from player 2's scanner (i.e. the yellow ship stick), as redrawing the ship stick in its current position with EOR logic will remove it. Then we can copy the lower slot number data into the higher slot number again, overwriting what's there, and the whole process starts again.</p>
+
+						<p>There are some important caveats in this copying process. As mentioned above, byte #31 of the ship's data block contains a number of flags that don't make sense when blindly applied to player 2's perspective, so instead we store byte #31 separately for slots #2 to #4 (these are stored in the three bytes at player1INWK31). Part 1 of DrawPlayer2View therefore starts by looking at byte #31 for the current ship; by this point the current ship's data is in the zero page INWK workspace, so DrawPlayer2View checks the flags in INWK+31 and copies any relevant ones into the relevant byte in player1INWK31. For example, if a missile has just exploded then bit 7 of INWK+31 will be set, so we will want to copy that over into player1INWK31 so the missile explodes in both views; but if a ship is visible in player 1's space view then that has no bearing on whether it will also be visible in player 2's space view, so we don't want to copy over bit 3 of INWK+31 (which records this fact), and instead we use bit 3 from player1INWK31 to keep track of whether a ship is on-screen in player 2's view.</p>
+
+						<p>The other important different in ship data is the address of the ship line heap. The ship line heap is very simple - it contains sets of four coordinates, each of which describes a line in that ship's on-screen depiction. To draw the ship we simply work through the heap, drawing each line, and to remove the ship from the screen, we repeat the process. You can read all about this in the deep dive on <a href="/deep_dives/drawing_ships.html">drawing ships</a>.</p>
+
+						<p>Obviously, the same ship will look completely different in player 1's view compared to player 2's view, so we need to maintain separate ship line heaps for the lower numbered slots and the higher numbered slots. To this end, when we duplicate a lower numbered slot to a higher numbered slot, we subtract &amp;2000 from the ship line heap address in bytes #33 and #34 of the ship data block. The 6502 Second Processor version of Elite has quite a generous memory allocation to the ship heap, as you can see in the <a href="/deep_dives/the_elite_memory_map_6502sp.html">6502 Second Processor Elite memory map</a>; the heap stretches downwards from &amp;D000 to &amp;84E4, so that's &amp;4BCC bytes. We're only using the top part of the ship heap for player 1's ship and two missiles (as the planet and sun have their own line heaps), so the maximum heap size required is 157 bytes for the player ship (based on the Cobra Mk III, which has the largest requirement), plus 85 bytes for each missile, giving a total of 327 bytes, or &amp;147. Spacing the two views' ship heaps out by &amp;2000 bytes is therefore complete overkill, but it's better to be safe than sorry.</p>
+
+						<p>The planet has its own ball line heaps at LSX2 and LSY2 that are populated by the BLINE routine (see the deep dive on <a href="/deep_dives/the_ball_line_heap.html">the ball line heap</a> for details). In order to support two different space views with two different-looking planets, we therefore need to allocate memory to a second pair of line heaps for the planet in player 2's view, which we can call LSX2a and LSY2a. We can then reuse a method that I first used to support right- and left-eye views in the analgyph routines in <a href="/hacks/elite_3d/technical_information.html">Elite 3D</a>. To get BLINE to work with the correct ball line heap, I've recoded the routine to look up all heap-related addresses from vectors, which get set by the SetPlayerBallLine routine, depending on the current value of drawPlayerView. Specifically, the LSX2S(1 0) vector points to either LSX2 or LSX2a, the LSY2S(1 0) vector points to LSY2 or LSY2a, and the LSPS vector points to LSP or LSPa, so we can use the same BLINE routine to draw the ball line for each of the player views individually, while storing the results in the correct line heap.</p>
+
+						<p>The sun also has a line heap, but this time we don't need to do any duplication, as the sun stores its lines as one byte for each of the 192 raster lines in the space view. We can therefore simply use the first half of the existing heap for the top space view and the second half for the bottom space view, and all we need to duplicate is the centre of the sun's x-coordinate in SUNX, as that can be different between the two views. Again, we use a vector approach, so the LSOS(1 0) vector points to either LSO or LSOa, and the SUNXS(1 0) vector points to SUNX or SUNXa. This gets set in SetPlayerSunHeap, again according to the current value of drawPlayerView.</p> 
+
+						<p>The final piece of the duplication puzzle is the stardust, which is drawn at the end of the main flight loop, after all of the ship slots have been iterated through and drawn. The STARS routine is responsible for drawing stardust, as described in the deep dives <a href="/deep_dives/stardust_in_the_front_view.html">stardust in the front view</a> and <a href="/deep_dives/stardust_in_the_side_views.html">stardust in the side views</a>. Stardust coordinates are stored in six different heaps, with one byte in each heap for each particle of stardust, storing a 16-bit x-coordinate in (SXL SX), a y-coordinate in (SYL SY), and a z-coordinate in (SZL SZ). Because the two space views in two-player Elite are half the size of the space view in single-player Elite, we can split the existing stardust particles between the two views, with player 1's stardust coordinates in the first half of each heap, and player 2's stardust in the second half.</p>
+
+						<p>The only fiddly bit is that stardust moves according to the player's movement, and in particular the alpha (roll), beta (pitch) and delta (speed) values, and it would be a bit of a pain to recode all the routines to cater for the different values for player 1 and player 2. So instead we use three new routines: SaveShipMovement saves player 1's movement variables into a cache, GetPlayer2Movement copies in player 2's movement data into the various ALPHA, BETA and DELTA variables, and LoadShipMovement restores player 1's movement variables. We can then insert a shim into the start of the STARS routine to call SaveShipMovement and GetPlayer2Movement, move and draw player 2's stardust in player 2's view, using the second half of each stardust heap, and then we call LoadShipMovement to revert to player 1's movement variables, and move and draw player 1's stardust in player 1's view.</p>
+
+						<p>So that's how we draw player 2's view... except we haven't talked about the maths behind all of this, and that's the most important part of all. Let's do that now.</p>
 
 						<h2 class="articleSubheader"><a id="maths" class="anchor"></a>The matrix maths behind two-player Elite<br>
 													 ----------------------------------------</h2>
 
-						<p>xxx</p>
+						<p>As explained above, the local bubble in two-player Elite is essentially a single-player bubble, just like the original game, with player 1 at the centre of the universe. Player 2 is just another ship in the bubble, in slot #2, and when we draw player 1's space view, we effectively use the same code as in the original game, we just crop it to the top half of the screen.</p>
+
+						<p>The challenge is to draw the same ships, but in player 2's space view and from player 2's perspective. The previous section explains how we duplicate the current ship into a higher number slot, where we transform the ship's coordinates and orientation to player 2's perspective, and then we draw the results in the bottom space view.</p>
+
+						<p>In this section we look at that transformation process, which is the most important part of the entire hack. We'll start by looking at how we draw player 1's ship in player 2's view, as that's a relatively simple calculation, and then we'll move on to drawing missiles, which is a more complicated and more generalised version of the same maths.</p>
+
+						<p>In order to follow along, you'll probably want to read the deep dive on <a href="/deep_dives/orientation_vectors.html">orientation vectors</a> first, as we're going to be working with them a lot. The core mathematical concepts are similar to those discussed in the deep dives on <a href="/deep_dives/back-face_culling.html">back-face culling</a> and <a href="/deep_dives/calculating_vertex_coordinates.html">calculating vertex coordinates</a>, particularly the bit about "scalar projection" in the first article and "transposing the rotation matrix" in the second, so you might find those useful too. I'll try to explain things as I go along, but sometimes it helps to have more than one explanation of a concept to hand.</p>
+
+						<p>
+
+
 
     DrawPlayer2View, matrix maths, arithmetic routines
 
@@ -125,16 +387,33 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
     Scanner/dials sharing, zoom in scanner
 
-
-
-
-
 						<h2 class="articleSubheader"><a id="misc" class="anchor"></a>Miscellaneous<br>
 													 -------------</h2>
 
 						<p>xxx</p>
 
     Text tokens, simplify the main flight loop
+
+Duplicated routines:
+Player2FR1
+Player2LASLI
+Player2LASLI2
+Player2ee3
+Player2SHD
+Player2DENGY
+Player2OOPS
+Player2SPS3
+Player2ABORT
+Player2ABORT2
+Player2ECBLB2
+Player2me2
+Player2ECMOF
+Player2me1
+Player2me3
+Player2MESS
+
+Plus duplicate variables player2ECMA, player2JSTK etc.
+
 
 
 					</div>
