@@ -12,14 +12,15 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>Under the bonnet, BBC Micro Elite is a stubbornly single-player game. This makes perfect sense, as that's how it was designed. But it does mean it's a bit of a challenge for anyone wanting to coax a second player out of Bell and Braben's elegant code.</p>
 
-						<p>This article describes how I built two-player Elite. I've split it up into a numer of sections that broadly cover the development process in the order in which I tackled them; click on them to jump down to the relevant section:</p>
+						<p>This article describes how I built two-player Elite. I've split it up into a number of sections that broadly cover the development process in the order in which I tackled them; click on them to jump down to the relevant section:</p>
 
 						<ul class="tightList">
 							<li><a href="#overview">An overview of the changes</a></li>
 							<li><a href="#splitview">Splitting the space view</a></li>
 							<li><a href="#player1">Drawing player 1's space view</a></li>
 							<li><a href="#player2">Drawing player 2's space view</a></li>
-							<li><a href="#maths">The matrix maths behind two-player Elite</a></li>
+							<li><a href="#geometry">The geometry behind player 2's view</a></li>
+							<li><a href="#arithmetic">The arithmetic behind player 2's view</a></li>
 							<li><a href="#targets">Target calculations</a></li>
 							<li><a href="#sunplanet">Cheating with the sun and planet</a></li>
 							<li><a href="#controls">Responsive controls for two players</a></li>
@@ -67,7 +68,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 							<li>In order to draw player 2's view, we first create duplicates of the sun, planet, ships and missiles in the local bubble. This is described in the section on <a href="#player2">drawing player 2's space view</a>.</li>
 
-							<li>Once we've got our duplicates, we need to transform each of them from player 1's frame of reference (i.e. with player 1 at the origin and the axes aligned with player 1's ship) into player 2's frame of reference (i.e. with player 2 at the origin and the axes aligned with player 2's ship). This is the core part of two-player Elite, and is detailed in the section on <a href="#maths">the matrix maths behind two-player Elite</a>.</li>
+							<li>Once we've got our duplicates, we need to transform each of them from player 1's frame of reference (i.e. with player 1 at the origin and the axes aligned with player 1's ship) into player 2's frame of reference (i.e. with player 2 at the origin and the axes aligned with player 2's ship). This is the core part of two-player Elite, and is detailed in the sections on <a href="#geometry">the geometry behind player 2's view</a> and <a href="#arithmetic">the arithmetic behind player 2's view</a>.</li>
 
 							<li>A pretty vital aspect of dogfighting in space is the ability to target and shoot your opponent. As discussed above, this is pretty easy for player 1, but it's a bit more involved for player 2, so this is explained in the section on <a href="#targets">target calculations</a></li>
 
@@ -274,7 +275,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<h2 class="articleSubheader"><a id="player2" class="anchor"></a>Drawing player 2's space view<br>
 													 -----------------------------</h2>
 
-						<p>The core approach in two-player Elite is to treat ship slots #0 to #4 as the single source of truth for the local bubble, and to draw that same bubble from the perspective of player 2. To keep the flight loop as unchanged as possible, we add a new rouine, DrawPlayer2View, which we call for each ship slot, just after LL9 has drawn that ship in player 1's space view. DrawPlayer2View, as its name suggests, draws the current ship, but it does it in player 2's view and from the point of view of player 2. DrawPlayer2View is the core of two-player Elite, and you can <a href="https://raw.githubusercontent.com/markmoxon/elite-two-player-6502-second-processor/refs/heads/main/1-source-files/main-sources/elite-source.asm">see it in the raw source</a> by searching for ".DrawPlayer2View".</p>
+						<p>The core approach in two-player Elite is to treat ship slots #0 to #4 as the single source of truth for the local bubble, and to draw that same bubble from the perspective of player 2. To keep the flight loop as unchanged as possible, we add a new routine, DrawPlayer2View, which we call for each ship slot, just after LL9 has drawn that ship in player 1's space view. DrawPlayer2View, as its name suggests, draws the current ship, but it does it in player 2's view and from the point of view of player 2. DrawPlayer2View is the core of two-player Elite, and you can <a href="https://raw.githubusercontent.com/markmoxon/elite-two-player-6502-second-processor/refs/heads/main/1-source-files/main-sources/elite-source.asm">see it in the raw source</a> by searching for ".DrawPlayer2View".</p>
 
 						<p>To simplify things a bit, you can think of DrawPlayer2View as a large, six-part wrapper around yet another call to LL9 to draw the current ship, but before drawing the ship, we convert the current ship's data block from the default perspective (i.e. the view from player 1's ship) into a different frame of reference (i.e. the view from player 2's ship). The call to LL9 then draws the current ship into player 2's space view.</p>
 
@@ -285,7 +286,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 							<li>Part 2 applies special rules to the planet and sun when they are on-screen, as described in the section on <a href="#sunplanet">cheating with the sun and planet</a>.</li>
 
-							<li>Part 3 is the most important part of two-player Elite, as it calculates the current ship's coordinates and orientation in player 2's frame of reference, so it can be drawn in player 2's space view. We'll talk about this in the remainder of this section, and we'll explore the maths further in the section on <a href="#maths">the matrix maths behind two-player Elite</a>.</li>
+							<li>Part 3 is the most important part of two-player Elite, as it calculates the current ship's coordinates and orientation in player 2's frame of reference, so it can be drawn in player 2's space view. We'll talk about this in the remainder of this section, and we'll explore the maths further in the sections on <a href="#geometry">the geometry behind player 2's view</a> and <a href="#arithmetic">the arithmetic behind player 2's view</a>.</li>
 
 							<li>Part 4 is nice and short, but it's important, as it draws the current ship in player 2's space view. It starts by setting bit 7 of drawPlayerView to ensure the ship is drawn in the correct view. It then calls PLUT to switch to the correct space view, just as we do in single-player Elite (see the deep dive on <a href="/deep_dives/flipping_axes_between_space_views.html">flipping axes between space views</a> for details). And finally it calls LL9 to draw the current ship in player 2's view.</li>
 
@@ -294,7 +295,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 							<li>Part 6 returns to the ship data to the state it was in when we called DrawPlayer2View, so the main loop can continue on as if nothing has happened.</li>
 						</ul>
 
-						<p>This approach makes sense until we needs to draw the ship in slot #2. Slot #2 contains player 2's ship, but player 2 can't see their own ship, so there's nothing to draw. So when we are processing the current ship in slot #2, DrawPlayer2View instead draws player 1's ship from the perspective of player 2, as player 1's ship doesn't actually have a ship slot (as in the local bubble, player 1 is always at the origin and is always aligned with the axes, so we don't need to store its coordinates, orientation and so on). It turns out that the two player ships have a special mathematical relationship, so this works pretty well; see the section on <a href="#maths">the matrix maths behind two-player Elite</a> for more on this.</p>
+						<p>This approach makes sense until we needs to draw the ship in slot #2. Slot #2 contains player 2's ship, but player 2 can't see their own ship, so there's nothing to draw. So when we are processing the current ship in slot #2, DrawPlayer2View instead draws player 1's ship from the perspective of player 2, as player 1's ship doesn't actually have a ship slot (as in the local bubble, player 1 is always at the origin and is always aligned with the axes, so we don't need to store its coordinates, orientation and so on). This simplifies the calculations we need to do when working out where player 1's ship appears in player 2's space view; see the section on <a href="#geometry">the geometry behind player 2's view</a> for more on this.</p>
 
 						<p>For the rest of this section, let's examine part 3 in more detail, as this is where the magic lives. By this point in DrawPlayer2View, we are processing the current ship and have drawn it in player 1's view. The slots are set up as follows:
 
@@ -322,7 +323,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 							<li>Slot #14 = Missile 2 from player 2's perspective</li>
 						</ul>
 
-						<p>So, for example, when we are processing slot #1 in the main game loop, which contains the sun, DrawPlayer2View copies the sun's ship data into slot #11; similarly, player 2's ship gets copied into slot #12 for processing in DrawPlayer2View, and so on. This duplication process means we can apply our transformation maths to the copy to get the current ship's coordinates and orientation for player 2's view, and we can simply pass this higher slot number to LL9 to draw the ship, and it will all just work. Skip to the section on <a href="#maths">the matrix maths behind two-player Elite</a> to read about this transformation process, as it deserves a section all of its own.</p>
+						<p>So, for example, when we are processing slot #1 in the main game loop, which contains the sun, DrawPlayer2View copies the sun's ship data into slot #11; similarly, player 2's ship gets copied into slot #12 for processing in DrawPlayer2View, and so on. This duplication process means we can apply our transformation maths to the copy to get the current ship's coordinates and orientation for player 2's view, and we can simply pass this higher slot number to LL9 to draw the ship, and it will all just work. Skip to the section on <a href="#geometry">the geometry behind player 2's view</a> to read about this transformation process, as it deserves a section all of its own.</p>
 
 						<p>The ship data in the higher slot number does get used once more after the ship is drawn, but it isn't until the next time the main loop processes this slot, when we need to update the ship in player 2's view. Before the higher slot ship data is overwritten, part 1 of DrawPlayer2View uses it to remove the ship from player 2's scanner (i.e. the yellow ship stick), as redrawing the ship stick in its current position with EOR logic will remove it. Then we can copy the lower slot number data into the higher slot number again, overwriting what's there, and the whole process starts again.</p>
 
@@ -332,7 +333,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>Obviously, the same ship will look completely different in player 1's view compared to player 2's view, so we need to maintain separate ship line heaps for the lower numbered slots and the higher numbered slots. To this end, when we duplicate a lower numbered slot to a higher numbered slot, we subtract &amp;2000 from the ship line heap address in bytes #33 and #34 of the ship data block. The 6502 Second Processor version of Elite has quite a generous memory allocation to the ship heap, as you can see in the <a href="/deep_dives/the_elite_memory_map_6502sp.html">6502 Second Processor Elite memory map</a>; the heap stretches downwards from &amp;D000 to &amp;84E4, so that's &amp;4BCC bytes. We're only using the top part of the ship heap for player 1's ship and two missiles (as the planet and sun have their own line heaps), so the maximum heap size required is 157 bytes for the player ship (based on the Cobra Mk III, which has the largest requirement), plus 85 bytes for each missile, giving a total of 327 bytes, or &amp;147. Spacing the two views' ship heaps out by &amp;2000 bytes is therefore complete overkill, but it's better to be safe than sorry.</p>
 
-						<p>The planet has its own ball line heaps at LSX2 and LSY2 that are populated by the BLINE routine (see the deep dive on <a href="/deep_dives/the_ball_line_heap.html">the ball line heap</a> for details). In order to support two different space views with two different-looking planets, we therefore need to allocate memory to a second pair of line heaps for the planet in player 2's view, which we can call LSX2a and LSY2a. We can then reuse a method that I first used to support right- and left-eye views in the analgyph routines in <a href="/hacks/elite_3d/technical_information.html">Elite 3D</a>. To get BLINE to work with the correct ball line heap, I've recoded the routine to look up all heap-related addresses from vectors, which get set by the SetPlayerBallLine routine, depending on the current value of drawPlayerView. Specifically, the LSX2S(1 0) vector points to either LSX2 or LSX2a, the LSY2S(1 0) vector points to LSY2 or LSY2a, and the LSPS vector points to LSP or LSPa, so we can use the same BLINE routine to draw the ball line for each of the player views individually, while storing the results in the correct line heap.</p>
+						<p>The planet has its own ball line heaps at LSX2 and LSY2 that are populated by the BLINE routine (see the deep dive on <a href="/deep_dives/the_ball_line_heap.html">the ball line heap</a> for details). In order to support two different space views with two different-looking planets, we therefore need to allocate memory to a second pair of line heaps for the planet in player 2's view, which we can call LSX2a and LSY2a. We can then reuse a method that I first used to support right- and left-eye views in the anaglyph routines in <a href="/hacks/elite_3d/technical_information.html">Elite 3D</a>. To get BLINE to work with the correct ball line heap, I've recoded the routine to look up all heap-related addresses from vectors, which get set by the SetPlayerBallLine routine, depending on the current value of drawPlayerView. Specifically, the LSX2S(1 0) vector points to either LSX2 or LSX2a, the LSY2S(1 0) vector points to LSY2 or LSY2a, and the LSPS vector points to LSP or LSPa, so we can use the same BLINE routine to draw the ball line for each of the player views individually, while storing the results in the correct line heap.</p>
 
 						<p>The sun also has a line heap, but this time we don't need to do any duplication, as the sun stores its lines as one byte for each of the 192 raster lines in the space view. We can therefore simply use the first half of the existing heap for the top space view and the second half for the bottom space view, and all we need to duplicate is the centre of the sun's x-coordinate in SUNX, as that can be different between the two views. Again, we use a vector approach, so the LSOS(1 0) vector points to either LSO or LSOa, and the SUNXS(1 0) vector points to SUNX or SUNXa. This gets set in SetPlayerSunHeap, again according to the current value of drawPlayerView.</p> 
 
@@ -342,26 +343,198 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>So that's how we draw player 2's view... except we haven't talked about the maths behind all of this, and that's the most important part of all. Let's do that now.</p>
 
-						<h2 class="articleSubheader"><a id="maths" class="anchor"></a>The matrix maths behind two-player Elite<br>
-													 ----------------------------------------</h2>
+						<h2 class="articleSubheader"><a id="geometry" class="anchor"></a>The geometry behind player 2's view<br>
+													 -----------------------------------</h2>
 
 						<p>As explained above, the local bubble in two-player Elite is essentially a single-player bubble, just like the original game, with player 1 at the centre of the universe. Player 2 is just another ship in the bubble, in slot #2, and when we draw player 1's space view, we effectively use the same code as in the original game, we just crop it to the top half of the screen.</p>
 
 						<p>The challenge is to draw the same ships, but in player 2's space view and from player 2's perspective. The previous section explains how we duplicate the current ship into a higher number slot, where we transform the ship's coordinates and orientation to player 2's perspective, and then we draw the results in the bottom space view.</p>
 
-						<p>In this section we look at that transformation process, which is the most important part of the entire hack. We'll start by looking at how we draw player 1's ship in player 2's view, as that's a relatively simple calculation, and then we'll move on to drawing missiles, which is a more complicated and more generalised version of the same maths.</p>
+						<p>In this section we look at that transformation process, which is the most important part of the entire hack. In order to follow along, you'll probably want to read the deep dive on <a href="/deep_dives/orientation_vectors.html">orientation vectors</a>, as we're going to be working with them a lot. Also, the core mathematical concepts are similar to those discussed in the deep dives on <a href="/deep_dives/back-face_culling.html">back-face culling</a> and <a href="/deep_dives/calculating_vertex_coordinates.html">calculating vertex coordinates</a>, particularly the bit about "scalar projection" in the first article and "transposing the rotation matrix" in the second, so you might find those useful too. I'll try to explain things as I go along, but sometimes it helps to have more than one explanation of a concept to hand.</p>
 
-						<p>In order to follow along, you'll probably want to read the deep dive on <a href="/deep_dives/orientation_vectors.html">orientation vectors</a> first, as we're going to be working with them a lot. The core mathematical concepts are similar to those discussed in the deep dives on <a href="/deep_dives/back-face_culling.html">back-face culling</a> and <a href="/deep_dives/calculating_vertex_coordinates.html">calculating vertex coordinates</a>, particularly the bit about "scalar projection" in the first article and "transposing the rotation matrix" in the second, so you might find those useful too. I'll try to explain things as I go along, but sometimes it helps to have more than one explanation of a concept to hand.</p>
+						<p>Now that I've failed to put you off, let's try a thought experiment. Imagine you are playing two-player Elite in virtual reality, and you are currently sitting in player 1's ship. Out there in the distance you can just about see player 2's ship, and also in the same local bubble of universe are the planet, the sun and a missile or two. And imagine you can move your point of view to anywhere in this universe, by pinching and rotating or whatever it is that the cool VR kids do these days.</p>
 
-						<p>Now that I've tried to put you off, let's try a thought experiment. Imagine you are player 1, sitting in your ship, and you can see player 2's ship out there in space, a little in front of you and to the upper right, rotated towards you so the sun glints off its canopy.</p>
+						<p>The question is this: starting out with player 1's cockpit view in front of us, what do we need to do in order to see the view from player 2's cockpit, while only by moving the universe around us? In other words, without moving ourselves, but instead moving the universe around us (as that's how Elite's drawing routines work). If we can answer this, then that's what we need to build into two-player Elite in order to work out what the bubble looks like from player 2's ship.</p>
 
-						<p>Now imagine you have a small radio-operated drone that you can fly through space.</p>
+						<p>Intuitively, this is what I would do. I'd drag the universe towards me, pulling player 2 closer and closer until my view was inside their cockpit, and then I'd rotate the whole lot around me until I was looking out of the ship's front view. This dragging and rotating process doesn't only move player 2's ship towards us and into the right position, but it also moves and rotates everything else in the bubble, including our original ship, i.e. player 1's ship.</p>
 
-						<p>One way of finding out would be to move yourself to player 2's position and rotate yourself to look along the nose of their ship.
+						<p>In other words, we have worked out a geometric transformation that we can apply to each ship in the bubble that will move that ship into the correct position and orientation for the view from player 2's ship. The first part (the dragging) is known as a "translation", and the second part is a rotation, so we now have a two part translate-and-rotate transformation that takes ships from the coordinates and orientation they have when we are looking out of player 1's ship, and moves them to the coordinates and orientation they have when we are looking out of player 2's ship.</p>
+
+						<p>The next step is to convert this translate-and-rotate transformation into a mathematical process. We can apply that process to each current ship in the main flight loop, and can then draw the result in player 2's view. The transformation process is this:</p>
+
+						<ul>
+							<li>Apply a translation that moves player 2's ship to our position (so this is us dragging to the position of player 2's ship to our original position in player 1's ship).</li>
+
+							<li>Apply a rotation that takes our current view direction (which was down the nose of player 1's ship) and spins the view around us until we are looking down the nose of player 2's ship.</li>
+						</ul>
+
+						<p>We need to apply this two-part transformation to both bits of data that define the position and orientation of the current ship, so we need to apply it to the current ship's coordinates in space, to move the ship to the correct position relative to player 2's view, and we need to apply it to the ship's orientation vectors, to rotate the ship to the correct orientation relative to player 2's view. In the latter case, applying a translation to an orientation vector doesn't affect the orientation, so we only need to do the second step when transforming the current ship's orientation.</p>
+
+						<p>Let's look at how we can implement this transformation.</p>
+
+						<p>The first operation is reasonably simple. We start out with player 1 at the origin, at the centre of the universe, and player 2's ship is at the (x, y, z) coordinates in the ship data for slot #2 - let's call those coordinates (x2, y2, z2). We therefore need to apply a translation that moves player 2's ship from (x2, y2, z2) to player 1's ship at (0, 0, 0), which is a translation of (-x2, -y2, -x2).</p>
+
+						<p>Another way of thinking of this translation is that we move everything along the vector that joins player 1 and player 2, in the direction from player 2 to player 1. The vector from player 1 to player 2 is [x2 y2 z2], so the vector from player 2 to player 1 is [-x2 -y2 -x2].</p>
+
+						<p>So this is our translation step, which we apply to the current ship whose coordinates are at (x, y, z):</p>
+
+<pre class="articleIndented">
+  [ x ]      [ x ]     [ x2 ]
+  [ y ]  ->  [ y ]  -  [ y2 ]
+  [ z ]      [ z ]     [ z2 ]
+</pre>
+
+						<p>The second operation the rotation, is a bit more complicated. We need to apply a rotation that starts with us looking along player 1's viewing direction and spins things around until we are looking along player 2's viewing direction.</p>
+
+						<p>This is where the orientation vectors come in. Player 2's orientation vectors describe the direction in which player 2 is pointing relative to player 1, with nosev pointing out of player 2's nose, roofv pointing out of player 2's roof, and sidev pointing out of player 2's right side. These orientation vectors are orthonormal, so they are all unit vectors of length one, which means we can use the same "scalar projection" approach as we do for back-face culling (see the deep dive on <a href="/deep_dives/back-face_culling.html">back-face culling</a> for details).</p>
+
+						<p>As a reminder, scalar projection is the property that given a vector and a unit vector, we can calculate the projection of the vector onto the unit vector by simply calculating the dot product. If we do this with a vector and three unit vectors, then the dot product gives us that vector, expressed in terms of the three unit vectors - in other words, this is how we convert coordinates from one set of axes to another.</p>
+
+						<p>In this case we want to take the following four vectors, which define the position and orientation of the current ship after we have applied the first step of our transformation:</p>
+
+						<ul>
+							<li>The updated position of the current ship from above, as a vector</li>
+
+							<li>The side orientation vector of the current ship</li>
+
+							<li>The roof orientation vector of the current ship</li>
+
+							<li>The nose orientation vector of the current ship</li>
+						</ul>
+
+						<p>And we want to apply the second step of the transformation to each of these vectors by using scalar projection to project them onto player 2's orientation vectors, which moves them into player 2's frame of reference. So if [ x y z ] represents one of the vectors above, and player 2's orientation vectors are given by side2v, roof2v and nose2v, then the transformation calculation applies the dot product as follows:</p>
+
+<pre class="articleIndented">
+  x  ->  [ side2v_x side2v_y side2v_z ] . [ x y z ]
+
+  y  ->  [ roof2v_x roof2v_y roof2v_z ] . [ x y z ]
+
+  z  ->  [ nose2v_x nose2v_y nose2v_z ] . [ x y z ]
+</pre>
+
+						<p>If we combine both steps of the transformation, then we get the following for the transformation of the current ship's coordinates in (x, y, z), where (x2, y2, z2) are the coordinates player 2's ship in slot #2:</p>
+
+<pre class="articleIndented">
+  [ x ]  ->  [ side2v_x side2v_y side2v_z ] . [ [ x y z ] - [ x2 y2 z2 ] ]
+
+  [ y ]  ->  [ roof2v_x roof2v_y roof2v_z ] . [ [ x y z ] - [ x2 y2 z2 ] ]
+
+  [ z ]  ->  [ nose2v_x nose2v_y nose2v_z ] . [ [ x y z ] - [ x2 y2 z2 ] ]
+</pre>
+
+						<p>And here's the transformation that we apply to the orientation vectors for the current ship, in nine separate calculations:</p>
+
+<pre class="articleIndented">
+  [ sidev_x ]  ->  [ side2v_x side2v_y side2v_z ] . [ sidev_x sidev_y sidev_z ]
+  [ sidev_y ]  ->  [ roof2v_x roof2v_y roof2v_z ] . [ sidev_x sidev_y sidev_z ]
+  [ sidev_z ]  ->  [ nose2v_x nose2v_y nose2v_z ] . [ sidev_x sidev_y sidev_z ]
+
+  [ roofv_x ]  ->  [ side2v_x side2v_y side2v_z ] . [ roofv_x roofv_y roofv_z ]
+  [ roofv_y ]  ->  [ roof2v_x roof2v_y roof2v_z ] . [ roofv_x roofv_y roofv_z ]
+  [ roofv_z ]  ->  [ nose2v_x nose2v_y nose2v_z ] . [ roofv_x roofv_y roofv_z ]
+
+  [ nosev_x ]  ->  [ side2v_x side2v_y side2v_z ] . [ nosev_x nosev_y nosev_z ]
+  [ nosev_y ]  ->  [ roof2v_x roof2v_y roof2v_z ] . [ nosev_x nosev_y nosev_z ]
+  [ nosev_z ]  ->  [ nose2v_x nose2v_y nose2v_z ] . [ nosev_x nosev_y nosev_z ]
+</pre>
+
+						<p>These calculations are implemented in part 3 of DrawPlayer2View, with the latter calculation in the OrientateMissile routine. They enable us to take an arbitrary ship's position and orientation within player 1's view, and work out the position and orientation of that ship within player 2's view.</p>
+
+						<p>There is one more part to the story, because we can simplify this calculation considerably when transforming player 2's ship. As mentioned above, slot #2 contains player 2's ship, but if we transformed this ship to move it into player 2's view, it would move to the origin and we wouldn't need to draw it, so instead we repurpose this ship for drawing player 1's ship in player 2's view.</p>
+
+						<p>We can work out where player 1's ship ends up within player 2's view by applying the above transformation to player 1's ship. Player 1's ship doesn't have a slot, because in the game's bubble of universe, player 1's ship is always at the origin (i.e. the centre of the universe), and it always has the three axes as its orientation vectors (the z-axis is always out of player 1's nose, for example). So we can work out player 1's position and orientation in player 2's view by applying the above transformation to player 1's coordinates and orientation vectors, i.e. to the coordinates of the origin at (0, 0, 0), and to the axis unit vectors.</p>
+
+						<p>So for the first calculation, we get the following simplification because the current ship's coordinate vector [ x y z ] is [ 0 0 0 ]:</p>
+
+<pre class="articleIndented">
+  [ x ]  ->  [ side2v_x side2v_y side2v_z ] . -[ x2 y2 z2 ]
+
+  [ y ]  ->  [ roof2v_x roof2v_y roof2v_z ] . -[ x2 y2 z2 ]
+
+  [ z ]  ->  [ nose2v_x nose2v_y nose2v_z ] . -[ x2 y2 z2 ]
+</pre>
+
+						<p>And for the second calculation we get the following simplification, because the current ship's orientation vectors are the unit vectors:</p>
+
+<pre class="articleIndented">
+  [ sidev_x ]  ->  [ side2v_x ]
+  [ sidev_y ]  ->  [ roof2v_x ]
+  [ sidev_z ]  ->  [ nose2v_x ]
+
+  [ roofv_x ]  ->  [ side2v_y ]
+  [ roofv_y ]  ->  [ roof2v_y ]
+  [ roofv_z ]  ->  [ nose2v_y ]
+
+  [ nosev_x ]  ->  [ side2v_z ]
+  [ nosev_y ]  ->  [ roof2v_z ]
+  [ nosev_z ]  ->  [ nose2v_z ]
+</pre>
+
+						<p>So for slot #2, we can perform these simplified calculations to save a bit of time when calculating the position and orientation of player 1 in player 2's view.</p>
+
+						<p>Before we move on to look at the arithmetic routines underlying these calculations, I should mention rotation matrices, as this is a common way of thinking about orientation vectors. Elite's code tends to make more sense if you think of the individual vectors, but if you combine all three vectors into a 3x3 matrix, they form a special kind of matrix called a "rotation matrix", which can be applied to vectors to rotate them in space.</p>
+
+						<p>Using the vector names from above, the current ship's rotation matrix looks like this:</p>
+
+<pre class="articleIndented">
+  [sidev_x sidev_y sidev_z]
+  [roofv_x roofv_y roofv_z]
+  [nosev_x nosev_y nosev_z]
+</pre>
+
+						<p>and player 2's rotation matrix looks like this:</p>
+
+<pre class="articleIndented">
+  [side2v_x side2v_y side2v_z]
+  [roof2v_x roof2v_y roof2v_z]
+  [nose2v_x nose2v_y nose2v_z]
+</pre>
+
+						<p>In terms of rotation matrices, the rotation aspect of our transformation can be expressed as a multiplication by the transpose of player 2's rotation matrix. The transpose looks like this:</p>
+
+<pre class="articleIndented">
+  [side2v_x roof2v_x nose2v_x]
+  [side2v_y roof2v_y nose2v_y]
+  [side2v_z roof2v_z nose2v_z]
+</pre>
+
+						<p>and the rotation aspect of our transformation looks like this, in terms of matrix multiplication:</p>
+
+<pre class="articleIndented">
+  [sidev_x sidev_y sidev_z]   [side2v_x roof2v_x nose2v_x]
+  [roofv_x roofv_y roofv_z] . [side2v_y roof2v_y nose2v_y]
+  [nosev_x nosev_y nosev_z]   [side2v_z roof2v_z nose2v_z]
+</pre>
+
+						<p>The result of this multiplication is the new rotation matrix for the current ship, in player 2's frame of reference. This makes sense because player 2's rotation matrix is orthonormal, and a property of orthonormal matrices is that the transpose of the matrix is the inverse of the matrix, so the above calculation is rotating the current ship's orientation (on the left) by the inverse of the rotation from player 1 to player 2, which is effectively what we do in our thought experiment above, when we're inside player 2's ship and rotating the universe. If instead of rotating the whole universe we rotated our head to match player 2's orientation, then we would be rotating our head by player 2's rotation matrix, but instead we rotate the universe around us until our gaze matches player 2's, and that's the opposite rotation that is represented by the transpose of player 2's rotation matrix.</p>
+
+						<p>The easiest place to see this is in the simplified calculation for player 1's ship above, where we rotate the ship like this:</p>
+
+<pre class="articleIndented">
+  [ sidev_x ]  ->  [ side2v_x ]
+  [ sidev_y ]  ->  [ roof2v_x ]
+  [ sidev_z ]  ->  [ nose2v_x ]
+
+  [ roofv_x ]  ->  [ side2v_y ]
+  [ roofv_y ]  ->  [ roof2v_y ]
+  [ roofv_z ]  ->  [ nose2v_y ]
+
+  [ nosev_x ]  ->  [ side2v_z ]
+  [ nosev_y ]  ->  [ roof2v_z ]
+  [ nosev_z ]  ->  [ nose2v_z ]
+</pre>
+
+						<p>This operation is actually the transpose: the result is being set to the transpose of player 2's rotation matrix, which makes intuitive sense. Whether or not this helps clarify the maths is another matter, but if you're more used to dealing with rotation matrices rather than the individual orientation vectors, it might be more familiar.</p>
+
+						<p>In all cases, the dot product is at the heart of the transformation calculation, and at the heart of the dot product is a whole load of arithmetic, so let's look at that next.</p>
+
+						<h2 class="articleSubheader"><a id="arithmetic" class="anchor"></a>The arithmetic behind player 2's view<br>
+													 -------------------------------------</h2>
 
 
 
-    DrawPlayer2View, matrix maths, arithmetic routines
+
+    Arithmetic routines
 
 						<h2 class="articleSubheader"><a id="targets" class="anchor"></a>Target calculations<br>
 													 -------------------</h2>
