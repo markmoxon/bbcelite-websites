@@ -19,7 +19,12 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 							<li><a href="#splitview">Splitting the space view</a></li>
 							<li><a href="#player1">Drawing player 1's space view</a></li>
 							<li><a href="#player2">Drawing player 2's space view</a></li>
-							<li><a href="#geometry">The geometry behind player 2's view</a></li>
+							<li><a href="#geometry">The geometry behind player 2's view</a>
+								<ul class="tightList" style="margin-top: 0; margin-bottom: 0">
+									<li><a href="#orvect">In terms of orientation vectors</a></li>
+									<li><a href="#rotmat">In terms of rotation matrices</a></li>
+								</ul>
+							</li>
 							<li><a href="#arithmetic">The arithmetic behind player 2's view</a></li>
 							<li><a href="#targets">Target calculations</a></li>
 							<li><a href="#sunplanet">Cheating with the sun and planet</a></li>
@@ -85,7 +90,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<p>Compared to some of the other challenges in two-player Elite, splitting the screen into two players is relatively easy. I added two variables, splitScreen and drawPlayerView, as follows:</p>
 
 						<ul>
-							<li><span class="highlight">splitScreen</span> controls the split-screen effect:
+							<li>splitScreen controls the split-screen effect:
 								<ul>
 									<li>Bit 7 set = draw the space view as a split screen</li>
 
@@ -93,7 +98,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 								</ul>
 							</li>
 
-							<li><span class="highlight">drawPlayerView</span> determines which player's view to draw in the split screen:
+							<li>drawPlayerView determines which player's view to draw in the split screen:
 								<ul>
 									<li>Bit 7 set = draw player 1's view (top)/li>
 
@@ -370,7 +375,10 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>We need to apply this two-part transformation to both bits of data that define the position and orientation of the current ship, so we need to apply it to the current ship's coordinates in space, to move the ship to the correct position relative to player 2's view, and we need to apply it to the ship's orientation vectors, to rotate the ship to the correct orientation relative to player 2's view. In the latter case, applying a translation to an orientation vector doesn't affect the orientation, so we only need to do the second step when transforming the current ship's orientation.</p>
 
-						<p>Let's look at how we can implement this transformation.</p>
+						<p>Let's look at how we can implement this transformation. We'll do this in two ways: first, by considering Elite's orientation vectors, and second by looking at rotation metrices. These two approaches are mathematically the same, they just use different terminology, so hopefully at least one of them will help explain this fairly complicated process.</p>
+
+						<h2 class="articleSubheader"><a id="orvect" class="anchor"></a>In terms of orientation vectors<br>
+													 -------------------------------</h2>
 
 						<p>The first operation is reasonably simple. We start out with player 1 at the origin, at the centre of the universe, and player 2's ship is at the (x, y, z) coordinates in the ship data for slot #2 - let's call those coordinates (x2, y2, z2). We therefore need to apply a translation that moves player 2's ship from (x2, y2, z2) to player 1's ship at (0, 0, 0), which is a translation of (-x2, -y2, -x2).</p>
 
@@ -379,9 +387,9 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<p>So this is our translation step, which we apply to the current ship whose coordinates are at (x, y, z):</p>
 
 <pre class="articleIndented">
-  [ x ]      [ x ]     [ x2 ]
-  [ y ]  ->  [ y ]  -  [ y2 ]
-  [ z ]      [ z ]     [ z2 ]
+  [ x ]    [ x ]   [ x2 ]
+  [ y ] -> [ y ] - [ y2 ]
+  [ z ]    [ z ]   [ z2 ]
 </pre>
 
 						<p>The second operation the rotation, is a bit more complicated. We need to apply a rotation that starts with us looking along player 1's viewing direction and spins things around until we are looking along player 2's viewing direction.</p>
@@ -405,37 +413,37 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<p>And we want to apply the second step of the transformation to each of these vectors by using scalar projection to project them onto player 2's orientation vectors, which moves them into player 2's frame of reference. So if [ x y z ] represents one of the vectors above, and player 2's orientation vectors are given by side2v, roof2v and nose2v, then the transformation calculation applies the dot product as follows:</p>
 
 <pre class="articleIndented">
-  x  ->  [ side2v_x side2v_y side2v_z ] . [ x y z ]
+  x -> [ side2v_x side2v_y side2v_z ] . [ x y z ]
 
-  y  ->  [ roof2v_x roof2v_y roof2v_z ] . [ x y z ]
+  y -> [ roof2v_x roof2v_y roof2v_z ] . [ x y z ]
 
-  z  ->  [ nose2v_x nose2v_y nose2v_z ] . [ x y z ]
+  z -> [ nose2v_x nose2v_y nose2v_z ] . [ x y z ]
 </pre>
 
 						<p>If we combine both steps of the transformation, then we get the following for the transformation of the current ship's coordinates in (x, y, z), where (x2, y2, z2) are the coordinates player 2's ship in slot #2:</p>
 
 <pre class="articleIndented">
-  [ x ]  ->  [ side2v_x side2v_y side2v_z ] . [ [ x y z ] - [ x2 y2 z2 ] ]
+  [ x ] -> [ side2v_x side2v_y side2v_z ] . ( [ x y z ] - [ x2 y2 z2 ] )
 
-  [ y ]  ->  [ roof2v_x roof2v_y roof2v_z ] . [ [ x y z ] - [ x2 y2 z2 ] ]
+  [ y ] -> [ roof2v_x roof2v_y roof2v_z ] . ( [ x y z ] - [ x2 y2 z2 ] )
 
-  [ z ]  ->  [ nose2v_x nose2v_y nose2v_z ] . [ [ x y z ] - [ x2 y2 z2 ] ]
+  [ z ] -> [ nose2v_x nose2v_y nose2v_z ] . ( [ x y z ] - [ x2 y2 z2 ] )
 </pre>
 
 						<p>And here's the transformation that we apply to the orientation vectors for the current ship, in nine separate calculations:</p>
 
 <pre class="articleIndented">
-  [ sidev_x ]  ->  [ side2v_x side2v_y side2v_z ] . [ sidev_x sidev_y sidev_z ]
-  [ sidev_y ]  ->  [ roof2v_x roof2v_y roof2v_z ] . [ sidev_x sidev_y sidev_z ]
-  [ sidev_z ]  ->  [ nose2v_x nose2v_y nose2v_z ] . [ sidev_x sidev_y sidev_z ]
+  [ sidev_x ] -> [ side2v_x side2v_y side2v_z ] . [ sidev_x sidev_y sidev_z ]
+  [ sidev_y ] -> [ roof2v_x roof2v_y roof2v_z ] . [ sidev_x sidev_y sidev_z ]
+  [ sidev_z ] -> [ nose2v_x nose2v_y nose2v_z ] . [ sidev_x sidev_y sidev_z ]
 
-  [ roofv_x ]  ->  [ side2v_x side2v_y side2v_z ] . [ roofv_x roofv_y roofv_z ]
-  [ roofv_y ]  ->  [ roof2v_x roof2v_y roof2v_z ] . [ roofv_x roofv_y roofv_z ]
-  [ roofv_z ]  ->  [ nose2v_x nose2v_y nose2v_z ] . [ roofv_x roofv_y roofv_z ]
+  [ roofv_x ] -> [ side2v_x side2v_y side2v_z ] . [ roofv_x roofv_y roofv_z ]
+  [ roofv_y ] -> [ roof2v_x roof2v_y roof2v_z ] . [ roofv_x roofv_y roofv_z ]
+  [ roofv_z ] -> [ nose2v_x nose2v_y nose2v_z ] . [ roofv_x roofv_y roofv_z ]
 
-  [ nosev_x ]  ->  [ side2v_x side2v_y side2v_z ] . [ nosev_x nosev_y nosev_z ]
-  [ nosev_y ]  ->  [ roof2v_x roof2v_y roof2v_z ] . [ nosev_x nosev_y nosev_z ]
-  [ nosev_z ]  ->  [ nose2v_x nose2v_y nose2v_z ] . [ nosev_x nosev_y nosev_z ]
+  [ nosev_x ] -> [ side2v_x side2v_y side2v_z ] . [ nosev_x nosev_y nosev_z ]
+  [ nosev_y ] -> [ roof2v_x roof2v_y roof2v_z ] . [ nosev_x nosev_y nosev_z ]
+  [ nosev_z ] -> [ nose2v_x nose2v_y nose2v_z ] . [ nosev_x nosev_y nosev_z ]
 </pre>
 
 						<p>These calculations are implemented in part 3 of DrawPlayer2View, with the latter calculation in the OrientateMissile routine. They enable us to take an arbitrary ship's position and orientation within player 1's view, and work out the position and orientation of that ship within player 2's view.</p>
@@ -447,94 +455,243 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<p>So for the first calculation, we get the following simplification because the current ship's coordinate vector [ x y z ] is [ 0 0 0 ]:</p>
 
 <pre class="articleIndented">
-  [ x ]  ->  [ side2v_x side2v_y side2v_z ] . -[ x2 y2 z2 ]
+  [ x ] -> [ side2v_x side2v_y side2v_z ] . -[ x2 y2 z2 ]
 
-  [ y ]  ->  [ roof2v_x roof2v_y roof2v_z ] . -[ x2 y2 z2 ]
+  [ y ] -> [ roof2v_x roof2v_y roof2v_z ] . -[ x2 y2 z2 ]
 
-  [ z ]  ->  [ nose2v_x nose2v_y nose2v_z ] . -[ x2 y2 z2 ]
+  [ z ] -> [ nose2v_x nose2v_y nose2v_z ] . -[ x2 y2 z2 ]
 </pre>
 
 						<p>And for the second calculation we get the following simplification, because the current ship's orientation vectors are the unit vectors:</p>
 
 <pre class="articleIndented">
-  [ sidev_x ]  ->  [ side2v_x ]
-  [ sidev_y ]  ->  [ roof2v_x ]
-  [ sidev_z ]  ->  [ nose2v_x ]
+  [ sidev_x ] -> [ side2v_x ]
+  [ sidev_y ] -> [ roof2v_x ]
+  [ sidev_z ] -> [ nose2v_x ]
 
-  [ roofv_x ]  ->  [ side2v_y ]
-  [ roofv_y ]  ->  [ roof2v_y ]
-  [ roofv_z ]  ->  [ nose2v_y ]
+  [ roofv_x ] -> [ side2v_y ]
+  [ roofv_y ] -> [ roof2v_y ]
+  [ roofv_z ] -> [ nose2v_y ]
 
-  [ nosev_x ]  ->  [ side2v_z ]
-  [ nosev_y ]  ->  [ roof2v_z ]
-  [ nosev_z ]  ->  [ nose2v_z ]
+  [ nosev_x ] -> [ side2v_z ]
+  [ nosev_y ] -> [ roof2v_z ]
+  [ nosev_z ] -> [ nose2v_z ]
 </pre>
 
 						<p>So for slot #2, we can perform these simplified calculations to save a bit of time when calculating the position and orientation of player 1 in player 2's view.</p>
 
-						<p>Before we move on to look at the arithmetic routines underlying these calculations, I should mention rotation matrices, as this is a common way of thinking about orientation vectors. Elite's code tends to make more sense if you think of the individual vectors, but if you combine all three vectors into a 3x3 matrix, they form a special kind of matrix called a "rotation matrix", which can be applied to vectors to rotate them in space.</p>
+						<h2 class="articleSubheader"><a id="rotmat" class="anchor"></a>In terms of rotation matrices<br>
+													 -----------------------------</h2>
+
+						<p>Instead of all this talk of orientation vectors, we can also think of the same problem using rotation matrices, which is probably a more common way of thinking about rotation and orientation. Elite's code tends to make more sense if you think of the individual vectors, but if you combine all three vectors into a 3x3 matrix, they form a special kind of matrix called a "rotation matrix", which can be applied to vectors to rotate them in space; see <a href="https://en.wikipedia.org/wiki/Rotation_matrix">this Wikipedia entry</a> for more details.</p>
 
 						<p>Using the vector names from above, the current ship's rotation matrix looks like this:</p>
 
 <pre class="articleIndented">
-  [sidev_x sidev_y sidev_z]
-  [roofv_x roofv_y roofv_z]
-  [nosev_x nosev_y nosev_z]
+  [ sidev_x sidev_y sidev_z ]
+  [ roofv_x roofv_y roofv_z ]
+  [ nosev_x nosev_y nosev_z ]
 </pre>
 
 						<p>and player 2's rotation matrix looks like this:</p>
 
 <pre class="articleIndented">
-  [side2v_x side2v_y side2v_z]
-  [roof2v_x roof2v_y roof2v_z]
-  [nose2v_x nose2v_y nose2v_z]
+  [ side2v_x side2v_y side2v_z ]
+  [ roof2v_x roof2v_y roof2v_z ]
+  [ nose2v_x nose2v_y nose2v_z ]
 </pre>
 
 						<p>In terms of rotation matrices, the rotation aspect of our transformation can be expressed as a multiplication by the transpose of player 2's rotation matrix. The transpose looks like this:</p>
 
 <pre class="articleIndented">
-  [side2v_x roof2v_x nose2v_x]
-  [side2v_y roof2v_y nose2v_y]
-  [side2v_z roof2v_z nose2v_z]
+  [ side2v_x roof2v_x nose2v_x ]
+  [ side2v_y roof2v_y nose2v_y ]
+  [ side2v_z roof2v_z nose2v_z ]
 </pre>
 
 						<p>and the rotation aspect of our transformation looks like this, in terms of matrix multiplication:</p>
 
 <pre class="articleIndented">
-  [sidev_x sidev_y sidev_z]   [side2v_x roof2v_x nose2v_x]
-  [roofv_x roofv_y roofv_z] . [side2v_y roof2v_y nose2v_y]
-  [nosev_x nosev_y nosev_z]   [side2v_z roof2v_z nose2v_z]
+  [ sidev_x sidev_y sidev_z ]   [ side2v_x roof2v_x nose2v_x ]
+  [ roofv_x roofv_y roofv_z ] . [ side2v_y roof2v_y nose2v_y ]
+  [ nosev_x nosev_y nosev_z ]   [ side2v_z roof2v_z nose2v_z ]
 </pre>
 
-						<p>The result of this multiplication is the new rotation matrix for the current ship, in player 2's frame of reference. This makes sense because player 2's rotation matrix is orthonormal, and a property of orthonormal matrices is that the transpose of the matrix is the inverse of the matrix, so the above calculation is rotating the current ship's orientation (on the left) by the inverse of the rotation from player 1 to player 2, which is effectively what we do in our thought experiment above, when we're inside player 2's ship and rotating the universe. If instead of rotating the whole universe we rotated our head to match player 2's orientation, then we would be rotating our head by player 2's rotation matrix, but instead we rotate the universe around us until our gaze matches player 2's, and that's the opposite rotation that is represented by the transpose of player 2's rotation matrix.</p>
-
-						<p>The easiest place to see this is in the simplified calculation for player 1's ship above, where we rotate the ship like this:</p>
+						<p>The result of this multiplication is the new rotation matrix for the current ship, in player 2's frame of reference; in other words, the multiplication above is a rotation matrix representation of the transformation that we applied to the orientation vectors above, i.e. this one:</p>
 
 <pre class="articleIndented">
-  [ sidev_x ]  ->  [ side2v_x ]
-  [ sidev_y ]  ->  [ roof2v_x ]
-  [ sidev_z ]  ->  [ nose2v_x ]
+  [ sidev_x ] -> [ side2v_x side2v_y side2v_z ] . [ sidev_x sidev_y sidev_z ]
+  [ sidev_y ] -> [ roof2v_x roof2v_y roof2v_z ] . [ sidev_x sidev_y sidev_z ]
+  [ sidev_z ] -> [ nose2v_x nose2v_y nose2v_z ] . [ sidev_x sidev_y sidev_z ]
 
-  [ roofv_x ]  ->  [ side2v_y ]
-  [ roofv_y ]  ->  [ roof2v_y ]
-  [ roofv_z ]  ->  [ nose2v_y ]
+  [ roofv_x ] -> [ side2v_x side2v_y side2v_z ] . [ roofv_x roofv_y roofv_z ]
+  [ roofv_y ] -> [ roof2v_x roof2v_y roof2v_z ] . [ roofv_x roofv_y roofv_z ]
+  [ roofv_z ] -> [ nose2v_x nose2v_y nose2v_z ] . [ roofv_x roofv_y roofv_z ]
 
-  [ nosev_x ]  ->  [ side2v_z ]
-  [ nosev_y ]  ->  [ roof2v_z ]
-  [ nosev_z ]  ->  [ nose2v_z ]
+  [ nosev_x ] -> [ side2v_x side2v_y side2v_z ] . [ nosev_x nosev_y nosev_z ]
+  [ nosev_y ] -> [ roof2v_x roof2v_y roof2v_z ] . [ nosev_x nosev_y nosev_z ]
+  [ nosev_z ] -> [ nose2v_x nose2v_y nose2v_z ] . [ nosev_x nosev_y nosev_z ]
 </pre>
 
-						<p>This operation is actually the transpose: the result is being set to the transpose of player 2's rotation matrix, which makes intuitive sense. Whether or not this helps clarify the maths is another matter, but if you're more used to dealing with rotation matrices rather than the individual orientation vectors, it might be more familiar.</p>
+						<p>It's worth taking a deeper look at what this multiplication of rotation matrices represents. To help understand, try looking at it like this. If we take the result of the multiplication above and apply it to a vector to rotate that vector, then the calculation would look like this:</p>
+
+<pre class="articleIndented">
+  [ sidev_x sidev_y sidev_z ]   [ side2v_x roof2v_x nose2v_x ]   [ x ]
+  [ roofv_x roofv_y roofv_z ] . [ side2v_y roof2v_y nose2v_y ] . [ y ]
+  [ nosev_x nosev_y nosev_z ]   [ side2v_z roof2v_z nose2v_z ]   [ z ]
+</pre>
+
+						<p>We can look at this as an application of two rotation matrices, one after the other: we apply the right-hand matrix to the vector first (i.e. the transpose of player 2's rotation matrix), and then we apply the left-hand matrix to the result (the current ship's rotation matrix). So what does multiplication by the transpose matrix do to the vector?</p>
+
+						<p>Well, player 2's rotation matrix is orthonormal (i.e. normal and orthogonal) and a property of orthogonal matrices is that the transpose of the matrix is the inverse (i.e. the reverse) of the rotation. So if we realise that player 2's rotation matrix represents the rotation from player 1's point of view to player 2's point of view (because player 1 is at the centre of the universe in which player 2's orientation is defined), then the transpose is the rotation in the opposite direction. So applying this to a vector is the same as rotating the universe around us until we are aligned with player 2's view pointed, as opposed to rotating our view from player 1's view to player 2's view.</p>
+
+						<p>To put it another way, think of it in terms of our thought experiment above, consider when we're inside player 2's ship and rotating the universe. If instead of rotating the whole universe we rotated our head to match player 2's orientation, then we would be rotating our head by player 2's rotation matrix, but we actually rotate the universe around us until our gaze matches player 2's, and that's the opposite rotation that is represented by the transpose of player 2's rotation matrix. So we need to apply the transpose of player 2's rotation matrix to the universe in order to rotate it so our view aligns with player 2's cockpit view.</p>
+
+						<p>The easiest place to see this in operation is in the simplified calculation for player 1's ship above, where the current ship's rotation matrix (i.e. the first matrix in the calculation above) is the identity matrix, as player 1 is at the origin. So in this simplified case we rotate the ship like this (see above):</p>
+
+<pre class="articleIndented">
+  [ 1 0 0 ]   [ side2v_x roof2v_x nose2v_x ]   [ x ]
+  [ 0 1 0 ] . [ side2v_y roof2v_y nose2v_y ] . [ y ]
+  [ 0 0 1 ]   [ side2v_z roof2v_z nose2v_z ]   [ z ]
+</pre>
+
+						<p>which is exactly the same as the calculation from above, when we were rotating orientation vectors:</p>
+
+<pre class="articleIndented">
+  [ sidev_x ] -> [ side2v_x ]
+  [ sidev_y ] -> [ roof2v_x ]
+  [ sidev_z ] -> [ nose2v_x ]
+
+  [ roofv_x ] -> [ side2v_y ]
+  [ roofv_y ] -> [ roof2v_y ]
+  [ roofv_z ] -> [ nose2v_y ]
+
+  [ nosev_x ] -> [ side2v_z ]
+  [ nosev_y ] -> [ roof2v_z ]
+  [ nosev_z ] -> [ nose2v_z ]
+</pre>
+
+						<p>This operation is literally the transpose: the result is being set to the transpose of player 2's rotation matrix, which makes intuitive sense as player 1's orientation within player 2's view will have the inverse orientation to player 2's orientation within player 1's view, and that is represented by the transpose of the rotation matrix.</p>
+
+						<p>So the transpose matrix rotates us into player 2's frame of reference, and we apply this to the current ship's rotation matrix by multiplication, giving us the result we are after:</p>
+
+<pre class="articleIndented">
+  [ sidev_x sidev_y sidev_z ]   [ side2v_x roof2v_x nose2v_x ]
+  [ roofv_x roofv_y roofv_z ] . [ side2v_y roof2v_y nose2v_y ]
+  [ nosev_x nosev_y nosev_z ]   [ side2v_z roof2v_z nose2v_z ]
+</pre>
+
+						<p>So this gives us a our rotation step as before, but in terms of rotation matrices rather than orientation vectors.</p>
 
 						<p>In all cases, the dot product is at the heart of the transformation calculation, and at the heart of the dot product is a whole load of arithmetic, so let's look at that next.</p>
 
 						<h2 class="articleSubheader"><a id="arithmetic" class="anchor"></a>The arithmetic behind player 2's view<br>
 													 -------------------------------------</h2>
 
+						<p>You may have noticed that there are lots of dot product calculations in the above, so you would assume that we can use one of Elite's many dot product routines for our two-player calculations - perhaps we could <a href="/6502sp/main/subroutine/ll51.html">LL51</a> from the wireframe backface-culling routine, or <a href="/6502sp/main/subroutine/tas3.html">TAS3</a> and <a href="/6502sp/main/subroutine/tas4.html">TAS4</a> from the docking and tactics routines.</p>
 
+						<p>The problem is that all of these routines are optimised for their specific uses; for example, LL51 scales one of its vector arguments so the magnitude fits into one byte, and TAS3 and TAS4 both ignore the low bytes of their coordinate and orientation vector arguments. This makes for fast maths in an environment where we're mainly interested in where the value of the dot product exists within a range, rather than needing to know that accurate result of the dot product.</p>
 
+						<p>Unfortunately for two-player Elite, we need all the accuracy we can get, as otherwise player 2's view will jump around too much for a proper combat experience. I know this because the first time I managed to get any meaningful output in player 2's space view, I used TAS3 for the dot product maths, as I was more interested in testing whether the algorithm was remotely correct rather than needing accuracy. The test worked (after a lot of debugging) and player 1's ship appeared in player 2's view for the very first time, but it jumped around terribly; you could literally make out the accumulation of rounding errors in the way the ship rotated.</p>
 
-    Arithmetic routines
+						<p>Two-player Elite therefore has its own maths routines that are built around the highest accuracy multiplication routine from the original code, namely <a href="/6502sp/main/subroutine/mult3.html">MULT3</a>, which multiplies a signed 24-bit number and a signed 8-bit number, returning the result as a signed 32-bit number like this:</li>
+
+<pre class="articleIndented">
+  K(3 2 1 0) = (A P+1 P) * Q
+</pre>
+
+						<p>Note that the word "signed" here refers to Elite's use of sign-magnitude numbers, as opposed to the two's-complement approach of normal 6502 assembly language. The highest bit contains the sign, while the rest of the number contains the magnitude.</p>
+
+						<p>Two-player Elite contains the following high-accuracy maths routines:</p>
+
+						<ul>
+							<li>Add24 adds two 24-bit sign-magnitude numbers and returns the result as a 24-bit sign-magnitude number.</li>
+
+							<li>Multiply16x16 multiplies two 16-bit sign-magnitude orientation vectors and returns the result as a 32-bit sign-magnitude number.</li>
+
+							<li>Multiply16x24 multiplies a 24-bit sign-magnitude coordinate by a 16-bit sign-magnitude orientation vector and returns the result as a 32-bit sign-magnitude number.</li>
+						</ul>
+
+						<p>The multiplication routines break the calculation down into steps, each of which can call MULT3 to do the maths, so in the case of Multiply16x24, for example, we calculate the magnitude part of the multiplication like this:</p>
+
+<pre class="articleIndented">
+  |sidev_x_hi sidev_x_lo| * |x_sign x_hi x_lo|
+
+  =   |sidev_x_hi| * |x_sign x_hi x_lo|
+    + |sidev_x_lo| * |x_sign x_hi x_lo| >> 8
+</pre>
+
+						<p>and then we apply the sign bit of x_sign EOR sidev_x_hi to the result.</p>
+
+						<p>We do each multiplication using MULT3, which calculates the following:</p>
+
+<pre class="articleIndented">
+  K(3 2 1 0) = (A P+1 P) * Q
+</pre>
+
+						<p>where both (A P+1 P) and Q are sign-magnitude numbers.</p>
+
+						<p>We therefore do the calculation in steps, like this:</p>
+
+						<ol>
+							<li>XX15(3 2 1 0) = |x_sign x_hi x_lo| * |sidev_x_lo >> 1| &lt;&lt; 1</li>
+
+							<li>K(3 2 1 0) = |x_sign x_hi x_lo| * |sidev_x_hi|</li>
+
+							<li>Round up XX15+1 if bit 7 of XX15 is set</li>
+
+							<li>Calculate K(3 2 1 0) = K(3 2 1 0) + XX15(3 2 1)</li>
+
+							<li>If bit 0 of sidev_x_lo is set, add another |x_sign x_hi x_lo|</li>
+
+							<li>Apply the sign bit of sidev_x_hi EOR x_sign to the result</li>
+						</ol>
+
+						<p>Step 1 includes right and left shifts because MULT3 expects sign-magnitude arguments, but sidev_x_lo doesn't have a sign bit as it is the low byte of the 16-bit sign-magnitude number (sidev_x_hi sidev_x_lo). So we shift right to insert a sign bit of zero into bit 7 (thus keeping it positive), do the call to MULT3, and then shift the result back. If bit 0 of sidev_x_lo is set, then we avoid a loss of accuracy by adding one more |x_sign x_hi x_lo| to the result.</p>
+
+						<p>So in essence, step 1 does this:</p>
+
+<pre class="articleIndented">
+  XX15(3 2 1 0) = |x_sign x_hi x_lo| * |sidev_x_lo|
+</pre>
+
+						<p>which means step 4 does this:</p>
+
+<pre class="articleIndented">
+  K(3 2 1 0) = K(3 2 1 0) + XX15(3 2 1)
+             =   |x_sign x_hi x_lo| * |sidev_x_hi|
+               + |x_sign x_hi x_lo| * |sidev_x_lo| >> 8
+</pre>
+
+						<p>which is what we want to calculate.</p>
+
+						<p>Given these accurate arithmetic routines, we can wrap up the coordinate and vector rotation maths in two macros, as follows:</p>
+
+						<ul>
+							<li>MACRO ROTATE_VECTORS_16 c, v1, v2, v3, w1, w2, w3</li>
+
+							<li>MACRO ROTATE_COORDINATE_24 c, v1, v2, v3, c1, c2, c3</li>
+						</ul>
+
+						<p>ROTATE_VECTORS_16 rotates a 16-bit orientation vector [ v1 v2 v3 ] by another 16-bit orientation vector [ w1 w2 w3 ] and stores the result in the coordinate c. The calculation is:</p>
+
+<pre class="articleIndented">
+  c = [ v1 v2 v3 ] . [ w1 w2 w3 ]
+    = v1 * w1 + v2 * w2 + v3 * w3
+</pre>
+
+						<p>where v1, v2, v3 are INWK offsets (so they point to orientation vectors the current ship data block in zero page), w1, w2, w3 are XX3 offsets (so we need to poke the other orientation vector into the XX3 table before using the macro), and c is an offset into the newVectors block (a block where we build up the results of multiple rotations). We repeat this calculation nine times to multiply two full sets of orientation vectors (i.e. two rotation matrices).</p>
+
+						<p>ROTATE_COORDINATE_24 rotates a 24-bit coordinate (c1, c2, c3) by a 16-bit orientation vector [ v1 v2 v3 ] and stores the result in the coordinate c. The calculation is:</p>
+
+<pre class="articleIndented">
+  c = [ v1 v2 v3 ] . [ c1 c2 c3 ]
+    = v1 * c1 + v2 * c2 + v3 * c3
+</pre>
+
+						<p>where c1, c2, c3 and v1, v2, v3 are INWK offsets, and c is an offset into the newCoords block. We repeat this calculation three times to multiply a ship's coordinates by an orientation vector.</p>
+
+						<p>Finally, there is also a new DivideBy96 routine that divides a 24-bit number by 96. Elite uses 96 to denote the length of the unit vector, so when we multiply two orientation vectors, we need to divide the result by 96 to maintain this scale factor, so both of the macros above end with this division. Luckily we can use Elite's <a href="/6502sp/main/subroutine/dvid3b2.html">DVID3B2</a>routine for this, so we don't need to roll our own and DivideBy96 is just a simple wrapper around the DVID3B entry point in that routine.</p>
 
 						<h2 class="articleSubheader"><a id="targets" class="anchor"></a>Target calculations<br>
 													 -------------------</h2>
