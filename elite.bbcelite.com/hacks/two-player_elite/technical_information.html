@@ -10,17 +10,18 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 					<div class="codeBlock article">
 						<h2 class="articleSubheader deepDive">How I converted BBC Micro Elite into a two-player game</h2>
 
-						<p>Under the bonnet, BBC Micro Elite is a stubbornly single-player game. This makes perfect sense, as that's how it was designed. But it does mean it's a bit of a challenge for anyone wanting to coax a second player out of Bell and Braben's elegant code.</p>
+						<p>Under the bonnet, BBC Micro Elite is a stubbornly single-player game. This makes perfect sense, as that's how the game was designed, but it does mean that it's a bit of a challenge for anyone wanting to coax a second player out of Bell and Braben's elegant code.</p>
 
-						<p>This article describes how I built two-player Elite. I've split it up into a number of sections that broadly cover the development process in the order in which I tackled them; click on them to jump down to the relevant section:</p>
+						<p>This article describes how I built two-player Elite. I've split it up into a number of sections that cover the development process in the order in which I tackled it. You might like to read them from start to finish, or click on them to jump down to the relevant section:</p>
 
-						<ul class="tightList">
+						<ul>
 							<li><a href="#overview">An overview of the changes</a></li>
+							<li><a href="#bitflags">A note on bit-based flags</a></li>
 							<li><a href="#splitview">Splitting the space view</a></li>
 							<li><a href="#player1">Drawing player 1's space view</a></li>
 							<li><a href="#player2">Drawing player 2's space view</a></li>
 							<li><a href="#geometry">The geometry behind player 2's view</a>
-								<ul class="tightList" style="margin-top: 0; margin-bottom: 0">
+								<ul>
 									<li><a href="#orvect">In terms of orientation vectors</a></li>
 									<li><a href="#rotmat">In terms of rotation matrices</a></li>
 								</ul>
@@ -82,12 +83,12 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>There are also sections on some of the more straightforward aspects, such as the <a href="#splitview">split space view</a>, the <a href="#dashboard">shared dashboard</a> and the <a href="#controls">responsive control system</a>, and to round it off there's a <a href="#misc">miscellaneous</a> section for anything else worth talking about.</p>
 
-						<p>Let's start with a look at splitting the space view in two, which was the first thing I tackled.</p>
+						<p>Let's start with a look at splitting the space view in two, which was the first thing I tackled... but first, a quick note about the bit-based flags that I'm using.</p>
 
-						<h2 class="articleSubheader"><a id="splitview" class="anchor"></a>Splitting the space view<br>
-													 ------------------------</h2>
+						<h2 class="articleSubheader"><a id="bitflags" class="anchor"></a>A note on bit-based flags<br>
+													 -------------------------</h2>
 
-						<p>Compared to some of the other challenges in two-player Elite, splitting the screen into two players is relatively easy. I added two variables, splitScreen and drawPlayerView, as follows:</p>
+						<p>Two-player Elite contains a lot of new variables, and a lot of those are flags. For example, the split screen is controlled by this flag, which we look at in the next section:</p>
 
 						<ul>
 							<li>splitScreen controls the split-screen effect:
@@ -97,17 +98,9 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 									<li>Bit 7 clear = full screen</li>
 								</ul>
 							</li>
-
-							<li>drawPlayerView determines which player's view to draw in the split screen:
-								<ul>
-									<li>Bit 7 set = draw player 1's view (top)/li>
-
-									<li>Bit 7 clear = draw player 2's view (bottom)</li>
-								</ul>
-							</li>
 						</ul>
 
-						<p>You'll notice that these variables use bit 7 to store their state. This approach isn't that popular in Elite - Bell and Braben's code tends to prefer flags that are either zero or non-zero, and which can be tested with an LDA and BEQ combination. For my own coding I've been more influenced by Geoff Crammond, who over the course of Aviator, Revs and The Sentinel, moved to using bit 7 as the flag (and possibly bit 6 as well). The advantage of using bit 7 is that we can get away without using any registers, as the BIT instruction sets the N and V flags to bits 7 and 6 of its operand. So instead of testing whether our flag variable is non-zero, like this:</p>
+						<p>You'll notice that this variable uses bit 7 to store their state. This approach isn't that popular in Elite - Bell and Braben's code tends to prefer flags that are either zero or non-zero, and which can be tested with an LDA and BEQ combination. But for my own coding I've been more influenced by Geoff Crammond, who over the course of Aviator, Revs and The Sentinel, moved to using bit 7 as the flag (and possibly bit 6 as well). The advantage of using bit 7 is that we can get away without using any registers, as the BIT instruction sets the N and V flags to bits 7 and 6 of its operand. So instead of testing whether our flag variable is non-zero, like this:</p>
 
 <pre class="articleIndented">
   LDA flagVariable
@@ -169,9 +162,32 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
   STZ flagVariable
 </pre>
 
-						<p>I digress, but Geoff Crammond clearly knew a thing or two about efficient 6502 assembly coding, and you will see this kind of flag logic throughout the modifications for two-player Elite, so it's probably worth mentioning.</p>
+						<p>Geoff Crammond clearly knew a thing or two about efficient 6502 assembly coding, and you will see this kind of flag logic throughout the modifications for two-player Elite, so it's probably worth mentioning.</p>
 
-						<p>Given our two flag variables in splitScreen and drawPlayerView, we can update any drawing calculations to draw into the correct half of the screen. If splitScreen is set then we need to update the y-coordinate of the pixel that we are drawing, according to the value of drawPlayerView. To do this we can use the configuration variable Y, which is set to half the height of the space view (i.e. 96 pixels, as the full space view is 192 pixels high); I will refer to this variable as #Y to avoid confusing it with the 6502's Y register. We can then calculate the following:</p>
+						<h2 class="articleSubheader"><a id="splitview" class="anchor"></a>Splitting the space view<br>
+													 ------------------------</h2>
+
+						<p>Compared to some of the other challenges in two-player Elite, splitting the screen into two players is relatively easy. I added two variables, splitScreen and drawPlayerView, as follows:</p>
+
+						<ul>
+							<li>splitScreen controls the split-screen effect:
+								<ul>
+									<li>Bit 7 set = draw the space view as a split screen</li>
+
+									<li>Bit 7 clear = full screen</li>
+								</ul>
+							</li>
+
+							<li>drawPlayerView determines which player's view to draw in the split screen:
+								<ul>
+									<li>Bit 7 set = draw player 1's view (top)/li>
+
+									<li>Bit 7 clear = draw player 2's view (bottom)</li>
+								</ul>
+							</li>
+						</ul>
+
+						<p>Given these two flag variables, we can update any drawing calculations to draw into the correct half of the screen. If splitScreen is set then we need to update the y-coordinate of the pixel that we are drawing, according to the value of drawPlayerView. To do this we can use the configuration variable Y, which is set to half the height of the space view (i.e. 96 pixels, as the full space view is 192 pixels high); I will refer to this variable as #Y to avoid confusing it with the 6502's Y register. We can then calculate the following:</p>
 
 						<ul>
 							<li>If we are drawing player 1's view in the top part of the space view, then subtract #Y/2 from the y-coordinate, to move the whole scene upwards so the centre of the view (at the laser sights) is in the middle of the top half. Then check whether the pixel fits into the top half of the screen (i.e. into the range 0 &lt;= y &lt; #Y/2) and if it does, plot it.</li>
@@ -634,20 +650,35 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<p>We therefore do the calculation in steps, like this:</p>
 
 						<ol>
-							<li>XX15(3 2 1 0) = |x_sign x_hi x_lo| * |sidev_x_lo >> 1| &lt;&lt; 1</li>
+							<li>Do the following in MULT3:
 
-							<li>K(3 2 1 0) = |x_sign x_hi x_lo| * |sidev_x_hi|</li>
+<pre class="articleIndented">
+  XX15(3 2 1 0) = |x_sign x_hi x_lo| * |sidev_x_lo >> 1| &lt;&lt; 1
+</pre>
+							</li>
+
+							<li>Do the following, also in MULT3:
+
+<pre class="articleIndented">
+  K(3 2 1 0) = |x_sign x_hi x_lo| * |sidev_x_hi|
+</pre>
+							</li>
 
 							<li>Round up XX15+1 if bit 7 of XX15 is set</li>
 
-							<li>Calculate K(3 2 1 0) = K(3 2 1 0) + XX15(3 2 1)</li>
+							<li>Calculate the following in Add24:
+
+<pre class="articleIndented">
+  K(3 2 1 0) = K(3 2 1 0) + XX15(3 2 1)
+</pre>
+							</li>
 
 							<li>If bit 0 of sidev_x_lo is set, add another |x_sign x_hi x_lo|</li>
 
 							<li>Apply the sign bit of sidev_x_hi EOR x_sign to the result</li>
 						</ol>
 
-						<p>Step 1 includes right and left shifts because MULT3 expects sign-magnitude arguments, but sidev_x_lo doesn't have a sign bit as it is the low byte of the 16-bit sign-magnitude number (sidev_x_hi sidev_x_lo). So we shift right to insert a sign bit of zero into bit 7 (thus keeping it positive), do the call to MULT3, and then shift the result back. If bit 0 of sidev_x_lo is set, then we avoid a loss of accuracy by adding one more |x_sign x_hi x_lo| to the result.</p>
+						<p>Step 1 includes right and left shifts because MULT3 expects sign-magnitude arguments, but sidev_x_lo doesn't have a sign bit as it is the low byte of the 16-bit sign-magnitude number (sidev_x_hi sidev_x_lo). So we shift right to insert a sign bit of zero into bit 7 (thus keeping it positive), do the call to MULT3, and then shift the result back. If bit 0 of sidev_x_lo is set, then we avoid a loss of accuracy by adding one more |x_sign x_hi x_lo| to the result in step 5.</p>
 
 						<p>So in essence, step 1 does this:</p>
 
@@ -665,15 +696,13 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>which is what we want to calculate.</p>
 
-						<p>Given these accurate arithmetic routines, we can wrap up the coordinate and vector rotation maths in two macros, as follows:</p>
+						<p>Given these accurate arithmetic routines, we can wrap up the coordinate and vector rotation maths in two macros. The first macro, ROTATE_VECTORS_16, takes the following arguments:</p>
 
-						<ul>
-							<li>MACRO ROTATE_VECTORS_16 c, v1, v2, v3, w1, w2, w3</li>
+<pre class="articleIndented">
+  ROTATE_VECTORS_16 c, v1, v2, v3, w1, w2, w3
+</pre>
 
-							<li>MACRO ROTATE_COORDINATE_24 c, v1, v2, v3, c1, c2, c3</li>
-						</ul>
-
-						<p>ROTATE_VECTORS_16 rotates a 16-bit orientation vector [ v1 v2 v3 ] by another 16-bit orientation vector [ w1 w2 w3 ] and stores the result in the coordinate c. The calculation is:</p>
+						<p>This rotates a 16-bit orientation vector in [ v1 v2 v3 ] by another 16-bit orientation vector in [ w1 w2 w3 ] and stores the 16-bit result in the coordinate c. The calculation is:</p>
 
 <pre class="articleIndented">
   c = [ v1 v2 v3 ] . [ w1 w2 w3 ]
@@ -682,7 +711,13 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>where v1, v2, v3 are INWK offsets (so they point to orientation vectors the current ship data block in zero page), w1, w2, w3 are XX3 offsets (so we need to poke the other orientation vector into the XX3 table before using the macro), and c is an offset into the newVectors block (a block where we build up the results of multiple rotations). We repeat this calculation nine times to multiply two full sets of orientation vectors (i.e. two rotation matrices).</p>
 
-						<p>ROTATE_COORDINATE_24 rotates a 24-bit coordinate (c1, c2, c3) by a 16-bit orientation vector [ v1 v2 v3 ] and stores the result in the coordinate c. The calculation is:</p>
+						<p>The second macro, ROTATE_COORDINATE_24, takes the following arguments:</p>
+
+<pre class="articleIndented">
+  ROTATE_COORDINATE_24 c, v1, v2, v3, c1, c2, c3
+</pre>
+
+						<p>This rotates a 24-bit coordinate in (c1, c2, c3) by a 16-bit orientation vector in [ v1 v2 v3 ] and stores the 24-bit result in the coordinate c. The calculation is:</p>
 
 <pre class="articleIndented">
   c = [ v1 v2 v3 ] . [ c1 c2 c3 ]
@@ -691,7 +726,13 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>where c1, c2, c3 and v1, v2, v3 are INWK offsets, and c is an offset into the newCoords block. We repeat this calculation three times to multiply a ship's coordinates by an orientation vector.</p>
 
-						<p>Finally, there is also a new DivideBy96 routine that divides a 24-bit number by 96. Elite uses 96 to denote the length of the unit vector, so when we multiply two orientation vectors, we need to divide the result by 96 to maintain this scale factor, so both of the macros above end with this division. Luckily we can use Elite's <a href="/6502sp/main/subroutine/dvid3b2.html">DVID3B2</a>routine for this, so we don't need to roll our own and DivideBy96 is just a simple wrapper around the DVID3B entry point in that routine.</p>
+						<p>Finally, we also need a DivideBy96 routine that divides a 24-bit number by 96. Elite uses 96 to denote the length of the unit vector, so whenever we multiply by an orientation vector, we need to divide the result by 96 to maintain the correct scale factor, so both of the macros above end with this division. Luckily we can reuse Elite's <a href="/6502sp/main/subroutine/dvid3b2.html">DVID3B2</a> routine for this, as it calculates the following:</p>
+
+<pre class="articleIndented">
+  K(3 2 1 0) = (A P+1 P) / (z_sign z_hi z_lo)
+</pre>
+
+						<p>So in this case we don't need to roll our own function and DivideBy96 can just be a simple wrapper around a call to the DVID3B entry point in that routine.</p>
 
 						<h2 class="articleSubheader"><a id="targets" class="anchor"></a>Target calculations<br>
 													 -------------------</h2>
