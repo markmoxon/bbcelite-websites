@@ -15,22 +15,36 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<p>This article describes how I built two-player Elite. I've split it up into a number of sections that cover the development process in the order in which I tackled it. You might like to read them from start to finish, or click on them to jump down to the relevant section:</p>
 
 						<ul>
-							<li><a href="#overview">An overview of the changes</a></li>
+							<li><a href="#overview">An overview of how two-player Elite works</a></li>
+
 							<li><a href="#bitflags">A note on bit-based flags</a></li>
-							<li><a href="#splitview">Splitting the space view</a></li>
-							<li><a href="#player1">Drawing player 1's space view</a></li>
-							<li><a href="#player2">Drawing player 2's space view</a></li>
-							<li><a href="#geometry">The geometry behind player 2's view</a>
+
+							<li><a href="#splitview">Splitting the space view</a>
 								<ul>
-									<li><a href="#orvect">In terms of orientation vectors</a></li>
-									<li><a href="#rotmat">In terms of rotation matrices</a></li>
+									<li><a href="#player1">Drawing player 1's space view</a></li>
+
+									<li><a href="#player2">Drawing player 2's space view</a>
+										<ul>
+											<li><a href="#geometry">The geometry behind player 2's view</a>
+												<ul>
+													<li><a href="#orvect">In terms of orientation vectors</a></li>
+
+													<li><a href="#rotmat">In terms of rotation matrices</a></li>
+												</ul>
+											</li>
+
+											<li><a href="#arithmetic">The arithmetic behind player 2's view</a></li>
+										</ul>
+									</li>
 								</ul>
 							</li>
-							<li><a href="#arithmetic">The arithmetic behind player 2's view</a></li>
+
 							<li><a href="#targets">Target calculations</a></li>
+
 							<li><a href="#sunplanet">Cheating with the sun and planet</a></li>
+
 							<li><a href="#controls">Responsive controls for two players</a></li>
-							<li><a href="#dashboard">Sharing the scanner and dashboard</a></li>
+
 							<li><a href="#misc">Miscellaneous</a></li>
 						</ul>
 
@@ -40,8 +54,8 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>I hope you enjoy reading about two-player Elite as much as I enjoyed hacking it into existence.</p>
 
-						<h2 class="articleSubheader"><a id="overview" class="anchor"></a>An overview of the changes<br>
-													 --------------------------</h2>
+						<h2 class="articleSubheader"><a id="overview" class="anchor"></a>An overview of how two-player Elite works<br>
+													 -----------------------------------------</h2>
 
 						<p>There's a clever conceit at the heart of 8-bit Elite that makes life considerably simpler for anyone working with the game code. It is this: the player is always at the centre of the universe.</p>
 
@@ -81,7 +95,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 							<li>Finally, all is not what it seems... of course. Accuracy and speed are constant challenges when working with floating point geometry on an 8-bit CPU, and I confess to using some smoke and mirrors to make things appear a bit more stable than they actually are. I talk about these in the section on <a href="#sunplanet">cheating with the sun and planet</a>, but please don't tell anyone.</li>
 						</ul>
 
-						<p>There are also sections on some of the more straightforward aspects, such as the <a href="#splitview">split space view</a>, the <a href="#dashboard">shared dashboard</a> and the <a href="#controls">responsive control system</a>, and to round it off there's a <a href="#misc">miscellaneous</a> section for anything else worth talking about.</p>
+						<p>There are also sections on some of the more straightforward aspects, such as the <a href="#splitview">split space view</a> and the <a href="#controls">responsive control system</a>, and to round it off there's a <a href="#misc">miscellaneous</a> section for anything else worth talking about.</p>
 
 						<p>Let's start with a look at splitting the space view in two, which was the first thing I tackled... but first, a quick note about the bit-based flags that I'm using.</p>
 
@@ -597,7 +611,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
   [ nosev_x nosev_y nosev_z ]   [ side2v_z roof2v_z nose2v_z ]
 </pre>
 
-						<p>So this gives us a our rotation step as before, but in terms of rotation matrices rather than orientation vectors.</p>
+						<p>So this gives us our rotation step as before, but in terms of rotation matrices rather than orientation vectors.</p>
 
 						<p>In all cases, the dot product is at the heart of the transformation calculation, and at the heart of the dot product is a whole load of arithmetic, so let's look at that next.</p>
 
@@ -702,14 +716,14 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
   ROTATE_VECTORS_16 c, v1, v2, v3, w1, w2, w3
 </pre>
 
-						<p>This rotates a 16-bit orientation vector in [ v1 v2 v3 ] by another 16-bit orientation vector in [ w1 w2 w3 ] and stores the 16-bit result in the coordinate c. The calculation is:</p>
+						<p>This rotates a 16-bit orientation vector in [ v1 v2 v3 ] by another 16-bit orientation vector in [ w1 w2 w3 ] and stores the 16-bit result in the vector c. The calculation is:</p>
 
 <pre class="articleIndented">
   c = [ v1 v2 v3 ] . [ w1 w2 w3 ]
     = v1 * w1 + v2 * w2 + v3 * w3
 </pre>
 
-						<p>where v1, v2, v3 are INWK offsets (so they point to orientation vectors the current ship data block in zero page), w1, w2, w3 are XX3 offsets (so we need to poke the other orientation vector into the XX3 table before using the macro), and c is an offset into the newVectors block (a block where we build up the results of multiple rotations). We repeat this calculation nine times to multiply two full sets of orientation vectors (i.e. two rotation matrices).</p>
+						<p>where v1, v2, v3 are INWK offsets (so they point to orientation vectors the current ship data block in zero page), w1, w2, w3 are XX3 offsets (so we need to poke the other orientation vector into the XX3 table before using the macro), and c is an offset into the newVectors block (a block where we can store the vectors from multiple rotations). We repeat this calculation nine times to multiply two full sets of orientation vectors (i.e. two rotation matrices).</p>
 
 						<p>The second macro, ROTATE_COORDINATE_24, takes the following arguments:</p>
 
@@ -724,7 +738,7 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
     = v1 * c1 + v2 * c2 + v3 * c3
 </pre>
 
-						<p>where c1, c2, c3 and v1, v2, v3 are INWK offsets, and c is an offset into the newCoords block. We repeat this calculation three times to multiply a ship's coordinates by an orientation vector.</p>
+						<p>where c1, c2, c3 and v1, v2, v3 are INWK offsets, and c is an offset into the newCoords block (a block where we can store the coordinates from multiple rotations). We repeat this calculation three times to multiply a ship's coordinates by an orientation vector.</p>
 
 						<p>Finally, we also need a DivideBy96 routine that divides a 24-bit number by 96. Elite uses 96 to denote the length of the unit vector, so whenever we multiply by an orientation vector, we need to divide the result by 96 to maintain the correct scale factor, so both of the macros above end with this division. Luckily we can reuse Elite's <a href="/6502sp/main/subroutine/dvid3b2.html">DVID3B2</a> routine for this, as it calculates the following:</p>
 
@@ -737,60 +751,100 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<h2 class="articleSubheader"><a id="targets" class="anchor"></a>Target calculations<br>
 													 -------------------</h2>
 
-						<p>xxx</p>
+						<p>One of the most important aspects of space combat is the ability to target your opponent with your laser sights, both for shooting lasers and for locking missiles onto targets. Not surprisingly, there's some work to be done to enable two different pilots to target each other.</p>
 
-    Target calculations and where they happen, missiles, explosions
+						<p>For player 1, nothing changes. The game's local bubble includes player 1 at the centre of the universe, and player 2 is spawned as a ship in slot #2. We can therefore simply reuse the single-player game's targeting routines for player 1 in two-player Elite, so the <a href="/6502sp/main/subroutine/hitch.html">HITCH</a> routine can be used to work out whether the ship in INWK is currently in player 1's crosshairs; similarly, the missile logic can be kept and used to manage player 1's missiles, as normal. You can read all about this process in the deep dive on being <a href="/deep_dives/in_the_crosshairs.html">in the crosshairs</a>.</p></p>
+
+						<p>What about player 2? As player 2 is spawned in the same way that NPC ships are spawned in the single-player game, can we reuse the tactics code that works out whether or not an NPC player is hitting the single player at the centre of the universe, to detect whether player 2 has hit player 1?</p>
+
+						<p>The answer turns out to be no, because the code that works out whether an NPC's laser is on-target can get away with being considerably less accurate than the code that works out whether the player's laser is on-target. This is because in the original game, we can't see out of the NPC's cockpit, so we can't tell how accurately each NPC can point its laser.</p>
+
+						<p>It turns out that NPC lasers can be wildly off-target but can still register a hit; if you set player 2 to the AI Pilot in two-player Elite, you can see this in action, as this uses the same tactics code as in the original game. The AI Pilot's lasers can be quite a long way outside the laser sights but still register a hit. The code can be changed to require a more accurate hit, but then you run into limitations on the part of the tactics code that moves NPC ships to point to their target, with the result that NPC ships hardly ever hit anything. For a real-world example of how the tactics routine is less than perfect, see the deep dive on <a href="/deep_dives/the_elite_demonstration_disc.html">the Elite Demonstration Disc</a>, which applies the same tactics code to the self-playing demo, with fatal consequences.</p>
+
+						<p>For two-player Elite, then, we need to rethink the targeting code for player 2. Luckily, there is a point where we can simply reuse the HITCH routine to work out whether player 2 is targeting another ship, and that's in part 5 of the DrawPlayer2View routine. By this point we have moved the current ship into player 2's frame of reference and have drawn it in player 2's view, so the INWK workspace is all set up with the current ship's coordinates, relative to player 2. So we can call HITCH at this point to see whether the current ship is in player 2's sights, and can then process missile targeting and laser fire accordingly.</p>
+
+						<p>This also works for player 1's ship, as when we process player 2's ship in slot #2, the transformation process calculates the coordinates and orientation of player 1's ship in player 2's view, so we can call HITCH to work out whether player 2 is pointing at player 1. And because we are using the exact same routine to detect a hit, this makes the process fair for each player, and has the added bonus of taking the ship's targetable area into consideration, so two-player ship choices automatically affect the ease of targeting your opponent.</p>
+
+						<p>For missiles, the only slight complication is the need to duplicate all the missile status variables for player 2, so alongside variables like MSTG, which contains the current missile lock target (for player 1), we add a player2MSTG variable to track the lock target for player 2.</p>
 
 						<h2 class="articleSubheader"><a id="sunplanet" class="anchor"></a>Cheating with the sun and planet<br>
 													 --------------------------------</h2>
 
-						<p>xxx</p>
+						<p>As discussed in the section on <a href="#arithmetic">arithmetic</a>,  two-player Elite needs to be able to calculate dot products at a higher accuracy than the single-player game, otherwise close-quarters combat is a bit too jumpy to be feasible. Unfortunately, even with the 24-bit accuracy of the new maths routines, the distant sun and planet can wobble a bit too much for comfort, as any inaccuracies in the maths are amplified by the larger distances involved.</p>
 
-    Sun/planet cheats, on-screen movements
+						<p>Luckily we can fix this with some good old smoke and mirrors, because the planet and sun are only there for aesthetic purposes; you can't fly towards the planet or sun in two-player Elite, so they stay in the background and have no effect on gameplay (though they do have a major impact on immersion and finding your bearings, so they're still important). This lack of movement is achieved by a simple hack in part 6 of the MVEIT routine, so we no longer apply the player's velocity vector to the planet and sun.</p>
+
+						<p>But the real issue is in player 2's view, where the planet and sun can jump around a bit too much due to inaccuracies in the translation and rotation transformation we explored in <a href="#geometry">the geometry behind player 2's view</a>. So there's a hack in part 2 of DrawPlayer2View that checks whether we are drawing either the planet or the sun into player 2's view, and if we are then we switch from the usual application of the two-part transformation, and instead we only move it by the rotations of player 2's controls, so it doesn't jump around on-screen and instead moves smoothly with the pitch and roll of the player.</p>
+
+						<p>Once the sun or planet moves off-screen, we switch back to applying the two-part transformation, so that it snaps back to the correct position in space. This isn't seen by the player as it's only done when off-screen, but it can mean that if the planet or sun moves off-screen and then back on-screen quite quickly, it will appear to have jumped to a new position. Luckily this isn't obvious in fast-paced combat, but if you treat two-player Elite as a gentle stroll through deep space with a friend, then it might be a bit more obvious that something strange is going on behind the curtain.</p>
+
+						<p>On top of this cheat, there's another tweak to the normal flow that reduces the amount of on-screen strangeness. Because of the various mathematical approximations used in the ship rotation routines in Elite, and in particular the small angle approximation, we have to "tidy" each ship's orientation vectors periodically to ensure they remain orthonormal; see the deep dive on <a href="/deep_dives/tidying_orthonormal_vectors.html">tidying orthonormal vectors</a> for details.</p>
+
+						<p>In normal single-player Elite this isn't too noticeable, but because the orientation vectors are such a core aspect of the two-step transformation process that we use to draw player 2's view in two-player Elite, tidying a ship's vectors while it's in player 2's view will make it jump around very noticeably, particularly if the vectors have degraded noticeably from being orthonormal. So two-player Elite extends the on-screen checks to the tidying process, so we only tidy the vectors for the planet, the sun and player 1's ship if it isn't being drawn in player 2's view.</p>
+
+						<p>This has the side effect of never tidying the planet, sun or opponent if they stay in player 2's view for an extended length of time, but again this is very unlikely to happen during one-on-one combat, so the risk is well worth taking.</p>
+
+						<p>Just Keep it to yourself.</p>
 
 						<h2 class="articleSubheader"><a id="controls" class="anchor"></a>Responsive controls for two players<br>
 													 -----------------------------------</h2>
 
-						<p>xxx</p>
+						<p>Elite has sophisticated support for processing multiple keypresses. It has a key logger that has a number of slots, into which the game records key presses for seven primary controls (pitch, roll, speed and lasers), nine secondary controls (missiles, E.C.M., in-system jump and so on), and one other arbitrary key press. The key logger is refreshed on every iteration of the main loop by scanning the keyboard for the relevant controls and populating the logger, and it enables the game to support a number of keys being pressed at the same time, which is essential in a fast-paced game like Elite. The whole system is described in the deep dive on <a href="/deep_dives/the_key_logger.html">the key logger</a>.</p>
 
-    Keyboard rollover for two players, twin joysticks, Delta 14B
+						<p>Not surprisingly, the key logger is only designed for one player. If we tried to use the original key logger with two players, then the only slot available to the second player would be the arbitrary key slot, and that gets filled by a keyboard scan that stops as soon as it has found a key, irrespective of whether it's being pressed by player 1 or player 2. Obviously, this isn't anywhere near being a solution for a two-player game where we need to give both players the same chance at being recognised.</p>
 
-						<h2 class="articleSubheader"><a id="dashboard" class="anchor"></a>Sharing the scanner and dashboard<br>
-													 ---------------------------------</h2>
+						<p>Luckily it isn't too difficult to extend the key logger, so two-player Elite adds two more key slots to the logger, which gives us enough slots to cover both the primary and secondary controls for the two players. We don't need to support such a rich variety of functions in deep space combat, so existing key slots like the energy bomb and in-system jump can be repurposed for player 2 control.</p>
 
-						<p>xxx</p>
+						<p>But there's a further limitation that is unique to the 6502 Second Processor version of Elite that we need to tackle, because although the key logger in the parasite now contains enough slots for both players, the keyboard routine in the I/O processor doesn't actually use them. Instead, the KEYBOARD routine in the I/O processor tries to minimise the amount of data that needs to be sent over the Tube, so while it records all the primary controls individually, it uses a single-byte "other key press" entry for all other controls, including the secondary flight keys. This is fine for one player, but the problem for two players is that if a player holds down a key that appears early on in the full-keyboard scan (i.e. a key with a low internal key number), then that key will fill the "other key press" slot, the keyboard scanning will stop, and any other key presses will be ignored. This means that if player 1 holds down the f0 key to switch to the front view, where f0 has internal key number &amp;20, then this will disable all of player 2's keys with a higher internal key number, except for the left arrow key, which has an internal key number of &amp;19. This clearly will not do.</p>
 
-    Scanner/dials sharing, zoom in scanner
+						<p>The same issue affects the buttons on the Delta 14B, as it doesn't matter whether we're talking about keys on a keyboard or keys on a joystick - the problem is that secondary controls get squashed into one byte in the keyboard data block that is sent to the I/O processor.</p>
+
+						<p>We could extend the size of the block that's sent to the I/O processor, but that would need a fair bit of recoding in the parasite code and wouldn't be the fastest solution, so instead I've added a very simple hack to share keys between the two players. The I/O processor contains a flag called player2Turn that flips between two values (bit 7 clear and bit 7 set) every time the I/O processor is asked to scan the keyboard; when bit 7 is clear we make sure we return a player 1 key in the arbitrary key slot, if one is being pressed, and when bit 7 is set we make sure we return a player 2 key, if one is being pressed. This implements a simple precedence rule that means we constantly flip between the two players, and because the keyboard is scanned regularly, the players won't even notice that only one of them has precedence at any one time.</p>
+
+						<p>The result is a properly responsive keyboard that shouldn't cause too many arguments. I hope.</p>
 
 						<h2 class="articleSubheader"><a id="misc" class="anchor"></a>Miscellaneous<br>
 													 -------------</h2>
 
-						<p>xxx</p>
+						<p>Here are some additional points that are worth noting about two-player Elite:</p>
 
-    Text tokens, simplify the main flight loop
+						<ul>
+							<li>The shared scanner is a simple consequence of the way DrawPlayer2View works. After the two-step transformation is performed, the current ship has the correct coordinates for drawing the ship in player 2's view... which means it also has the correct coordinates for drawing that ship on the scanner for player 2 to use. So DrawPlayer2View calls the SCAN routine to update the ship on the scanner, and we can extend the call to the I/O processor to take an extra argument containing the colour, so player 1's scanner can contain cyan ships and player 2's scanner can contain yellow ships.</li>
 
-Duplicated routines:
-Player2FR1
-Player2LASLI
-Player2LASLI2
-Player2ee3
-Player2SHD
-Player2DENGY
-Player2OOPS
-Player2SPS3
-Player2ABORT
-Player2ABORT2
-Player2ECBLB2
-Player2me2
-Player2ECMOF
-Player2me1
-Player2me3
-Player2MESS
+							<li>On the subject of the scanner, we also extend the call to the I/O processor to take the ship type. This means that that missiles can be drawn with a thin dash rather than a thick dot at the end of the stick.</li>
 
-Plus duplicate variables player2ECMA, player2JSTK etc.
+							<li>The scanner is also zoomed-in by a factor of two compared to the single-player game, to make it easier to work out what's going on in close combat. This just requires a couple of shifts in the I/O processor's SC48 routine, which does the actual drawing.</li>
 
+							<li>All the in-game text is implemented using the game's normal text token system. Two-player Elite disables the game's information screens, like market prices and system descriptions, so there are plenty of tokens suitable for conversion into two-player text.</li>
 
+							<li>The main game loop and flight loops are considerably simpler than in the one-player game, as quite a lot of functionality is no longer required. The spawning code has been removed from the main game loop, so that's all of parts 1, 3, 4 and most of part 2 gone. And aspects like the energy bomb, docking, scooping and spawning are no longer needed in the main flight loop, so parts 5, 8, 9, 10 and 14 have been completely removed, as well as large chunks of part 7, 11, 12, 13 and 15. Going in the other direction, the keyboard and joystick code in parts 2 and 3 of the main flight loop is more complicated, as it duplicates the primary flight control detection for both players.</li>
 
+							<li>On the subject of duplication, a number of routines have simply been duplicated for player 2; for example, player 2 has their own missile, laser, shield and energy routines, all of which duplicate the functionality of the one-player code. Here's a full list of duplicated routines, where a name like Player2XXX indicates that this duplicates the XXX routine from the original game:
+
+								<ul class="tightList">
+									<li>Player2ABORT</li>
+									<li>Player2ABORT2</li>
+									<li>Player2DENGY</li>
+									<li>Player2ECBLB2</li>
+									<li>Player2ECMOF</li>
+									<li>Player2ee3</li>
+									<li>Player2FR1</li>
+									<li>Player2LASLI</li>
+									<li>Player2LASLI2</li>
+									<li>Player2me1</li>
+									<li>Player2me2</li>
+									<li>Player2me3</li>
+									<li>Player2MESS</li>
+									<li>Player2OOPS</li>
+									<li>Player2SHD</li>
+									<li>Player2SPS3</li>
+								</ul>
+							</li>
+
+							<li>To go along with these routines, there's also a set of duplicated variables, storing things like player 2's energy levels and laser temperature. These variables can be found at the end of the WP workspace, where a name like player2XXX indicates that this duplicates the XXX variable from the original game. Variables at the start of the block, within the span of startWP to endZero, get zeroed in the ZERO routine, so they contain values that need to be reset at the start of each game by the RESET or RES2 routines; variables after endZero either don't need resetting, or they contain configuration information from the main game screen, which we want to retain between games.</li>
+						</ul>
+
+						<p>And that's two-player Elite. I hope you enjoy exploring it as much as I enjoyed writing it...</p>
 					</div>
 				</div>
 
