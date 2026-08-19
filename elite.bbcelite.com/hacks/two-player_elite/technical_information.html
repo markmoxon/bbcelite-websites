@@ -271,6 +271,8 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>The challenge, then, is to draw player 2's space view, which needs to show the same local bubble, but from the perspective of player 2's ship. It also needs to support its own set of stardust that moves with player 2's movements, and it needs to show not only ships, but also the planet and the sun.</p>
 
+						<img class="titleImage" src="/images/two-player_elite/thargoid.png" alt="Viper vs Thargoid in two-player Elite">
+
 						<p>Before describing how two-player Elite works, let's recap how single-player Elite stores its environment, and in particular the ships and other objects in the local bubble of universe that we want to draw in the space view. This is all described in detail in the deep dives on <a href="/deep_dives/the_local_bubble_of_universe.html">the local bubble of universe</a> <a href="/deep_dives/ship_data_blocks.html">ship data blocks</a>, but here's a brief summary.</p>
 
 						<p>The game has a fixed number of ship slots, with 12 in the BBC Micro version and 20 in the 6502 Second Processor version (two-player Elite is based on the latter). Each object in the local bubble occupies one slot, with the planet in slot #0, either the sun or the space station in slot #1, and then all the various ships and missiles and asteroids in slots #2 and up.</p>
@@ -343,6 +345,8 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						</ul>
 
 						<p>So given the ship data for the current ship, we now we need to draw the ship from the perspective of player 2, and in player 2's space view.</p>
+
+						<img class="titleImage" src="/images/two-player_elite/thargoid_fight.png" alt="Taking on a Thargoid in two-player Elite">
 
 						<p>If you look at the ship data for a typical ship, it's mostly coordinates and orientation vectors; see the deep dive on <a href="/deep_dives/ship_data_blocks.html">ship data blocks</a> for details. The coordinates are the (x, y, z) space coordinates of the ship relative to player 1, while the orientation vectors define the direction in which the ship is pointing, stored as three orthonormal vectors - nosev, roofv and sidev - that point out of the nose, roof and right side of the ship respectively (see the deep dives on <a href="/deep_dives/orientation_vectors.html">orientation vectors</a> and <a href="/deep_dives/tidying_orthonormal_vectors.html">tidying orthonormal vectors</a> for more on these).</p>
 
@@ -664,28 +668,25 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<p>We therefore do the calculation in steps, like this:</p>
 
 						<ol>
-							<li>Do the following in MULT3:
+							<li>Do the following in MULT3:</li>
 
 <pre class="articleIndented">
   XX15(3 2 1 0) = |x_sign x_hi x_lo| * |sidev_x_lo >> 1| &lt;&lt; 1
 </pre>
-							</li>
 
-							<li>Do the following, also in MULT3:
+							<li>Do the following, also in MULT3:</li>
 
 <pre class="articleIndented">
   K(3 2 1 0) = |x_sign x_hi x_lo| * |sidev_x_hi|
 </pre>
-							</li>
 
 							<li>Round up XX15+1 if bit 7 of XX15 is set</li>
 
-							<li>Calculate the following in Add24:
+							<li>Calculate the following in Add24:</li>
 
 <pre class="articleIndented">
   K(3 2 1 0) = K(3 2 1 0) + XX15(3 2 1)
 </pre>
-							</li>
 
 							<li>If bit 0 of sidev_x_lo is set, add another |x_sign x_hi x_lo|</li>
 
@@ -755,6 +756,8 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>For player 1, nothing changes. The game's local bubble includes player 1 at the centre of the universe, and player 2 is spawned as a ship in slot #2. We can therefore simply reuse the single-player game's targeting routines for player 1 in two-player Elite, so the <a href="/6502sp/main/subroutine/hitch.html">HITCH</a> routine can be used to work out whether the ship in INWK is currently in player 1's crosshairs; similarly, the missile logic can be kept and used to manage player 1's missiles, as normal. You can read all about this process in the deep dive on being <a href="/deep_dives/in_the_crosshairs.html">in the crosshairs</a>.</p></p>
 
+						<img class="titleImage" src="/images/two-player_elite/missile_incoming.png" alt="Player 2 being attacked by a missile in two-player Elite">
+
 						<p>What about player 2? As player 2 is spawned in the same way that NPC ships are spawned in the single-player game, can we reuse the tactics code that works out whether or not an NPC player is hitting the single player at the centre of the universe, to detect whether player 2 has hit player 1?</p>
 
 						<p>The answer turns out to be no, because the code that works out whether an NPC's laser is on-target can get away with being considerably less accurate than the code that works out whether the player's laser is on-target. This is because in the original game, we can't see out of the NPC's cockpit, so we can't tell how accurately each NPC can point its laser.</p>
@@ -775,6 +778,8 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 						<p>Luckily we can fix this with some good old smoke and mirrors, because the planet and sun are only there for aesthetic purposes; you can't fly towards the planet or sun in two-player Elite, so they stay in the background and have no effect on gameplay (though they do have a major impact on immersion and finding your bearings, so they're still important). This lack of movement is achieved by a simple hack in part 6 of the MVEIT routine, so we no longer apply the player's velocity vector to the planet and sun.</p>
 
 						<p>But the real issue is in player 2's view, where the planet and sun can jump around a bit too much due to inaccuracies in the translation and rotation transformation we explored in <a href="#geometry">the geometry behind player 2's view</a>. So there's a hack in part 2 of DrawPlayer2View that checks whether we are drawing either the planet or the sun into player 2's view, and if we are then we switch from the usual application of the two-part transformation, and instead we only move it by the rotations of player 2's controls, so it doesn't jump around on-screen and instead moves smoothly with the pitch and roll of the player.</p>
+
+						<img class="titleImage" src="/images/two-player_elite/planets.png" alt="Player 2 looking at player 1 and the planet in two-player Elite">
 
 						<p>Once the sun or planet moves off-screen, we switch back to applying the two-part transformation, so that it snaps back to the correct position in space. This isn't seen by the player as it's only done when off-screen, but it can mean that if the planet or sun moves off-screen and then back on-screen quite quickly, it will appear to have jumped to a new position. Luckily this isn't obvious in fast-paced combat, but if you treat two-player Elite as a gentle stroll through deep space with a friend, then it might be a bit more obvious that something strange is going on behind the curtain.</p>
 
@@ -797,7 +802,9 @@ page_header("hacks", "two-player_elite.html", "Technical information for two-pla
 
 						<p>But there's a further limitation that is unique to the 6502 Second Processor version of Elite that we need to tackle, because although the key logger in the parasite now contains enough slots for both players, the keyboard routine in the I/O processor doesn't actually use them. Instead, the KEYBOARD routine in the I/O processor tries to minimise the amount of data that needs to be sent over the Tube, so while it records all the primary controls individually, it uses a single-byte "other key press" entry for all other controls, including the secondary flight keys. This is fine for one player, but the problem for two players is that if a player holds down a key that appears early on in the full-keyboard scan (i.e. a key with a low internal key number), then that key will fill the "other key press" slot, the keyboard scanning will stop, and any other key presses will be ignored. This means that if player 1 holds down the f0 key to switch to the front view, where f0 has internal key number &amp;20, then this will disable all of player 2's keys with a higher internal key number, except for the left arrow key, which has an internal key number of &amp;19. This clearly will not do.</p>
 
-						<p>The same issue affects the buttons on the Delta 14B, as it doesn't matter whether we're talking about keys on a keyboard or keys on a joystick - the problem is that secondary controls get squashed into one byte in the keyboard data block that is sent to the I/O processor.</p>
+						<img class="titleImage lightBorder photo" style="width: 400px" src="/images/two-player_elite/twin_delta14b.jpg" alt="Two Delta 14B joysticks and a BBC Micro B+ signed by David Braben">
+
+						<p>The same issue affects the buttons on the Delta 14B joystick (shown above), as it doesn't matter whether we're talking about keys on a keyboard or keys on a joystick - the problem is that secondary controls get squashed into one byte in the keyboard data block that is sent to the I/O processor.</p>
 
 						<p>We could extend the size of the block that's sent to the I/O processor, but that would need a fair bit of recoding in the parasite code and wouldn't be the fastest solution, so instead I've added a very simple hack to share keys between the two players. The I/O processor contains a flag called player2Turn that flips between two values (bit 7 clear and bit 7 set) every time the I/O processor is asked to scan the keyboard; when bit 7 is clear we make sure we return a player 1 key in the arbitrary key slot, if one is being pressed, and when bit 7 is set we make sure we return a player 2 key, if one is being pressed. This implements a simple precedence rule that means we constantly flip between the two players, and because the keyboard is scanned regularly, the players won't even notice that only one of them has precedence at any one time.</p>
 
