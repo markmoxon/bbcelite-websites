@@ -11,12 +11,14 @@
 				<ul class="mainMenu">
 					<li class="menuItemHeader showForMobile">Using this site</li>
 					<li id="home" class="showForMobile"><a href="/"><span class="menuTitle">Home page</span> <span class="menuSummary">Start at the very beginning</span></a></li>
-					<li id="talks"><span class="menuTitle">Presentations, talks and other videos</span>
-						<span class="menuSummary menuSummarySubmenu">Selected videos about my software archaeology</span>
+					<li id="talks"><span class="menuTitle">Presentations and academic papers</span>
+						<span class="menuSummary menuSummarySubmenu">Find out more about my software archaeology</span>
 						<ul id="submenu_talks">
 							<li class="menuItemHeader">Presentations, talks and other videos</li>
 							<li><a id="talks_index" href="/talks/"><span class="menuTitle">My talks and presentations</span> <span class="menuSummary">A collection of talks on my software archaeology projects</span></a></li>
 							<li><a id="talks_others" href="/talks/others.html"><span class="menuTitle">Other talks and videos</span> <span class="menuSummary">Talks by other people who have found my research useful</span></a></li>
+							<li class="menuItemHeader">Academic papers</li>
+							<li><a id="talks_academic_papers" href="/talks/academic_papers.html"><span class="menuTitle">Two academic papers about Elite</span> <span class="menuSummary">I co-authored two papers about Elite from the 2026 IEEE Conference on Games</span></a></li>
 						</ul>
 					</li>
 					<li id="disassembly_maths"><span class="menuTitle">Disassembly diary for The Sentinel</span> <span class="menuSummary menuSummarySubmenu">How I documented Geoff Crammond's epic BBC game</span>
