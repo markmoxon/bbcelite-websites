@@ -1,0 +1,202 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "building_bbc_micro_cassette_elite_from_the_source_disc.html", "Building BBC Micro cassette Elite from the source disc", "Building BBC Micro cassette Elite from the source disc", "A deep dive into building BBC Micro cassette Elite on a BBC Micro from the source disc", "elite", "deep_dives_software_archaeology", "building_bbc_micro_cassette_elite_from_the_source_disc");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_source_code_family_tree.html">The Elite source code family tree</a><a class="next" rel="next" title="Next deep dive" href="building_6502_second_processor_elite_from_the_source_disc.html">Building 6502 Second Processor Elite</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How to build BBC Micro cassette Elite from the original source disc</h2>
+
+						<p>Around the turn of the century, Ian Bell released the source code for Elite <a href="http://www.elitehomepage.org">on his personal website</a>. One of the artifacts he released was the original 1984 source disc for the BBC Micro cassette version of Elite, which is particularly intriguing as this is the original version from which all others were derived (see <a href="the_elite_source_code_family_tree.html">the Elite source code family tree</a> for details).</p>
+
+						<p>Let's take a look at the source disc and see what's involved in building BBC Micro cassette Elite from the source.</p>
+
+						<h2 class="articleSubheader">What's on the disc?<br>
+													 -------------------</h2>
+
+						<p>The source disc comes as a zip file, which you can <a href="http://www.elitehomepage.org/archive/a/a4080602.zip">download</a> from the <a href="http://www.elitehomepage.org/archive/index.htm">archive</a> on Ian Bell's site. Inside the zip is a DSD file, which is a BBC Micro double-sided DFS disc image that consists of two sides, drive 0 and drive 2.</p>
+
+						<p>This is the catalogue of drive 0:</p>
+
+						<img class="titleImage lightBorder" style="width: 274px" src="/images/cassette/source_drive_0.png" alt="A catalogue of drive 0 of the BBC Micro cassette Elite source disc">
+
+						<p>And this is drive 2:</p>
+
+						<img class="titleImage lightBorder" style="width: 274px" src="/images/cassette/source_drive_2.png" alt="A catalogue of drive 2 of the BBC Micro cassette Elite source disc">
+
+						<p>The disc contents can be viewed on any Acorn machine with DFS, but to actually run the build it needs to be loaded into a standard BBC Micro. It will also work on emulators: my personal favourite is Tom Seddon's <a href="https://github.com/tom-seddon/b2">b2 emulator</a>, but any emulator will do, even the browser-based JSBeeb (which you can use to run the build by following the links below).</p>
+
+						<p>That said, if you try to run the build process using Ian Bell's disc image, then you quickly run out of disc space. To make it easier to run the build yourself, I have produced a stripped-down version of the disc that only contains the source files that the build needs, so there's enough room to run the whole end-to-end process.</p>
+
+						<p>For ultimate convenience, you can <a href="https://bbc.xania.org/?disc=https://elite.bbcelite.com/versions/sources/A4080602-stripped-to-sources.dsd">open JSBeeb with the stripped-down source disc already loaded</a>. Then you can follow the process below to build BBC Micro cassette Elite yourself, all within your browser. If you want to follow along with your own setup, you can download the <a href="/versions/sources/A4080602-stripped-to-sources.dsd">stripped-down image as a DSD file</a> that you can load directly into your emulator. </p>
+
+						<p>Note that this build process is pretty slow. If you are in a standalone emulator you may be able to run things at a faster speed, but if you're on real hardware or JSBeeb, prepare for some long waits. It's a lot of work for an 8-bit machine to handle, and it makes you appreciate just how complicated Elite really is.</p>
+
+						<p>If you would like to look at the source files but don't want to be messing about with disc images from a bygone era, I have converted all the BASIC programs into text and uploaded them to the accompanying repository, where <a href="https://github.com/markmoxon/elite-source-code-bbc-micro-cassette/tree/main/1-source-files/original-sources">you can browse them at your convenience</a>.</p>
+
+						<h2 class="articleSubheader">What the programs do<br>
+													 --------------------</h2>
+
+						<p>Before we run through the build process itself, here's a quick summary of what the core source files do, in the order that they appear in the build pipeline. These are all BBC BASIC programs, with most of them including inline assembly language. All of them produce files as output, with some of them taking other files as input.</p>
+
+						<p>There are five prerequisite files that are required by the build process: the image files P.ELITE, P.A-SOFT and P.(C)ASFT, plus $.DIALSHP and $.SHIPS. These are described in the section below on running the build.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Program</th><th>Input</th><th>Output</th></tr>
+							<tr><td>A.GENTOK</td><td>-</td><td>$.WORDS9</td></tr>
+							<tr><td>$.ELITES</td><td>$.DIALSHP<br>$.WORDS9<br>P.ELITE<br>P.A-SOFT<br>P.(C)ASFT</td><td>$.ELITE</td></tr>
+							<tr><td>$.ELITEA</td><td>$.ELITEB<br>$.ELITEC<br>$.ELITED<br>$.ELITEE<br>$.ELITEF<br>$.ELITEG</td><td>$.ELTA<br>$.ELTB<br>$.ELTC<br>$.ELTD<br>$.ELTE<br>$.ELTF<br>$.ELTG</td></tr>
+							<tr><td>S.BCFS</td><td>$.ELTA<br>$.ELTB<br>$.ELTC<br>$.ELTD<br>$.ELTE<br>$.ELTF<br>$.ELTG<br>$.SHIPS</td><td>$.ELTcode</td></tr>
+						</table>
+
+						<p>The following programs are also on the source disc:</p>
+
+						<ul>
+							<li>$.BOOT2 contains an alternative set of function key definitions.</li>
+
+							<li>$.DIALDMP is part of the dashboard-generation process.</li>
+
+							<li>$.GETBIT ingests O.DIALSHP (which is not on the source disc) and O.NDIALS and outputs $.NDIALS. This is part of the dashboard-generation process.</li>
+
+							<li>$.DIALGEN ingests $.NDIALS and outputs $.DIALSHP. This draws the 3D scanner part of the dashboard-generation process.</li>
+
+							<li>$.FIND is utility for searching the currently loaded program for a string.</li>
+
+							<li>$.GENTOK and S.GENTOK are alternative versions of the A.GENTOK text token source.</li>
+
+							<li>$.MAKER creates what it calls "an ELITE software protected file set on cassette" using the LTAPE and PROTAPE utilities (which are not on the source disc).</li>
+
+							<li>$.ASTROID, $.BARREL, $.CYLON, $.MISSILE, $.SAUCER, $.SHIP5, $.SPCSTN, $.THAARG and $.TOFFEE are ship definition files.</li>
+
+							<li>$.DEFEDIT is a ship definition editor.</li>
+
+							<li>$.DEFGEN is a text version of the ship definition generator.</li>
+
+							<li>$.DEFTRAN is a text version of $.DEFEDIT.</li>
+
+							<li>$.DMPDIAL is part of the dashboard-generation process.</li>
+
+							<li>$.FINDSC2 is the source code that produces the $.FIND utility (it has version string "DJB Vs1.1").</li>
+
+							<li>$.SBLOCK assembles the DEFAULT and UNIV parts of the code and combines them with WORDS9.</li>
+
+							<li>$.SFTPROT applies software protection using OSFILE.</li>
+
+							<li>$.SHPPRTE creates the $.DIALSHP and $.SHIPS files.</li>
+
+							<li>$.TEXT is a text version of the DIALS routine.</li>
+
+							<li>$.TOKPRI ingests $.WORDS9 and prints out the text tokens.</li>
+
+							<li>$.UNPACK is a program to unpack the competition number from a commander file.</li>
+
+							<li>O.ELITEB is an alternative version of the $.ELITEB source that produces the release version of the commander (with no rear laser) rather than the source disc version of the commander (which has a rear pulse laser).</li>
+
+							<li>O.ELITED is an alternative version of $.ELITED.</li>
+
+							<li>O.NDIALS is part of the dashboard-generation process.</li>
+
+							<li>P.NAME$ is an alternative title image for the loading screen that says "by David Braben and Ian Bell".</li>
+
+							<li>S.STEST is an alternative version of the loader that loads the individual ELT* binaries rather than ELTcode. It assembles to create the $.MCTEST binary.</li>
+						</ul>
+
+						<p>Now let's take a look at the build process itself.</p>
+
+						<h2 class="articleSubheader">The end result<br>
+													 --------------</h2>
+
+						<p>The build process creates all the files that make up BBC Micro cassette Elite. Specifically, it creates these two binary files on drive 0:</p>
+
+						<ul>
+							<li>$.ELITE, the game loader</li>
+
+							<li>$.ELTcode, the main game code</li>
+						</ul>
+
+						<p>Once the build process has finished, you can run the game by typing *RUN $.ELITE.</p>
+
+						<p>Note that instead of initialising workspaces with null values like BeebAsm, the original BBC Micro source code creates its workspaces by simply incrementing the P% and O% program counters, which means that the workspaces end up containing whatever contents the allocated memory had at the time. As the source files are broken into multiple BBC BASIC programs that run each other sequentially, this means the workspaces in the source code tend to contain either fragments of these BBC BASIC source programs, or assembled code from an earlier stage.</p>
+
+						<p>This doesn't make any difference to the game code, which either initialises the workspaces at runtime or just ignores their initial contents, but it can mean that the binaries produced by the original build process can differ slightly from the final game's binaries when it comes to the workspace memory. For example, the byte at offset &amp;3FF in $.ELTcode is a skipped byte between the $.WORDS9 and P.DIALS binaries, so this is very unlikely to match the same byte in the released game, and this difference will also affect the checksum bytes at offsets &amp;1334 and &amp;1336.</p>
+
+						<h2 class="articleSubheader">Running the build process<br>
+													 -------------------------</h2>
+
+						<p>In order to run the build process, we need all the source files, plus the five prerequisite files mentioned above. These latter file files are produced outside of the build process, as follows:</p>
+
+						<ul>
+							<li>$.SHIPS contains the ship data. There is a separate source disc for creating ship data, which <a href="http://www.elitehomepage.org/archive/a/a4100082.zip">can be found on Ian Bell's site</a>. The sources on this separate disc create individual ship files called MISSILE, COBRA and so on, which the S.SHPPRTE program on the BBC Micro cassette source disc combines to form the $.SHIPS file. The BBC Micro cassette source disc contains a pre-compiled $.SHIPS file, so we can just use that.</li>
+
+							<li>$.DIALSHP contains the dashboard bitmap image as a BBC Micro customised mode 5 screen image. There are three programs on the source disc that create this image: $.GETBIT ingests O.DIALSHP (not on the disc) and O.NDIALS and outputs $.NDIALS; $.DIALGEN ingests $.NDIALS and draws the 3D scanner to output $.DIALSHP; and S.SHPPRTE ingests $.DMPDIAL and outputs $.DIALSHP. However, neither of these produce the version from the release game that is present on the disc in the form of $.DIALSHP (so the following process just uses $.DIALSHP from the source disc), but $.DIALGEN in particular is a fascinating program to watch; load the source disc as described below and enter CHAIN ":2.$.DIALGEN" to see it in action.</li>
+
+							<li>P.ELITE, P.A-SOFT and P.(C)ASFT contain the titles from the loading screen as BBC Micro mode 4 screen images.</li>
+						</ul>
+
+						<p>These five files are already included in the source disc from Ian Bell's site, so now let's look at the actual build process. The following assumes you are using the <a href="/versions/sources/A4080602-stripped-to-sources.dsd">stripped-down disc image</a> that frees up enough space to run the build.</p>
+
+						<p>First, load up your emulator and make sure the machine type is set to a BBC Micro.</p>
+
+						<p>Put the disc image in drive 0 and press CTRL-BREAK to reset the machine. If you are using JSBeeb, then you can simply <a href="https://bbc.xania.org/?disc=https://elite.bbcelite.com/versions/sources/A4080602-stripped-to-sources.dsd">fire it up with this link</a> to complete this step.</p>
+
+						<p>Now type the following and press RETURN:</p>
+
+<pre class="articleIndented">
+  CHAIN "A.GENTOK"
+</pre>
+
+						<p>This will generate the $.WORDS9 file on drive 0.</p>
+
+						<p>Now press SHIFT-CTRL-BREAK (or SHIFT-CTRL-F12 in JSBeeb). This will run a set of commands that will appear on the screen and will load the function key definitions and set the correct directory.</p>
+
+						<p>Now tap f0 (or f10 if you are in JSBeeb) and press RETURN, which will enter the following for you:</p>
+
+<pre class="articleIndented">
+  CHAIN "ELITEA"
+</pre>
+
+						<p>Be careful not to hold f0 down too long, otherwise it might insert multiple copies of the CHAIN command - just tap it quickly. If it does insert too much text, you can delete it with the DELETE key and try again.</p>
+
+						<p>Elite will now start to build. This part takes a very long time, as it runs $.ELITEA through $.ELITEG to produce $.ELTA through $.ELTG. The process is then repeated to implement a two-pass assembly - patience is the key here.</p>
+
+						<p>Now type the following and press RETURN:</p>
+
+<pre class="articleIndented">
+  CHAIN "S.BCFS"
+</pre>
+
+						<p>Then, after a very long wait, press RETURN again at the "place disk in default drive" prompt. This will ingest $.ELTA through $.ELTG and $.SHIPS to produce the $.ELTcode file on drive 0.</p>
+
+						<p>Now press SHIFT-CTRL-BREAK again (or SHIFT-CTRL-F12 in JSBeeb), and type the following and press RETURN:</p>
+
+
+<pre class="articleIndented">
+  CHAIN "ELITES"
+</pre>
+
+						<p>Wait for a while, and then press RETURN again at the "save on drive 0" prompt. This will ingest $.DIALSHP, $.WORDS9, P.ELITE, P.A-SOFT and P.(C)ASFT to produce the $.ELITE file on drive 0.</p>
+
+						<p>The build is now complete, and you can run the game by typing the following and pressing RETURN:</p>
+
+<pre class="articleIndented">
+  *RUN $.ELITE
+</pre>
+
+						<p>And that is how you build BBC Micro cassette Elite on a BBC Micro, just like Bell and Braben did back in 1984...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="the_elite_source_code_family_tree.html">The Elite source code family tree</a><a class="next" rel="next" title="Next deep dive" href="building_6502_second_processor_elite_from_the_source_disc.html">Building 6502 Second Processor Elite</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

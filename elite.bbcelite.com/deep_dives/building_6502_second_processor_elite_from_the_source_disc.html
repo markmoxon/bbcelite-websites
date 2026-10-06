@@ -1,0 +1,210 @@
+<?php
+include_once("../templates/template_functions.php");
+page_header("deep_dives", "building_6502_second_processor_elite_from_the_source_disc.html", "Building 6502 Second Processor Elite from the source disc", "Building 6502 Second Processor Elite from the source disc", "A deep dive into building 6502 Second Processor Elite on a BBC Micro from the source disc", "elite", "deep_dives_software_archaeology", "building_6502_second_processor_elite_from_the_source_disc");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="building_bbc_micro_cassette_elite_from_the_source_disc.html">Building BBC Micro cassette Elite</a><a class="next" rel="next" title="Next deep dive" href="building_commodore_64_elite_from_the_source_disk.html">Building Commodore 64 Elite</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How to build 6502 Second Processor Elite from the original source disc</h2>
+
+						<p>Around the turn of the century, Ian Bell released the source code for Elite <a href="http://www.elitehomepage.org">on his personal website</a>. One of the artifacts he released was the original 1985 source disc for the 6502 Second Processor version of Elite, which took the original game and added a colour space view.</p>
+
+						<p>Let's take a look at the source disc and see what's involved in building 6502 Second Processor Elite from the source.</p>
+
+						<h2 class="articleSubheader">What's on the disc?<br>
+													 -------------------</h2>
+
+						<p>The source disc comes as a zip file, which you can <a href="http://www.elitehomepage.org/archive/a/a5022201.zip">download</a> from the <a href="http://www.elitehomepage.org/archive/index.htm">archive</a> on Ian Bell's site. Inside the zip is a DSD file, which is a BBC Micro double-sided DFS disc image that consists of two sides, drive 0 and drive 2.</p>
+
+						<p>This is the catalogue of drive 0:</p>
+
+						<img class="titleImage lightBorder" style="width: 274px" src="/images/6502sp/source_drive_0.png" alt="A catalogue of drive 0 of the 6502 Second Processor source disc">
+
+						<p>And this is drive 2:</p>
+
+						<img class="titleImage lightBorder" style="width: 274px" src="/images/6502sp/source_drive_2.png" alt="A catalogue of drive 2 of the 6502 Second Processor source disc">
+
+						<p>The disc contents can be viewed on any Acorn machine with DFS, but to actually run the build it needs to be loaded into a BBC Micro with a 6502 Second Processor. It will also work on emulators: my personal favourite is Tom Seddon's <a href="https://github.com/tom-seddon/b2">b2 emulator</a>, but any emulator with support for a second processor will do, even the browser-based JSBeeb (which you can use to run the build by following the links below).</p>
+
+						<p>That said, if you try to run the build process using Ian Bell's disc image, then you quickly run out of disc space. To make it easier to run the build yourself, I have produced a stripped-down version of the disc that only contains the source files that the build needs, so there's enough room to run the whole end-to-end process (though even then we still need to free up more space part-way through the build process, as space is really tight in this version).</p>
+
+						<p>For ultimate convenience, you can <a href="https://bbc.xania.org/?coProcessor=true&amp;autoboot&amp;disc=https://elite.bbcelite.com/versions/sources/A5022201-stripped-to-sources.dsd">open JSBeeb with the stripped-down source disc already loaded</a>. Then you can follow the process below to build 6502 Second Processor Elite yourself, all within your browser. If you want to follow along with your own setup, you can download the <a href="/versions/sources/A5022201-stripped-to-sources.dsd">stripped-down image as a DSD file</a> that you can load directly into your emulator. </p>
+
+						<p>Note that the build process needs a copy of Acorn's HIBASIC on drive 2. This is essential because it frees up more memory than standard BASIC, and we need that extra space for the build process. HIBASIC is not included in the discs from Ian Bell's site, but I have included it on the stripped-down source disc images so they are ready to go.</p>
+
+						<p>Also note that this build process is pretty slow. If you are in a standalone emulator you may be able to run things at a faster speed, but if you're on real hardware or JSBeeb, prepare for some long waits. It's a lot of work for an 8-bit machine to handle, and it makes you appreciate just how complicated Elite really is.</p>
+
+						<p>If you would like to look at the source files but don't want to be messing about with disc images from a bygone era, I have converted all the BASIC programs into text and uploaded them to the accompanying repository, where <a href="https://github.com/markmoxon/elite-source-code-6502-second-processor/tree/main/1-source-files/original-sources">you can browse them at your convenience</a>.</p>
+
+						<h2 class="articleSubheader">What the programs do<br>
+													 --------------------</h2>
+
+						<p>Before we run through the build process itself, here's a quick summary of what the core source files do, in the order that they appear in the build pipeline. These are all BBC BASIC programs, with most of them including inline assembly language. All of them produce files as output, with some of them taking other files as input.</p>
+
+						<p>There are seven prerequisite files that are required by the build process: the image files P.DIALS2P, Z.ACSOFT, Z.ELITE and Z.(C)ASFT, plus C.FONT, P.SHIPS and P.WORDS. These are described in the section below on running the build, but note that C.FONT is on the source disc under the name P.FONT, so we rename it as part of the build process below.</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Program</th><th>Input</th><th>Output</th></tr>
+							<tr><td>P.PMODU</td><td>Ship source disc (<a href="http://www.elitehomepage.org/archive/a/a4100082.zip">download</a>)</td><td>P.SHIPS</td></tr>
+							<tr><td>S.DATE2S</td><td>-</td><td>P.DATE2P</td></tr>
+							<tr><td>S.ELITAS</td><td>P.DATE2P<br>P.DIALS2P<br>Z.ACSOFT<br>Z.ELITE<br>Z.(C)ASFT</td><td>I.ELITEa</td></tr>
+							<tr><td>P.ELITEA</td><td>P.ELITEB<br>P.ELITEC<br>P.ELITED<br>P.ELITEE<br>P.ELITEF<br>P.ELITEG<br>P.ELITEH<br>P.ELITEI<br>P.ELITEJ</td><td>P.ELTA<br>P.ELTB<br>P.ELTC<br>P.ELTD<br>P.ELTE<br>P.ELTF<br>P.ELTG<br>P.ELTH<br>P.ELTI<br>P.ELTJ</td></tr>
+							<tr><td>P.ELITEZ</td><td>C.FONT</td><td>I.CODE</td></tr>
+							<tr><td>S.ELITES</td><td>-</td><td>$.ELITE</td></tr>
+							<tr><td>S.PCODES</td><td>P.ELTA<br>P.ELTB<br>P.ELTC<br>P.ELTD<br>P.ELTE<br>P.ELTF<br>P.ELTG<br>P.ELTH<br>P.ELTI<br>P.ELTJ<br>P.SHIPS<br>P.WORDS</td><td>P.CODE</td></tr>
+						</table>
+
+						<p>The following programs are also on the source disc:</p>
+
+						<ul>
+							<li>$.!KEYS contains an alternative set of function key definitions.</li>
+
+							<li>$.Pr is a small utility for configuring a printer.</li>
+
+							<li>B.ELITAS and T.ELITAS are alternative versions of S.ELITAS (the latter displays the build date on the loading screen).</li>
+
+							<li>B.ELITES and O.ELITES are alternative versions of S.ELITES.</li>
+
+							<li>O.PMODU is an alternative version of P.PMODU.</li>
+
+							<li>P.LOGTEST, P.LOGTST2 and P.TEXT contain test code for the logarithm-based multiplication routines.</li>
+
+							<li>P.MOD12SC is a test program for the mode 1/2 split screen.</li>
+
+							<li>S.STEST is an alternative version of the loader that loads the individual ELT* binaries rather than P.CODE. It assembles to create the P.PRTEST binary.</li>
+
+							<li>V.PR2FILE is a VIEW word processor document that contains information about the 6502 Second Processor version of Elite.</li>
+						</ul>
+
+						<p>Now let's take a look at the build process itself.</p>
+
+						<h2 class="articleSubheader">The end result<br>
+													 --------------</h2>
+
+						<p>The build process creates all the files that make up 6502 Second Processor Elite. Specifically, it creates these four binary files on drive 0:</p>
+
+						<ul>
+							<li>$.ELITE, the first game loader (which draws the Saturn)</li>
+
+							<li>I.ELITEa, the second game loader (which loads the game titles and the main game code)</li>
+
+							<li>I.CODE, the main game code for the I/O processor</li>
+
+							<li>P.CODE, the main game code for the parasite</li>
+						</ul>
+
+						<p>Once the build process has finished, you can run the game by typing *RUN $.ELITE.</p>
+
+						<p>Note that instead of initialising workspaces with null values like BeebAsm, the original BBC Micro source code creates its workspaces by simply incrementing the P% and O% program counters, which means that the workspaces end up containing whatever contents the allocated memory had at the time. As the source files are broken into multiple BBC BASIC programs that run each other sequentially, this means the workspaces in the source code tend to contain either fragments of these BBC BASIC source programs, or assembled code from an earlier stage.</p>
+
+						<p>This doesn't make any difference to the game code, which either initialises the workspaces at runtime or just ignores their initial contents, but it can mean that the binaries produced by the original build process can differ slightly from the final game's binaries when it comes to the workspace memory. For example, P.CODE starts with an uninitialised workspace, so the first few bytes are very unlikely to match the binaries in the released game.</p>
+
+						<h2 class="articleSubheader">Running the build process<br>
+													 -------------------------</h2>
+
+						<p>In order to run the build process, we need all the source files, plus the seven prerequisite files mentioned above. These latter seven files are produced outside of the build process, as follows:</p>
+
+						<ul>
+							<li>P.SHIPS contains the ship data. There is a separate source disc for creating ship data, which <a href="http://www.elitehomepage.org/archive/a/a4100082.zip">can be found on Ian Bell's site</a>. The sources on this separate disc create individual ship files called MISSILE, COBRA and so on, which the P.PMODU program on the 6502 Second Processor source disc combines to form the P.SHIPS file. The 6502 Second Processor source disc contains a pre-compiled P.SHIPS file, so we can just use that.</li>
+
+							<li>C.FONT is the game font, and it appears on the 6502 Second Processor version source disc under the name P.FONT (we rename it as part of the build process so the P.ELITEZ program can find it). This is a direct extract of the font from the BBC Micro's operating system ROM.</li>
+
+							<li>P.WORDS contains the text tokens for the game. All the other Elite source discs contain programs that generate this file, but this is missing from the 6502 Second Processor source disc. The P.WORDS file is present, though, so we can just use that.</li>
+
+							<li>P.DIALS2P contains the dashboard bitmap image as a BBC Micro customised mode 2 screen image.</li>
+
+							<li>Z.ACSOFT, Z.ELITE and Z.(C)ASFT contain the titles from the loading screen as BBC Micro mode 1 screen images.</li>
+						</ul>
+
+						<p>These seven files are already included in the source disc from Ian Bell's site, so now let's look at the actual build process. The following assumes you are using the <a href="/versions/sources/A5022201-stripped-to-sources.dsd">stripped-down disc image</a> that frees up enough space to run the build.</p>
+
+						<p>First, load up your emulator and change the machine type to a BBC Micro with a 6502 Second Processor (or if you are running this on a real BBC Micro, make sure your co-processor is turned on).</p>
+
+						<p>Put the disc image in drive 0 and press SHIFT-CTRL-BREAK (or SHIFT-CTRL-F12 in JSBeeb). This will run a set of commands that will appear on the screen and will load the function key definitions and set the correct directory. If you are using JSBeeb, then you can simply <a href="https://bbc.xania.org/?coProcessor=true&amp;autoboot&amp;disc=https://elite.bbcelite.com/versions/sources/A5022201-stripped-to-sources.dsd">fire it up with this link</a> to complete this step.</p>
+
+						<p>Now type the following and press RETURN after each line:</p>
+
+<pre class="articleIndented">
+  *DRIVE 2
+  *RENAME P.FONT C.FONT
+  CHAIN "S.DATE2S"
+</pre>
+
+						<p>This will generate the P.DATE2P date image on drive 2.</p>
+
+						<p>Now type the following and press RETURN, and then press RETURN again at the "insert destination disk" prompt:</p>
+
+<pre class="articleIndented">
+  CHAIN "S.ELITAS"
+</pre>
+
+						<p>This will generate the I.ELITEa file on drive 0.</p>
+
+						<p>Next, press SHIFT-CTRL-BREAK to reboot the disc (or SHIFT-CTRL-F12 in JSBeeb).</p>
+
+						<p>Now tap f0 (or f10 if you are in JSBeeb) and press RETURN, which will enter the following for you:</p>
+
+<pre class="articleIndented">
+  CHAIN "ELITEA"
+</pre>
+
+						<p>Be careful not to hold f0 down too long, otherwise it might insert multiple copies of the CHAIN command - just tap it quickly. If it does insert too much text, you can delete it with the DELETE key and try again.</p>
+
+						<p>Elite will now start to build. This part takes a very long time, as it runs C.ELITEA through C.ELITEJ to produce C.ELTA through C.ELTJ. The process is then repeated to implement a two-pass assembly, and it takes a particularly long time around stage "I" and the second stage "f" - patience is the key here.</p>
+
+						<p>Now type the following and press RETURN, and then press RETURN again at the "insert destination disk" prompt:</p>
+
+<pre class="articleIndented">
+  CHAIN "ELITEZ"
+</pre>
+
+						<p>This takes the C.FONT file and produces the I.CODE file on drive 0. It takes a while.</p>
+
+						<p>Now type the following and press RETURN, and then tap "Y" at each prompt:</p>
+
+<pre class="articleIndented">
+  *DESTROY P.ELITE*
+</pre>
+
+						<p>This will free up enough disc space for the rest of the build process by deleting the ELITEA to ELITEZ source files, which are no longer needed.</p>
+
+						<p>Now type the following and press RETURN, and then press RETURN again at the "insert destination disk" prompt:</p>
+
+<pre class="articleIndented">
+  CHAIN ":2.S.ELITES"
+</pre>
+
+						<p>This will generate the $.ELITE file on drive 0.</p>
+
+						<p>Now tap f4 and press RETURN, which will enter the following for you:</p>
+
+<pre class="articleIndented">
+  CHAIN ":2.S.PCODES"
+</pre>
+
+						<p>Then press RETURN again at the "insert destination disk" prompt. This will ingest P.ELTA through P.ELTJ, P.WORDS and P.SHIPS to produce the P.CODE file on drive 0.</p>
+
+						<p>The build is now complete, and you can run the game by typing the following and pressing RETURN:</p>
+
+<pre class="articleIndented">
+  *RUN $.ELITE
+</pre>
+
+						<p>And that is how you build 6502 Second Processor Elite on a BBC Micro, just like Bell and Braben did back in 1984/5...</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous deep dive" href="building_bbc_micro_cassette_elite_from_the_source_disc.html">Building BBC Micro cassette Elite</a><a class="next" rel="next" title="Next deep dive" href="building_commodore_64_elite_from_the_source_disk.html">Building Commodore 64 Elite</a></nav>
+				</div>
+			</article>
+
+<?php
+include_once("../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>
