@@ -34,9 +34,9 @@
 							<li class="menuItemHeader">Index</li>
 							<li><a id="deep_dives_index" href="/deep_dives/"><span class="menuTitle">Index of all deep dive articles</span><span class="menuSummary">Discover how Elite works under the hood</span></a></li>
 							<li class="menuItemHeader">Deep dives</li>
-							<li id="deep_dives_software_archaeology"><span class="menuTitle">Software archaeology</span> <span class="menuSummary menuSummarySubmenu">Digging for clues in the original source code</span>
+							<li id="deep_dives_software_archaeology"><span class="menuTitle">Exploring the original source discs</span> <span class="menuSummary menuSummarySubmenu">Digging for clues in the original source code</span>
 								<ul id="submenu_deep_dives_software_archaeology">
-									<li class="menuItemHeader">Software archaeology</li>
+									<li class="menuItemHeader">Exploring the original source discs</li>
 									<li><a id="deep_dives_software_archaeology_the_elite_source_code_family_tree" href="/deep_dives/the_elite_source_code_family_tree.html"><span class="menuTitle">The Elite source code family tree</span> <span class="menuSummary">Tracing the development history of 6502 Elite from the BBC Micro to the NES</span></a></li>
 									<li><a id="deep_dives_software_archaeology_building_bbc_micro_cassette_elite_from_the_source_disc" href="/deep_dives/building_bbc_micro_cassette_elite_from_the_source_disc.html"><span class="menuTitle">Building BBC Micro cassette Elite from the source disc</span> <span class="menuSummary">How to build BBC Micro cassette Elite from the original source disc</span></a></li>
 									<li><a id="deep_dives_software_archaeology_building_6502_second_processor_elite_from_the_source_disc" href="/deep_dives/building_6502_second_processor_elite_from_the_source_disc.html"><span class="menuTitle">Building 6502 Second Processor Elite from the source disc</span> <span class="menuSummary">How to build 6502 Second Processor Elite from the original source disc</span></a></li>
