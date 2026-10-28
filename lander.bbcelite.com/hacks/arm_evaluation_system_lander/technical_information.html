@@ -1,0 +1,78 @@
+<?php
+include_once("../../templates/template_functions.php");
+page_header("hacks", "arm_evaluation_system_lander_technical_information.html", "Technical information for Lander on the ARM Evaluation System", "Technical information for Lander on the ARM Evaluation System", "Details of how I persuaded Lander to run on the ARM Evaluation System", "lander", "hacks_arm_evaluation_system_lander", "technical_information");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="/hacks/arm_evaluation_system_lander/downloads.html">Playing Lander on the ARM Evaluation System</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How I persuaded Lander to run on the ARM Evaluation System</h2>
+
+						<p>I have long been fascinated by the early history of ARM, and being a big fan of Elite, I'm especially fond of the story of how David Braben developed Lander on the ARM Evaluation System (you can read all about it in my deep dive on <a href="/deep_dives/landers_origins_on_the_arm1.html">Lander's origins on the ARM1</a>).</p>
+
+						<p>For this hack I wanted to create an homage to David Braben's original development environment by taking the version of Lander that came with the Archimedes and persuading it to run on the ARM Evaluation System (AES). Here are the results:</p>
+
+						<video width="80%" controls="controls" style="margin: auto; margin-bottom: 2ch">
+							<source src="/media/lander_on_an_arm_evaluation_system.mp4" type="video/mp4">
+						</video>
+
+						<p>This clip shows Lander running in an AES that's attached to a BBC Master via the Tube interface. This is the same interface that the 6502 Second Processor uses, which was used to such great effect by Bell and Braben with their colour version of Elite (see my Elite project for <a href="https://elite.bbcelite.com/6502sp/">more details on this version</a>).</p>
+
+						<p>To get Lander working on the AES, I decided to reuse the same approach as Elite. In this setup, the code running on the ARM side of the Tube is the original Lander, it's just been patched to transmit graphics and keyboard across the Tube rather than talking to VIDC and IOC on an Archimedes. The code running on the 6502 side of the Tube is based on the I/O processor code from the 6502 Second Processor of Elite. So this is not only an ARM/6502 mash-up, it's also a Lander/Elite mash-up, and given that David Braben wrote Lander and co-wrote Elite, it's a very pleasing combination.</p>
+
+						<p>The slow speed is mainly down to the bottleneck of sending graphics data over the Tube. I'm guessing that it's somewhere between a half and one-third of the speed of the game running on an ARM2; the AES is clocked more slowly than an Archimedes too, so that's another factor. It's a lot more fluid if you play it in your emulator with the speed ramped up a bit.</p>
+
+						<p>As with all my hacks, I have released the source code, fully marked up with the before-and-after changes that I've made to Lander and Elite to get this working. It's in the <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/tree/arm-evaluation-system">arm-evaluation-system branch of my Lander repository</a>, where you can find both the <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/blob/arm-evaluation-system/1-source-files/main-sources/Lander.arm">AES parasite</a> and <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/blob/arm-evaluation-system/1-source-files/main-sources/LanderIO.asm">I/O processor</a> sources. Search them for "Mod:" to see the code that I've changed.</p>
+
+						<h2 class="articleSubheader">The Tube API for Lander<br>
+						                             -----------------------</h2>
+
+						<p>For an explanation of how the Tube API works in Elite, see the deep dive on <a href="https://elite.bbcelite.com/deep_dives/6502sp_tube_communication.html">6502 Second Processor Tube communication</a> in my Elite project. Lander works in exactly the same way and reuses quite a bit of code from Elite, except the Lander API contains a set of commands that are modified to the requirements of Lander.</p>
+
+						<p>In the following tables, routines with all-capital names are taken from Elite and modified for use in Lander, while routines in camel case are brand new code for Lander. See the <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/blob/arm-evaluation-system/1-source-files/main-sources/LanderIO.asm">I/O processor source</a> to see how these commands are implemented on the BBC Master side of the Tube.</p>
+
+						<p>Here are the OSBYTE commands:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Offset</th><th>Variable</th><th style="width: 9ch">OSWRCH #</th><th>Action</th><th>I/O routine</th></tr>
+							<tr><td>0</td><td>-</td><td>128 (&amp;80)</td><td>Put back to USOSWRCH</td><td>USOSWRCH</td></tr>
+							<tr><td>1</td><td>-</td><td>129 (&amp;81)</td><td>Reserved for VDU code for mode 128+1</td><td>USOSWRCH</td></tr>
+							<tr><td>2</td><td>#Tube_AddPixels</td><td>130 (&amp;82)</td><td>Receive a pixel to draw</td><td>ADDBYT</td></tr>
+							<tr><td>3</td><td>#Tube_BeginPixels</td><td>131 (&amp;83)</td><td>Start receiving pixels</td><td>BEGINLIN</td></tr>
+							<tr><td>4</td><td>#Tube_SetScreenBank</td><td>132 (&amp;84)</td><td>Set screen bank to main or shadow</td><td>SetScreenBank</td></tr>
+							<tr><td>5</td><td>#Tube_ClearScreen</td><td>133 (&amp;85)</td><td>Switch screen bank and clear screen</td><td>ClearScreen</td></tr>
+							<tr><td>6</td><td>#Tube_SetScreenMode</td><td>134 (&amp;86)</td><td>Set up the game's screen mode</td><td>SetScreenMode</td></tr>
+						</table>
+
+						<p>As with Elite, OSWRCH commands enjoy a degree of parallelism, so when sending batches of pixels to the AES with the BEGINLIN and ADDBYT commands, the last pixel will start the BBC Master drawing those pixels while the Lander code in the AES can continue processing in parallel.</p>
+
+						<p>Command 129 is reserved for changing the mode to mode 1 with shadow RAM enabled, which is done by writing ASCII 2 followed by the mode number 129. We reserve 129 for the mode number because otherwise the custom OSWRCH handler would interfere with the mode change.</p>
+
+						<p>Here are the OSWORD commands:</p>
+
+						<table class="spacedTableBorder codeSummary">
+							<tr class="codeSummaryHeader"><th>Offset</th><th>Variable</th><th style="width: 9ch">OSWORD #</th><th>Action</th><th>I/O routine</th></tr>
+							<tr><td>0</td><td>#Tube_ReadKeyboard</td><td>240 (&amp;F0)</td><td>Scan the keyboard for game keys</td><td>KEYBOARD</td></tr>
+							<tr><td>1</td><td>#Tube_SendScreenRange</td><td>241 (&amp;F1)</td><td>Set max/min screen addresses</td><td>SetScreenRange</td></tr>
+							<tr><td>2</td><td>#Tube_ScanKeyboard</td><td>242 (&amp;F2)</td><td>Scan the keyboard for any key</td><td>ScanKeyboard</td></tr>
+						</table>
+
+						<p>Calling these commands will block the AES caller until the results are returned, just as with Elite. This works well for the keyboard commands, and it doesn't matter if we block for the Tube_SendScreenRange command as it is only called once for each frame, when switching screen bank (for the latter, using OSWORD is simply more convenient that OSBYTE for sending the four bytes of data in the maximum and minimum screen addresses).</p>
+
+						<p>So that's how Lander works on the ARM Evaluation System, by using Elite's co-processor API to process graphics and keyboard on the BBC Master while the ARM1 runs Lander.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="/hacks/arm_evaluation_system_lander/downloads.html">Playing Lander on the ARM Evaluation System</a></nav>
+				</div>
+			</article>
+
+<?php
+include("../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

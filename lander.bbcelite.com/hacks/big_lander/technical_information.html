@@ -1,0 +1,70 @@
+<?php
+include_once("../../templates/template_functions.php");
+page_header("hacks", "big_lander_technical_information.html", "Technical information for Big Lander", "Technical information for Big Lander", "Details of how I extended Lander to support much larger landscapes", "lander", "hacks_big_lander", "technical_information");
+?>
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="/hacks/big_lander/downloads.html">Playing Big Lander</a><a class="next" rel="next" title="Next page" href="/hacks/arm_evaluation_system_lander/">Lander on the ARM Evaluation System</a></nav>
+				</div>
+
+				<div class="codeBlockWrapper">
+					<div class="codeBlock article">
+						<h2 class="articleSubheader deepDive">How I extended Lander to support much larger landscapes</h2>
+
+						<p>The source code for Big Lander is identical to that of Lander, but with a small number of modifications to extend the landscape and support RISC OS 3.5 and later. You can see these modifications by looking in the <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/blob/big-landscape/1-source-files/main-sources/Lander.arm">main Lander.arm source file</a> and searching for "Mod:".</p>
+
+						<p>The default version of Big Lander has a landscape size of 64 by 64 tiles, so TILES_X and TILES_Z are both 65 (see the next section for an explanation of these variables). It looks like this:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/deep_dives/hacking/big_lander_63.png" alt="Big Lander with a landscape size of 63x63">
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/deep_dives/hacking/big_lander_63_3.png" alt="Big Lander with a landscape size of 63x63">
+
+						<p>The biggest possible size seems to be 121 x 121 tiles, with TILES_X and TILES_Z both set to 122. It looks like this:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/deep_dives/hacking/big_lander_122.png" alt="Big Lander with a landscape size of 122x122">
+
+						<p>When you compare Big Lander with the original version's 12 by 10 tiles, it's quite a difference:</p>
+
+						<img class="titleImage lightBorder" style="width: 330px" src="/images/general/destroying_trees.png" alt="Destroying trees in Acorn Archimedes Lander">
+
+						<p>You'll need a decent Archimedes to run Big Lander - a Risc PC or Raspberry Pi makes a good choice - and it can be a bit too fast to play easily, but if you want to experiment with the best landscape size for your system, <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/tree/big-landscape">check out the repository</a>, where you can also find instructions on getting Big Lander working on your system.</p>
+
+						<h2 class="articleSubheader">Looking for the landscape<br>
+						                             -------------------------</h2>
+
+						<p>The key to creating Big Lander was to look through the source code for any mentions of the landscape's tile dimensions. Luckily there is a pretty big clue in the <a href="/source/main/subroutine/drawlandscapeandbuffers_part_1_of_4.html">DrawLandscapeAndBuffers</a> routine, which steps through the landscape, row by row, one tile at time. The landscape dimensions are used as counters for the inner and outer loops of this process, so it wasn't hard to extract these values into the TILES_X and TILES_Z configuration variables.</p>
+
+						<p>Another vital piece of the puzzle is the tile size. Again, this wasn't hard to extract, this time from the object map. This routine places objects on tile corners in the map, and it does this by using the top byte of the x- and z-coordinates to get the tile number. This means that coordinate &amp;xx000000 points to tile &amp;xx, which means that each tile must be &amp;01000000 in size. And so I extracted this figure into the TILE_SIZE configuration variable, and slowly other constants revealed themselves as obvious multiples of this value... so LAUNCHPAD_SIZE turned out to be TILE_SIZE * 8, the SAFE_HEIGHT for our ship came in as TILE_SIZE * 3 / 2, and even the landscape offsets in LANDSCAPE_X and LANDSCAPE_Z turned out to be related to the tile size:</p>
+
+<pre class="articleIndented">
+  LANDSCAPE_X_WIDTH = TILE_SIZE * (TILES_X - 2)
+
+  LANDSCAPE_X = LANDSCAPE_X_WIDTH / 2
+
+  LANDSCAPE_Z_DEPTH = TILE_SIZE * (TILES_Z - 1)
+
+  LANDSCAPE_Z = LANDSCAPE_Z_DEPTH + (10 * TILE_SIZE)
+</pre>
+
+						<p>At this point changing the values of TILES_X and TILES_Z just made things crash, but as I worked through the code, spotting yet another value that must surely be related to the tile sizes and landscape dimensions, things slowly improved.</p>
+
+						<p>At one point the landscape started working with an extra tile or two in each direction, but crashed when I made it bigger; it turns out that quite a few of the variable tables depend on the number of tiles, in particular the corner stores that are used when drawing the landscape, and the graphics buffers that implement the depth sorting. The corner stores are dependent on the size of TILES_X (as we need to store all the corner coordinates for each tile row in the corner stores, so the longer the row, the larger the corner store), and the graphics buffers are dependent on TILES_Z (as we need a graphics buffer for each tile corner row, so the more rows we have, the more buffers we need in <a href="/source/main/variable/graphicsbuffers.html">graphicsBuffers</a> and <a href="/source/main/variable/graphicsbuffersend.html">graphicsBuffersEnd</a>). The solution was to build these tables with FOR loops, so they automatically grow with the number of tiles.</p>
+
+						<p>There was also the <a href="/source/main/variable/landscapeconfig.html">landscapeConfig</a> table, which doesn't really do much except store the width of each row, so this needed extending to cater for all our extra rows. And then there was the <a href="/source/main/subroutine/getlandscapetilecolour.html">GetLandscapeTileColour</a> routine, which is only designed to cope with tile rows 1 to 10, and returns white for higher row numbers (so at one point I had the landscape drawing correctly, but with almost all of it in white).</p>
+
+						<p>Eventually, though, I reached the point where ridiculous landscape sizes were working, but they were very slow on the Archimedes emulator I was using - Braben was right when he called it "a succession of stills". So I reached out the Stardot community, who helped me tweak some small parts of the code to make it run on all versions of RISC OS... and that's when Big Lander was born.</p>
+
+						<p>I hope you enjoy it.</p>
+					</div>
+				</div>
+
+				<div class="codeBlockWrapper nav">
+					<nav class="codeBlock previousNext"><a class="previous" rel="prev" title="Previous page" href="/hacks/big_lander/downloads.html">Playing Big Lander</a><a class="next" rel="next" title="Next page" href="/hacks/arm_evaluation_system_lander/">Lander on the ARM Evaluation System</a></nav>
+				</div>
+			</article>
+
+<?php
+include("../../templates_local/navigation.php");
+?>
+		</div>
+	</body>
+</html>

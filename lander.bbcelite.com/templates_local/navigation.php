@@ -82,7 +82,31 @@
 									<li><a id="deep_dives_miscellaneous_comparing_lander_to_zarch" href="/deep_dives/comparing_lander_to_zarch.html"><span class="menuTitle">Comparing Lander to Zarch</span> <span class="menuSummary">How Lander's big brother compares to its predecessor</span></a></li>
 									<li><a id="deep_dives_miscellaneous_unused_code_in_lander" href="/deep_dives/unused_code_in_lander.html"><span class="menuTitle">Unused code in Lander</span> <span class="menuSummary">Memory might be tight, but even Lander contains some hidden subroutines</span></a></li>
 									<li><a id="deep_dives_miscellaneous_landers_origins_on_the_arm1" href="/deep_dives/landers_origins_on_the_arm1.html"><span class="menuTitle">Lander's origins on the ARM1</span> <span class="menuSummary">How the creation of Lander on the ARM1 influenced the code</span></a></li>
-									<li><a id="deep_dives_miscellaneous_hacking_the_landscape" href="/deep_dives/hacking_the_landscape.html"><span class="menuTitle">Hacking the landscape</span> <span class="menuSummary">Hacking the Lander source to create huge landscapes on faster machines</span></a></li>
+								</ul>
+							</li>
+						</ul>
+					</li>
+
+					<li id="hacks"><span class="menuTitle">Lander hacks</span>
+						<span class="menuSummary menuSummarySubmenu">Large landscapes and Lander on the first ARM chip</span>
+						<ul id="submenu_hacks">
+							<li class="menuItemHeader">Index</li>
+							<li><a id="hacks_index" href="/hacks/"><span class="menuTitle">Index of all Lander hacks</span><span class="menuSummary">A list of all the Lander hacks on this site</span></a></li>
+							<li class="menuItemHeader">Lander hacks</li>
+							<li id="hacks_big_lander"><span class="menuTitle">Big Lander</span> <span class="menuSummary menuSummarySubmenu">Extending Lander to support huge landscapes of up to 122 by 122 tiles</span>
+								<ul id="submenu_hacks_big_lander">
+									<li class="menuItemHeader">Big Lander</li>
+									<li><a id="hacks_big_lander_index" href="/hacks/big_lander/"><span class="menuTitle">About Big Lander</span> <span class="menuSummary">Lander with more tiles and huge landscapes</span></a></li>
+									<li><a id="hacks_big_lander_downloads" href="/hacks/big_lander/downloads.html"><span class="menuTitle">Playing Big Lander</span> <span class="menuSummary">How to download and play Big Lander</span></a></li>
+									<li><a id="hacks_big_lander_technical_information" href="/hacks/big_lander/technical_information.html"><span class="menuTitle">Technical information on how this hack works</span> <span class="menuSummary">How I extended Lander to support much larger landscapes</span></a></li>
+								</ul>
+							</li>
+							<li id="hacks_arm_evaluation_system_lander"><span class="menuTitle">Lander on the ARM Evaluation System</span> <span class="menuSummary menuSummarySubmenu">The very first ARM game, persuaded to run on the very first ARM chip</span>
+								<ul id="submenu_hacks_arm_evaluation_system_lander">
+									<li class="menuItemHeader">Lander on the ARM Evaluation System</li>
+									<li><a id="hacks_arm_evaluation_system_lander_index" href="/hacks/arm_evaluation_system_lander/"><span class="menuTitle">About Lander on the ARM Evaluation System</span> <span class="menuSummary">Running the first ever ARM game on the first ever ARM chip</span></a></li>
+									<li><a id="hacks_arm_evaluation_system_lander_downloads" href="/hacks/arm_evaluation_system_lander/downloads.html"><span class="menuTitle">Playing musical Acornsoft Lander</span> <span class="menuSummary">How to download and play Lander on the ARM Evaluation System</span></a></li>
+									<li><a id="hacks_arm_evaluation_system_lander_technical_information" href="/hacks/arm_evaluation_system_lander/technical_information.html"><span class="menuTitle">Technical information on how this hack works</span> <span class="menuSummary">How I persuaded Lander to run on the ARM Evaluation System</span></a></li>
 								</ul>
 							</li>
 						</ul>

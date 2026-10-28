@@ -350,7 +350,7 @@
 									<li><a id="hacks_two-player_elite_index" href="/hacks/two-player_elite/"><span class="menuTitle">About two-player Elite</span> <span class="menuSummary">The classic BBC Micro game, updated for two-player action on just one machine</span></a></li>
 									<li><a id="hacks_two-player_elite_downloads" href="/hacks/two-player_elite/downloads.html"><span class="menuTitle">Playing two-player Elite</span> <span class="menuSummary">How to download and play two-player Elite</span></a></li>
 									<li><a id="hacks_two-player_elite_instructions" href="/hacks/two-player_elite/instructions.html"><span class="menuTitle">Instructions for two-player Elite</span> <span class="menuSummary">Full instructions for two-player Elite on the BBC Micro</span></a></li>
-									<li><a id="hacks_two-player_elite_technical_information" href="/hacks/two-player_elite/technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">How I converted BBC Micro Elite into a two-player game</span></a></li>
+									<li><a id="hacks_two-player_elite_technical_information" href="/hacks/two-player_elite/technical_information.html"><span class="menuTitle">Technical information on how this hack works</span> <span class="menuSummary">How I converted BBC Micro Elite into a two-player game</span></a></li>
 								</ul>
 							</li>
 							<li id="hacks_elite_universe_editor"><span class="menuTitle">Elite Universe Editor</span> <span class="menuSummary menuSummarySubmenu">Create your own Elite universes and "press play" to bring them to life</span>
@@ -432,7 +432,7 @@
 									<li class="menuItemHeader">Acornsoft Elite... with music!</li>
 									<li><a id="hacks_bbc_elite_with_music_index" href="/hacks/bbc_elite_with_music/"><span class="menuTitle">About the musical version of Acornsoft Elite</span> <span class="menuSummary">BBC Micro and Acorn Electron Elite, with added title and docking music</span></a></li>
 									<li><a id="hacks_bbc_elite_with_music_downloads" href="/hacks/bbc_elite_with_music/downloads.html"><span class="menuTitle">Playing musical Acornsoft Elite</span> <span class="menuSummary">How to download and play the musical version of Acornsoft Elite</span></a></li>
-									<li><a id="hacks_bbc_elite_with_music_technical_information" href="/hacks/bbc_elite_with_music/technical_information.html"><span class="menuTitle">Technical information</span> <span class="menuSummary">How the Commodore 64's music was ported to Elite on the BBC Micro and Electron</span></a></li>
+									<li><a id="hacks_bbc_elite_with_music_technical_information" href="/hacks/bbc_elite_with_music/technical_information.html"><span class="menuTitle">Technical information on how this hack works</span> <span class="menuSummary">How the Commodore 64's music was ported to Elite on the BBC Micro and Electron</span></a></li>
 								</ul>
 							</li>
 						</ul>
