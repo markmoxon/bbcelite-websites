@@ -93,7 +93,7 @@
 							<li class="menuItemHeader">Index</li>
 							<li><a id="hacks_index" href="/hacks/"><span class="menuTitle">Index of all Lander hacks</span><span class="menuSummary">A list of all the Lander hacks on this site</span></a></li>
 							<li class="menuItemHeader">Lander hacks</li>
-							<li id="hacks_big_lander"><span class="menuTitle">BigLander</span> <span class="menuSummary menuSummarySubmenu">Extending Lander to support huge landscapes of up to 122 by 122 tiles</span>
+							<li id="hacks_big_lander"><span class="menuTitle">BigLander</span> <span class="menuSummary menuSummarySubmenu">Extending Lander to support huge landscapes of up to 121 by 121 tiles</span>
 								<ul id="submenu_hacks_big_lander">
 									<li class="menuItemHeader">BigLander</li>
 									<li><a id="hacks_big_lander_index" href="/hacks/big_lander/"><span class="menuTitle">About BigLander</span> <span class="menuSummary">Lander with more tiles and huge landscapes</span></a></li>
