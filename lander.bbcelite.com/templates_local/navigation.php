@@ -93,11 +93,11 @@
 							<li class="menuItemHeader">Index</li>
 							<li><a id="hacks_index" href="/hacks/"><span class="menuTitle">Index of all Lander hacks</span><span class="menuSummary">A list of all the Lander hacks on this site</span></a></li>
 							<li class="menuItemHeader">Lander hacks</li>
-							<li id="hacks_big_lander"><span class="menuTitle">Big Lander</span> <span class="menuSummary menuSummarySubmenu">Extending Lander to support huge landscapes of up to 122 by 122 tiles</span>
+							<li id="hacks_big_lander"><span class="menuTitle">BigLander</span> <span class="menuSummary menuSummarySubmenu">Extending Lander to support huge landscapes of up to 122 by 122 tiles</span>
 								<ul id="submenu_hacks_big_lander">
-									<li class="menuItemHeader">Big Lander</li>
-									<li><a id="hacks_big_lander_index" href="/hacks/big_lander/"><span class="menuTitle">About Big Lander</span> <span class="menuSummary">Lander with more tiles and huge landscapes</span></a></li>
-									<li><a id="hacks_big_lander_downloads" href="/hacks/big_lander/downloads.html"><span class="menuTitle">Playing Big Lander</span> <span class="menuSummary">How to download and play Big Lander</span></a></li>
+									<li class="menuItemHeader">BigLander</li>
+									<li><a id="hacks_big_lander_index" href="/hacks/big_lander/"><span class="menuTitle">About BigLander</span> <span class="menuSummary">Lander with more tiles and huge landscapes</span></a></li>
+									<li><a id="hacks_big_lander_downloads" href="/hacks/big_lander/downloads.html"><span class="menuTitle">Playing BigLander</span> <span class="menuSummary">How to download and play BigLander</span></a></li>
 									<li><a id="hacks_big_lander_technical_information" href="/hacks/big_lander/technical_information.html"><span class="menuTitle">Technical information on how this hack works</span> <span class="menuSummary">How I extended Lander to support much larger landscapes</span></a></li>
 								</ul>
 							</li>
