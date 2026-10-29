@@ -82,6 +82,7 @@
 									<li><a id="deep_dives_miscellaneous_comparing_lander_to_zarch" href="/deep_dives/comparing_lander_to_zarch.html"><span class="menuTitle">Comparing Lander to Zarch</span> <span class="menuSummary">How Lander's big brother compares to its predecessor</span></a></li>
 									<li><a id="deep_dives_miscellaneous_unused_code_in_lander" href="/deep_dives/unused_code_in_lander.html"><span class="menuTitle">Unused code in Lander</span> <span class="menuSummary">Memory might be tight, but even Lander contains some hidden subroutines</span></a></li>
 									<li><a id="deep_dives_miscellaneous_landers_origins_on_the_arm1" href="/deep_dives/landers_origins_on_the_arm1.html"><span class="menuTitle">Lander's origins on the ARM1</span> <span class="menuSummary">How the creation of Lander on the ARM1 influenced the code</span></a></li>
+									<li><a id="deep_dives_miscellaneous_lander_documentation_in_the_manuals" href="/deep_dives/lander_documentation_in_the_manuals.html"><span class="menuTitle">Lander documentation in the manuals</span> <span class="menuSummary">How the Arthur and RISC OS 2 manuals describe Lander</span></a></li>
 								</ul>
 							</li>
 						</ul>
