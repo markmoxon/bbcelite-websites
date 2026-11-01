@@ -24,7 +24,47 @@ page_header("hacks", "arm_evaluation_system_lander_technical_information.html", 
 
 						<p>The slow speed is mainly down to the bottleneck of sending graphics data over the Tube. I'm guessing that it's somewhere between a half and one-third of the speed of the game running on an ARM2; the AES is clocked more slowly than an Archimedes too, so that's another factor. It's a lot more fluid if you play it in your emulator with the speed ramped up a bit.</p>
 
-						<p>As with all my hacks, I have released the source code, fully marked up with the before-and-after changes that I've made to Lander and Elite to get this working. It's in the <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/tree/arm-evaluation-system">arm-evaluation-system branch of my Lander repository</a>, where you can find both the <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/blob/arm-evaluation-system/1-source-files/main-sources/Lander.arm">AES parasite</a> and <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/blob/arm-evaluation-system/1-source-files/main-sources/LanderIO.asm">I/O processor</a> sources. Search them for "Mod:" to see the code that I've changed.</p>
+						<h2 class="articleSubheader">Modifying Lander for the AES<br>
+						                             ----------------------------</h2>
+
+						<p>As with all my hacks, I have released the source code, fully marked up with the before-and-after changes that I've made to Lander and Elite to get this working. It's in the <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/tree/arm-evaluation-system">arm-evaluation-system branch of my Lander repository</a>, where you can find both the <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/blob/arm-evaluation-system/1-source-files/main-sources/Lander.arm">AES parasite</a> and <a href="https://github.com/markmoxon/lander-source-code-acorn-archimedes/blob/arm-evaluation-system/1-source-files/main-sources/LanderIO.asm">I/O processor</a> sources. If you want to see exactly what I have modified to get Lander working on the AES, you can search the sources for "Mod:" to see the code that I've changed.</p>
+
+						<p>Here's a brief summary of the main changes:</p>
+
+						<ul>
+							<li>As the AES does not have a mouse, the OS_Mouse SWI isn't supported, so I've replaced it with two new routines called ReadKeyboardMouseButtons and GetPolarAnglesFromKeyboard. The first one reads the BBC Master keyboard for the fire and thrust keys to replicate the mouse button controls of the original, and the second on reads the pitch and yaw keys and calculates the same polar coordinates that would normally be calculated from the mouse position.</li>
+
+							<li>The AES doesn't support the OS_BinaryToDecimal SWI, so I've replaced this with a simple number-printing routine called ConvertBinaryToDecimal that's based on Elite's <a href="https://elite.bbcelite.com/6502sp/main/subroutine/bprnt.html">BPRNT</a> algorithm.</li>
+
+							<li>All the Archimedes-specific bank-switching code is disabled and is replaced by calls to the API's Tube_SetScreenBank command (see below).</li>
+
+							<li>Colours are set to mode 1 pixel bytes (i.e. four pixels in the correct colour) rather than 32-bit VIDC colours, so the ship and bullets are magenta, trees are green, shadows are blue, buildings and destroyed objects are magenta, the landscape is green for land and blue for sea, and so on. Particles are the exception; for these, I just use the relevant pixel bits from the 32-bit VIDC colour as the pixel byte, so explosions and thrust particles end up being randomly coloured with no extra effort (the only particle that is a fixed colour is the bullet particle).</li>
+
+							<li>Each pixel is transmitted to the BBC Master as four bytes:
+
+								<ul>
+									<li>The two-byte mode 1 screen address that contains the pixel(s)</li>
+
+									<li>The mode 1 pixel byte containing the pixel(s) to draw in the relevant colour(s), where the four colours are 0 (black), 1 (magenta), 2 (green) and 3 (blue) - for an explanation of the four-pixels-per-byte structure of mode 1, see the deep dive on <a href="https://elite.bbcelite.com/deep_dives/drawing_colour_pixels_in_mode_5.html">drawing colour pixels on the BBC Micro</a> in my Elite project; mode 1 has the same structure as mode 5 but with a higher horizontal resolution</li>
+
+									<li>The mode 1 pixel mask that corresponds to the pixel(s) to draw, with clear bit-pairs for the pixels to draw and set pixels for the bit-pairs to preserve</li>
+								</ul>
+
+								The drawing process in the BBC Master is therefore as simple as possible: we fetch the existing contents of the mode 1 screen address, AND it with the pixel mask to zero the pixel(s) we want to draw while leaving the other pixels alone, and ORA it with the pixel byte to insert the pixel(s) we want to draw into the pixel byte, which we then write back into screen memory. There are no costly calculations of the memory address or pixel mask in the I/O processor - we do all of that in the AES, using the much faster ARM processor.
+							</li>
+
+							<li>Every time we draw a pixel by transmitting it across the Tube, the AES keeps track of the screen address range of that frame's pixel content by updating the maximum and minimum address in the maxScreenAddr and minScreenAddr variables. Once the entire screen has been drawn, these values are passed to the I/O processor via the API's Tube_SendScreenRange command, so that when the I/O processor clears the screen to draw the next frame, it only needs to clear screen memory within that address range.</li>
+
+							<li>The entire fuel bar is drawn once at the start of each game (into both screen banks), and as the game progresses, we only need to redraw the last character block (four pixels) of the bar plus the block to the right of the bar, and then the bar will grow or shrink cleanly with only two bytes (eight pixels) of screen-writing.</li>
+
+							<li>The memory test in the Entry routine is disabled, as it isn't needed.</li>
+						</ul>
+
+						<p>There are few other minor changes. For example, the ARM code in the AES runs at address &amp;1000 rather than the &amp;8000 of the Archimedes, and I've zeroed the value of the screenAddr variable so that screen address calculations within the Lander code will give results as offsets from the start of the screen rather than Archimedes screen addresses. But overall the changes to Lander are minimal, and are mainly concerned with drawing the screen via the Tube and replacing the mouse with a keyboard.</p>
+
+						<p>Indeed, it's a pixel-perfect version of Lander too, as both mode 1 (on the BBC) and mode 13 (on the Archimedes) are 320 by 256 pixels; the obvious difference is that the BBC only has four colours while the Archimedes has 256, but the identical resolution means that Lander on the AES and Lander on the Archimedes match precisely in terms of pixel location. Of course, the Archimedes version has filled square tiles rather than corner dots, but the screen coordinates of those corners match perfectly and the game works in exactly the same way.</p>
+
+						<p>In other words, this is Lander, it's just on the AES.</p>
 
 						<h2 class="articleSubheader">The Tube API for Lander<br>
 						                             -----------------------</h2>
