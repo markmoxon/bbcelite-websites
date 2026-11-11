@@ -106,7 +106,7 @@
 								<ul id="submenu_hacks_arm_evaluation_system_lander">
 									<li class="menuItemHeader">Lander on the ARM Evaluation System</li>
 									<li><a id="hacks_arm_evaluation_system_lander_index" href="/hacks/arm_evaluation_system_lander/"><span class="menuTitle">About Lander on the ARM Evaluation System</span> <span class="menuSummary">Running the first ever ARM game on the first ever ARM chip</span></a></li>
-									<li><a id="hacks_arm_evaluation_system_lander_downloads" href="/hacks/arm_evaluation_system_lander/downloads.html"><span class="menuTitle">Playing musical Acornsoft Lander</span> <span class="menuSummary">How to download and play Lander on the ARM Evaluation System</span></a></li>
+									<li><a id="hacks_arm_evaluation_system_lander_downloads" href="/hacks/arm_evaluation_system_lander/downloads.html"><span class="menuTitle">Playing Lander on the  ARM Evaluation System</span> <span class="menuSummary">How to download and play Lander on the ARM Evaluation System</span></a></li>
 									<li><a id="hacks_arm_evaluation_system_lander_technical_information" href="/hacks/arm_evaluation_system_lander/technical_information.html"><span class="menuTitle">Technical information on how this hack works</span> <span class="menuSummary">How I persuaded Lander to run on the ARM Evaluation System</span></a></li>
 								</ul>
 							</li>
