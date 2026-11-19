@@ -1,5 +1,5 @@
 			<footer id="copyrightMessage">
-				<p><a title="Copyright information for this website" href="/about_site/acknowledgements.html">The Sentinel, written by Geoff Crammond, &copy; Firebird 1986<br>Commentary &copy; Mark Moxon <span id="copyrightYear">2026</span><br>
+				<p><a title="Copyright information for this website" href="/about_site/acknowledgements.html">The Sentinel was written by Geoff Crammond<br>The Sentinel &copy; Firebird 1986<br>Commentary &copy; Mark Moxon <span id="copyrightYear">2026</span><br>
 				All Rights Reserved</a></p>
 			</footer>
 
